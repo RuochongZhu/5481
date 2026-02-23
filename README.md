@@ -102,3 +102,13 @@ Why this API:
 ```bash
 pip install -r requirements-dev.txt
 ```
+
+## Posit Connect Cloud（Shiny 直连 GitHub）
+
+如果你在 Posit Connect Cloud 里选择 **Shiny** 框架，请使用本仓库根目录的 `app.py` 作为入口文件（Primary file）。
+
+- Framework: `Shiny`
+- Repository: 你的 GitHub 仓库
+- Branch: 例如 `main`
+- Primary file: `app.py`
+- Requirements file: `requirements.txt`

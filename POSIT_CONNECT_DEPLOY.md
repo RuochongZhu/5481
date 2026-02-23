@@ -45,3 +45,14 @@ rsconnect deploy api \
 - Keep `requirements.txt` for runtime dependencies only.
 - Keep dev/test dependencies in `requirements-dev.txt`.
 - Existing DigitalOcean files (for example `Procfile`) can stay; they do not block Posit Connect deployment.
+
+## Posit Connect Cloud (GitHub + Shiny)
+
+If you are using Posit Connect Cloud UI and want direct GitHub publishing:
+
+1. Choose framework: `Shiny`
+2. Select your GitHub repository and branch
+3. Set primary file to `app.py`
+4. Publish
+
+This repository now includes `app.py` (Shiny for Python app) for that workflow.
