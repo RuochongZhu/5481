@@ -13,6 +13,22 @@ python3 -m app.main
 
 打开：`http://127.0.0.1:8000`
 
+## Deploy to DigitalOcean App Platform
+
+部署前请确认：
+
+- 应用监听 `0.0.0.0` 和环境变量 `PORT`（`app/main.py` 已支持）
+- 根目录包含 `Procfile`（本仓库已提供）
+- `requirements.txt` 包含 `gunicorn`（本仓库已提供）
+
+建议在 DO 的 Health Check Path 配置为：`/api/v1/health`
+
+本地模拟生产启动：
+
+```bash
+gunicorn --bind 0.0.0.0:${PORT:-8080} app.main:app
+```
+
 ## Lab: AI Reporter Script (Submission)
 
 本仓库已包含一个“API -> 数据处理 -> AI -> 写入文件”的完整脚本：`lab_ai_reporter.py`。
