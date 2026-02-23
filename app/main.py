@@ -35,7 +35,7 @@ def earthquakes() -> object:
 
     try:
         minmagnitude = float(request.args.get("minmagnitude", 4.0))
-        limit = int(request.args.get("limit", 150))
+        limit = int(request.args.get("limit", 80))
     except ValueError:
         return jsonify({"error": "minmagnitude must be float and limit must be integer"}), 400
 

@@ -131,9 +131,6 @@ function baseOptions() {
 function boot() {
   initDateInputs();
   $("refreshBtn").addEventListener("click", loadData);
-  ["starttime", "endtime", "minmagnitude", "limit", "orderby"].forEach((id) => {
-    $(id).addEventListener("change", loadData);
-  });
   loadData();
 }
 
