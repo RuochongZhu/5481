@@ -42,18 +42,76 @@ def _events_df(payload: dict | None) -> pd.DataFrame:
     return out
 
 
-today = date.today()
-default_start = today - timedelta(days=30)
+def _time_window_dates(window_key: str) -> tuple[date, date]:
+    end = date.today()
+    mapping = {"1d": 1, "7d": 7, "14d": 14, "30d": 30}
+    days = mapping.get(window_key, 30)
+    start = end - timedelta(days=days)
+    return start, end
+
+
+def _region_ranges(region_key: str) -> tuple[float, float, float, float]:
+    # min_lat, max_lat, min_lon, max_lon
+    regions = {
+        "global": (-90.0, 90.0, -180.0, 180.0),
+        "pacific_ring": (-60.0, 65.0, -180.0, -70.0),
+        "north_america": (5.0, 75.0, -170.0, -50.0),
+        "east_asia": (-10.0, 60.0, 90.0, 170.0),
+        "mediterranean": (20.0, 50.0, -10.0, 45.0),
+    }
+    return regions.get(region_key, regions["global"])
+
+
+def _apply_geo_filter(df: pd.DataFrame, region_key: str) -> pd.DataFrame:
+    if df.empty:
+        return df
+    min_lat, max_lat, min_lon, max_lon = _region_ranges(region_key)
+    lat = pd.to_numeric(df["latitude"], errors="coerce")
+    lon = pd.to_numeric(df["longitude"], errors="coerce")
+    mask = (lat >= min_lat) & (lat <= max_lat) & (lon >= min_lon) & (lon <= max_lon)
+    return df[mask.fillna(False)].copy()
+
 
 app_ui = ui.page_fluid(
     ui.h2("Seismic Intel Hub"),
     ui.p("Simple and stable dashboard for Posit Connect Cloud"),
     ui.layout_sidebar(
         ui.sidebar(
-            ui.input_date("starttime", "Start date", value=default_start),
-            ui.input_date("endtime", "End date", value=today),
-            ui.input_numeric("minmagnitude", "Min magnitude", value=4.0, min=0, max=10, step=0.1),
-            ui.input_numeric("limit", "Limit", value=80, min=1, max=200, step=1),
+            ui.input_select(
+                "time_window",
+                "Time range",
+                choices={
+                    "1d": "Last 1 day",
+                    "7d": "Last 7 days",
+                    "14d": "Last 14 days",
+                    "30d": "Last 30 days",
+                },
+                selected="30d",
+            ),
+            ui.input_select(
+                "region",
+                "Latitude/Longitude range",
+                choices={
+                    "global": "Global (-90~90, -180~180)",
+                    "pacific_ring": "Pacific Ring",
+                    "north_america": "North America",
+                    "east_asia": "East Asia",
+                    "mediterranean": "Mediterranean",
+                },
+                selected="global",
+            ),
+            ui.input_select(
+                "minmagnitude",
+                "Min magnitude",
+                choices={"3.0": ">= 3.0", "4.0": ">= 4.0", "5.0": ">= 5.0"},
+                selected="4.0",
+            ),
+            ui.input_select(
+                "limit",
+                "Limit",
+                choices={"30": "30", "50": "50", "80": "80"},
+                selected="50",
+            ),
             ui.input_select(
                 "orderby",
                 "Order by",
@@ -86,23 +144,13 @@ def server(input, output, session):  # noqa: ANN001,ARG001
     @reactive.calc
     @reactive.event(input.load, ignore_none=False)
     def data_bundle() -> dict:
-        start = input.starttime()
-        end = input.endtime()
-        if start is None or end is None:
-            return {"error": "Start date and end date are required.", "data": None}
-        if start > end:
-            return {"error": "Start date cannot be later than end date.", "data": None}
-
-        days = (end - start).days
-        if days > 365:
-            return {"error": "Date range should be within 365 days.", "data": None}
-
         try:
+            start, end = _time_window_dates(str(input.time_window()))
             data = _fetch_earthquakes(
                 starttime=str(start),
                 endtime=str(end),
-                minmagnitude=float(input.minmagnitude()),
-                limit=int(input.limit()),
+                minmagnitude=float(str(input.minmagnitude())),
+                limit=int(str(input.limit())),
                 orderby=str(input.orderby()),
             )
             return {"error": "", "data": data}
@@ -115,7 +163,8 @@ def server(input, output, session):  # noqa: ANN001,ARG001
         bundle = data_bundle()
         if bundle["error"]:
             return "Status: failed to load data"
-        count = bundle["data"].get("summary", {}).get("count", 0) if bundle["data"] else 0
+        df = _apply_geo_filter(_events_df(bundle["data"]), str(input.region()))
+        count = len(df)
         return f"Status: loaded successfully ({count} events)"
 
     @output
@@ -134,18 +183,22 @@ def server(input, output, session):  # noqa: ANN001,ARG001
         if not data:
             return ui.p("No data available.")
 
-        s = data.get("summary", {})
+        df = _apply_geo_filter(_events_df(data), str(input.region()))
+        mags = pd.to_numeric(df["magnitude"], errors="coerce") if not df.empty else pd.Series(dtype=float)
+        max_mag = None if mags.empty else float(mags.max())
+        min_mag = None if mags.empty else float(mags.min())
+        avg_mag = None if mags.empty else round(float(mags.mean()), 2)
         return ui.tags.ul(
-            ui.tags.li(f"Count: {s.get('count')}"),
-            ui.tags.li(f"Max magnitude: {s.get('max_magnitude')}"),
-            ui.tags.li(f"Min magnitude: {s.get('min_magnitude')}"),
-            ui.tags.li(f"Avg magnitude: {s.get('avg_magnitude')}"),
+            ui.tags.li(f"Count: {len(df)}"),
+            ui.tags.li(f"Max magnitude: {max_mag}"),
+            ui.tags.li(f"Min magnitude: {min_mag}"),
+            ui.tags.li(f"Avg magnitude: {avg_mag}"),
         )
 
     @output
     @render.data_frame
     def top_places():
-        df = _events_df(data_bundle()["data"])
+        df = _apply_geo_filter(_events_df(data_bundle()["data"]), str(input.region()))
         if df.empty:
             return render.DataGrid(pd.DataFrame(columns=["place", "count"]), width="100%")
         top = (
@@ -161,8 +214,8 @@ def server(input, output, session):  # noqa: ANN001,ARG001
     @output
     @render.data_frame
     def events_table():
-        df = _events_df(data_bundle()["data"])
-        return render.DataGrid(df, width="100%", filters=True)
+        df = _apply_geo_filter(_events_df(data_bundle()["data"]), str(input.region()))
+        return render.DataGrid(df, width="100%")
 
 
 app = App(app_ui, server)
