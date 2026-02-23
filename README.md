@@ -90,3 +90,15 @@ Why this API:
 - No registration and no API key are required.
 - It returns rich multi-row real-world data (earthquake records).
 - It is reliable for building analysis/reporting features and easy to integrate.
+
+## Posit Connect 部署
+
+本项目可直接以 Flask API 部署到 Posit Connect，入口为 `app.main:app`。
+
+详细步骤见：`POSIT_CONNECT_DEPLOY.md`
+
+开发/测试依赖建议单独安装：
+
+```bash
+pip install -r requirements-dev.txt
+```
