@@ -112,3 +112,15 @@ pip install -r requirements-dev.txt
 - Branch: 例如 `main`
 - Primary file: `shiny_app.py`
 - Requirements file: `requirements.txt`
+
+## 为什么这里看起来“不需要前后端连接”？
+
+在 `shiny_app.py` 这条部署路径里，Shiny for Python 是**单应用架构**：
+
+- UI（看起来像前端）和 server 逻辑都在同一个 Python 进程里。
+- 用户在页面上的操作会通过 Shiny 的响应式机制自动传回 server。
+- server 直接调用 `app/providers/usgs.py` 获取数据，不需要再走一次你自己的 Flask API HTTP 请求。
+
+所以不是“没有后端”，而是“前端交互层 + 后端逻辑层由 Shiny 框架自动打通了”。
+
+如果你选择 `app/main.py`（Flask + `static/`）这条路径，那就是传统前后端通过 `/api/v1/earthquakes` 连接的模式。

@@ -7,6 +7,8 @@ from shiny import App, reactive, render, ui
 
 from app.providers.factory import get_provider
 
+USGS_PROVIDER = get_provider("usgs")
+
 
 def _fetch_earthquakes(
     *,
@@ -16,8 +18,7 @@ def _fetch_earthquakes(
     limit: int,
     orderby: str,
 ) -> dict:
-    provider = get_provider("usgs")
-    return provider.fetch_events(
+    return USGS_PROVIDER.fetch_events(
         starttime=starttime,
         endtime=endtime,
         minmagnitude=minmagnitude,
@@ -157,13 +158,31 @@ def server(input, output, session):  # noqa: ANN001,ARG001
         except Exception as exc:  # noqa: BLE001
             return {"error": str(exc), "data": None}
 
+    @reactive.calc
+    def events_df() -> pd.DataFrame:
+        return _events_df(data_bundle()["data"])
+
+    @reactive.calc
+    def filtered_df() -> pd.DataFrame:
+        return _apply_geo_filter(events_df(), str(input.region()))
+
+    @reactive.calc
+    def magnitude_stats() -> tuple[float | None, float | None, float | None]:
+        df = filtered_df()
+        if df.empty:
+            return None, None, None
+        mags = pd.to_numeric(df["magnitude"], errors="coerce").dropna()
+        if mags.empty:
+            return None, None, None
+        return float(mags.max()), float(mags.min()), round(float(mags.mean()), 2)
+
     @output
     @render.text
     def status() -> str:
         bundle = data_bundle()
         if bundle["error"]:
             return "Status: failed to load data"
-        df = _apply_geo_filter(_events_df(bundle["data"]), str(input.region()))
+        df = filtered_df()
         count = len(df)
         return f"Status: loaded successfully ({count} events)"
 
@@ -183,11 +202,8 @@ def server(input, output, session):  # noqa: ANN001,ARG001
         if not data:
             return ui.p("No data available.")
 
-        df = _apply_geo_filter(_events_df(data), str(input.region()))
-        mags = pd.to_numeric(df["magnitude"], errors="coerce") if not df.empty else pd.Series(dtype=float)
-        max_mag = None if mags.empty else float(mags.max())
-        min_mag = None if mags.empty else float(mags.min())
-        avg_mag = None if mags.empty else round(float(mags.mean()), 2)
+        df = filtered_df()
+        max_mag, min_mag, avg_mag = magnitude_stats()
         return ui.tags.ul(
             ui.tags.li(f"Count: {len(df)}"),
             ui.tags.li(f"Max magnitude: {max_mag}"),
@@ -198,7 +214,7 @@ def server(input, output, session):  # noqa: ANN001,ARG001
     @output
     @render.data_frame
     def top_places():
-        df = _apply_geo_filter(_events_df(data_bundle()["data"]), str(input.region()))
+        df = filtered_df()
         if df.empty:
             return render.DataGrid(pd.DataFrame(columns=["place", "count"]), width="100%")
         top = (
@@ -214,8 +230,7 @@ def server(input, output, session):  # noqa: ANN001,ARG001
     @output
     @render.data_frame
     def events_table():
-        df = _apply_geo_filter(_events_df(data_bundle()["data"]), str(input.region()))
-        return render.DataGrid(df, width="100%")
+        return render.DataGrid(filtered_df(), width="100%")
 
 
 app = App(app_ui, server)

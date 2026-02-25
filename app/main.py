@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -26,7 +26,7 @@ def health() -> object:
 
 @app.get("/api/v1/earthquakes")
 def earthquakes() -> object:
-    now = datetime.utcnow().date()
+    now = datetime.now(UTC).date()
     default_start = now - timedelta(days=30)
 
     provider_name = request.args.get("provider", "usgs")
