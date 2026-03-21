@@ -130,6 +130,7 @@ def build_tasks() -> list[dict]:
     gaps = _load_json(ANALYSIS_DIR / "gaps_ranked.json")
     metrics = _load_json(ANALYSIS_DIR / "graph_metrics.json")
     matrix = _load_json(ANALYSIS_DIR / "intersection_matrix.json")
+    categories_cfg = _load_json(BASE_DIR / "config" / "categories.json")
 
     cat_dist = {}
     for p in (classified if isinstance(classified, list) else []):
@@ -146,6 +147,40 @@ def build_tasks() -> list[dict]:
         f"#{g['rank']}: {g.get('research_question', g.get('description',''))[:120]} "
         f"(cats={g.get('bridges_categories')}, score={g.get('score')}, campusgo={g.get('campusgo_relevance')})"
         for g in gaps_list)
+
+    # --- Data for new tasks 7/8/9 ---
+    # Key claims for contradiction prescan
+    claims = []
+    for p in (classified if isinstance(classified, list) else []):
+        claim = p.get("key_claim", p.get("one_sentence_contribution", ""))
+        if claim and len(claim) > 20:
+            claims.append({"paperId": p.get("paperId", "")[:36],
+                           "title": p.get("title", "")[:60],
+                           "category": p.get("primary_category", "X"),
+                           "key_claim": claim[:150]})
+    claims_str = json.dumps(claims[:80], ensure_ascii=False)
+
+    # Category descriptions for seminal check
+    taxonomy = categories_cfg.get("taxonomy", {}) if isinstance(categories_cfg, dict) else {}
+    cat_desc_str = "\n".join(
+        f"{k}: {v.get('name', '')} — {v.get('description', '')[:100]}"
+        for k, v in taxonomy.items()
+    ) if taxonomy else json.dumps(cat_dist)
+
+    # Existing paper titles per category for seminal check
+    existing_by_cat = {}
+    for p in (classified if isinstance(classified, list) else []):
+        cat = p.get("primary_category", "X")
+        existing_by_cat.setdefault(cat, []).append(p.get("title", "")[:60])
+    existing_str = json.dumps({k: v[:15] for k, v in existing_by_cat.items()}, ensure_ascii=False)
+
+    # Gap statement
+    gap_statement = (
+        "No study connects Gerstgrasser's accumulation principle to a concrete "
+        "platform generating authentic behavioral data as a byproduct. No study "
+        "quantifies authentic vs web-scraped data difference specifically on "
+        "social intelligence/reasoning tasks."
+    )
 
     return [
         {"id": 1, "name": "classification_audit",
@@ -171,6 +206,20 @@ def build_tasks() -> list[dict]:
         {"id": 6, "name": "alternative_gaps",
          "description": "Generate gaps the pipeline missed",
          "prompt": f"You are a senior AI researcher (data quality / model collapse). Current gaps:\n{gaps_str}\n\nCategories: {json.dumps(cat_dist)}\n\nGenerate 5 ALTERNATIVE gaps NOT in the list. Each must bridge 2+ categories and be a specific PhD question. Assess CampusGo relevance honestly (it's a campus activity web app with GPS/QR/ratings/chat).\n\nOutput JSON: [{{'rank':1, 'research_question':'...', 'bridges':['A','D'], 'campusgo':'genuine|stretch|forced', 'reason':'...'}}]"},
+
+        # --- New tasks 7/8/9: cross-validation for reviewers ---
+
+        {"id": 7, "name": "contradiction_prescan",
+         "description": "Pre-screen claim pairs for potential contradictions (feeds STORM debate)",
+         "prompt": f"You are a contradiction detector. Given these paper claims, find ALL pairs that MIGHT contradict each other. Be OVER-inclusive — false positives are OK, false negatives are NOT.\n\nClaims:\n{claims_str}\n\nFor each potential contradiction pair, output the two paperIds and why they might conflict.\n\nOutput JSON: [{{'paper_a': '...', 'paper_b': '...', 'claim_a': '...', 'claim_b': '...', 'conflict_reason': '...'}}]\n\nFind at least 10 pairs if they exist. Look for: direct disagreements, scope conflicts, methodological tensions."},
+
+        {"id": 8, "name": "coverage_seminal_check",
+         "description": "Check if seminal papers are missing from each category",
+         "prompt": f"You are a literature completeness checker for AI data quality / model collapse research.\n\nCategories:\n{cat_desc_str}\n\nExisting papers per category (first 15 titles each):\n{existing_str}\n\nFor EACH category (A-J), list 3-5 seminal papers that ANY related work section MUST cite. Then check if they appear in the existing list.\n\nOutput JSON: [{{'category': 'A', 'seminal_papers': [{{'title': '...', 'authors': '...', 'year': 2024, 'why_seminal': '...', 'present_in_corpus': true}}]}}]"},
+
+        {"id": 9, "name": "gap_prior_work_search",
+         "description": "Search for papers that already fill the stated research gap",
+         "prompt": f"You are a prior work investigator. Your job is to DISPROVE this gap claim by finding existing work that already fills it.\n\nGap statement:\n\"{gap_statement}\"\n\nSearch your knowledge thoroughly. Look for:\n1. Papers connecting accumulation principle to real platforms\n2. Papers comparing authentic vs web-scraped data on social reasoning\n3. Papers using GPS/physical verification for training data quality\n4. Any deployed platform generating behavioral data for LLM training\n\nOutput JSON: {{'gap_filled': true/false, 'closest_papers': [{{'title': '...', 'year': 2024, 'how_close': '...', 'fills_percentage': 0.0-1.0}}], 'verdict': '...', 'suggested_gap_refinement': '...'}}"},
     ]
 
 

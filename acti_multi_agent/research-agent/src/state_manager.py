@@ -83,6 +83,15 @@ INITIAL_STATE = {
                 "final_report": {"status": "pending"},
             },
         },
+        "5": {
+            "status": "pending",
+            "steps": {
+                "data_scores": {"status": "pending"},
+                "reviewer_eval": {"status": "pending"},
+                "aggregate": {"status": "pending"},
+                "eval_report": {"status": "pending"},
+            },
+        },
     },
     "stats": {
         "total_api_calls_anthropic": 0,
@@ -93,7 +102,7 @@ INITIAL_STATE = {
 }
 
 # Ordered list of all phases for sequential execution
-PHASE_ORDER = ["1", "2", "2.5", "3", "3.5", "3.7", "3.8", "4"]
+PHASE_ORDER = ["1", "2", "2.5", "3", "3.5", "3.7", "3.8", "4", "5"]
 
 
 def _now() -> str:

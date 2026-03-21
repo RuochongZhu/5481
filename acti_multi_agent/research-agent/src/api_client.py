@@ -25,12 +25,39 @@ ARXIV_BASE = "http://export.arxiv.org/api/query"
 
 
 # ---------------------------------------------------------------------------
+# Custom exceptions for clear error reporting
+# ---------------------------------------------------------------------------
+
+class APIKeyMissing(RuntimeError):
+    """Raised when no API key is configured for a required service."""
+
+class QuotaExhausted(RuntimeError):
+    """Raised when API quota/credits are exhausted — retrying won't help."""
+
+class ModelNotFound(RuntimeError):
+    """Raised when the requested model ID doesn't exist or isn't accessible."""
+
+
+# ---------------------------------------------------------------------------
 # Anthropic wrappers
 # ---------------------------------------------------------------------------
 
+# Errors that should NOT be retried — fail fast
+_FATAL_STATUS_CODES = {401, 403, 404}
+
 def agent_run(client, role: str, task: str, model: str = DEFAULT_MODEL,
               max_tokens: int = 4096, retries: int = 3) -> str:
-    """Single agent call with retry + exponential backoff."""
+    """Single agent call with retry + exponential backoff.
+
+    Distinguishes fatal errors (wrong key, wrong model, quota gone) from
+    transient errors (network, rate limit) and only retries the latter.
+    """
+    if client is None:
+        raise APIKeyMissing(
+            "Anthropic client is None — ANTHROPIC_API_KEY not set in .env. "
+            "Phase 1 works without it: python main.py --phase 1"
+        )
+
     for attempt in range(retries):
         try:
             resp = client.messages.create(
@@ -41,10 +68,50 @@ def agent_run(client, role: str, task: str, model: str = DEFAULT_MODEL,
             )
             return resp.content[0].text
         except Exception as e:
+            err_str = str(e)
+            status = getattr(e, "status_code", None)
+
+            # --- Fatal: wrong model ID ---
+            if status == 404 or "not_found" in err_str.lower():
+                raise ModelNotFound(
+                    f"Model '{model}' not found. Check MODEL_FAST / MODEL_DEEP in .env. "
+                    f"Available: claude-sonnet-4-20250514, claude-opus-4-20250514. "
+                    f"Original error: {e}"
+                ) from e
+
+            # --- Fatal: bad key or no permission ---
+            if status in (401, 403):
+                raise APIKeyMissing(
+                    f"Anthropic API authentication failed (HTTP {status}). "
+                    f"Check ANTHROPIC_API_KEY in .env. Original error: {e}"
+                ) from e
+
+            # --- Fatal: quota / credits exhausted ---
+            if status == 529 or "overloaded" in err_str.lower():
+                raise QuotaExhausted(
+                    f"Anthropic API overloaded (HTTP 529). Try again later. "
+                    f"Original error: {e}"
+                ) from e
+            if "额度" in err_str or "quota" in err_str.lower() or "insufficient" in err_str.lower():
+                raise QuotaExhausted(
+                    f"API quota exhausted. Check your billing at console.anthropic.com. "
+                    f"Original error: {e}"
+                ) from e
+
+            # --- Transient: rate limit, network, etc — retry ---
             wait = 2 ** attempt
-            log.warning(f"agent_run attempt {attempt+1} failed: {e}. Retrying in {wait}s")
-            time.sleep(wait)
-    raise RuntimeError(f"agent_run failed after {retries} retries")
+            remaining = retries - attempt - 1
+            log.warning(
+                f"agent_run attempt {attempt+1}/{retries} failed: {e}. "
+                f"{'Retrying in ' + str(wait) + 's' if remaining > 0 else 'No retries left'}..."
+            )
+            if remaining > 0:
+                time.sleep(wait)
+
+    raise RuntimeError(
+        f"agent_run failed after {retries} retries. Last model: {model}. "
+        f"State has been saved — you can resume with --resume."
+    )
 
 
 def agent_run_json(client, role: str, task: str, model: str = DEFAULT_MODEL,

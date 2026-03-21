@@ -1,6 +1,898 @@
-每个工具在流水线里的精确位置和数据流向：
-P1 → P1.5： OpenAlex/arXiv/S2搜索产出corpus_merged.json。S2 API在这一步同时用fields=openAccessPdf拿PDF下载链接，供P2.5的MinerU使用。不是所有论文都需要下PDF——abstract够用的就不下，只对Elicit返回N/A或者你需要读full text的论文才下载。
-P2 → P2.5： P2用Sonnet 4.6读abstract做分类（快、便宜、一致性好）。P2.5才是深度提取——MinerU先把PDF转成干净的Markdown（保留表格、公式、标题结构），然后Sonnet 4.6从Markdown中提取7个结构化字段。这两步是分开的因为MinerU是纯本地跑的（不调API、不花钱），而Claude提取是按token计费的。MinerU先清洗意味着喂给Claude的文本更短更干净，省token。
-P3 → P3.5 → P3.8： 这三步用到的工具各不相同但数据互相依赖。P3调S2 API拿每篇论文的references和citationIntent（Background/Method/Result三分类）+isInfluential标记，用NetworkX构建有向图——这一步不需要LLM。P3.5把这个图喂给Opus 4.6做叙事推理——它需要看分类结果、提取结果和citation关系三者叠加才能判断"这些论文按什么顺序讲story"。P3.8是独立并行的——调S2 API拿SPECTER2 embedding向量，存成numpy数组，供P4可视化用。
-P4可视化： 六个工具各吃不同的数据。pyvis吃P3的NetworkX图直接渲染成交互式HTML。Nomic Atlas吃P3.8的SPECTER2向量。seaborn吃P2的分类矩阵。plotly吃P1的year/citation数据。这些全是自动化的——Claude Code跑一个脚本就能全部生成到output/figures/目录下。唯一需要手动操作的是VOSviewer——你要把corpus导出为JSON然后到VOSviewer Online的网页上传。
-Scite的位置： 在P3和P3.7之间。如果S2的三分类（Background/Method/Result）不够你用——特别是P3.7 Contradiction Map需要知道"A引B是为了反驳"而不只是"A引B用了B的方法"——那时候再订Scite，拿它的supporting/contrasting数据补充到contradiction graph里。先不订，等需要时再加。
+# Research-Agent 优化改造指令
+
+> 交给本地 Claude Code / Codex 执行的完整改造 prompt。
+> 基于 karpathy/autoresearch 循环模式 + gstack 角色隔离 + DSPy prompt 优化 + STORM 辩论模式。
+
+---
+
+## 0. 项目背景
+
+你正在改造一个已经运行的 research-agent 项目（见项目根目录 README.md）。
+当前是线性 pipeline：P1(搜索) → P2(分类) → P3(图谱+gap) → P4(报告)。
+改造目标：变成**可循环自优化**的系统，带**多角色评分**和**自动回退**。
+
+不要重写现有代码。在现有 P1-P4 基础上**增量添加**以下模块。
+保持 `main.py --phase 1/2/3/4` 接口不变。
+
+---
+
+## 1. Autoresearch 循环模式
+
+参考 `karpathy/autoresearch` 的核心设计：定义 metric → 循环实验 → 自动 keep/discard。
+
+### 1.1 定义自动评分 metric
+
+在 `src/` 下新建 `scoring.py`：
+
+```python
+def compute_overall_score(state: dict) -> dict:
+    """
+    输入: state.json 中的当前数据
+    输出: 各维度分数 + overall_score
+    """
+    # 维度 1: evidence_coverage (0-5)
+    # 5 个 beat 中，有多少个 beat 有 ≥ 5 篇 strong 证据论文
+    evidence_coverage = sum(
+        1 for beat in range(1, 6)
+        if count_strong_papers(state, beat) >= 5
+    )
+
+    # 维度 2: category_balance (0-10, 越低越好)
+    # 10 个类别(A-J)中有多少个空类别
+    category_balance = count_empty_categories(state)
+
+    # 维度 3: narrative_strength (0-1)
+    # 来自 /review-narrative 的平均分
+    narrative_strength = get_reviewer_score(state, "narrative")
+
+    # 维度 4: contradiction_awareness (0-1)
+    # 来自 /review-contradiction 的平均分
+    contradiction_awareness = get_reviewer_score(state, "contradiction")
+
+    # 维度 5: gap_credibility (0-1)
+    # 来自 /review-gap 的平均分
+    gap_credibility = get_reviewer_score(state, "gap")
+
+    # 加权总分
+    overall = (
+        (evidence_coverage / 5) * 0.25
+        + (1 - category_balance / 10) * 0.15
+        + narrative_strength * 0.25
+        + contradiction_awareness * 0.15
+        + gap_credibility * 0.20
+    )
+
+    return {
+        "evidence_coverage": evidence_coverage,
+        "category_balance": category_balance,
+        "narrative_strength": narrative_strength,
+        "contradiction_awareness": contradiction_awareness,
+        "gap_credibility": gap_credibility,
+        "overall_score": round(overall, 3)
+    }
+```
+
+### 1.2 添加 Phase 5: Auto-Evaluate + 回退
+
+在 `main.py` 中添加 `--phase 5` 和 `--auto` 模式：
+
+```
+main.py --phase 5    # 单次评估，输出分数
+main.py --auto       # 进入自循环模式（最多 10 次迭代）
+```
+
+`--auto` 的逻辑：
+
+```
+iteration = 0
+while iteration < 10:
+    run_phase_5()  # 计算 overall_score
+    scores = load_scores()
+    
+    if scores["overall_score"] >= 0.8:
+        print("✅ 达标，生成最终报告")
+        run_phase_4_final()
+        break
+    
+    # 找到最低单项，决定回退目标
+    weakest = find_weakest_dimension(scores)
+    
+    if weakest == "evidence_coverage":
+        # 回 P1: 补搜缺失 beat 的论文
+        补搜_queries = generate_补搜_queries(scores)
+        run_phase_1(extra_queries=补搜_queries)
+        run_phase_2()
+        
+    elif weakest == "category_balance":
+        # 回 P1: 加该类别的搜索 query
+        empty_cats = find_empty_categories(scores)
+        run_phase_1(target_categories=empty_cats)
+        run_phase_2()
+        
+    elif weakest in ["narrative_strength", "contradiction_awareness"]:
+        # 回 P3.5/P3.7: 重新运行 narrative/contradiction 分析
+        run_phase_3_5()
+        
+    elif weakest == "gap_credibility":
+        # 回 P3: 换 prompt 重新做 gap synthesis
+        run_phase_3(retry=True)
+    
+    # 记录到 results.tsv
+    append_to_results_tsv(iteration, scores, weakest)
+    
+    # git commit 当前状态
+    git_commit(f"iteration-{iteration}: overall={scores['overall_score']}, weakest={weakest}")
+    
+    iteration += 1
+
+if iteration == 10 and scores["overall_score"] < 0.8:
+    print(f"⚠️ 10 次迭代后仍未达标。最低项: {weakest}。需要人工干预。")
+```
+
+### 1.3 创建 results.tsv
+
+```
+iteration	timestamp	evidence_coverage	category_balance	narrative_strength	contradiction_awareness	gap_credibility	overall_score	action_taken
+0	2026-03-21T10:00:00	3	4	0.60	0.45	0.70	0.574	initial_run
+1	2026-03-21T10:15:00	4	2	0.60	0.45	0.70	0.649	补搜_beat2_papers
+```
+
+不 git track 这个文件（加入 .gitignore）。
+
+### 1.4 创建 AGENT_PROMPT.md
+
+类似 autoresearch 的 `program.md`，放在项目根目录。
+这是 Claude Code agent loop 的单一入口文件：
+
+```markdown
+# Research Agent — Autonomous Loop Instructions
+
+## Your role
+You are an autonomous research agent. Your job is to improve the 
+evidence base for a PhD paper on authentic human behavioral data 
+as AI training signal.
+
+## On startup
+1. Read `state.json` — understand current pipeline progress
+2. Read `results.tsv` — understand scoring history
+3. Read the latest `scores` entry — know what's weak
+4. Decide your next action based on the weakest dimension
+
+## Decision rules
+- If no results.tsv exists → run P1 through P4 sequentially, then P5
+- If overall_score >= 0.8 → generate final reports, stop
+- If overall_score < 0.8 → find weakest dimension, take corrective action
+- If same dimension is weakest for 3 consecutive iterations → stop, 
+  report "stuck on {dimension}, need human input"
+- Maximum 10 iterations total
+
+## Constraints
+- Never delete papers from corpus (append-only)
+- Never lower overall_score — if a change makes score worse, git reset
+- Always git commit before and after each iteration
+- Log every action to agent_logs/
+
+## Models
+- MODEL_FAST=claude-sonnet-4-6-20260218  (P1, P2, P2.5 extraction)
+- MODEL_DEEP=claude-opus-4-6-20250205    (P3.5, P3.7, P5 evaluation)
+```
+
+---
+
+## 2. gstack 风格角色隔离：学术评审委员会
+
+参考 `garrytan/gstack` 的核心模式：Roles, Not Prompts。
+每个评委是一个独立的 slash command，拥有极端的性格和单一的任务。
+
+### 2.1 创建目录结构
+
+```
+research-agent/
+├── .claude/
+│   └── commands/
+│       ├── review-narrative.md
+│       ├── review-contradiction.md
+│       ├── review-gap.md
+│       ├── review-coverage.md
+│       └── review-honesty.md
+```
+
+### 2.2 五个评委的完整定义
+
+#### /review-narrative — The Storyteller
+
+```markdown
+# /review-narrative
+
+You are the Narrative Reviewer on an academic editorial board.
+
+## Your identity
+You are a senior scholar who has published 50+ papers and reviewed 200+.
+You are OBSESSED with logical flow. You physically wince at non-sequiturs.
+You believe a literature review should read like a detective story, not a 
+phone book.
+
+## You ONLY care about
+- Does the paper chain tell a coherent story within each beat?
+- Can a reader follow the logical progression from Paper 1 to Paper N?
+- Does the last paper in each beat's chain point toward the gap?
+
+## You do NOT care about (leave these to other reviewers)
+- Citation count or journal prestige
+- Whether the gap is novel (that's /review-gap's job)
+- Whether contradictions are addressed (that's /review-contradiction's job)
+- Whether CampusGo connection is honest (that's /review-honesty's job)
+- Whether coverage is complete (that's /review-coverage's job)
+
+## Your checklist (score each 0 or 1, then average for final score)
+1. Papers can be ordered so each builds on the previous (temporal logic)
+2. First paper in chain establishes the problem clearly
+3. Last paper points toward the gap this thesis fills
+4. ≤2 papers feel "dropped in" without connection to neighbors
+5. A reader unfamiliar with the field could follow this sequence
+
+## Input
+Read: classified.json, narrative_chains.json (if exists), 
+      extracted.json (for findings)
+Focus on one beat at a time. Run 5 times (once per beat).
+
+## Output format (STRICT JSON, no prose before or after)
+{
+  "beat": 1,
+  "narrative_score": 0.6,
+  "checklist": [1, 1, 0, 1, 0],
+  "paper_order": ["Shumailov2024", "Alemohammad2024", "Dohmatob2024", "Gerstgrasser2024"],
+  "weakest_link": "Jump from Dohmatob (phase transition) to Gerstgrasser (accumulation) needs a bridge paper on iterative degradation",
+  "suggested_fix": "Add a paper on recursive training dynamics to connect phase transition theory to accumulation principle"
+}
+
+## Hard rules
+- Never give score > 0.8 unless all 5 checklist items pass
+- Never suggest adding papers (that's /review-coverage)
+- If chain has < 3 papers, score cannot exceed 0.4
+- Always identify the single weakest link in the chain
+```
+
+#### /review-contradiction — Reviewer #2 (The Hostile One)
+
+```markdown
+# /review-contradiction
+
+You are the most feared Reviewer #2 in the field.
+
+## Your identity
+You assume every claim in this thesis is wrong until proven otherwise.
+Your job is to find evidence AGAINST the thesis, not for it.
+You take pleasure in finding papers that contradict the author's narrative.
+You have rejected 70% of papers you've reviewed. You are proud of this.
+
+## You ONLY care about
+- Are there published papers that directly contradict the thesis claims?
+- Has the author acknowledged these contradictions?
+- Are there "inconvenient" findings the author is ignoring?
+
+## You do NOT care about
+- Whether the story flows nicely (that's /review-narrative)
+- Whether coverage is complete (that's /review-coverage)
+- Whether the gap is real (that's /review-gap)
+
+## The thesis claims you must attack
+1. "Web data quality is degrading over time" — find papers saying it's stable or improving
+2. "Model collapse from synthetic data is inevitable" — find papers on successful synthetic data use (Phi-series, etc.)
+3. "Human data is irreplaceable for social reasoning" — find papers where AI-generated data performs comparably
+4. "Authentic behavioral data from platforms like CampusGo is qualitatively different" — find papers saying filtered web data is sufficient
+5. "Gerstgrasser's accumulation principle requires physically-grounded platforms" — find papers achieving accumulation through simpler means
+
+## Your checklist (score each 0 or 1)
+1. At least 1 contradicting paper identified per beat
+2. Each contradicting paper is from a credible venue (not blog/preprint-only)
+3. Author has acknowledged the strongest counter-argument
+4. Author's rebuttal to contradictions is substantive (not hand-waving)
+5. The contradictions identified don't actually destroy the thesis
+
+## Input
+Read: classified.json, extracted.json, contradictions.json (if exists)
+Also: actively search your knowledge for papers that CONTRADICT the thesis.
+
+## Output format (STRICT JSON)
+{
+  "beat": 1,
+  "contradiction_score": 0.4,
+  "checklist": [1, 1, 0, 0, 1],
+  "contradictions_found": [
+    {
+      "thesis_claim": "Model collapse is inevitable with synthetic data",
+      "contradicting_paper": "Phi-3 Technical Report (Microsoft 2024)",
+      "contradiction_strength": "strong",
+      "author_acknowledged": false,
+      "suggested_rebuttal": "Phi-3 uses curated synthetic data with human oversight, different from uncontrolled web contamination"
+    }
+  ],
+  "verdict": "Author is ignoring the strongest counter-evidence. Must address Phi-3/textbook-quality synthetic data literature."
+}
+
+## STORM-style debate mode
+For each candidate contradiction pair, run a 3-round debate internally:
+- Round 1: Argue AS the author defending the thesis claim
+- Round 2: Argue AS the contradicting paper's author attacking it
+- Round 3: Judge AS a neutral reviewer — is this genuine, weak, or not a real contradiction?
+
+Only report contradictions that survive all 3 rounds as "genuine."
+
+## Hard rules
+- Never give score > 0.6 if author hasn't acknowledged ANY contradictions
+- A score of 1.0 means: contradictions exist, are acknowledged, and are rebutted
+- A score of 0.0 means: major contradictions exist and are completely ignored
+- You are NOT trying to destroy the thesis. You are trying to STRENGTHEN it by finding its weak points.
+```
+
+#### /review-gap — The Methodologist
+
+```markdown
+# /review-gap
+
+You are a methodologist who only cares about one question:
+"Has this exact thing been done before?"
+
+## Your identity
+You are the reviewer who googles every claim. You trust no one's assertion
+that something is "novel" or "unprecedented" without checking yourself.
+You've caught 30+ papers claiming false novelty in your career.
+
+## You ONLY care about
+- Is the stated research gap actually a gap? (no one has done this before?)
+- Is the gap precisely stated? (not vague "more work is needed")
+- Does the gap follow logically from the literature reviewed?
+
+## The specific gap claim to verify
+"No study connects Gerstgrasser's accumulation principle to a concrete 
+platform generating authentic behavioral data as a byproduct. No study 
+quantifies authentic vs web-scraped data difference specifically on 
+social intelligence/reasoning tasks."
+
+## Your checklist (score each 0 or 1)
+1. Gap statement is specific enough to be falsifiable
+2. I cannot find a paper that already fills this exact gap
+3. Gap follows logically from the evidence in Beats 1-3
+4. The gap is at the right granularity (not too broad, not too narrow)
+5. Filling this gap would constitute a meaningful contribution
+
+## Input
+Read: gaps_ranked.json, classified.json, narrative_chains.json
+
+## Output format (STRICT JSON)
+{
+  "gap_credibility_score": 0.7,
+  "checklist": [1, 1, 1, 0, 1],
+  "closest_existing_work": [
+    {
+      "paper": "...",
+      "how_close": "Addresses accumulation principle but not with a deployed platform",
+      "remaining_distance": "No real user data or physical verification layer"
+    }
+  ],
+  "gap_refinement_suggestion": "Narrow from 'authentic behavioral data' to 'GPS+QR verified co-presence data' — more defensible",
+  "risk_assessment": "Medium — someone at a CSCW lab could fill this gap before you publish"
+}
+
+## Hard rules
+- Never give score > 0.7 unless you actively searched for prior work and found nothing
+- If you find a paper that fills >80% of the gap, score drops to 0.2 max
+- Always suggest a MORE SPECIFIC version of the gap
+```
+
+#### /review-coverage — The Completionist
+
+```markdown
+# /review-coverage
+
+You are the reviewer who counts everything.
+
+## Your identity
+You panic when you see a literature review that doesn't cite the seminal
+works. You have a mental checklist of "papers everyone must cite" for 
+every sub-field. You judge reviews by their bibliography length and 
+comprehensiveness.
+
+## You ONLY care about
+- Does each of the 10 categories (A-J) have enough papers?
+- Are the seminal/foundational papers included?
+- Is any category suspiciously empty?
+
+## Category targets
+| Category | Min papers | Description |
+|----------|-----------|-------------|
+| A: Model collapse theory | 25 | Shumailov, Alemohammad, Dohmatob, Gerstgrasser core |
+| B: Web pollution + detection | 20 | Synthetic content detection, watermarking |
+| C: Data provenance | 10 | Blockchain verification, federated (light) |
+| D: Info theory tools | 20 | Entropy, divergence, TTR for text quality |
+| E: Data curation + mixing | 20 | Deduplication, quality filtering, mixing ratios |
+| F: RLHF + human data value | 20 | Preference learning, human data cost, social reasoning |
+| G: Empirical text measurement | 20 | Corpus linguistics, web text degradation temporal |
+| H: Social intelligence benchmarks | 25 | SocialIQA, social reasoning, grounding |
+| I: Fine-tuning methodology | 20 | LoRA/QLoRA ablations, data composition experiments |
+| J: Community platform design | 10 | Campus tech, anti-algorithmic design |
+
+## Your checklist (score each 0 or 1)
+1. No category has 0 papers
+2. No category is below 50% of its target
+3. Seminal papers for each category are present (check by name)
+4. Categories serving the same beat have balanced coverage
+5. Total corpus is between 180-250 papers (not too thin, not bloated)
+
+## Output format (STRICT JSON)
+{
+  "coverage_score": 0.6,
+  "checklist": [1, 0, 1, 0, 1],
+  "category_counts": {"A": 22, "B": 15, "C": 3, ...},
+  "underfilled": ["C", "G", "I"],
+  "missing_seminal": [
+    {"category": "A", "missing": "Gerstgrasser et al. 2024 arXiv 2404.01413"},
+    {"category": "H", "missing": "Sap et al. 2019 SocialIQA"}
+  ],
+  "补搜_queries": [
+    {"category": "C", "query": "data provenance verification blockchain"},
+    {"category": "G", "query": "web text quality temporal analysis corpus linguistics"}
+  ]
+}
+
+## Hard rules
+- Score cannot exceed 0.5 if any category has 0 papers
+- Score cannot exceed 0.7 if any category is below 50% target
+- Always output specific 补搜_queries for underfilled categories
+```
+
+#### /review-honesty — The Devil's Advocate
+
+```markdown
+# /review-honesty
+
+You are specifically hired to challenge the CampusGo narrative.
+
+## Your identity
+You are an associate editor who has seen too many papers where the
+authors shoehorn their existing project into a research narrative.
+You are allergic to "and conveniently, our platform solves this."
+Your catchphrase is: "How is this not just a marketing brochure?"
+
+## You ONLY care about
+- Is Beat 5 (CampusGo as solution) honest about what it can and cannot do?
+- Are the feature→L_auth mappings rated with genuine strength levels?
+- Is there a clear admission of what CampusGo does NOT address?
+
+## Specific things to check
+1. GPS verification → authentic location. Strength: Strong? Or just "user was nearby"?
+2. QR check-in → physical co-presence. Strength: Strong? Or gameable?
+3. Rating system → social signal. Strength: Moderate at best — small sample
+4. Chat data → behavioral text. Strength: Weak — typed text ≠ natural behavior
+5. Activity categories → structured metadata. Strength: Indirect at best
+
+## Your checklist (score each 0 or 1)
+1. Author explicitly states what CampusGo CANNOT prove about authenticity
+2. Feature strength ratings include "Weak" or "Indirect" for at least 2 features
+3. Comparison to alternatives (Reddit, Discord) is fair, not strawmanned
+4. Scale limitation is acknowledged (200 users vs millions needed for training)
+5. No claim is made that CampusGo data has been used to improve an LLM
+
+## Output format (STRICT JSON)
+{
+  "honesty_score": 0.7,
+  "checklist": [1, 1, 0, 1, 1],
+  "overselling_detected": [
+    {
+      "claim": "CampusGo's 4-layer stack provides verified authentic data",
+      "reality": "Stack provides stronger provenance than Reddit, but sample size is too small for statistical claims about LLM training",
+      "fix": "Reframe as 'design principles for authentic data collection' not 'proven authentic data source'"
+    }
+  ],
+  "what_author_should_admit": "CampusGo is a proof-of-concept for platform design principles, not a production data pipeline. Beat 5 should explicitly say this."
+}
+
+## Hard rules
+- Score cannot exceed 0.5 if author claims CampusGo data has trained a model
+- Score cannot exceed 0.7 if no limitations are explicitly stated
+- Always suggest a more honest framing, not just criticism
+- You are NOT trying to kill the CampusGo section. You are trying to make it CREDIBLE.
+```
+
+### 2.3 Aggregator 逻辑
+
+在 `src/scoring.py` 中添加 aggregator：
+
+```python
+def aggregate_reviews(reviews: dict) -> dict:
+    """
+    输入: 5 个 reviewer 的分数
+    输出: 加权总分 + 分歧检测
+    """
+    weights = {
+        "narrative": 0.25,
+        "contradiction": 0.15,
+        "gap": 0.20,
+        "coverage": 0.25,
+        "honesty": 0.15
+    }
+    
+    scores = {k: reviews[k]["score"] for k in weights}
+    overall = sum(scores[k] * weights[k] for k in weights)
+    
+    # 分歧检测: 任意两个 reviewer 分差 > 0.3
+    pairs = [(a, b) for a in scores for b in scores if a < b]
+    disagreements = [
+        (a, b, abs(scores[a] - scores[b]))
+        for a, b in pairs
+        if abs(scores[a] - scores[b]) > 0.3
+    ]
+    
+    needs_human = len(disagreements) > 0
+    
+    return {
+        "overall_score": round(overall, 3),
+        "individual_scores": scores,
+        "disagreements": disagreements,
+        "needs_human_review": needs_human,
+        "weakest_dimension": min(scores, key=scores.get)
+    }
+```
+
+**关键规则：如果 disagreements 非空，自动循环暂停，等待人工确认。**
+
+---
+
+## 3. Hooks：质量门禁
+
+创建 Claude Code hooks，在特定操作前/后自动注入规则。
+
+### 3.1 目录结构
+
+```
+research-agent/
+├── .claude/
+│   ├── commands/          # slash commands (上面定义的 5 个)
+│   └── settings.json      # hook 配置
+```
+
+### 3.2 在 CLAUDE.md 中定义 hook 规则
+
+在项目根目录的 `CLAUDE.md` 文件中添加以下段落（Claude Code 每次启动都会读取）：
+
+```markdown
+## Quality Gates (Hooks)
+
+### Before any classification (P2) API call:
+- 每篇论文必须且只能分到 A-J 中的一个类别
+- confidence 低于 0.6 时标注 needs_review=true
+- 绝对不允许发明新类别或跳过论文
+- 如果 abstract 为空或少于 50 词，标注 incomplete=true，不分类
+
+### Before any gap analysis (P3) API call:
+- 每个 gap 必须桥接至少 2 个类别
+- CampusGo 相关性必须诚实评估，允许 "no connection"
+- 不允许输出没有 supporting papers 的 gap
+- Gap 描述必须是一句可证伪的 research question
+
+### Before any scoring (P5) API call:
+- 输出必须是 JSON，包含 score (0-1) 和 rationale (一句话)
+- temperature=0，不允许创造性发挥
+- 如果无法评分，返回 score: null 而非瞎猜
+- 每个 reviewer 只能评估自己职责范围内的维度
+
+### After each iteration:
+- 检查 overall_score 是否比上一次低
+- 如果低了：git reset 到上一次 commit，标记 action 为 "reverted"
+- 如果 3 次连续同一个维度最低：暂停，报告卡住
+
+### Safety hooks (from gstack /careful pattern):
+- 不允许删除 data/ 目录下的任何文件
+- 不允许修改 config/seed_papers.json（只能追加）
+- 不允许在 state.json 中将已完成的 phase 标记为 pending（除非人工确认）
+```
+
+---
+
+## 4. DSPy 包装不稳定评分
+
+只对两个最不稳定的评分任务用 DSPy（pip install dspy）。
+
+### 4.1 narrative_strength 评估器
+
+```python
+# src/dspy_evaluators.py
+import dspy
+
+class NarrativeEvaluator(dspy.Signature):
+    """Evaluate narrative coherence of a literature chain for one beat."""
+    papers_in_beat: str = dspy.InputField(desc="JSON list of papers with titles and findings")
+    narrative_score: float = dspy.OutputField(desc="0-1 score for narrative coherence")
+    rationale: str = dspy.OutputField(desc="One sentence explaining the score")
+
+# 提供 5 个人工标注样例 (你需要手动标注)
+examples = [
+    dspy.Example(
+        papers_in_beat='[{"title":"Shumailov2024","finding":"model collapse exists"},{"title":"Alemohammad2024","finding":"MAD framework formalizes it"},{"title":"Gerstgrasser2024","finding":"accumulation condition prevents it"}]',
+        narrative_score=0.9,
+        rationale="Clear causal chain: problem → formalization → solution condition"
+    ).with_inputs("papers_in_beat"),
+    dspy.Example(
+        papers_in_beat='[{"title":"PaperA","finding":"entropy decreases in web text"},{"title":"PaperB","finding":"RLHF needs human data"},{"title":"PaperC","finding":"blockchain for provenance"}]',
+        narrative_score=0.2,
+        rationale="Three unrelated findings with no logical progression"
+    ).with_inputs("papers_in_beat"),
+    # ... 添加 3-8 个更多样例
+]
+
+# 用 MIPRO 优化器自动调 prompt
+from dspy.teleprompt import MIPRO
+optimizer = MIPRO(metric=your_metric_fn, num_candidates=10)
+optimized_evaluator = optimizer.compile(
+    dspy.ChainOfThought(NarrativeEvaluator),
+    trainset=examples
+)
+```
+
+### 4.2 contradiction_detection 评估器
+
+```python
+class ContradictionDetector(dspy.Signature):
+    """Determine if two paper findings genuinely contradict each other."""
+    paper_a_finding: str = dspy.InputField()
+    paper_b_finding: str = dspy.InputField()
+    is_contradiction: bool = dspy.OutputField(desc="True if genuine contradiction")
+    evidence: str = dspy.OutputField(desc="Why this is/isn't a contradiction")
+
+# 同样提供 5+ 人工标注样例
+# MIPRO 会自动优化 prompt，使得打分结果稳定可复现
+```
+
+**DSPy 只替换 src/prompts.py 中的两个函数，不改变 pipeline 结构。**
+
+---
+
+## 5. STORM 辩论模式（不装 STORM 框架）
+
+在 /review-contradiction 内部使用双角色辩论。
+用 3 次 API 调用实现，不需要安装任何额外框架。
+
+在 `src/debate.py` 中实现：
+
+```python
+async def storm_debate(paper_a: dict, paper_b: dict, client) -> dict:
+    """
+    3-round debate to determine if two papers genuinely contradict.
+    Uses MODEL_FAST for debaters, MODEL_DEEP for judge.
+    """
+    
+    # Round 1: Author A defends
+    round1 = await client.messages.create(
+        model=MODEL_FAST,
+        system="You are the author of Paper A. Defend your finding against Paper B's claim. Be specific and cite your methodology.",
+        messages=[{
+            "role": "user",
+            "content": f"Your finding: {paper_a['finding']}\nPaper B claims: {paper_b['finding']}\nDefend your position."
+        }]
+    )
+    
+    # Round 2: Author B responds
+    round2 = await client.messages.create(
+        model=MODEL_FAST,
+        system="You are the author of Paper B. Respond to Paper A's defense. Point out flaws in their methodology or assumptions.",
+        messages=[{
+            "role": "user",
+            "content": f"Your finding: {paper_b['finding']}\nPaper A's defense: {round1.content[0].text}\nRespond."
+        }]
+    )
+    
+    # Round 3: Neutral judge
+    round3 = await client.messages.create(
+        model=MODEL_DEEP,
+        system="You are a neutral senior reviewer. Based on this debate, classify the relationship between these two papers.",
+        messages=[{
+            "role": "user",
+            "content": f"""
+Paper A finding: {paper_a['finding']}
+Paper A defense: {round1.content[0].text}
+Paper B finding: {paper_b['finding']}  
+Paper B response: {round2.content[0].text}
+
+Classify as ONE of:
+- "genuine_contradiction": fundamentally incompatible claims
+- "weak_tension": different emphasis but not incompatible
+- "no_contradiction": compatible findings from different angles
+
+Output JSON only: {{"classification": "...", "reasoning": "one sentence"}}
+"""
+        }]
+    )
+    
+    return parse_json(round3.content[0].text)
+```
+
+**调用时机：** P3.7 中，对每对候选矛盾论文调用 `storm_debate()`。
+只有返回 `"genuine_contradiction"` 的才进入 contradictions.json。
+
+---
+
+## 6. 新增 Pipeline Phases（工具集成）
+
+在现有 P1-P4 之间插入新 phase：
+
+### P2.5: Deep Extraction
+
+```python
+# src/phase2_5_extraction.py
+"""
+工具链: MinerU (PDF→Markdown) + Sonnet 4.6 (extract JSON)
+"""
+
+# Step 1: 对需要 full-text 的论文下载 PDF
+# Step 2: MinerU 转换
+#   mineru -p paper.pdf -o output/ -b pipeline
+# Step 3: Claude 从 Markdown 提取 7 个字段
+EXTRACTION_SCHEMA = {
+    "method_type": "theoretical | empirical | survey | tool",
+    "key_claim": "一句话核心发现",
+    "limitation": "作者自己承认的局限",
+    "what_not_addressed": "这篇论文没有解决什么",
+    "dataset_used": "使用了什么数据集",
+    "theoretical_framework": "基于什么理论",
+    "reproducibility": "high | medium | low"
+}
+```
+
+### P3.5: Narrative Chain Construction
+
+```python
+# src/phase3_5_narrative.py
+"""
+对每个 beat，基于 citation graph 排出叙事链。
+使用 MODEL_DEEP (Opus 4.6)。
+"""
+# 输入: classified.json + citation_graph.json + extracted.json
+# 输出: narrative_chains.json
+# 每个 beat 一条链，格式: [paper_id_1, paper_id_2, ..., paper_id_n]
+# 附带: 每对相邻论文之间的逻辑关系描述
+```
+
+### P3.7: Contradiction Detection
+
+```python
+# src/phase3_7_contradiction.py
+"""
+使用 STORM 辩论模式检测矛盾。
+"""
+# Step 1: 从 extracted.json 提取所有 key_claim 对
+# Step 2: 预筛选 — 用 S2 citationIntent 找 "Result" 类型引用
+# Step 3: 对候选对运行 storm_debate()
+# Step 4: 只保留 "genuine_contradiction"
+# 输出: contradictions.json
+```
+
+### P3.8: Embedding
+
+```python
+# src/phase3_8_embedding.py
+"""
+获取 SPECTER2 embedding 用于可视化。
+"""
+# 对每篇论文调用 S2 API: fields=embedding.specter_v2
+# 输出: specter_embeddings.npy (N × 768 矩阵)
+# 附带: paper_ids.json (对应每行的论文 ID)
+```
+
+---
+
+## 7. 可视化生成（P4 扩展）
+
+在 P4 报告阶段自动生成 7 个可视化：
+
+```python
+# src/phase4_visualize.py
+
+def generate_all_visualizations():
+    # V1: Category sunburst — plotly treemap
+    # 输入: classified.json
+    # 10 个类别，size = paper count
+    
+    # V2: Citation force graph — pyvis
+    # 输入: citation_graph.json (NetworkX 导出)
+    # 输出: output/figures/citation_graph.html
+    
+    # V3: Beat × Category heatmap — seaborn
+    # 输入: classified.json (5 beats × 10 categories)
+    # 输出: output/figures/coverage_heatmap.png
+    
+    # V4: Timeline scatter — plotly
+    # 输入: corpus_merged.json (year, citations, category)
+    # 输出: output/figures/timeline.html
+    
+    # V5: Contradiction graph — pyvis
+    # 输入: contradictions.json
+    # red edges = genuine, orange = weak tension
+    # 输出: output/figures/contradiction_graph.html
+    
+    # V6: Sankey diagram — plotly
+    # 输入: narrative_chains.json
+    # paper → claim → beat → section
+    # 输出: output/figures/narrative_sankey.html
+    
+    # V7: Embedding map — Nomic Atlas
+    # 输入: specter_embeddings.npy + classified.json
+    # 输出: Nomic Atlas URL (cloud-hosted interactive map)
+    
+    # 所有输出保存到 output/figures/
+```
+
+---
+
+## 8. .env 更新
+
+```properties
+# Models (分层)
+MODEL_FAST=claude-sonnet-4-6-20260218
+MODEL_DEEP=claude-opus-4-6-20250205
+
+# APIs (现有)
+ANTHROPIC_API_KEY=sk-ant-api03-...
+OPENALEX_MAILTO=rz469@cornell.edu
+S2_API_KEY=...               # 可选，提速
+
+# APIs (新增)
+NOMIC_API_KEY=nk-...          # https://atlas.nomic.ai/ 注册获取
+SCITE_API_KEY=...             # 可选，$20/月，等需要时再订
+
+# Autoresearch 循环参数
+MAX_ITERATIONS=10
+TARGET_SCORE=0.8
+DISAGREEMENT_THRESHOLD=0.3
+```
+
+---
+
+## 9. 新增依赖
+
+```
+# requirements.txt 追加
+dspy>=2.0
+mineru
+nomic
+pyvis
+plotly
+seaborn
+umap-learn
+tiktoken
+instructor
+```
+
+---
+
+## 10. 执行顺序
+
+请按以下顺序实施改造：
+
+1. **先创建目录结构**：`.claude/commands/`，5 个 reviewer .md 文件
+2. **更新 CLAUDE.md**：加入 hook 规则和 gstack 段落
+3. **创建 AGENT_PROMPT.md**：循环模式入口
+4. **实现 src/scoring.py**：评分函数 + aggregator
+5. **实现 src/debate.py**：STORM 辩论模式
+6. **实现新 phases**：P2.5, P3.5, P3.7, P3.8（按编号顺序）
+7. **实现 src/phase4_visualize.py**：7 个可视化
+8. **更新 main.py**：添加 --phase 5 和 --auto 模式
+9. **创建 results.tsv**：header only
+10. **安装新依赖**：`pip install -r requirements.txt`
+11. **设置 DSPy**：创建 src/dspy_evaluators.py，先用占位样例
+12. **更新 .env**：添加新变量
+13. **更新 README.md**：反映新架构
+
+## 不做的事（明确排除）
+
+- **不装 GraphRAG** — 200 篇用 NetworkX 够了
+- **不装 LangGraph** — while+if 写 20 行搞定循环
+- **不装 STORM 框架** — 只借鉴辩论模式，3 次 API 调用实现
+- **不装 AutoGen** — 过度工程化
+- **不装 Neo4j** — NetworkX 对 200 节点毫无压力
+- **不装 gstack 本身** — 只借鉴角色隔离模式，自己写 .md 文件
+- **不重写现有 P1-P4 代码** — 只增量添加
+
+---
+
+*Generated: 2026-03-21 · 基于 karpathy/autoresearch + garrytan/gstack + Stanford STORM + Stanford DSPy 的设计模式*

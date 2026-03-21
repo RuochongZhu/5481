@@ -57,10 +57,11 @@ PHASE_DEPS = {
     "3.7": ["2.5", "3"],
     "3.8": ["2"],
     "4": ["3", "3.5", "3.7"],
+    "5": ["4"],
 }
 
 # Phases that need Anthropic API
-NEEDS_ANTHROPIC = {"2", "2.5", "3", "3.5", "3.7", "4"}
+NEEDS_ANTHROPIC = {"2", "2.5", "3", "3.5", "3.7", "4", "5"}
 
 # Phases that benefit from S2 client
 NEEDS_S2 = {"1", "3", "3.5", "3.8", "4"}
@@ -96,50 +97,108 @@ def check_deps(state: dict, phase: str) -> bool:
 
 
 def run_phase(phase: str, state: dict, client, oa, s2, arxiv, resume: bool = False):
-    """Dispatch to the appropriate phase module."""
+    """Dispatch to the appropriate phase module.
+
+    Wraps execution in try/except so that:
+    - Fatal errors (wrong key, wrong model, quota) print a clear message and exit
+    - Transient errors save state so you can --resume
+    """
+    from src.api_client import APIKeyMissing, QuotaExhausted, ModelNotFound
+
     if not check_deps(state, phase):
         return state
 
     state = start_phase(state, STATE_PATH, phase)
 
-    if phase == "1":
-        from src.phase1_corpus import run_phase1
-        state = run_phase1(state, STATE_PATH, BASE_DIR, oa, s2, arxiv)
+    try:
+        if phase == "1":
+            from src.phase1_corpus import run_phase1
+            state = run_phase1(state, STATE_PATH, BASE_DIR, oa, s2, arxiv)
 
-    elif phase == "2":
-        from src.phase2_extraction import run_phase2
-        state = run_phase2(state, STATE_PATH, BASE_DIR, client)
+        elif phase == "2":
+            from src.phase2_extraction import run_phase2
+            state = run_phase2(state, STATE_PATH, BASE_DIR, client)
 
-    elif phase == "2.5":
-        from src.phase2_5_deep import run_phase2_5
-        state = run_phase2_5(state, STATE_PATH, BASE_DIR, client)
+        elif phase == "2.5":
+            from src.phase2_5_deep import run_phase2_5
+            state = run_phase2_5(state, STATE_PATH, BASE_DIR, client)
 
-    elif phase == "3":
-        from src.phase3_graph import run_phase3
-        state = run_phase3(state, STATE_PATH, BASE_DIR, client, s2)
+        elif phase == "3":
+            from src.phase3_graph import run_phase3
+            state = run_phase3(state, STATE_PATH, BASE_DIR, client, s2)
 
-    elif phase == "3.5":
-        from src.phase3_5_narrative import run_phase3_5
-        state = run_phase3_5(state, STATE_PATH, BASE_DIR, client, s2)
+        elif phase == "3.5":
+            from src.phase3_5_narrative import run_phase3_5
+            state = run_phase3_5(state, STATE_PATH, BASE_DIR, client, s2)
 
-    elif phase == "3.7":
-        from src.phase3_7_contradiction import run_phase3_7
-        state = run_phase3_7(state, STATE_PATH, BASE_DIR, client)
+        elif phase == "3.7":
+            from src.phase3_7_contradiction import run_phase3_7
+            state = run_phase3_7(state, STATE_PATH, BASE_DIR, client)
 
-    elif phase == "3.8":
-        from src.phase3_8_embeddings import run_phase3_8
-        state = run_phase3_8(state, STATE_PATH, BASE_DIR, s2)
+        elif phase == "3.8":
+            from src.phase3_8_embeddings import run_phase3_8
+            state = run_phase3_8(state, STATE_PATH, BASE_DIR, s2)
 
-    elif phase == "4":
-        from src.phase4_topics import run_phase4
-        state = run_phase4(state, STATE_PATH, BASE_DIR, client, s2)
+        elif phase == "4":
+            from src.phase4_topics import run_phase4
+            state = run_phase4(state, STATE_PATH, BASE_DIR, client, s2)
 
-    state = complete_phase(state, STATE_PATH, phase)
+        elif phase == "5":
+            from src.phase5_evaluate import run_phase5
+            state = run_phase5(state, STATE_PATH, BASE_DIR, client)
+
+        state = complete_phase(state, STATE_PATH, phase)
+
+    except APIKeyMissing as e:
+        log.error(f"\n{'='*60}")
+        log.error(f"  ❌ API KEY ERROR in Phase {phase}")
+        log.error(f"{'='*60}")
+        log.error(f"  {e}")
+        log.error(f"  Fix: check ANTHROPIC_API_KEY in .env")
+        log.error(f"  State saved — resume with: python main.py --phase {phase} --resume")
+        save_state(STATE_PATH, state)
+        sys.exit(1)
+
+    except ModelNotFound as e:
+        log.error(f"\n{'='*60}")
+        log.error(f"  ❌ MODEL NOT FOUND in Phase {phase}")
+        log.error(f"{'='*60}")
+        log.error(f"  {e}")
+        log.error(f"  Fix: check MODEL_FAST / MODEL_DEEP in .env")
+        log.error(f"  Current: MODEL_FAST={os.environ.get('MODEL_FAST', 'default')}, "
+                   f"MODEL_DEEP={os.environ.get('MODEL_DEEP', 'default')}")
+        save_state(STATE_PATH, state)
+        sys.exit(1)
+
+    except QuotaExhausted as e:
+        log.error(f"\n{'='*60}")
+        log.error(f"  ❌ QUOTA EXHAUSTED in Phase {phase}")
+        log.error(f"{'='*60}")
+        log.error(f"  {e}")
+        log.error(f"  State saved — resume later with: python main.py --phase {phase} --resume")
+        save_state(STATE_PATH, state)
+        sys.exit(1)
+
+    except KeyboardInterrupt:
+        log.warning(f"\n  ⚠ Interrupted by user during Phase {phase}")
+        log.warning(f"  State saved — resume with: python main.py --phase {phase} --resume")
+        save_state(STATE_PATH, state)
+        sys.exit(130)
+
+    except Exception as e:
+        log.error(f"\n{'='*60}")
+        log.error(f"  ❌ UNEXPECTED ERROR in Phase {phase}")
+        log.error(f"{'='*60}")
+        log.error(f"  {type(e).__name__}: {e}")
+        log.error(f"  State saved — resume with: python main.py --phase {phase} --resume")
+        save_state(STATE_PATH, state)
+        raise  # Re-raise so traceback is visible for debugging
+
     return state
 
 
 def run_full_pipeline(state: dict, client, oa, s2, arxiv):
-    """Run all 7 phases sequentially."""
+    """Run all phases sequentially."""
     for phase in PHASE_ORDER:
         if is_phase_complete(state, phase):
             log.info(f"Phase {phase} already complete, skipping")
@@ -149,6 +208,78 @@ def run_full_pipeline(state: dict, client, oa, s2, arxiv):
         log.info(f"{'='*60}\n")
         state = run_phase(phase, state, client, oa, s2, arxiv)
     log.info("\nPipeline complete!")
+    _print_summary(state)
+    return state
+
+
+def run_auto_loop(state: dict, client, oa, s2, arxiv, max_iterations: int = 5):
+    """Auto-loop: run pipeline → Phase 5 evaluate → backtrack → repeat.
+
+    Invariants:
+    - Never delete papers (append-only corpus)
+    - Never lower overall_score — if a change makes score worse, discard
+    - Always save state before and after each iteration
+    - Log every action to agent_logs/
+    """
+    from src.scoring import decide_action, aggregate_reviews
+    from src.utils import load_json
+
+    target = float(os.environ.get("TARGET_SCORE", "0.8"))
+    log.info(f"Auto-loop: target={target}, max_iterations={max_iterations}")
+
+    for iteration in range(1, max_iterations + 1):
+        log.info(f"\n{'#'*60}")
+        log.info(f"  AUTO-LOOP ITERATION {iteration}/{max_iterations}")
+        log.info(f"{'#'*60}\n")
+
+        # Step 1: Run full pipeline (skips completed phases)
+        state = run_full_pipeline(state, client, oa, s2, arxiv)
+
+        # Step 2: Reset Phase 5 for fresh evaluation
+        for step in state["phases"].get("5", {}).get("steps", {}):
+            state["phases"]["5"]["steps"][step]["status"] = "pending"
+        state["phases"]["5"]["status"] = "pending"
+        save_state(STATE_PATH, state)
+
+        # Step 3: Run Phase 5 evaluation
+        from src.phase5_evaluate import run_phase5
+        state = start_phase(state, STATE_PATH, "5")
+        state = run_phase5(state, STATE_PATH, BASE_DIR, client, iteration=iteration)
+        state = complete_phase(state, STATE_PATH, "5")
+
+        # Step 4: Read evaluation result
+        eval_path = os.path.join(BASE_DIR, "analysis", "evaluation_result.json")
+        if not os.path.exists(eval_path):
+            log.error("Evaluation result not found")
+            break
+
+        result = load_json(eval_path)
+        action = result.get("action", {})
+        act = action.get("action", "done")
+
+        if act == "done":
+            log.info(f"\n✅ Target score reached! {action.get('reason', '')}")
+            break
+
+        elif act == "human":
+            log.info(f"\n🛑 Human review needed: {action.get('reason', '')}")
+            log.info("  Fix the issues, then re-run: python main.py --auto --resume")
+            break
+
+        elif act == "backtrack":
+            target_phase = action.get("target_phase", "3")
+            log.info(f"\n🔄 Backtracking to Phase {target_phase}: {action.get('reason', '')}")
+
+            # Reset target phase and all downstream phases
+            target_idx = PHASE_ORDER.index(target_phase) if target_phase in PHASE_ORDER else 0
+            for p in PHASE_ORDER[target_idx:]:
+                if p in state["phases"]:
+                    state["phases"][p]["status"] = "pending"
+                    for step in state["phases"][p].get("steps", {}):
+                        state["phases"][p]["steps"][step]["status"] = "pending"
+            save_state(STATE_PATH, state)
+
+    log.info(f"\nAuto-loop finished after {iteration} iteration(s)")
     _print_summary(state)
     return state
 
@@ -345,14 +476,20 @@ def _print_summary(state: dict):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Research Agent Pipeline v2.0")
+    parser = argparse.ArgumentParser(description="Research Agent Pipeline v3.0")
     parser.add_argument("--phase", type=str,
                         choices=PHASE_ORDER,
-                        help="Run a specific phase (1, 2, 2.5, 3, 3.5, 3.7, 4)")
+                        help="Run a specific phase (1, 2, 2.5, 3, 3.5, 3.7, 3.8, 4, 5)")
     parser.add_argument("--resume", action="store_true",
                         help="Resume from last checkpoint")
     parser.add_argument("--visualize", action="store_true",
                         help="Generate all 7 visualizations")
+    parser.add_argument("--auto", action="store_true",
+                        help="Auto-loop: run pipeline → evaluate → backtrack → repeat until target score")
+    parser.add_argument("--max-iterations", type=int, default=5,
+                        help="Max iterations for --auto mode (default: 5)")
+    parser.add_argument("--target-score", type=float, default=0.8,
+                        help="Target overall score for --auto mode (default: 0.8)")
     parser.add_argument("--import-file", dest="import_file", type=str,
                         help="Import CSV/BibTeX file into data/raw/")
     parser.add_argument("--demo", action="store_true",
@@ -418,11 +555,16 @@ if __name__ == "__main__":
     oa, s2, arxiv = get_search_clients()
 
     # Run
-    if args.phase:
+    if args.auto:
+        log.info("Running auto-loop mode")
+        os.environ["TARGET_SCORE"] = str(args.target_score)
+        state = run_auto_loop(state, client, oa, s2, arxiv,
+                              max_iterations=args.max_iterations)
+    elif args.phase:
         log.info(f"Running Phase {args.phase}" + (" (resume)" if args.resume else ""))
         state = run_phase(args.phase, state, client, oa, s2, arxiv, resume=args.resume)
     else:
-        log.info("Running full pipeline (7 phases)")
+        log.info("Running full pipeline (9 phases)")
         state = run_full_pipeline(state, client, oa, s2, arxiv)
 
     show_status(state)
