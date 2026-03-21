@@ -97,6 +97,20 @@ Why this API:
 
 详细步骤见：`POSIT_CONNECT_DEPLOY.md`
 
+## GitHub Actions 自动部署（Push 到 main）
+
+仓库已配置工作流：`.github/workflows/ci.yml`
+
+- `pull_request` 到 `main`：自动运行 `pytest`
+- `push` 到 `main`：先跑测试，测试通过后自动部署 `shiny_app.py` 到 Posit Connect
+
+在 GitHub 仓库的 **Settings -> Secrets and variables -> Actions** 中配置：
+
+- `POSIT_CONNECT_SERVER`（Secret）：Posit Connect 服务器地址（例如 `https://connect.example.com`）
+- `POSIT_CONNECT_API_KEY`（Secret）：Posit Connect API Key
+- `POSIT_CONNECT_SHINY_APP_ID`（Secret，可选）：已有应用的 App ID（推荐设置，确保覆盖同一个应用）
+- `POSIT_CONNECT_SHINY_TITLE`（Variable，可选）：部署显示名称，默认 `Seismic Intel Hub`
+
 开发/测试依赖建议单独安装：
 
 ```bash

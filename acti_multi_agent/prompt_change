@@ -1,0 +1,6 @@
+每个工具在流水线里的精确位置和数据流向：
+P1 → P1.5： OpenAlex/arXiv/S2搜索产出corpus_merged.json。S2 API在这一步同时用fields=openAccessPdf拿PDF下载链接，供P2.5的MinerU使用。不是所有论文都需要下PDF——abstract够用的就不下，只对Elicit返回N/A或者你需要读full text的论文才下载。
+P2 → P2.5： P2用Sonnet 4.6读abstract做分类（快、便宜、一致性好）。P2.5才是深度提取——MinerU先把PDF转成干净的Markdown（保留表格、公式、标题结构），然后Sonnet 4.6从Markdown中提取7个结构化字段。这两步是分开的因为MinerU是纯本地跑的（不调API、不花钱），而Claude提取是按token计费的。MinerU先清洗意味着喂给Claude的文本更短更干净，省token。
+P3 → P3.5 → P3.8： 这三步用到的工具各不相同但数据互相依赖。P3调S2 API拿每篇论文的references和citationIntent（Background/Method/Result三分类）+isInfluential标记，用NetworkX构建有向图——这一步不需要LLM。P3.5把这个图喂给Opus 4.6做叙事推理——它需要看分类结果、提取结果和citation关系三者叠加才能判断"这些论文按什么顺序讲story"。P3.8是独立并行的——调S2 API拿SPECTER2 embedding向量，存成numpy数组，供P4可视化用。
+P4可视化： 六个工具各吃不同的数据。pyvis吃P3的NetworkX图直接渲染成交互式HTML。Nomic Atlas吃P3.8的SPECTER2向量。seaborn吃P2的分类矩阵。plotly吃P1的year/citation数据。这些全是自动化的——Claude Code跑一个脚本就能全部生成到output/figures/目录下。唯一需要手动操作的是VOSviewer——你要把corpus导出为JSON然后到VOSviewer Online的网页上传。
+Scite的位置： 在P3和P3.7之间。如果S2的三分类（Background/Method/Result）不够你用——特别是P3.7 Contradiction Map需要知道"A引B是为了反驳"而不只是"A引B用了B的方法"——那时候再订Scite，拿它的supporting/contrasting数据补充到contradiction graph里。先不订，等需要时再加。
