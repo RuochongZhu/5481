@@ -9,6 +9,8 @@ V6: Beat Sankey Flow (plotly)
 V7: 3D Embedding Cloud (UMAP + plotly)
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os

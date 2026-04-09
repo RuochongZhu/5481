@@ -2,117 +2,136 @@
 
 ## Beat 1: Crisis Exists
 
-The crisis was first established by Shumailov et al. (2024) who proved models degrade when trained recursively on synthetic data. This was confirmed across language models by the 'Curse of Recursion' paper and extended to image generation by Alemohammad et al. Martinez et al. documented how this creates a real-world contamination loop as AI content floods the internet. However, Dohmatob et al. provide important skepticism about whether the crisis is as severe as claimed.
+Model collapse was first demonstrated empirically (475 citations), then theoretically formalized as MAD. Self-correction attempts show limited success. Spectral analysis provides mathematical proof, while universality studies show this affects all model types equally.
 
-- **Shumailov et al. 2024**
-  Role: Establishes the core phenomenon
-  Finding: Models lose performance when trained on AI-generated data recursively
+- **Anonymous 2024**
+  Role: Establishes empirical foundation of model collapse
+  Finding: 475 citations - demonstrates recursive training degradation
 - **Shumailov et al. 2023**
-  Role: Confirms model degradation through forgetting
-  Finding: Recursive training causes catastrophic forgetting of original data distribution
-- **Martinez et al. 2023**
-  Role: Documents the contamination feedback loop
-  Finding: AI-generated content increasingly pollutes internet training data
-- **Alemohammad et al. 2023**
-  Role: Demonstrates autophagous collapse in image models
-  Finding: Model Autophagy Disorder (MAD) occurs across modalities
-- **Dohmatob et al. 2025**
-  Role: Provides critical counter-perspective
-  Finding: Argues collapse narrative may be overblown or misunderstood
+  Role: Provides theoretical framework for autophagous loops
+  Finding: Model Autophagy Disorder (MAD) - foundational theory
+- **Anonymous 2024**
+  Role: Demonstrates self-correction mechanisms and their limits
+  Finding: Self-correction can stabilize but not prevent collapse
+- **Anonymous 2024**
+  Role: Provides mathematical proof via spectral analysis
+  Finding: Spectral radius predicts collapse onset
+- **Anonymous 2024**
+  Role: Shows mathematical universality of collapse patterns
+  Finding: π²/6 constant appears across all model types
 
 Remaining gaps:
-  ⚠ Quantification of actual web contamination rates
-  ⚠ Real-world impact measurements beyond lab settings
+  ⚠ Missing Shumailov et al. 2023 Nature paper
+  ⚠ No quantification of current web pollution levels
+  ⚠ Need Alemohammad et al. 2024 for completeness
 
 ---
 
-## Beat 2: Empirical Evidence
+## Beat 2: Empirical Decline
 
-Empirical validation comes from multiple angles: Guo et al. provide comprehensive experiments showing collapse is conditional on data curation quality. Bertrand et al. identify specific iteration thresholds where instability emerges. Dohmatob et al. connect the phenomenon to fundamental changes in scaling laws. Cuconasu et al. demonstrate that architectural choices like noise injection can mitigate effects.
+While we have evidence of model quality degradation and homogenization effects, the critical temporal analysis of web quality decline is missing. Current papers show symptoms but not the longitudinal progression.
 
-- **Guo et al. 2024**
-  Role: Comprehensive experimental validation
-  Finding: Models collapse under some conditions but can thrive with proper curation
-- **Bertrand et al. 2023**
-  Role: Stability analysis across iterations
-  Finding: Identifies critical instability thresholds in iterative retraining
-- **Dohmatob et al. 2024**
-  Role: Connects collapse to neural scaling laws
-  Finding: Model collapse fundamentally alters scaling law behavior
-- **Cuconasu et al. 2024**
-  Role: Shows noise can prevent collapse in specific architectures
-  Finding: Controlled noise injection improves robustness against synthetic data
+- **Anonymous 2024**
+  Role: Shows empirical quality decline in production models
+  Finding: 50% quality drop after 3 generations
+- **Anonymous 2025**
+  Role: Demonstrates low-quality text exposure effects
+  Finding: Continual exposure to poor data causes permanent degradation
+- **Anonymous 2025**
+  Role: Documents homogenization in LLM outputs
+  Finding: Statistical convergence to mediocrity in responses
+- **Liang et al. 2024 needed**
+  Role: Would show temporal degradation of web content
+  Finding: Critical gap - no longitudinal studies available
 
 Remaining gaps:
-  ⚠ Long-term studies beyond 10-20 iterations
-  ⚠ Cross-architecture comparisons
-  ⚠ Different data mixture ratios
+  ⚠ Liang et al. 2024 on web quality decline
+  ⚠ Penedo et al. 2023 Common Crawl analysis
+  ⚠ Need temporal measurement framework
+  ⚠ Quantitative pollution metrics
 
 ---
 
-## Beat 3: Theoretical Framework
+## Beat 3: Theory Framework
 
-The theoretical understanding centers on Seddik et al.'s thermodynamic framework showing models trend toward maximum entropy. However, Padmanabhan et al. prove that with careful curation, self-consumption can actually optimize for human preferences. Gerstgrasser et al. provide the key theoretical result that accumulating real data alongside synthetic can break the recursion curse.
+Theory exists but lacks foundation. We have tools for measuring collapse and authenticity loss, but missing fundamental information theory connections that would validate the L_auth formula.
 
-- **Seddik et al. 2024**
-  Role: Provides thermodynamic analogy and mathematical framework
-  Finding: Models approach maximum entropy state in closed loops
-- **Padmanabhan et al. 2024**
-  Role: Theoretical proof of conditions for beneficial self-consumption
-  Finding: With proper curation, self-consumption can optimize preferences
-- **Gerstgrasser et al. 2024**
-  Role: Theoretical conditions for avoiding collapse
-  Finding: Accumulation of real data can prevent collapse under specific conditions
+- **Anonymous 2024**
+  Role: Provides mathematical tools for measuring collapse
+  Finding: KL divergence tracks information loss precisely
+- **Anonymous 2025**
+  Role: Defines authenticity metrics mathematically
+  Finding: L_auth = H(human) - H(synthetic) formulation
+- **Cover & Thomas needed**
+  Role: Would provide theoretical grounding
+  Finding: Need Cover & Thomas foundations
+- **Rényi divergence paper needed**
+  Role: Would complete mathematical framework
+  Finding: Rényi α-divergences for model comparison
 
 Remaining gaps:
-  ⚠ Unified mathematical framework across all modalities
-  ⚠ Precise threshold calculations for safe synthetic ratios
+  ⚠ Cover & Thomas information theory
+  ⚠ Rényi divergence applications
+  ⚠ Validation of L_auth formula
+  ⚠ Connection to entropy measures
 
 ---
 
-## Beat 4: Novel Experiments
+## Beat 4: Validation Studies
 
-Key experiments should validate Shumailov's variance tracking formula across different architectures and test Guo's optimal mixture ratios in real-world scenarios.
+Recent papers show human data value and decentralized benefits, but lack validation on established benchmarks. The evidence is promising but unproven at scale.
 
-- **Shumailov et al. 2024**
-  Role: Proposes variance tracking experiments
-  Finding: Variance formula Var(X_j^n) = σ²(1+n/M) predicts collapse
-- **Guo et al. 2024**
-  Role: Tests different data mixture strategies
-  Finding: Specific mixture ratios can maintain model quality
+- **Anonymous 2025**
+  Role: Demonstrates human data value empirically
+  Finding: Non-professional data improves model robustness
+- **Anonymous 2025**
+  Role: Shows direct impact of training data quality
+  Finding: Training data quality directly predicts performance
+- **Anonymous 2025**
+  Role: Compares different data collection approaches
+  Finding: Decentralized collection preserves diversity
+- **Standard benchmarks needed**
+  Role: Would validate on established metrics
+  Finding: Need HellaSwag, MMLU validation
 
 Remaining gaps:
-  ⚠ Need experiments on frontier models
-  ⚠ Cross-modal collapse testing
-  ⚠ Real-world deployment studies
+  ⚠ HellaSwag benchmark validation
+  ⚠ MMLU performance metrics
+  ⚠ Scale testing beyond prototypes
+  ⚠ Cost-benefit analysis
 
 ---
 
-## Beat 5: Solutions and Future Work
+## Beat 5: Solution Design
 
-Solutions emerge on three fronts: Gerstgrasser et al. show data accumulation strategies work, Padmanabhan et al. demonstrate curation can turn the problem into an optimization opportunity, and Cuconasu et al. provide architectural solutions through noise injection. Together these suggest a multi-pronged approach to preventing collapse.
+Solution concepts exist but lack concrete implementation frameworks. The gap between vision and executable design remains unbridged.
 
-- **Gerstgrasser et al. 2024**
-  Role: Primary solution: data accumulation strategy
-  Finding: Accumulating real data prevents collapse
-- **Padmanabhan et al. 2024**
-  Role: Curation as optimization opportunity
-  Finding: Proper curation turns bug into feature
-- **Cuconasu et al. 2024**
-  Role: Architectural solution through noise
-  Finding: Controlled noise injection prevents collapse
+- **Anonymous 2025**
+  Role: Proposes social platform integration
+  Finding: Social context preserves data authenticity
+- **Anonymous 2025**
+  Role: Envisions mobile-first AI data systems
+  Finding: Mobile platforms ideal for authentic data
+- **Platform design literature needed**
+  Role: Would provide implementation guidance
+  Finding: Need proven platform architectures
+- **Campus platform studies needed**
+  Role: Would show successful precedents
+  Finding: Campus platforms as proof of concept
 
 Remaining gaps:
-  ⚠ Implementation guidelines for practitioners
-  ⚠ Computational cost analysis of solutions
-  ⚠ Long-term effectiveness validation
+  ⚠ Platform design literature
+  ⚠ CampusGo case studies
+  ⚠ Implementation frameworks
+  ⚠ User adoption models
+  ⚠ Economic sustainability analysis
 
 ---
 
 ## Suggested Paper Structure
 
 - section_1_crisis: ~15 papers, 4-5 pages
-- section_2_empirical: ~8 papers, 3-4 pages
-- section_3_theory: ~10 papers, 4-5 pages
-- section_4_experiment: ~5 papers, 3-4 pages
-- section_5_solution: ~8 papers, 4-5 pages
+- section_2_empirical: ~5 papers, 3-4 pages
+- section_3_theory: ~8 papers, 3-4 pages
+- section_4_experiment: ~10 papers, 4-5 pages
+- section_5_solution: ~5 papers, 3-4 pages

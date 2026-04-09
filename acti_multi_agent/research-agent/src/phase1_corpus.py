@@ -1,14 +1,107 @@
 """Phase 1: Seed Corpus Assembly — 3-layer search (OpenAlex + S2 citations + arXiv) + import + dedup."""
 
+from __future__ import annotations
+
 import os
 import logging
-from .api_client import OpenAlexClient, S2Client, ArxivClient
+import math
+import re
+from .api_client import ArxivClient, CrossrefClient, OpenAlexClient, S2Client
 from .importers import import_file
 from .dedup import deduplicate
+from .paper_identity import (
+    extract_source_ids,
+    finalize_paper_identity,
+    merge_source_ids,
+    normalize_doi,
+)
 from .state_manager import complete_step, is_step_complete, update_step
 from .utils import atomic_write_json, load_json
 
 log = logging.getLogger("research_agent")
+
+CORE_TARGETS = {
+    "A": 30, "B": 17, "C": 12, "D": 22, "E": 22,
+    "F": 17, "G": 12, "H": 12, "I": 12, "J": 12,
+}
+
+CATEGORY_KEYWORDS = {
+    "A": {
+        "anchors": [
+            "model collapse", "self-consuming", "autophagy", "recursively generated",
+            "recursive training", "collapse", "synthetic data degradation",
+        ],
+        "secondary": ["mad", "tail collapse", "distribution shift", "generated data"],
+    },
+    "B": {
+        "anchors": [
+            "commoncrawl", "web data", "web pollution", "contamination",
+            "ai generated content", "synthetic text", "bot content",
+        ],
+        "secondary": ["web-scraped", "bot traffic", "internet text", "crawl"],
+    },
+    "C": {
+        "anchors": ["watermark", "detection", "detector", "ai text detection"],
+        "secondary": ["adversarial", "reactive", "classifier", "watermarking"],
+    },
+    "D": {
+        "anchors": [
+            "entropy", "perplexity", "kl divergence", "renyi", "type-token",
+            "lexical diversity",
+        ],
+        "secondary": ["diversity metric", "text quality", "distribution analysis", "ttr"],
+    },
+    "E": {
+        "anchors": [
+            "data quality", "curation", "deduplication", "filtering", "pretraining data",
+            "textbook quality",
+        ],
+        "secondary": ["scaling laws", "mixing ratio", "data mixture", "quality filtering"],
+    },
+    "F": {
+        "anchors": ["rlhf", "human feedback", "preference data", "human annotation"],
+        "secondary": ["alignment", "human-in-the-loop", "labeling", "reward model"],
+    },
+    "G": {
+        "anchors": ["provenance", "data lineage", "community platform", "append-only", "platform design"],
+        "secondary": ["verification", "anti-algorithmic", "community", "traceability"],
+    },
+    "H": {
+        "anchors": [
+            "temporal", "longitudinal", "over time", "corpus linguistics",
+            "web quality", "commoncrawl quality",
+        ],
+        "secondary": ["trend", "evolution", "quality degradation", "time series"],
+    },
+    "I": {
+        "anchors": [
+            "social reasoning", "socialiqa", "empathetic dialogues", "empathy benchmark",
+            "social intelligence", "social commonsense",
+        ],
+        "secondary": ["dialogue benchmark", "commonsense reasoning", "social task"],
+    },
+    "J": {
+        "anchors": [
+            "lora", "qlora", "fine-tune", "fine-tuning", "data composition",
+            "ablation", "data mixture",
+        ],
+        "secondary": ["instruction tuning", "mixture effect", "quality versus quantity"],
+    },
+}
+
+CATEGORY_GROUP_RULES = {
+    "H": [
+        ["temporal", "longitudinal", "over time", "historical", "evolution"],
+        ["web", "text", "corpus", "commoncrawl", "quality", "readability"],
+    ],
+    "I": [
+        ["social reasoning", "socialiqa", "theory of mind", "social commonsense", "empathetic"],
+    ],
+    "J": [
+        ["lora", "qlora", "fine-tune", "fine-tuning", "instruction tuning", "adapter"],
+        ["data composition", "data mixture", "quality", "quantity", "ablation", "training data", "synthetic data"],
+    ],
+}
 
 
 def run_phase1(state: dict, state_path: str, base_dir: str,
@@ -19,6 +112,11 @@ def run_phase1(state: dict, state_path: str, base_dir: str,
     proc_dir = os.path.join(base_dir, "data", "processed")
     os.makedirs(raw_dir, exist_ok=True)
     os.makedirs(proc_dir, exist_ok=True)
+    crossref = CrossrefClient(
+        mailto=os.environ.get("CROSSREF_MAILTO", os.environ.get("OPENALEX_MAILTO", "user@example.com")),
+        tool_name=os.environ.get("CROSSREF_TOOL_NAME", "research-agent"),
+        plus_token=os.environ.get("CROSSREF_PLUS_API_TOKEN") or None,
+    )
 
     all_papers = []
 
@@ -102,6 +200,11 @@ def run_phase1(state: dict, state_path: str, base_dir: str,
         output_path = os.path.join(proc_dir, "corpus_unified.json")
         atomic_write_json(output_path, corpus)
         log.info(f"Unified corpus: {len(corpus)} papers saved")
+        core = _select_core_corpus(corpus)
+        core = _enrich_core_with_crossref(core, crossref)
+        core = _resolve_core_source_ids(core, s2)
+        atomic_write_json(os.path.join(proc_dir, "corpus_200.json"), core)
+        log.info(f"Core corpus: {len(core)} papers saved to corpus_200.json")
 
         qc = _quality_check(corpus)
         state["phases"]["1"]["quality_check"] = qc
@@ -121,19 +224,26 @@ def run_phase1(state: dict, state_path: str, base_dir: str,
 
 def _run_openalex_search(oa: OpenAlexClient, queries_cfg: dict, raw_dir: str) -> list[dict]:
     """Run all search queries against OpenAlex."""
-    all_raw = []
+    papers = []
     for i, q in enumerate(queries_cfg["queries"]):
         query_text = q["query"]
         max_pages = q.get("max_pages", 3)
+        category = q.get("category", "X")
         log.info(f"  [{i+1}/{len(queries_cfg['queries'])}] OpenAlex: '{query_text}'")
         try:
             results = oa.search(query_text, max_pages=max_pages)
-            all_raw.extend(results)
+            for raw in results:
+                if not raw.get("title"):
+                    continue
+                paper = OpenAlexClient.to_unified(raw)
+                paper["query_category"] = category
+                paper["matched_query"] = query_text
+                paper["retrieval_layer"] = "openalex"
+                papers.append(paper)
             log.info(f"    → {len(results)} results")
         except Exception as e:
             log.error(f"    → Failed: {e}")
 
-    papers = [OpenAlexClient.to_unified(r) for r in all_raw if r.get("title")]
     atomic_write_json(os.path.join(raw_dir, "openalex_results.json"), papers)
     log.info(f"Total from OpenAlex: {len(papers)} papers")
     return papers
@@ -148,10 +258,12 @@ def _run_s2_citation_expansion(s2: S2Client, seeds_cfg: dict, raw_dir: str) -> l
     all_papers = []
     resolved_seeds = []
 
-    for seed in seeds_cfg["seeds"]:
+    for idx, seed in enumerate(seeds_cfg["seeds"]):
         log.info(f"  Resolving seed: {seed['title'][:60]}...")
         paper = s2.resolve_seed(seed["lookup_query"], seed.get("doi"))
         if paper:
+            paper["_seed_index"] = idx
+            paper["_seed_title"] = seed["title"]
             resolved_seeds.append(paper)
             log.info(f"    → Found: {paper.get('paperId', '?')[:20]}")
         else:
@@ -173,9 +285,23 @@ def _run_s2_citation_expansion(s2: S2Client, seeds_cfg: dict, raw_dir: str) -> l
         except Exception as e:
             log.error(f"    → Citations failed: {e}")
 
-    papers = [S2Client.to_unified(r) for r in all_papers if r.get("paperId")]
+    papers = []
+    for r in all_papers:
+        if not r.get("paperId"):
+            continue
+        paper = S2Client.to_unified(r)
+        paper["retrieval_layer"] = "s2_citation"
+        papers.append(paper)
     # Include resolved seeds themselves
-    seed_papers = [S2Client.to_unified(s) for s in resolved_seeds if s.get("paperId")]
+    seed_papers = []
+    for s in resolved_seeds:
+        if not s.get("paperId"):
+            continue
+        paper = S2Client.to_unified(s)
+        paper["retrieval_layer"] = "s2_seed"
+        paper["matched_query"] = s.get("_seed_title", "")
+        paper["query_category"] = "D" if "entropy" in s.get("_seed_title", "").lower() else "A"
+        seed_papers.append(paper)
     papers.extend(seed_papers)
 
     atomic_write_json(os.path.join(raw_dir, "s2_citation_expansion.json"), papers)
@@ -197,21 +323,32 @@ def _run_arxiv_search(arxiv: ArxivClient, queries_cfg: dict, raw_dir: str) -> li
         {"query": 'all:"entropy" AND all:"AI generated text"'},
     ])
     # Normalize: accept both dicts and plain strings
-    arxiv_queries = [
-        q["query"] if isinstance(q, dict) else q for q in arxiv_queries_raw
-    ]
+    arxiv_queries = []
+    for q in arxiv_queries_raw:
+        if isinstance(q, dict):
+            arxiv_queries.append(q)
+        else:
+            arxiv_queries.append({"query": q, "category": "X"})
 
-    all_raw = []
+    papers = []
     for i, q in enumerate(arxiv_queries):
-        log.info(f"  [{i+1}/{len(arxiv_queries)}] arXiv: '{q[:50]}'")
+        query_text = q["query"]
+        category = q.get("category", "X")
+        log.info(f"  [{i+1}/{len(arxiv_queries)}] arXiv: '{query_text[:50]}'")
         try:
-            results = arxiv.search(q, max_results=100)
-            all_raw.extend(results)
+            results = arxiv.search(query_text, max_results=100)
+            for raw in results:
+                if not raw.get("title"):
+                    continue
+                paper = ArxivClient.to_unified(raw)
+                paper["query_category"] = category
+                paper["matched_query"] = query_text
+                paper["retrieval_layer"] = "arxiv"
+                papers.append(paper)
             log.info(f"    → {len(results)} results")
         except Exception as e:
             log.error(f"    → Failed: {e}")
 
-    papers = [ArxivClient.to_unified(r) for r in all_raw if r.get("title")]
     atomic_write_json(os.path.join(raw_dir, "arxiv_results.json"), papers)
     log.info(f"Total from arXiv: {len(papers)} preprints")
     return papers
@@ -270,6 +407,250 @@ def _quality_check(corpus: list[dict]) -> dict:
     }
     log.info(f"Quality: {total} papers, {pct_recent}% recent, sources={by_source}, passed={qc['passed']}")
     return qc
+
+
+def _normalize_text(paper: dict) -> str:
+    parts = [
+        paper.get("title", ""),
+        paper.get("abstract", "") or "",
+        paper.get("venue", "") or "",
+        " ".join(paper.get("concepts", []) or []),
+    ]
+    return " ".join(parts).lower()
+
+
+def _score_paper_for_category(text: str, year: int, citations: int, category: str) -> float:
+    group_rules = CATEGORY_GROUP_RULES.get(category, [])
+    if group_rules and not all(any(term in text for term in group) for group in group_rules):
+        return 0.0
+
+    cfg = CATEGORY_KEYWORDS[category]
+    anchor_hits = sum(1 for kw in cfg["anchors"] if kw in text)
+    if anchor_hits == 0:
+        return 0.0
+
+    secondary_hits = sum(1 for kw in cfg["secondary"] if kw in text)
+    recent_bonus = 2.0 if year >= 2024 else 1.0 if year >= 2022 else 0.0
+    citation_bonus = min(math.log10(max(citations, 1)), 3.0)
+    return anchor_hits * 5.0 + secondary_hits * 1.5 + recent_bonus + citation_bonus
+
+
+def _select_core_corpus(corpus: list[dict]) -> list[dict]:
+    """Build a focused top corpus for Phase 2 instead of classifying the full 4k+ papers.
+
+    Strategy:
+    - Score each paper against A-J taxonomy using domain keywords
+    - Select the top papers per category according to CORE_TARGETS
+    - Deduplicate across categories, then fill remaining slots from global scores
+    """
+    scored = []
+    for paper in corpus:
+        text = _normalize_text(paper)
+        year = int(paper.get("year", 0) or 0)
+        cites = int(paper.get("citationCount", 0) or 0)
+        scores = {cat: _score_paper_for_category(text, year, cites, cat) for cat in CORE_TARGETS}
+        query_category = paper.get("query_category")
+        if query_category in scores and scores[query_category] > 0:
+            scores[query_category] += 8.0
+        best_cat = max(scores, key=scores.get)
+        best_score = scores[best_cat]
+        if best_score <= 0:
+            continue
+
+        item = dict(paper)
+        item["query_category"] = best_cat
+        item["selection_score"] = round(best_score, 3)
+        item["selection_scores"] = {k: round(v, 3) for k, v in scores.items() if v > 0}
+        scored.append(item)
+
+    ranked_by_cat = {
+        cat: sorted(
+            [p for p in scored if p["selection_scores"].get(cat, 0) > 0],
+            key=lambda p: (
+                p["selection_scores"].get(cat, 0),
+                p.get("citationCount", 0),
+                p.get("year", 0),
+            ),
+            reverse=True,
+        )
+        for cat in CORE_TARGETS
+    }
+
+    selected = []
+    seen = set()
+    for cat, target in CORE_TARGETS.items():
+        count = 0
+        for paper in ranked_by_cat[cat]:
+            pid = paper.get("paperId")
+            if not pid or pid in seen:
+                continue
+            paper = dict(paper)
+            paper["query_category"] = cat
+            selected.append(paper)
+            seen.add(pid)
+            count += 1
+            if count >= target:
+                break
+
+    target_total = sum(CORE_TARGETS.values())
+    if len(selected) < target_total:
+        global_ranked = sorted(
+            scored,
+            key=lambda p: (
+                p.get("selection_score", 0),
+                p.get("citationCount", 0),
+                p.get("year", 0),
+            ),
+            reverse=True,
+        )
+        for paper in global_ranked:
+            pid = paper.get("paperId")
+            if not pid or pid in seen:
+                continue
+            selected.append(paper)
+            seen.add(pid)
+            if len(selected) >= target_total:
+                break
+
+    selected.sort(
+        key=lambda p: (
+            p.get("query_category", "X"),
+            -(p.get("selection_scores", {}).get(p.get("query_category", "X"), p.get("selection_score", 0))),
+            -(p.get("citationCount", 0)),
+        )
+    )
+    log.info(
+        "Core corpus category counts: %s",
+        {cat: sum(1 for p in selected if p.get("query_category") == cat) for cat in CORE_TARGETS}
+    )
+    return selected[:target_total]
+
+
+def _resolve_core_source_ids(core: list[dict], s2: S2Client | None) -> list[dict]:
+    """Resolve missing S2 identities for the focused core corpus only.
+
+    This keeps Phase 1 affordable while giving later graph phases a stable ID layer.
+    """
+    if s2 is None:
+        return [finalize_paper_identity(p) for p in core]
+
+    resolved = 0
+    checked = 0
+    enriched_core = []
+
+    for paper in core:
+        item = finalize_paper_identity(paper)
+        ids = extract_source_ids(item)
+        if ids.get("s2"):
+            enriched_core.append(item)
+            continue
+
+        checked += 1
+        s2_result = None
+        doi = ids.get("doi")
+        arxiv = ids.get("arxiv")
+
+        try:
+            if doi:
+                s2_result = s2.get_paper(f"DOI:{doi}", fields="paperId,externalIds")
+            if not s2_result and arxiv:
+                s2_result = s2.get_paper(f"ARXIV:{arxiv}", fields="paperId,externalIds")
+        except Exception as e:
+            log.debug(f"  Core ID resolve failed for {item.get('title', '')[:60]}: {e}")
+
+        if s2_result and s2_result.get("paperId"):
+            s2_unified = S2Client.to_unified(s2_result)
+            merged_external = dict(item.get("externalIds") or {})
+            merged_external.update(s2_unified.get("externalIds") or {})
+            item["externalIds"] = merged_external
+            item["source_ids"] = merge_source_ids(
+                item.get("source_ids") or {},
+                s2_unified.get("source_ids") or {},
+            )
+            item = finalize_paper_identity(item)
+            resolved += 1
+
+        enriched_core.append(item)
+
+    if checked:
+        log.info(f"Resolved S2 identities for {resolved}/{checked} core papers missing S2 IDs")
+    return enriched_core
+
+
+def _enrich_core_with_crossref(core: list[dict], crossref: CrossrefClient | None) -> list[dict]:
+    """Enrich the focused core corpus with DOI-authoritative metadata."""
+    if crossref is None:
+        return [finalize_paper_identity(p) for p in core]
+
+    enriched = []
+    resolved = 0
+    searched = 0
+
+    for paper in core:
+        item = finalize_paper_identity(paper)
+        source_ids = extract_source_ids(item)
+        work = None
+
+        try:
+            if source_ids.get("doi"):
+                work = crossref.get_work(source_ids["doi"])
+            else:
+                searched += 1
+                query = item.get("title", "")
+                hits = crossref.search_works(query, rows=3) if query else []
+                title_norm = re.sub(r"\W+", " ", query).strip().lower()
+                for hit in hits:
+                    candidate = (hit.get("title") or [""])[0]
+                    candidate_norm = re.sub(r"\W+", " ", candidate).strip().lower()
+                    if title_norm and candidate_norm and (
+                        title_norm == candidate_norm
+                        or title_norm in candidate_norm
+                        or candidate_norm in title_norm
+                    ):
+                        work = hit
+                        break
+        except Exception as e:
+            log.debug(f"  Crossref enrich failed for {item.get('title', '')[:60]}: {e}")
+
+        if work:
+            resolved += 1
+            doi = normalize_doi(work.get("DOI"))
+            if doi:
+                item["doi"] = doi
+                item["source_ids"] = merge_source_ids(item.get("source_ids") or {}, {"doi": doi})
+                ext = dict(item.get("externalIds") or {})
+                ext["DOI"] = doi
+                item["externalIds"] = ext
+
+            licenses = [lic.get("URL") for lic in work.get("license", []) if lic.get("URL")]
+            relation = work.get("relation") or {}
+            updates = []
+            for rel_values in relation.values():
+                if isinstance(rel_values, list):
+                    for rel_item in rel_values:
+                        if isinstance(rel_item, dict) and rel_item.get("id"):
+                            updates.append(rel_item["id"])
+
+            item["integrity"] = {
+                "publisher": work.get("publisher", ""),
+                "type": work.get("type", ""),
+                "license_urls": licenses,
+                "is_retracted": bool((work.get("update-to") or []) or relation.get("is-retracted-by")),
+                "update_targets": updates,
+                "crossref_reference_count": work.get("reference-count", 0),
+                "crossref_is_referenced_by_count": work.get("is-referenced-by-count", 0),
+            }
+            item["crossref"] = {
+                "indexed": work.get("indexed", {}).get("date-time", ""),
+                "created": work.get("created", {}).get("date-time", ""),
+            }
+            item = finalize_paper_identity(item)
+
+        enriched.append(item)
+
+    if core:
+        log.info(f"Crossref enriched {resolved}/{len(core)} core papers ({searched} title-search attempts)")
+    return enriched
 
 
 # ---------------------------------------------------------------------------

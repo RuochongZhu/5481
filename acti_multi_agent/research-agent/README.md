@@ -8,8 +8,10 @@ PhD 选题辅助工具 — 从 2000+ 篇论文中识别 research gaps 并生成 
 # 1. 安装依赖
 pip install -r requirements.txt
 
-# 2. 配置 API keys（复制 .env 从父目录或手动创建）
-# 需要：ANTHROPIC_API_KEY, OPENALEX_MAILTO, S2_API_KEY (可选)
+# 2. 配置 API keys（推荐复制 .env.example 为 .env）
+# 必填：ANTHROPIC_API_KEY
+# 强烈建议：OPENALEX_MAILTO, OPENAI_API_KEY
+# 推荐：S2_API_KEY, CROSSREF_MAILTO
 
 # 3. 查看架构
 python main.py --demo
@@ -30,14 +32,16 @@ python run_codex_parallel.py --tasks 3,6
 research-agent/
 ├── main.py                    # 主入口
 ├── run_codex_parallel.py      # Codex 交叉验证（6 个独立任务）
-├── .env                       # API keys
+├── .env                       # 本地 API keys（已 gitignore）
+├── .env.example               # 可提交的配置模板
 ├── state.json                 # Pipeline 状态（断点续跑）
 ├── config/                    # 搜索配置 + 分类定义 + 种子论文
 ├── src/                       # 9 个模块
-│   ├── api_client.py          # OpenAlex + S2 + arXiv + Anthropic
+│   ├── api_client.py          # OpenAlex + S2 + arXiv + Crossref + OpenCitations + LLM routing
 │   ├── phase1_corpus.py       # 3 层搜索 + 去重
 │   ├── phase2_extraction.py   # Claude 分类
 │   ├── phase3_graph.py        # networkx 图谱 + gap 合成
+│   ├── knowledge_base.py      # 持久化 graph / wiki / report
 │   ├── phase4_topics.py       # 选题评分 + thesis 生成
 │   ├── prompts.py             # 3 个 agent 的 system prompts
 │   └── ...
@@ -136,8 +140,19 @@ OPENALEX_MAILTO=your@cornell.edu
 # Semantic Scholar (Phase 1, 可选，提速 10x)
 S2_API_KEY=...
 
-# OpenAI (Codex fallback, 可选)
+# Crossref (身份层，推荐)
+CROSSREF_MAILTO=your@cornell.edu
+CROSSREF_TOOL_NAME=research-agent
+
+# OpenCitations (fallback，可选)
+OPENCITATIONS_ACCESS_TOKEN=
+
+# OpenAI direct API（推荐，不是 ChatGPT 网页订阅）
 OPENAI_API_KEY=sk-proj-...
+OPENAI_REASONING_MODEL=gpt-5.4
+OPENAI_REASONING_MEDIUM=medium
+OPENAI_REASONING_HIGH=high
+OPENAI_REASONING_XHIGH=xhigh
 ```
 
 ### 搜索配置 (config/search_queries.json)
@@ -180,9 +195,10 @@ Top 3 选题，每个包含：
 
 1. **Phase 1 无需 Anthropic key** — 只用免费 API（OpenAlex, S2, arXiv）
 2. **断点续跑** — state.json 记录进度，崩溃后 `--resume` 继续
-3. **Codex fallback** — 如果 `~/.codex/config.toml` 的 proxy 挂了，自动用 OPENAI_API_KEY 直连
-4. **CampusGo 相关性** — Gap Synthesizer 已更新，明确 CampusGo 是 web/mobile app，不是 IoT/federated learning
-5. **成本估算** — Phase 2-4 约 30-40 API calls，~$1-2（Sonnet 4）
+3. **OpenAI direct API** — 当前仓库已经支持用 `OPENAI_API_KEY` 直接走 `/v1/responses`
+4. **ChatGPT 和 API 分开计费** — ChatGPT 会员不等于 OpenAI Platform API 额度
+5. **CampusGo 相关性** — Gap Synthesizer 已更新，明确 CampusGo 是 web/mobile app，不是 IoT/federated learning
+6. **成本估算** — Phase 2-4 约 30-40 API calls，主要消耗在 Claude / GPT reasoning
 
 ## 故障排查
 

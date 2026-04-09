@@ -13,6 +13,8 @@ Usage:
   python run_codex_parallel.py --max-parallel 2
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -64,19 +66,27 @@ def _call_openai_direct(prompt: str) -> str:
         return '{"error": "OPENAI_API_KEY not set, cannot fallback"}'
 
     body = json.dumps({
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4096,
+        "model": os.environ.get("OPENAI_REASONING_MODEL", "gpt-5.4"),
+        "reasoning": {"effort": os.environ.get("OPENAI_REASONING_HIGH", "high")},
+        "input": prompt,
+        "max_output_tokens": 4096,
     }).encode()
 
     req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
+        "https://api.openai.com/v1/responses",
         data=body,
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
     )
     resp = urllib.request.urlopen(req, timeout=120)
     data = json.loads(resp.read())
-    return data["choices"][0]["message"]["content"]
+    parts = []
+    for item in data.get("output", []):
+        if item.get("type") != "message":
+            continue
+        for content in item.get("content", []):
+            if content.get("type") == "output_text":
+                parts.append(content.get("text", ""))
+    return "".join(parts).strip()
 
 
 # ---------------------------------------------------------------------------

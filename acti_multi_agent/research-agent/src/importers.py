@@ -1,5 +1,7 @@
 """Import CSV/BibTeX from Undermind, Elicit, ResearchRabbit into unified schema."""
 
+from __future__ import annotations
+
 import csv
 import logging
 import os

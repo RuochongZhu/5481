@@ -1,10 +1,12 @@
 """Phase 3.7: Contradiction Map — identify disagreements between papers."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 
-from .api_client import agent_run_json, MODEL_DEEP
+from .api_client import agent_run_json, BRAIN_PHASE3_CONTRADICTION
 from .prompts import CONTRADICTION_MAPPER
 from .state_manager import complete_step, is_step_complete
 from .utils import atomic_write_json, load_json
@@ -86,7 +88,7 @@ def _scan_contradictions(client, classified: list[dict]) -> dict:
             result = agent_run_json(
                 client,
                 role=CONTRADICTION_MAPPER,
-                model=MODEL_DEEP,
+                model=BRAIN_PHASE3_CONTRADICTION,
                 task=(
                     f"Identify contradictions among these {len(papers)} papers.\n"
                     f"Focus question: {question}\n"

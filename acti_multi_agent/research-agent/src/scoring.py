@@ -1,12 +1,14 @@
 """Scoring engine: 5-dimension evaluation + aggregator + auto-loop logic."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 from collections import Counter
 
 from .utils import load_json, atomic_write_json
-from .api_client import agent_run_json, MODEL_DEEP
+from .api_client import REVIEWER_BRAINS, agent_run_json
 
 log = logging.getLogger("research_agent")
 
@@ -183,7 +185,7 @@ def run_reviewer(client, reviewer_name: str, base_dir: str) -> dict:
     try:
         result = agent_run_json(
             client, role=prompt, task=context,
-            model=MODEL_DEEP, max_tokens=2048,
+            model=REVIEWER_BRAINS.get(reviewer_name), max_tokens=2048,
         )
         return result
     except Exception as e:

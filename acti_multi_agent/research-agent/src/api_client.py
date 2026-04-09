@@ -1,9 +1,12 @@
 """API clients: Anthropic agent_run() + OpenAlex + Semantic Scholar + arXiv."""
 
+from __future__ import annotations
+
 import json
 import os
 import time
 import logging
+from dataclasses import dataclass
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -13,8 +16,9 @@ from .utils import RateLimiter
 log = logging.getLogger("research_agent")
 
 # Tiered model config: fast (high-volume) vs deep (low-volume, high-quality)
-MODEL_FAST = os.getenv("MODEL_FAST", "claude-sonnet-4-20250514")
-MODEL_DEEP = os.getenv("MODEL_DEEP", "claude-opus-4-20250514")
+MODEL_FAST = os.getenv("MODEL_FAST", "claude-sonnet-4-6")
+MODEL_DEEP = os.getenv("MODEL_DEEP", "claude-opus-4-6")
+OPENAI_REASONING_MODEL = os.getenv("OPENAI_REASONING_MODEL", "gpt-5.4")
 DEFAULT_MODEL = MODEL_FAST  # backward compat
 S2_BASE = "https://api.semanticscholar.org/graph/v1"
 S2_FIELDS = "paperId,title,year,abstract,citationCount,venue,authors,externalIds"
@@ -22,6 +26,52 @@ S2_FIELDS = "paperId,title,year,abstract,citationCount,venue,authors,externalIds
 S2_FIELDS_DETAIL = "paperId,title,year,abstract,citationCount,venue,authors,externalIds,tldr"
 OA_BASE = "https://api.openalex.org/works"
 ARXIV_BASE = "http://export.arxiv.org/api/query"
+CROSSREF_BASE = "https://api.crossref.org"
+OPENCITATIONS_INDEX_BASE = "https://api.opencitations.net/index/v2"
+
+
+@dataclass(frozen=True)
+class ModelSpec:
+    """Provider-agnostic model selection."""
+
+    name: str
+    reasoning_effort: str | None = None
+
+
+# Claude remains the extraction backbone.
+BRAIN_FAST = ModelSpec(MODEL_FAST)
+BRAIN_DEEP = ModelSpec(MODEL_DEEP)
+
+# GPT-5.4 reasoning tiers for analysis / review work.
+BRAIN_GPT_MEDIUM = ModelSpec(
+    OPENAI_REASONING_MODEL,
+    os.getenv("OPENAI_REASONING_MEDIUM", "medium"),
+)
+BRAIN_GPT_HIGH = ModelSpec(
+    OPENAI_REASONING_MODEL,
+    os.getenv("OPENAI_REASONING_HIGH", "high"),
+)
+BRAIN_GPT_XHIGH = ModelSpec(
+    OPENAI_REASONING_MODEL,
+    os.getenv("OPENAI_REASONING_XHIGH", "xhigh"),
+)
+
+# Task-level brains.
+BRAIN_PHASE2_CLASSIFIER = BRAIN_FAST
+BRAIN_PHASE2_DEEP_EXTRACTOR = BRAIN_DEEP
+BRAIN_PHASE3_RELATIONSHIP = BRAIN_GPT_MEDIUM
+BRAIN_PHASE3_GAP = BRAIN_GPT_HIGH
+BRAIN_PHASE3_NARRATIVE = BRAIN_GPT_HIGH
+BRAIN_PHASE3_CONTRADICTION = BRAIN_GPT_XHIGH
+BRAIN_PHASE4_EVIDENCE = BRAIN_GPT_HIGH
+
+REVIEWER_BRAINS = {
+    "narrative": BRAIN_GPT_HIGH,
+    "contradiction": BRAIN_GPT_XHIGH,
+    "gap": BRAIN_GPT_XHIGH,
+    "coverage": BRAIN_GPT_MEDIUM,
+    "honesty": BRAIN_GPT_XHIGH,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -45,13 +95,162 @@ class ModelNotFound(RuntimeError):
 # Errors that should NOT be retried — fail fast
 _FATAL_STATUS_CODES = {401, 403, 404}
 
-def agent_run(client, role: str, task: str, model: str = DEFAULT_MODEL,
+def _coerce_model_spec(model: str | ModelSpec) -> ModelSpec:
+    return model if isinstance(model, ModelSpec) else ModelSpec(model)
+
+
+def _is_openai_model(model: str) -> bool:
+    return model.startswith("gpt-")
+
+
+def _extract_openai_output_text(data: dict) -> str:
+    parts = []
+    for item in data.get("output", []):
+        if item.get("type") != "message":
+            continue
+        for content in item.get("content", []):
+            if content.get("type") == "output_text":
+                parts.append(content.get("text", ""))
+    return "".join(parts).strip()
+
+
+def _downgrade_openai_reasoning(spec: ModelSpec) -> ModelSpec | None:
+    if spec.reasoning_effort == "xhigh":
+        return ModelSpec(spec.name, "high")
+    if spec.reasoning_effort == "high":
+        return ModelSpec(spec.name, "medium")
+    return None
+
+
+def _agent_run_via_openai(spec: ModelSpec, role: str, task: str, max_tokens: int) -> str:
+    """Reasoning path via OpenAI Responses API."""
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        raise APIKeyMissing("OPENAI_API_KEY not set in .env")
+
+    body = {
+        "model": spec.name,
+        "instructions": role,
+        "input": task,
+        "max_output_tokens": max_tokens,
+    }
+    if spec.reasoning_effort:
+        body["reasoning"] = {"effort": spec.reasoning_effort}
+
+    resp = requests.post(
+        "https://api.openai.com/v1/responses",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=body,
+        timeout=180,
+    )
+
+    if resp.status_code == 404:
+        raise ModelNotFound(
+            f"OpenAI model '{spec.name}' not found. "
+            f"Check OPENAI_REASONING_MODEL in .env. Original error: {resp.text[:300]}"
+        )
+    if resp.status_code in (401, 403):
+        raise APIKeyMissing(
+            f"OpenAI API authentication failed (HTTP {resp.status_code}). "
+            f"Check OPENAI_API_KEY in .env. Original error: {resp.text[:300]}"
+        )
+    if resp.status_code == 429:
+        raise QuotaExhausted(
+            f"OpenAI API rate limited or quota exhausted (HTTP 429). "
+            f"Original error: {resp.text[:300]}"
+        )
+    if resp.status_code >= 500:
+        raise RuntimeError(f"OpenAI Responses API server error (HTTP {resp.status_code}): {resp.text[:300]}")
+
+    resp.raise_for_status()
+    data = resp.json()
+    text = _extract_openai_output_text(data)
+    if text:
+        return text
+    raise RuntimeError(f"OpenAI response missing output text. Status={data.get('status')}")
+
+
+def _agent_run_via_rest(role: str, task: str, model: str, max_tokens: int) -> str:
+    """Fallback path for Anthropic when the Python SDK is blocked in this environment."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise APIKeyMissing("ANTHROPIC_API_KEY not set in .env")
+
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    body = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": role,
+        "messages": [{"role": "user", "content": task}],
+    }
+    resp = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=body, timeout=120)
+
+    if resp.status_code == 404:
+        raise ModelNotFound(
+            f"Model '{model}' not found. Check MODEL_FAST / MODEL_DEEP in .env. "
+            f"Original error: {resp.text[:300]}"
+        )
+    if resp.status_code in (401, 403):
+        raise APIKeyMissing(
+            f"Anthropic API authentication failed (HTTP {resp.status_code}). "
+            f"Original error: {resp.text[:300]}"
+        )
+    if resp.status_code == 529:
+        raise QuotaExhausted(
+            f"Anthropic API overloaded (HTTP 529). Try again later. "
+            f"Original error: {resp.text[:300]}"
+        )
+
+    resp.raise_for_status()
+    data = resp.json()
+    parts = data.get("content", [])
+    text_parts = [p.get("text", "") for p in parts if p.get("type") == "text"]
+    return "".join(text_parts).strip()
+
+
+def agent_run(client, role: str, task: str, model: str | ModelSpec = DEFAULT_MODEL,
               max_tokens: int = 4096, retries: int = 3) -> str:
     """Single agent call with retry + exponential backoff.
 
     Distinguishes fatal errors (wrong key, wrong model, quota gone) from
     transient errors (network, rate limit) and only retries the latter.
     """
+    spec = _coerce_model_spec(model)
+
+    if _is_openai_model(spec.name):
+        for attempt in range(retries):
+            try:
+                return _agent_run_via_openai(spec, role=role, task=task, max_tokens=max_tokens)
+            except (APIKeyMissing, ModelNotFound, QuotaExhausted):
+                raise
+            except Exception as e:
+                wait = 2 ** attempt
+                remaining = retries - attempt - 1
+                log.warning(
+                    f"openai agent_run attempt {attempt+1}/{retries} failed: {e}. "
+                    f"{'Retrying in ' + str(wait) + 's' if remaining > 0 else 'No retries left'}..."
+                )
+                if remaining > 0:
+                    time.sleep(wait)
+        fallback = _downgrade_openai_reasoning(spec)
+        if fallback is not None:
+            log.warning(
+                f"OpenAI reasoning fallback: {spec.name} effort={spec.reasoning_effort} "
+                f"-> effort={fallback.reasoning_effort}"
+            )
+            return agent_run(client, role, task, model=fallback, max_tokens=max_tokens, retries=retries)
+        raise RuntimeError(
+            f"OpenAI agent_run failed after {retries} retries. Last model: {spec.name}. "
+            f"State has been saved — you can resume with --resume."
+        )
+
     if client is None:
         raise APIKeyMissing(
             "Anthropic client is None — ANTHROPIC_API_KEY not set in .env. "
@@ -61,7 +260,7 @@ def agent_run(client, role: str, task: str, model: str = DEFAULT_MODEL,
     for attempt in range(retries):
         try:
             resp = client.messages.create(
-                model=model,
+                model=spec.name,
                 max_tokens=max_tokens,
                 system=role,
                 messages=[{"role": "user", "content": task}],
@@ -71,11 +270,16 @@ def agent_run(client, role: str, task: str, model: str = DEFAULT_MODEL,
             err_str = str(e)
             status = getattr(e, "status_code", None)
 
+            # In this environment the official SDK may be blocked while direct REST works.
+            if "blocked" in err_str.lower():
+                log.warning("Anthropic SDK call was blocked; retrying via REST fallback")
+                return _agent_run_via_rest(role=role, task=task, model=spec.name, max_tokens=max_tokens)
+
             # --- Fatal: wrong model ID ---
             if status == 404 or "not_found" in err_str.lower():
                 raise ModelNotFound(
-                    f"Model '{model}' not found. Check MODEL_FAST / MODEL_DEEP in .env. "
-                    f"Available: claude-sonnet-4-20250514, claude-opus-4-20250514. "
+                    f"Model '{spec.name}' not found. Check MODEL_FAST / MODEL_DEEP in .env. "
+                    f"Available: claude-sonnet-4-6, claude-opus-4-6. "
                     f"Original error: {e}"
                 ) from e
 
@@ -109,12 +313,12 @@ def agent_run(client, role: str, task: str, model: str = DEFAULT_MODEL,
                 time.sleep(wait)
 
     raise RuntimeError(
-        f"agent_run failed after {retries} retries. Last model: {model}. "
+        f"agent_run failed after {retries} retries. Last model: {spec.name}. "
         f"State has been saved — you can resume with --resume."
     )
 
 
-def agent_run_json(client, role: str, task: str, model: str = DEFAULT_MODEL,
+def agent_run_json(client, role: str, task: str, model: str | ModelSpec = DEFAULT_MODEL,
                    max_tokens: int = 4096) -> list | dict:
     """Agent call that parses response as JSON. Strips markdown fences if present."""
     import re
@@ -158,8 +362,9 @@ def agent_run_json(client, role: str, task: str, model: str = DEFAULT_MODEL,
 class OpenAlexClient:
     """OpenAlex API — polite pool with mailto, cursor pagination."""
 
-    def __init__(self, mailto: str = "user@example.com"):
+    def __init__(self, mailto: str = "user@example.com", api_key: str | None = None):
         self.mailto = mailto
+        self.api_key = api_key
         self.session = requests.Session()
         # polite pool: ~10 req/s with mailto
         self._limiter = RateLimiter(max_calls=8, window_sec=1.0)
@@ -182,6 +387,8 @@ class OpenAlexClient:
                 "cursor": cursor,
                 "mailto": self.mailto,
             }
+            if self.api_key:
+                params["api_key"] = self.api_key
             try:
                 resp = self.session.get(OA_BASE, params=params, timeout=30)
                 if resp.status_code == 429:
@@ -243,8 +450,92 @@ class OpenAlexClient:
             "citationCount": work.get("cited_by_count") or 0,
             "source": "openalex",
             "externalIds": {"OpenAlex": work.get("id", "")},
+            "source_ids": {
+                "openalex": work.get("id", ""),
+                **({"doi": doi} if doi else {}),
+            },
             "concepts": [c.get("display_name", "") for c in work.get("concepts", [])[:5]],
         }
+
+
+# ---------------------------------------------------------------------------
+# Crossref client (DOI authority / metadata integrity)
+# ---------------------------------------------------------------------------
+
+class CrossrefClient:
+    """Crossref REST API — DOI authority and metadata enrichment."""
+
+    def __init__(self, mailto: str = "user@example.com", tool_name: str = "research-agent",
+                 plus_token: str | None = None):
+        self.mailto = mailto
+        self.tool_name = tool_name
+        self.session = requests.Session()
+        self.session.headers["User-Agent"] = f"{tool_name}/1.0 ({mailto})"
+        if plus_token:
+            self.session.headers["Crossref-Plus-API-Token"] = f"Bearer {plus_token}"
+        self._limiter = RateLimiter(max_calls=20, window_sec=1.0)
+
+    def _get(self, path: str, params: dict | None = None) -> dict:
+        self._limiter.wait()
+        query = dict(params or {})
+        if self.mailto:
+            query.setdefault("mailto", self.mailto)
+        resp = self.session.get(f"{CROSSREF_BASE}{path}", params=query, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_work(self, doi: str) -> dict | None:
+        norm = doi.replace("https://doi.org/", "").replace("http://doi.org/", "").strip()
+        if not norm:
+            return None
+        try:
+            data = self._get(f"/works/{urllib.parse.quote(norm, safe='')}")
+            return data.get("message")
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                return None
+            raise
+
+    def search_works(self, query: str, rows: int = 5) -> list[dict]:
+        data = self._get("/works", {"query.bibliographic": query, "rows": rows})
+        return data.get("message", {}).get("items", [])
+
+
+# ---------------------------------------------------------------------------
+# OpenCitations client (citation/reference fallback)
+# ---------------------------------------------------------------------------
+
+class OpenCitationsClient:
+    """OpenCitations Index API — DOI to DOI citation fallback."""
+
+    def __init__(self, access_token: str | None = None):
+        self.session = requests.Session()
+        self.timeout_sec = float(os.getenv("OPENCITATIONS_TIMEOUT_SEC", "15"))
+        if access_token:
+            self.session.headers["authorization"] = access_token
+            self.session.headers["access-token"] = access_token
+        self._limiter = RateLimiter(max_calls=5, window_sec=1.0)
+
+    def _get(self, path: str) -> list[dict]:
+        self._limiter.wait()
+        resp = self.session.get(
+            f"{OPENCITATIONS_INDEX_BASE}{path}",
+            timeout=(5, self.timeout_sec),
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_references(self, doi: str) -> list[dict]:
+        norm = doi.replace("https://doi.org/", "").replace("http://doi.org/", "").strip()
+        if not norm:
+            return []
+        return self._get(f"/references/{urllib.parse.quote(f'doi:{norm}', safe=':')}")
+
+    def get_citations(self, doi: str) -> list[dict]:
+        norm = doi.replace("https://doi.org/", "").replace("http://doi.org/", "").strip()
+        if not norm:
+            return []
+        return self._get(f"/citations/{urllib.parse.quote(f'doi:{norm}', safe=':')}")
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +656,19 @@ class S2Client:
             "citationCount": paper.get("citationCount") or 0,
             "source": "s2",
             "externalIds": paper.get("externalIds") or {},
+            "source_ids": {
+                "s2": paper.get("paperId", ""),
+                **(
+                    {"doi": (paper.get("externalIds") or {}).get("DOI")}
+                    if (paper.get("externalIds") or {}).get("DOI")
+                    else {}
+                ),
+                **(
+                    {"arxiv": (paper.get("externalIds") or {}).get("ArXiv")}
+                    if (paper.get("externalIds") or {}).get("ArXiv")
+                    else {}
+                ),
+            },
             "tldr": tldr_text,
         }
 
@@ -451,4 +755,7 @@ class ArxivClient:
             "citationCount": 0,
             "source": "arxiv",
             "externalIds": {"ArXiv": paper.get("arxiv_id", "")},
+            "source_ids": {
+                "arxiv": paper.get("arxiv_id", ""),
+            },
         }

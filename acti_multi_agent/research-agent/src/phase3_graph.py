@@ -1,13 +1,28 @@
 """Phase 3: Relationship Graph & Gap Analysis — networkx + Claude agents."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
+import re
 from collections import Counter
 
 import networkx as nx
 
-from .api_client import agent_run_json, DEFAULT_MODEL
+from .api_client import (
+    BRAIN_PHASE3_GAP,
+    BRAIN_PHASE3_RELATIONSHIP,
+    OpenCitationsClient,
+    agent_run_json,
+)
+from .knowledge_base import export_research_knowledge_base
+from .paper_identity import (
+    build_alias_lookup,
+    canonicalize_paper_ref,
+    extract_source_ids,
+    get_s2_lookup_id,
+)
 from .prompts import RELATIONSHIP_ANALYST, GAP_SYNTHESIZER
 from .state_manager import complete_step, is_step_complete, save_state
 from .utils import atomic_write_json, load_json
@@ -20,6 +35,7 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
     """Orchestrate Phase 3."""
     proc_dir = os.path.join(base_dir, "data", "processed")
     analysis_dir = os.path.join(base_dir, "analysis")
+    output_dir = os.path.join(base_dir, "output")
     os.makedirs(analysis_dir, exist_ok=True)
 
     classified_path = os.path.join(proc_dir, "classified.json")
@@ -80,11 +96,19 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
         atomic_write_json(os.path.join(analysis_dir, "relationship_analysis.json"), refined)
         # Merge refined edges back into graph
         if refined and "edges" in refined:
+            alias_lookup = build_alias_lookup(papers)
             for edge in refined["edges"]:
-                src, tgt = edge.get("source"), edge.get("target")
+                src = canonicalize_paper_ref(edge.get("source"), alias_lookup)
+                tgt = canonicalize_paper_ref(edge.get("target"), alias_lookup)
                 if src and tgt and G.has_node(src) and G.has_node(tgt):
-                    G.add_edge(src, tgt, type=edge.get("type", "related"),
-                               evidence=edge.get("evidence", ""))
+                    G.add_edge(
+                        src,
+                        tgt,
+                        type=edge.get("type", "related"),
+                        evidence=edge.get("evidence", ""),
+                        confidence_label="INFERRED",
+                        provenance="phase3_relationship_analyst",
+                    )
             _save_graph(G, os.path.join(proc_dir, "relationship_graph.json"))
         state = complete_step(state, state_path, 3, "relationship_analysis")
     else:
@@ -104,6 +128,13 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
     else:
         log.info("Gap synthesis already done")
 
+    summary = export_research_knowledge_base(papers, G, proc_dir, analysis_dir, output_dir)
+    log.info(
+        "Knowledge base exported: %s nodes, %s edges",
+        summary.get("total_nodes", 0),
+        summary.get("total_edges", 0),
+    )
+
     return state
 
 
@@ -115,6 +146,7 @@ def build_graph(papers: list[dict]) -> nx.DiGraph:
     """Construct directed graph from classified papers."""
     G = nx.DiGraph()
     paper_ids = {p["paperId"] for p in papers}
+    alias_lookup = build_alias_lookup(papers)
 
     for p in papers:
         G.add_node(p["paperId"],
@@ -122,16 +154,33 @@ def build_graph(papers: list[dict]) -> nx.DiGraph:
                     category=p.get("primary_category", "X"),
                     secondary=p.get("secondary_categories", []),
                     year=p.get("year", 0),
-                    citations=p.get("citationCount", 0))
+                    citations=p.get("citationCount", 0),
+                    source_ids=p.get("source_ids", {}),
+                    retrieval_layer=p.get("retrieval_layer", ""),
+                    canonical_id=p.get("canonical_id", p["paperId"]))
 
     for p in papers:
         pid = p["paperId"]
         for ref_id in p.get("builds_on", []):
-            if ref_id in paper_ids and ref_id != pid:
-                G.add_edge(ref_id, pid, type="builds_on")
+            canonical = canonicalize_paper_ref(ref_id, alias_lookup)
+            if canonical in paper_ids and canonical != pid:
+                G.add_edge(
+                    canonical,
+                    pid,
+                    type="builds_on",
+                    confidence_label="INFERRED",
+                    provenance="phase2_classification",
+                )
         for ref_id in p.get("contradicts", []):
-            if ref_id in paper_ids and ref_id != pid:
-                G.add_edge(ref_id, pid, type="contradicts")
+            canonical = canonicalize_paper_ref(ref_id, alias_lookup)
+            if canonical in paper_ids and canonical != pid:
+                G.add_edge(
+                    canonical,
+                    pid,
+                    type="contradicts",
+                    confidence_label="INFERRED",
+                    provenance="phase2_classification",
+                )
 
     log.info(f"Graph built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
     return G
@@ -152,12 +201,14 @@ def _load_graph(path: str, papers: list[dict]) -> nx.DiGraph:
         data = load_json(path)
         G = nx.DiGraph()
         for n in data.get("nodes", []):
-            nid = n.pop("id")
-            G.add_node(nid, **n)
+            nid = n.get("id")
+            attrs = {k: v for k, v in n.items() if k != "id"}
+            G.add_node(nid, **attrs)
         for e in data.get("edges", []):
-            src = e.pop("source")
-            tgt = e.pop("target")
-            G.add_edge(src, tgt, **e)
+            src = e.get("source")
+            tgt = e.get("target")
+            attrs = {k: v for k, v in e.items() if k not in ("source", "target")}
+            G.add_edge(src, tgt, **attrs)
         return G
     return build_graph(papers)
 
@@ -289,6 +340,7 @@ def _run_relationship_analyst(client, papers: list[dict], G: nx.DiGraph) -> dict
         result = agent_run_json(
             client,
             role=RELATIONSHIP_ANALYST,
+            model=BRAIN_PHASE3_RELATIONSHIP,
             task=(
                 f"Analyze relationships between these {len(top_papers)} papers. "
                 f"The current graph has {G.number_of_edges()} edges. "
@@ -315,6 +367,7 @@ def _run_gap_synthesizer(client, papers: list[dict], metrics: dict,
         result = agent_run_json(
             client,
             role=GAP_SYNTHESIZER,
+            model=BRAIN_PHASE3_GAP,
             task=summary,
             max_tokens=4096,
         )
@@ -398,17 +451,19 @@ def _enrich_citation_intent(G: nx.DiGraph, papers: list[dict],
 
     S2 returns intents as: Background, Methodology, ResultComparison.
     This enriches existing graph edges and discovers new ones.
+    If S2 lookup fails or yields no internal matches, fall back to DOI-to-DOI
+    citations from OpenCitations.
     """
-    if s2 is None:
-        log.warning("No S2 client — skipping citation intent enrichment")
-        return 0
-
     corpus_ids = {p["paperId"] for p in papers}
-    # Only query S2-compatible IDs
-    s2_papers = [p for p in papers
-                 if p.get("paperId")
-                 and not p["paperId"].startswith("https://openalex.org/")
-                 and not p["paperId"].startswith("arxiv:")]
+    alias_lookup = build_alias_lookup(papers)
+    oc = OpenCitationsClient(access_token=os.environ.get("OPENCITATIONS_ACCESS_TOKEN") or None)
+    candidates = [
+        p for p in papers
+        if get_s2_lookup_id(p) or extract_source_ids(p).get("doi")
+    ]
+
+    if s2 is None:
+        log.warning("No S2 client — Phase 3 will use OpenCitations fallback only where DOI is available")
 
     enriched = 0
     intent_path = os.path.join(proc_dir, "citation_intents.json")
@@ -420,44 +475,73 @@ def _enrich_citation_intent(G: nx.DiGraph, papers: list[dict],
     else:
         intent_data = {}
 
-    for i, p in enumerate(s2_papers):
+    for i, p in enumerate(candidates):
         pid = p["paperId"]
         if pid in intent_data:
             continue
+        paper_doi = extract_source_ids(p).get("doi")
+        edges = []
         try:
-            data = s2._get(
-                f"https://api.semanticscholar.org/graph/v1/paper/{pid}/citations",
-                {"fields": "paperId,intents,isInfluential", "limit": 200}
-            )
-            citations = data.get("data", [])
-            edges = []
-            for c in citations:
-                citing = c.get("citingPaper", {})
-                citing_id = citing.get("paperId", "")
-                if citing_id in corpus_ids:
-                    intents = c.get("intents", [])
-                    influential = c.get("isInfluential", False)
-                    edges.append({
-                        "citing": citing_id,
-                        "intents": intents,
-                        "isInfluential": influential,
-                    })
-                    # Enrich graph edge
-                    if G.has_edge(citing_id, pid):
-                        G[citing_id][pid]["intents"] = intents
-                        G[citing_id][pid]["isInfluential"] = influential
-                    elif G.has_node(citing_id) and G.has_node(pid):
-                        G.add_edge(citing_id, pid, type="cites",
-                                   intents=intents, isInfluential=influential)
-                    enriched += 1
-            intent_data[pid] = edges
+            s2_pid = get_s2_lookup_id(p)
+            if s2 is not None and s2_pid:
+                data = s2._get(
+                    f"https://api.semanticscholar.org/graph/v1/paper/{s2_pid}/citations",
+                    {"fields": "paperId,intents,isInfluential", "limit": 200}
+                )
+                citations = data.get("data", [])
+                for c in citations:
+                    citing = c.get("citingPaper", {})
+                    citing_id = canonicalize_paper_ref(citing.get("paperId", ""), alias_lookup)
+                    if citing_id in corpus_ids:
+                        intents = c.get("intents", [])
+                        influential = c.get("isInfluential", False)
+                        edges.append({
+                            "citing": citing_id,
+                            "intents": intents,
+                            "isInfluential": influential,
+                            "provenance": "semantic_scholar",
+                        })
+                        _merge_citation_edge(
+                            G,
+                            citing_id,
+                            pid,
+                            intents=intents,
+                            influential=influential,
+                            source_name="semantic_scholar",
+                            provenance="s2_citation_intent",
+                        )
+                        enriched += 1
+
+            if not edges and paper_doi:
+                fallback_edges = _enrich_with_opencitations(
+                    G,
+                    oc,
+                    target_id=pid,
+                    target_doi=paper_doi,
+                    corpus_ids=corpus_ids,
+                    alias_lookup=alias_lookup,
+                )
+                edges.extend(fallback_edges)
+                enriched += len(fallback_edges)
         except Exception as e:
-            intent_data[pid] = []
             if (i + 1) % 50 == 0:
                 log.warning(f"  Intent fetch failed for {pid}: {e}")
+            if paper_doi and not edges:
+                fallback_edges = _enrich_with_opencitations(
+                    G,
+                    oc,
+                    target_id=pid,
+                    target_doi=paper_doi,
+                    corpus_ids=corpus_ids,
+                    alias_lookup=alias_lookup,
+                )
+                edges.extend(fallback_edges)
+                enriched += len(fallback_edges)
+
+        intent_data[pid] = edges
 
         if (i + 1) % 20 == 0:
-            log.info(f"  Intent enrichment: {i+1}/{len(s2_papers)} papers, {enriched} edges enriched")
+            log.info(f"  Intent enrichment: {i+1}/{len(candidates)} papers, {enriched} edges enriched")
             atomic_write_json(intent_path, intent_data)
 
     atomic_write_json(intent_path, intent_data)
@@ -471,3 +555,77 @@ def _enrich_citation_intent(G: nx.DiGraph, papers: list[dict],
                 intent_counts[intent] += 1
     log.info(f"Citation intents: {dict(intent_counts)}, {enriched} edges enriched")
     return enriched
+
+
+def _extract_dois_from_oc_field(value: str) -> list[str]:
+    if not value:
+        return []
+    return re.findall(r"doi:([^\s;]+)", value, flags=re.I)
+
+
+def _merge_citation_edge(G: nx.DiGraph, citing_id: str, cited_id: str,
+                         intents: list[str], influential, source_name: str,
+                         provenance: str):
+    if G.has_edge(citing_id, cited_id):
+        edge = G[citing_id][cited_id]
+        edge.setdefault("intents", [])
+        if intents:
+            merged_intents = sorted(set(edge.get("intents", [])) | set(intents))
+            edge["intents"] = merged_intents
+        if influential is not None:
+            edge["isInfluential"] = influential
+        sources = set(edge.get("citation_sources", []))
+        sources.add(source_name)
+        edge["citation_sources"] = sorted(sources)
+        edge.setdefault("confidence_label", "EXTRACTED")
+        edge.setdefault("provenance", provenance)
+        return
+
+    if G.has_node(citing_id) and G.has_node(cited_id):
+        G.add_edge(
+            citing_id,
+            cited_id,
+            type="cites",
+            intents=intents,
+            isInfluential=influential,
+            confidence_label="EXTRACTED",
+            provenance=provenance,
+            citation_sources=[source_name],
+        )
+
+
+def _enrich_with_opencitations(G: nx.DiGraph, oc: OpenCitationsClient, target_id: str,
+                               target_doi: str, corpus_ids: set[str],
+                               alias_lookup: dict[str, str]) -> list[dict]:
+    """Fallback DOI-to-DOI citation expansion for incoming citations."""
+    try:
+        citations = oc.get_citations(target_doi)
+    except Exception as e:
+        log.debug(f"  OpenCitations fallback failed for DOI {target_doi}: {e}")
+        return []
+
+    edges = []
+    seen = set()
+    for row in citations:
+        for citing_doi in _extract_dois_from_oc_field(row.get("citing", "")):
+            canonical = canonicalize_paper_ref(citing_doi.lower(), alias_lookup)
+            if canonical not in corpus_ids:
+                canonical = canonicalize_paper_ref(f"doi:{citing_doi.lower()}", alias_lookup)
+            if canonical in corpus_ids and canonical != target_id and canonical not in seen:
+                seen.add(canonical)
+                edges.append({
+                    "citing": canonical,
+                    "intents": [],
+                    "isInfluential": None,
+                    "provenance": "opencitations",
+                })
+                _merge_citation_edge(
+                    G,
+                    canonical,
+                    target_id,
+                    intents=[],
+                    influential=None,
+                    source_name="opencitations",
+                    provenance="opencitations_fallback",
+                )
+    return edges

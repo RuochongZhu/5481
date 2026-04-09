@@ -1,11 +1,13 @@
 """Phase 2.5: Deep Extraction — MinerU PDF→MD + Claude structured field extraction."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import subprocess
 
-from .api_client import agent_run_json, DEFAULT_MODEL
+from .api_client import agent_run_json, BRAIN_PHASE2_DEEP_EXTRACTOR
 from .prompts import DEEP_EXTRACTOR
 from .state_manager import complete_step, is_step_complete, update_step, save_state
 from .utils import atomic_write_json, load_json
@@ -137,6 +139,7 @@ def _run_deep_extraction(state: dict, state_path: str, client,
                 client,
                 role=DEEP_EXTRACTOR,
                 task=f"Extract structured fields from these {len(batch)} papers:\n\n{batch_input}",
+                model=BRAIN_PHASE2_DEEP_EXTRACTOR,
                 max_tokens=4096,
             )
             if isinstance(results, list):

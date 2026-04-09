@@ -1,10 +1,13 @@
 """Phase 3.8: SPECTER2 Embedding Fetch — get 768-dim vectors from S2 API."""
 
+from __future__ import annotations
+
 import logging
 import os
 import numpy as np
 
 from .api_client import S2Client
+from .paper_identity import get_s2_lookup_id
 from .state_manager import complete_step, is_step_complete
 from .utils import atomic_write_json, load_json
 
@@ -47,11 +50,7 @@ def _fetch_specter_embeddings(classified: list[dict], s2: S2Client | None,
         log.warning("No S2 client — cannot fetch embeddings")
         return 0
 
-    # Filter to papers with S2-compatible IDs (not OpenAlex URLs)
-    s2_papers = [p for p in classified
-                 if p.get("paperId")
-                 and not p["paperId"].startswith("https://openalex.org/")
-                 and not p["paperId"].startswith("arxiv:")]
+    s2_papers = [p for p in classified if get_s2_lookup_id(p)]
 
     log.info(f"  {len(s2_papers)} papers have S2-compatible IDs")
 
@@ -61,9 +60,10 @@ def _fetch_specter_embeddings(classified: list[dict], s2: S2Client | None,
 
     for i, p in enumerate(s2_papers):
         pid = p["paperId"]
+        s2_pid = get_s2_lookup_id(p)
         try:
             result = s2._get(
-                f"https://api.semanticscholar.org/graph/v1/paper/{pid}",
+                f"https://api.semanticscholar.org/graph/v1/paper/{s2_pid}",
                 {"fields": "embedding.specter_v2"}
             )
             emb = result.get("embedding", {}).get("vector")
@@ -71,6 +71,7 @@ def _fetch_specter_embeddings(classified: list[dict], s2: S2Client | None,
                 embeddings.append(emb)
                 metadata.append({
                     "paperId": pid,
+                    "s2_paper_id": s2_pid,
                     "title": p.get("title", "")[:80],
                     "year": p.get("year", 0),
                     "category": p.get("primary_category", "X"),

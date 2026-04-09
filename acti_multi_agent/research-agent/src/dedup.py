@@ -1,8 +1,16 @@
 """Paper deduplication: DOI match + title Jaccard similarity."""
 
+from __future__ import annotations
+
 import hashlib
 import logging
 from collections import defaultdict
+
+from .paper_identity import (
+    extract_source_ids,
+    finalize_paper_identity,
+    merge_source_ids,
+)
 
 log = logging.getLogger("research_agent")
 
@@ -23,13 +31,7 @@ def title_similarity(t1: str, t2: str) -> float:
 
 def _get_doi(paper: dict) -> str | None:
     """Extract DOI from paper record."""
-    doi = paper.get("doi")
-    if doi:
-        return doi.lower().strip()
-    ext = paper.get("externalIds", {})
-    if ext and ext.get("DOI"):
-        return ext["DOI"].lower().strip()
-    return None
+    return extract_source_ids(paper).get("doi")
 
 
 def _make_id(paper: dict) -> str:
@@ -50,7 +52,33 @@ def merge_records(existing: dict, duplicate: dict) -> dict:
     src_d = duplicate.get("source", "")
     if src_d and src_d not in src_e:
         existing["source"] = f"{src_e}+{src_d}" if src_e else src_d
+    existing["source_ids"] = merge_source_ids(
+        extract_source_ids(existing),
+        extract_source_ids(duplicate),
+    )
+    alias_ids = set(existing.get("alias_ids") or [])
+    alias_ids.update(duplicate.get("alias_ids") or [])
+    if duplicate.get("paperId"):
+        alias_ids.add(duplicate["paperId"])
+    existing["alias_ids"] = sorted(a for a in alias_ids if a)
+
+    for key in ("query_category", "matched_query", "retrieval_layer"):
+        if not existing.get(key) and duplicate.get(key):
+            existing[key] = duplicate[key]
     return existing
+
+
+def _prepare_identity(paper: dict) -> dict:
+    prepared = dict(paper)
+    prepared["paperId"] = _make_id(prepared)
+    prepared["source_ids"] = merge_source_ids(
+        extract_source_ids(prepared),
+        prepared.get("source_ids") or {},
+    )
+    alias_ids = set(prepared.get("alias_ids") or [])
+    alias_ids.add(prepared["paperId"])
+    prepared["alias_ids"] = sorted(a for a in alias_ids if a)
+    return prepared
 
 
 def deduplicate(papers: list[dict], jaccard_threshold: float = 0.8) -> list[dict]:
@@ -59,8 +87,8 @@ def deduplicate(papers: list[dict], jaccard_threshold: float = 0.8) -> list[dict
     doi_map: dict[str, dict] = {}
     no_doi: list[dict] = []
 
-    for p in papers:
-        p["paperId"] = _make_id(p)
+    for raw in papers:
+        p = _prepare_identity(raw)
         doi = _get_doi(p)
         if doi:
             if doi in doi_map:
@@ -82,6 +110,8 @@ def deduplicate(papers: list[dict], jaccard_threshold: float = 0.8) -> list[dict
                 break
         if not matched:
             unique.append(p)
+
+    unique = [finalize_paper_identity(p) for p in unique]
 
     before = len(papers)
     after = len(unique)

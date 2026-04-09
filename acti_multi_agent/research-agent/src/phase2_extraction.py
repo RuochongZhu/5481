@@ -1,9 +1,11 @@
 """Phase 2: Structured Extraction — Claude agent classification of papers."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
-from .api_client import agent_run_json, DEFAULT_MODEL
+from .api_client import agent_run_json, BRAIN_PHASE2_CLASSIFIER
 from .prompts import LITERATURE_SCANNER
 from .state_manager import complete_step, is_step_complete, update_step, save_state
 from .utils import atomic_write_json, load_json
@@ -89,6 +91,7 @@ def _run_classification(state: dict, state_path: str, client, corpus: list[dict]
                 client,
                 role=LITERATURE_SCANNER,
                 task=f"Classify the following {len(batch)} papers:\n\n{batch_input}",
+                model=BRAIN_PHASE2_CLASSIFIER,
                 max_tokens=4096,
             )
             if isinstance(results, list):

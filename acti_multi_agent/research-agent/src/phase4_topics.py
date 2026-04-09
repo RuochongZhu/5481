@@ -1,10 +1,12 @@
 """Phase 4: Evidence Inventory & Final Report Generation."""
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 
-from .api_client import agent_run_json, MODEL_DEEP, S2Client
+from .api_client import agent_run_json, BRAIN_PHASE4_EVIDENCE, S2Client
 from .prompts import TOPIC_SCORER
 from .state_manager import complete_step, is_step_complete
 from .utils import atomic_write_json, load_json
@@ -93,7 +95,7 @@ def _build_evidence_inventory(client, evidence: dict, classified: list[dict]) ->
     )
 
     try:
-        result = agent_run_json(client, role=TOPIC_SCORER, task=task, model=MODEL_DEEP, max_tokens=4096)
+        result = agent_run_json(client, role=TOPIC_SCORER, task=task, model=BRAIN_PHASE4_EVIDENCE, max_tokens=4096)
         log.info(f"Evidence inventory generated")
         return result
     except Exception as e:

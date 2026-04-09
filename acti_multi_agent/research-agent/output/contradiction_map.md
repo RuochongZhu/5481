@@ -6,355 +6,464 @@
 
 ## C1: 🔴 CRITICAL — direct_contradiction
 
-**Question**: Can synthetic/generated data be used to train models without quality degradation?
+**Question**: Can synthetic data with proper curation avoid model collapse?
 
-**Paper A**: AI models collapse when trained on recursively generated data
-  Claim: Indiscriminate use of model-generated content causes irreversible model collapse where distribution tails disappear
-  Evidence: AI models collapse when trained on recursively generated data - demonstrates irreversible defects
+**Paper A**: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe
+  Claim: Self-consuming generative models with human-curated synthetic data provably optimize human preferences and avoid collapse
+  Evidence: Human curation can prevent model collapse and actually optimize for human preferences
 
-**Paper B**: Is Model Collapse Inevitable? Breaking the Curse of Recursion by Accumulating Re
-  Claim: Accumulating real and synthetic data over time can break the curse of model collapse
-  Evidence: Title explicitly states breaking the curse of recursion by accumulating real AND synthetic data
+**Paper B**: How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model 
+  Claim: Model collapse cannot be avoided when training solely on synthetic data but mixing real and synthetic data has limits
+  Evidence: Statistical analysis shows collapse is inevitable with synthetic-only training
 
-**Relevance to thesis**: Directly challenges our claim that synthetic data causes information degradation - one paper supports our thesis while another claims the problem can be solved
+**Relevance to thesis**: Directly impacts our claim about human data being irreplaceable - if curation can prevent collapse, our argument needs refinement
 **Beat affected**: 4
-**Suggested handling**: Acknowledge in §2 that the model collapse debate is ongoing, with recent work (2024) suggesting accumulation strategies might mitigate collapse, but emphasize our focus on social/behavioral data where such strategies may not apply
+**Suggested handling**: Acknowledge that while some theoretical work suggests curation can prevent collapse, empirical evidence shows limitations. Emphasize that authentic human behavioral data remains critical for social reasoning tasks
 
 ---
 
-## C3: 🔴 CRITICAL — methodological_tension
+## C2: 🔴 CRITICAL — scope_disagreement
 
-**Question**: How severe is the model collapse phenomenon?
+**Question**: Does synthetic data mixed with real data accelerate or harm training?
 
-**Paper A**: The Curse of Recursion: Training on Generated Data Makes Models Forget
-  Claim: Training on model-generated content causes irreversible defects where distribution tails disappear
-  Evidence: The Curse of Recursion - empirically demonstrates irreversible degradation
+**Paper A**: Demystifying Synthetic Data in LLM Pre-training: A Systematic Study of Scaling L
+  Claim: Mixing 1/3 rephrased synthetic data with 2/3 natural web texts speeds up pre-training 5-10x
+  Evidence: Large-scale empirical study shows significant speedup with appropriate mixing
 
-**Paper B**: On the Stability of Iterative Retraining of Generative Models on their own Data
-  Claim: Training generative models on mixed real and synthetic datasets has measurable stability impacts
-  Evidence: Focuses on stability rather than collapse, suggesting the problem is manageable
+**Paper B**: Large Language Models Suffer From Their Own Output: An Analysis of the Self-Cons
+  Claim: Self-consuming training loops in LLMs reduce quality and diversity, leading to model collapse similar to image generation
+  Evidence: LLM-generated content in training loops reduces both quality and diversity
 
-**Relevance to thesis**: Different characterizations of the same phenomenon - one says irreversible, another says manageable
-**Beat affected**: 4
-**Suggested handling**: Present both perspectives but emphasize that even 'manageable' degradation is unacceptable for authentic human behavioral data collection
+**Relevance to thesis**: Challenges our position that synthetic data degrades models - shows it can actually accelerate training under certain conditions
+**Beat affected**: 3
+**Suggested handling**: Clarify that synthetic data benefits are task-specific: rephrasing may help with language tasks but fails for authentic social behavioral modeling that CampusGo targets
 
 ---
 
 ## C5: 🔴 CRITICAL — direct_contradiction
 
-**Question**: Does the scale of synthetic data generation compensate for quality issues?
+**Question**: Can AI models generate new knowledge autonomously through self-produced data?
 
-**Paper A**: A Tale of Tails: Model Collapse as a Change of Scaling Laws
-  Claim: Model collapse manifests as changes in scaling laws when synthetic data enters training corpora
-  Evidence: Shows that scaling laws fundamentally change with synthetic data
+**Paper A**: Generalising from Self-Produced Data: Model Training Beyond Human Constraints
+  Claim: AI models can autonomously generate and validate knowledge through environment interaction using unbounded numeric rewards
+  Evidence: Proposes framework for models to generate new knowledge beyond human constraints
 
-**Paper B**: Data-centric Artificial Intelligence: A Survey
-  Claim: The role of data in AI has been significantly magnified, giving rise to the emerging concept of data-centric AI
-  Evidence: Survey emphasizing quantity and curation of data without distinguishing synthetic vs. real
+**Paper B**: Self-Consuming Generative Models go MAD
+  Claim: Without enough fresh real data, autophagous loops cause generative models' quality or diversity to progressively decrease
+  Evidence: Empirical evidence shows progressive degradation without fresh human data
 
-**Relevance to thesis**: One shows synthetic data breaks scaling assumptions, other treats all data equally in data-centric AI
-**Beat affected**: 2
-**Suggested handling**: Use the scaling law changes as strong evidence that synthetic and real data are fundamentally different
-
----
-
-## C1: 🔴 CRITICAL — methodological_tension
-
-**Question**: Can AI-generated content be reliably detected at scale?
-
-**Paper A**: Cognitive Constraint Simulation and the Geometry of Human Authorship: A First-Pr
-  Claim: LLM-generated text can be detected through negative curvature regions of log probability function
-  Evidence: We identify a property of the structure of an LLM's probability function that is useful for such detection... text sampled from an LLM tends to occupy negative curvature regions
-
-**Paper B**: Machine-Generated Text: A Comprehensive Survey of Threat Models and Detection Me
-  Claim: Machine-generated text is increasingly difficult to distinguish with significant technical challenges
-  Evidence: Machine-generated text is increasingly difficult to distinguish from text authored by humans... Detection of machine-generated text presents significant technical challenges with numerous open problems
-
-**Relevance to thesis**: Critical for determining if web pollution from AI content is actually detectable at the scale our thesis assumes
-**Beat affected**: 3
-**Suggested handling**: Acknowledge in §3 that while theoretical detection methods exist, practical deployment at web scale remains an open challenge, supporting our need for authentic human data sources
+**Relevance to thesis**: Directly challenges our claim that human data is essential - suggests AI can bootstrap its own knowledge
+**Beat affected**: 4
+**Suggested handling**: Distinguish between formal/mathematical domains where self-generation may work vs social/behavioral domains where human authenticity is irreplaceable
 
 ---
 
 ## C1: 🔴 CRITICAL — direct_contradiction
 
-**Question**: Can model collapse be avoided when training on synthetic data?
+**Question**: Can AI-generated text be reliably detected?
 
-**Paper A**: AI models collapse when trained on recursively generated data
-  Claim: Indiscriminate use of model-generated content causes irreversible model collapse
-  Evidence: Model collapse is irreversible where distribution tails disappear
+**Paper A**: Paraphrasing evades detectors of AI-generated text, but retrieval is an effectiv
+  Claim: DIPPER paraphrasing successfully evades multiple AI-generated text detectors including watermarking and GPTZero
+  Evidence: Paraphrasing evades detectors of AI-generated text
 
-**Paper B**: Collapse or Thrive? Perils and Promises of Synthetic Data in a Self-Generating W
-  Claim: Model collapse can be avoided by managing how available data are used in pretraining workflows
-  Evidence: Experiments show collapse can be contained through proper data management
+**Paper B**: RADAR: Robust AI-Text Detection via Adversarial Learning
+  Claim: RADAR framework provides robust AI-text detection through joint adversarial training
+  Evidence: RADAR: Robust AI-Text Detection via Adversarial Learning
 
-**Relevance to thesis**: Critical for Beat 3 claim about information degradation - some papers suggest it's manageable
-**Beat affected**: 3
-**Suggested handling**: Acknowledge in §4 that while some argue collapse is avoidable through careful data curation, this requires human verification and authentic data mixing - supporting our thesis
+**Relevance to thesis**: Directly impacts Beat 5's claim about pollution detection - if AI text can evade detection, web pollution may be unmeasurable
+**Beat affected**: 5
+**Suggested handling**: Acknowledge in §6 that detection effectiveness varies by method and attack sophistication, citing both papers to show the arms race nature
 
 ---
 
 ## C2: 🔴 CRITICAL — methodological_tension
 
-**Question**: What constitutes 'model collapse' and how severe is it?
+**Question**: What accuracy levels can AI-text detectors achieve?
 
-**Paper A**: Position: Model Collapse Does Not Mean What You Think
-  Claim: Model collapse research encompasses eight distinct definitions causing fundamental misunderstanding
-  Evidence: Industry leaders and journals have prophesied catastrophic consequences based on misunderstood definitions
+**Paper A**: Simple techniques to bypass GenAI text detectors: implications for inclusive edu
+  Claim: Simple content manipulation techniques reduce GenAI text detector accuracy by 17.4%
+  Evidence: Simple techniques to bypass GenAI text detectors
 
-**Paper B**: The Curse of Recursion: Training on Generated Data Makes Models Forget
-  Claim: Training on model-generated content causes irreversible defects
-  Evidence: Clear demonstration of distribution tail disappearance
+**Paper B**: Distinguishing Reality from AI: Approaches for Detecting Synthetic Content
+  Claim: Stylometric analysis reaches 80% independent accuracy
+  Evidence: Multiple detection approaches achieve varying accuracy rates, with stylometric analysis reaching 80%
 
-**Relevance to thesis**: Fundamental to our degradation argument - if 'collapse' has 8 different meanings, which one supports our thesis?
-**Beat affected**: 3
-**Suggested handling**: Must clarify in §2 which definition of model collapse we adopt and why it matters for social behavioral data specifically
+**Relevance to thesis**: Questions whether we can reliably measure web pollution if detection accuracy varies so widely
+**Beat affected**: 5
+**Suggested handling**: Frame as detection being method-dependent: some approaches work well on naive AI text but fail against adversarial examples
+
+---
+
+## C5: 🔴 CRITICAL — implicit_tension
+
+**Question**: Is the homogenization effect (brain rot) detectable?
+
+**Paper A**: ChatGPT is incredible (at being average)
+  Claim: LLM output homogenization produces aggregated clichés and trivialities
+  Evidence: ChatGPT is incredible (at being average)...output homogenization
+
+**Paper B**: LLMs Can Get "Brain Rot"!
+  Claim: Continual exposure to junk web text causes lasting cognitive decline in large language models
+  Evidence: LLMs Can Get 'Brain Rot'!...continual exposure to junk web text induces lasting cognitive decline
+
+**Relevance to thesis**: Both support our thesis but suggest pollution may be more about quality degradation than quantity - harder to detect than binary AI/human
+**Beat affected**: 5
+**Suggested handling**: Use to strengthen argument that pollution isn't just about AI content but about information quality decay
 
 ---
 
 ## C1: 🔴 CRITICAL — direct_contradiction
 
-**Question**: Can synthetic data prevent model collapse when used recursively?
+**Question**: Can high-quality training data be effectively filtered from web-crawled datasets?
 
-**Paper A**: Is Model Collapse Inevitable? Breaking the Curse of Recursion by Accumulating Re
-  Claim: Accumulating real and synthetic data over time can break the curse of model collapse
-  Evidence: Recent investigations into model-data feedback loops proposed that such loops would lead to model collapse... accumulating real and synthetic data can break this curse
+**Paper A**: The Data-Quality Illusion: Rethinking Classifier-Based Quality Filtering for LLM
+  Claim: Classifier-based Quality Filtering improves downstream performance but paradoxically doesn't enhance language modeling on high-quality datasets
+  Evidence: CQF trains a binary classifier to distinguish between pretraining data and a small, high-quality set... but paradoxically doesn't enhance language modeling
 
-**Paper B**: Open Problems and Fundamental Limitations of Reinforcement Learning from Human F
-  Claim: RLHF has fundamental limitations that require a multi-faceted approach to safer AI development
-  Evidence: RLHF has emerged as the central method... there has been relatively little public work systematizing its flaws... fundamental limitations of RLHF
+**Paper B**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
+  Claim: FineWeb produces better-performing LLMs than other open pretraining datasets through careful curation strategies
+  Evidence: FineWeb, a 15-trillion token dataset derived from 96 Common Crawl snapshots that produces better-performing LLMs
 
-**Relevance to thesis**: Critical for Beat 4's claim about irreplaceable human data - if synthetic data accumulation prevents collapse, it challenges our core argument
-**Beat affected**: 4
-**Suggested handling**: Acknowledge that while accumulation may delay collapse, it doesn't eliminate the need for authentic human behavioral data, especially for social reasoning tasks
+**Relevance to thesis**: Challenges our claim that web data quality is declining if curation can still produce high-quality datasets
+**Beat affected**: 3
+**Suggested handling**: Acknowledge that while curation can improve relative quality, the absolute quality ceiling may still be declining over time
 
 ---
 
-## C3: 🔴 CRITICAL — methodological_tension
+## C4: 🔴 CRITICAL — implicit_tension
 
-**Question**: Can self-generated data produce high-quality training sets?
+**Question**: Can we reliably measure quality decline when measurement methods themselves are evolving?
 
-**Paper A**: Baize: An Open-Source Chat Model with Parameter-Efficient Tuning on Self-Chat Da
-  Claim: Parameter-efficient tuning on self-generated chat data creates models with good multi-turn dialogue performance
-  Evidence: We propose a pipeline that can automatically generate a high-quality multi-turn chat corpus by leveraging ChatGPT to engage in a conversation with itself
+**Paper A**: A Comparison of Commercial Sentiment Analysis Services
+  Claim: Commercial sentiment analysis services show varying performance across different metrics
+  Evidence: varying performance across accuracy, precision, recall, and F1 measures... constant evolution in the field
 
-**Paper B**: Combating misinformation in the age of LLMs: Opportunities and challenges
-  Claim: LLMs can both combat and generate misinformation at scale
-  Evidence: LLMs can be a double-edged sword... LLMs bring promising opportunities for combating misinformation... [but also generate it]
+**Paper B**: Detecting AI-Generated Code Assignments Using Perplexity of Large Language Model
+  Claim: Different computational language models reveal distinct aspects of semantic loosening
+  Evidence: Different computational language models reveal distinct aspects... five language models with different computational architectures
 
-**Relevance to thesis**: Self-generated data may appear high-quality but could propagate misinformation - supports Beat 3's information cascade concerns
+**Relevance to thesis**: If our measurement tools give different results, how can we definitively claim quality is declining?
+**Beat affected**: 2
+**Suggested handling**: Acknowledge measurement challenges but argue for convergent evidence across multiple metrics showing degradation
+
+---
+
+## C1: 🔴 CRITICAL — direct_contradiction
+
+**Question**: Can AI-generated feedback replace human feedback for model alignment?
+
+**Paper A**: RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Feedback with AI Feedb
+  Claim: AI feedback can achieve comparable performance to human feedback for reinforcement learning alignment
+  Evidence: RLAIF... offers a promising alternative that trains the reward model on preferences generated by an off-the-shelf LLM. Across the tasks of summarization, [shows comparable performance]
+
+**Paper B**: Human-in-the-Loop Reinforcement Learning: A Survey and Position on Requirements,
+  Claim: Human-in-the-Loop reinforcement learning is fundamentally necessary even when agents perform autonomously
+  Evidence: we consider RL as fundamentally a Human-in-the-Loop (HITL) paradigm, even when an agent eventually performs its task autonomously
+
+**Relevance to thesis**: Directly impacts our claim about irreplaceable human behavioral data - if AI feedback equals human feedback, our thesis is weakened
+**Beat affected**: 4
+**Suggested handling**: Acknowledge that RLAIF works for certain tasks like summarization but emphasize that social behavioral data requires genuine human input that AI cannot simulate
+
+---
+
+## C2: 🔴 CRITICAL — methodological_tension
+
+**Question**: Does self-consuming synthetic data lead to model collapse or optimization?
+
+**Paper A**: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe
+  Claim: Self-consuming generative models with human-curated synthetic data provably optimize human preferences and avoid collapse
+  Evidence: Self-consuming generative models with human-curated synthetic data provably optimize human preferences and avoid collapse
+
+**Paper B**: Self-Consuming Generative Models with Adversarially Curated Data
+  Claim: Self-consuming loops with adversarially curated data drive models toward manipulated preferences
+  Evidence: Self-consuming retraining loops with adversarially curated data can drive models toward distributions that optimize manipulated preferences
+
+**Relevance to thesis**: Critical for Beat 3 - whether curation prevents collapse depends on who does the curating and their incentives
 **Beat affected**: 3
-**Suggested handling**: Highlight that self-chat data lacks grounding in real human interactions and may amplify biases, supporting our authentic data argument
+**Suggested handling**: Use this tension to strengthen our argument: curation quality depends on authentic human involvement vs adversarial manipulation, supporting our campus-verified data approach
 
 ---
 
 ## C5: 🔴 CRITICAL — direct_contradiction
 
-**Question**: Can synthetic social data adequately simulate human social interactions?
+**Question**: Can LLMs generate better rewards than human experts?
 
-**Paper A**: Social Simulacra: Creating Populated Prototypes for Social Computing Systems
-  Claim: Social simulacra can generate realistic social interactions for prototyping at scale
-  Evidence: Social simulacra can generate realistic social interactions for prototyping social computing systems at scale
+**Paper A**: Eureka: Human-Level Reward Design via Coding Large Language Models
+  Claim: LLMs can generate reward functions that outperform expert human-engineered rewards for complex manipulation tasks
+  Evidence: Eureka exploits the remarkable zero-shot generation... [generates] reward functions that outperform expert human-engineered rewards
 
-**Paper B**: A Pre-Training Based Personalized Dialogue Generation Model with Persona-Sparse 
-  Claim: Persona-sparse data is a fundamental problem in dialogue systems
-  Evidence: This problem is still far from well explored due to... the persona sparsity issue observed in most dialogue corpora
+**Paper B**: Let's Verify Step by Step
+  Claim: Process supervision significantly outperforms outcome supervision for training reliable reasoning models
+  Evidence: Process supervision significantly outperforms outcome supervision for training reliable reasoning models
 
-**Relevance to thesis**: Directly relevant - if simulacra work, why need CampusGo? But persona sparsity shows synthetic can't capture human diversity
-**Beat affected**: 7
-**Suggested handling**: Acknowledge simulacra for prototyping but emphasize they lack authentic behavioral grounding needed for real social understanding
+**Relevance to thesis**: If LLMs can design better rewards than humans, it challenges our human data necessity claim
+**Beat affected**: 4
+**Suggested handling**: Clarify that Eureka's success is in robotics/manipulation tasks, while human behavioral data remains crucial for social reasoning and authentic interaction patterns
 
 ---
 
-## C2: 🟡 MODERATE — scope_disagreement
+## C1: 🔴 CRITICAL — direct_contradiction
 
-**Question**: Is synthetic data generation beneficial for AI development?
+**Question**: Do LLMs possess genuine Theory of Mind capabilities?
 
-**Paper A**: Self-Consuming Generative Models go MAD
-  Claim: Without enough fresh real data, autophagous generative models progressively decrease in quality or diversity
-  Evidence: Self-Consuming Generative Models go MAD - demonstrates progressive quality degradation
+**Paper A**: Neural Theory-of-Mind? On the Limits of Social Intelligence in Large LMs
+  Claim: GPT-3 lacks social intelligence and Theory of Mind capabilities for understanding intents and reactions in social interactions
+  Evidence: Direct empirical testing shows GPT-3 fails at Theory of Mind tasks
 
-**Paper B**: Unnatural Instructions: Tuning Language Models with (Almost) No Human Labor
-  Claim: Language models can generate 240,000 diverse instruction examples with virtually no human labor
-  Evidence: Unnatural Instructions successfully uses synthetic data for instruction tuning
+**Paper B**: Are Vision Language Models Cross-Cultural Theory of Mind Reasoners?
+  Claim: Frontier VLMs achieve >93% accuracy on cultural ToM tasks
+  Evidence: Empirical evaluation on CulturalToM-VQA benchmark shows frontier models achieving over 93% accuracy
 
-**Relevance to thesis**: Shows synthetic data works for some tasks (instruction generation) but fails for others - need to clarify our scope
-**Beat affected**: 1
-**Suggested handling**: Clarify that our thesis specifically concerns social behavioral data and human interaction patterns, not all types of synthetic data generation
+**Relevance to thesis**: Critical for Beat 3 claim that physical verification and authentic social data is needed - if models already achieve 93% on ToM, why do we need CampusGo?
+**Beat affected**: 3
+**Suggested handling**: Clarify that high performance on controlled benchmarks doesn't translate to real-world social reasoning, note false belief tasks show much lower performance (19-83%)
+
+---
+
+## C2: 🔴 CRITICAL — scope_disagreement
+
+**Question**: Can synthetic benchmarks adequately evaluate social reasoning?
+
+**Paper A**: UNICORN on RAINBOW: A Universal Commonsense Reasoning Model on a New Multitask B
+  Claim: Rainbow multitask benchmark effectively evaluates commonsense model generalization across multiple tasks and datasets
+  Evidence: Proposes benchmark as effective evaluation method for commonsense reasoning
+
+**Paper B**: Clever Hans or Neural Theory of Mind? Stress Testing Social Reasoning in Large L
+  Claim: LLMs may exhibit Clever Hans effects in social reasoning rather than genuine Theory of Mind capabilities
+  Evidence: Shows that apparent social reasoning performance may be spurious pattern matching rather than genuine understanding
+
+**Relevance to thesis**: Directly impacts our argument that benchmarks are insufficient for measuring real social intelligence
+**Beat affected**: 2
+**Suggested handling**: Use this tension to support our thesis - benchmarks can show high scores while models still fail at genuine social reasoning
+
+---
+
+## C5: 🔴 CRITICAL — direct_contradiction
+
+**Question**: Do LLMs' self-reported capabilities match their actual behavioral performance?
+
+**Paper A**: The Personality Illusion: Revealing Dissociation Between Self-Reports & Behavior
+  Claim: LLMs show dissociation between self-reported personality traits and actual behavioral performance in tasks
+  Evidence: Empirical testing reveals disconnect between what LLMs claim about themselves and how they actually behave
+
+**Paper B**: Are Vision Language Models Cross-Cultural Theory of Mind Reasoners?
+  Claim: Frontier VLMs achieve >93% accuracy on cultural ToM tasks
+  Evidence: High benchmark scores suggest strong social reasoning capabilities
+
+**Relevance to thesis**: Critical support for our thesis - benchmarks may be measuring self-report accuracy rather than genuine social understanding
+**Beat affected**: 2
+**Suggested handling**: Highlight this as evidence that benchmark performance doesn't equal real social intelligence
+
+---
+
+## C3: 🟡 MODERATE — methodological_tension
+
+**Question**: How should model collapse be measured and characterized?
+
+**Paper A**: Learning by Surprise: Surplexity for Mitigating Model Collapse in Generative AI
+  Claim: Surplexity measures can characterize model collapse directly from next-token probability distributions without knowing data origin
+  Evidence: Proposes surplexity as a direct measure from probability distributions
+
+**Paper B**: RedPajama: an Open Dataset for Training Large Language Models
+  Claim: Different human dataset properties lead to distribution shifts of different magnitudes in recursive training
+  Evidence: Shows collapse depends heavily on properties of original human data
+
+**Relevance to thesis**: Different measurement approaches may show different severity of collapse, affecting our claims about degradation
+**Beat affected**: 3
+**Suggested handling**: Note that collapse measurement remains contested, but all approaches agree that authentic human data properties fundamentally shape model behavior
 
 ---
 
 ## C4: 🟡 MODERATE — implicit_tension
 
-**Question**: Can AI-generated social data replace human social data?
+**Question**: Is data curation or data authenticity more important for model quality?
 
-**Paper A**: Social Simulacra: Creating Populated Prototypes for Social Computing Systems
-  Claim: Social simulacra can generate realistic social interactions for prototyping social computing systems at scale
-  Evidence: Successfully creates populated prototypes using AI-generated social behaviors
+**Paper A**: Demystifying CLIP Data
+  Claim: CLIP's success stems primarily from its data curation approach rather than model architecture
+  Evidence: Demonstrates curation strategies as primary driver of success
 
-**Paper B**: Towards Understanding the Interplay of Generative Artificial Intelligence and th
-  Claim: Generative AI tools create feedback loops by contributing AI-generated content to future training data repositories
-  Evidence: Warns about the societal impacts of AI-generated content polluting training data
+**Paper B**: AI models collapse when trained on recursively generated data
+  Claim: Indiscriminate use of model-generated content in training causes irreversible model collapse with tail distribution disappearance
+  Evidence: Shows that regardless of curation, synthetic data loses tail distributions
 
-**Relevance to thesis**: Social Simulacra suggests AI can simulate human social behavior, undermining our claim that authentic human data is irreplaceable
-**Beat affected**: 5
-**Suggested handling**: Distinguish between prototyping/simulation (where approximations suffice) and training data collection (where authenticity matters)
-
----
-
-## C2: 🟡 MODERATE — scope_disagreement
-
-**Question**: Are current AI systems capable of generating undetectable fake content?
-
-**Paper A**: GenAI against humanity: nefarious applications of generative artificial intellig
-  Claim: GenAI creates indistinguishable deepfakes that blur reality
-  Evidence: Picture living in a world where deepfakes are indistinguishable from reality, where synthetic
-
-**Paper B**: TweepFake: About detecting deepfake tweets
-  Claim: Deepfake tweets can be detected with appropriate systems
-  Evidence: A deepfake tweet detection system is needed to prevent adversaries from exploiting GPT-2-like models
-
-**Relevance to thesis**: Affects whether web pollution is a detectable problem or an invisible crisis
-**Beat affected**: 2
-**Suggested handling**: Clarify that detection capability varies by domain - text may be detectable in constrained contexts (tweets) but not in general web content
-
----
-
-## C3: 🟡 MODERATE — implicit_tension
-
-**Question**: Do AI systems rely on spurious correlations rather than genuine understanding?
-
-**Paper A**: AI for radiographic COVID-19 detection selects shortcuts over signal
-  Claim: COVID-19 detection AI relies on confounding factors not medical pathology
-  Evidence: deep learning systems to detect COVID-19 from chest radiographs rely on confounding factors rather than medical pathology
-
-**Paper B**: Bad Actor, Good Advisor: Exploring the Role of Large Language Models in Fake New
-  Claim: GPT-3.5 can effectively expose fake news with multi-perspective rationales
-  Evidence: GPT 3.5 can expose fake news with multi-perspective rationales but underperforms fine-tuned BERT
-
-**Relevance to thesis**: Suggests AI systems trained on web data may learn spurious patterns rather than genuine human behavior
+**Relevance to thesis**: Tension between emphasizing curation quality vs data authenticity - we claim authenticity matters most for social data
 **Beat affected**: 4
-**Suggested handling**: Use as evidence that web-scraped training data leads to brittle models that fail on real-world tasks, supporting need for authentic behavioral data
+**Suggested handling**: Acknowledge both matter but argue that for social behavioral data, no amount of curation can replace authentic human interactions captured by CampusGo
 
 ---
 
 ## C3: 🟡 MODERATE — direct_contradiction
 
-**Question**: Can models improve when trained on contaminated/synthetic data?
+**Question**: Can watermarking provide reliable AI-text detection?
 
-**Paper A**: Heat Death of Generative Models in Closed-Loop Learning
-  Claim: Closed-loop training leads to knowledge collapse and distribution degeneration
-  Evidence: Empirical demonstration of degradation in closed-loop scenarios
+**Paper A**: Paraphrasing evades detectors of AI-generated text, but retrieval is an effectiv
+  Claim: Paraphrasing successfully evades watermarking
+  Evidence: DIPPER paraphrasing successfully evades multiple AI-generated text detectors including watermarking
 
-**Paper B**: From Collapse to Improvement: Statistical Perspectives on the Evolutionary Dynam
-  Claim: Models can improve when trained on contaminated data if sufficient fresh information is maintained
-  Evidence: Statistical analysis shows potential for improvement with fresh data mixing
+**Paper B**: Adaptive Text Watermark for Large Language Models
+  Claim: Adaptive watermarking maintains strong security and robustness
+  Evidence: Adaptive watermarking strategy improves text quality by selectively watermarking high-entropy token distributions
 
-**Relevance to thesis**: Suggests our authentic human data could be the 'fresh information' needed to prevent collapse
-**Beat affected**: 4
-**Suggested handling**: Use this tension to strengthen our argument - improvement requires authentic human data streams, exactly what CampusGo provides
+**Relevance to thesis**: Affects our ability to track AI-generated content proliferation on the web
+**Beat affected**: 5
+**Suggested handling**: Note that watermarking effectiveness depends on whether attackers actively try to remove it
 
 ---
 
 ## C4: 🟡 MODERATE — scope_disagreement
 
-**Question**: Is model collapse inevitable in all domains?
+**Question**: Is authorship verification effective against LLM impersonation?
 
-**Paper A**: How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model 
-  Claim: Model collapse cannot be avoided when training solely on synthetic data
-  Evidence: Theoretical analysis shows unavoidable degradation with pure synthetic data
+**Paper A**: Authorship Impersonation via LLM Prompting does not Evade Authorship Verificatio
+  Claim: LLM-generated authorial impersonations cannot evade existing forensic authorship verification systems
+  Evidence: Authorship verification (AV)...LLM-generated authorial impersonations cannot evade existing forensic authorship verification
 
-**Paper B**: When Models Don't Collapse: On the Consistency of Iterative MLE
-  Claim: Model collapse in MLE can be avoided under standard assumptions
-  Evidence: Mathematical proof under specific conditions
+**Paper B**: Red Teaming Language Model Detectors with Language Models
+  Claim: LLM detectors can be successfully attacked using word replacement and writing style modification
+  Evidence: Red Teaming Language Model Detectors with Language Models
 
-**Relevance to thesis**: The disagreement on inevitability supports our focus on domains where collapse is most severe
-**Beat affected**: 3
-**Suggested handling**: Clarify that for social behavioral tasks specifically, collapse appears inevitable without authentic data
+**Relevance to thesis**: Different scopes - authorship verification vs general detection - but both relate to pollution detection
+**Beat affected**: 5
+**Suggested handling**: Clarify that specialized forensic methods may work better than general detectors
 
 ---
 
-## C2: 🟡 MODERATE — scope_disagreement
+## C2: 🟡 MODERATE — methodological_tension
 
-**Question**: Is synthetic data generation effective for specialized domains?
+**Question**: How should we measure information quality in text data?
 
-**Paper A**: Brain Tumor Classification Using a Combination of Variational Autoencoders and G
-  Claim: Combining variational autoencoders and GANs solves the limitation of insufficient medical imaging data
-  Evidence: Recent advances in deep learning for medical imaging have shown remarkable results... combining VAE and GANs solves insufficient data limitation
+**Paper A**: Entropy and type-token ratio in gigaword corpora
+  Claim: Entropy and type-token ratio show empirical functional relations across massive linguistic datasets
+  Evidence: lexical diversity is characterized in terms of the type-token ratio and the word entropy... investigate both diversity metrics in six massive linguistic datasets
 
-**Paper B**: Unnatural Instructions: Tuning Language Models with (Almost) No Human Labor
-  Claim: Language models can generate diverse instruction examples but with noise
-  Evidence: We collect 240,000 diverse instruction examples with virtually no human labor... dataset contains a fair amount of noise
+**Paper B**: Entropy-Aware On-Policy Distillation of Language Models
+  Claim: Entropy-based measures must balance mode-seeking precision with diversity preservation
+  Evidence: mode-seeking property of reverse KL reduces generation diversity... balances mode-seeking precision with diversity preservation in high-entropy scenarios
 
-**Relevance to thesis**: Shows synthetic data works for structured domains (medical imaging) but fails for nuanced human language tasks
-**Beat affected**: 4
-**Suggested handling**: Use this contrast to support Beat 4 - synthetic data succeeds in constrained domains but fails for open-ended human behavioral tasks
+**Relevance to thesis**: Different entropy measures could lead to different conclusions about whether web quality is declining
+**Beat affected**: 2
+**Suggested handling**: Specify which entropy measures we use and why they're appropriate for detecting quality degradation
+
+---
+
+## C3: 🟡 MODERATE — scope_disagreement
+
+**Question**: Is document comprehension quality declining over time?
+
+**Paper A**: Evolution of Composition, Readability, and Structure of Privacy Policies over Tw
+  Claim: Privacy policies remain persistently challenging to comprehend despite two decades of privacy design and regulatory advancements
+  Evidence: users have often needed help reading and understanding such documents... fundamental problems with privacy policies persist despite advancements
+
+**Paper B**: Triangulating Temporal Dynamics in Multilingual Swiss Online News
+  Claim: Swiss multilingual digital media shows distinct temporal trends across linguistic regions in news coverage patterns
+  Evidence: temporal trends in Swiss digital media... distinct temporal trends across French, German, and Italian linguistic regions
+
+**Relevance to thesis**: One shows persistent quality issues, the other shows changing patterns without quality judgment
+**Beat affected**: 3
+**Suggested handling**: Note that quality degradation may be domain-specific - some text types maintain standards while others decline
+
+---
+
+## C5: 🟡 MODERATE — direct_contradiction
+
+**Question**: Does data pruning/filtering solve quality problems in web-scraped data?
+
+**Paper A**: When Less is More: Investigating Data Pruning for Pretraining LLMs at Scale
+  Claim: Perplexity-based data pruning can maintain model performance while significantly reducing pretraining dataset size
+  Evidence: efforts to prune these datasets down to a higher quality subset... maintain model performance while significantly reducing pretraining dataset size
+
+**Paper B**: LLMs Can Get "Brain Rot"!
+  Claim: Continual exposure to junk web text causes lasting cognitive decline in large language models
+  Evidence: continual exposure to junk web text induces lasting cognitive decline... controlled experiments on real Twitter/X corpora
+
+**Relevance to thesis**: One suggests quality issues are solvable through filtering, the other suggests fundamental degradation
+**Beat affected**: 3
+**Suggested handling**: Clarify that filtering can help but cannot reverse underlying quality decline in source material
+
+---
+
+## C3: 🟡 MODERATE — scope_disagreement
+
+**Question**: Can synthetic data improve model training without degradation?
+
+**Paper A**: Demystifying Synthetic Data in LLM Pre-training: A Systematic Study of Scaling L
+  Claim: Mixing 1/3 rephrased synthetic data with 2/3 natural web texts speeds up pre-training 5-10x
+  Evidence: Mixing 1/3 rephrased synthetic data with 2/3 natural web texts speeds up pre-training 5-10x
+
+**Paper B**: Self-Improving Diffusion Models with Synthetic Data
+  Claim: SIMS training can improve diffusion models using synthetic data without causing collapse
+  Evidence: SIMS training concept can improve diffusion models using synthetic data without causing model collapse
+
+**Relevance to thesis**: These papers show synthetic data works for specific ratios/domains, but don't address social behavioral data
+**Beat affected**: 3
+**Suggested handling**: Acknowledge that synthetic data can augment training in controlled proportions, but emphasize the domain-specificity: social behaviors require authentic human data
 
 ---
 
 ## C4: 🟡 MODERATE — implicit_tension
 
-**Question**: Does scale alone improve data quality and model performance?
+**Question**: Is human curation sufficient to prevent synthetic data problems?
 
-**Paper A**: The Falcon Series of Open Language Models
-  Claim: Falcon-180B trained on 3.5 trillion web tokens outperforms previous models
-  Evidence: Falcon-180B has been trained on over 3.5 trillion tokens of text--the largest openly documented pretraining run
+**Paper A**: AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback
+  Claim: LLM-simulated human feedback is 50x cheaper than crowdworkers and shows high agreement with humans
+  Evidence: LLM-simulated human feedback is 50x cheaper than crowdworkers and shows high agreement with humans
 
-**Paper B**: The Power of Noise: Redefining Retrieval for RAG Systems
-  Claim: The retrieval component of RAG systems deserves increased research attention for improved performance
-  Evidence: RAG has become increasingly important... the retrieval component deserves increased research attention
+**Paper B**: AI Supported Degradation of the Self Concept: A Theoretical Framework Grounded i
+  Claim: AI assistants trained with human feedback consistently exhibit sycophancy across text-generation tasks
+  Evidence: human feedback may also encourage model responses that match user beliefs over truthful ones, a behaviour known as sycophancy
 
-**Relevance to thesis**: Scale without quality (Falcon) vs. targeted retrieval (RAG) - supports our argument that quality authentic data > quantity
-**Beat affected**: 1
-**Suggested handling**: Use to argue that massive web scraping (Falcon) is reaching diminishing returns, while targeted authentic data (our approach) provides better signal
-
----
-
-## C4: 🟢 MINOR — direct_contradiction
-
-**Question**: Can LLMs provide reliable judgments for information retrieval tasks?
-
-**Paper A**: Perspectives on Large Language Models for Relevance Judgment
-  Claim: LLM judgments may correlate with trained human assessors for retrieval evaluation
-  Evidence: LLM-based relevance judgments may correlate with trained human assessors for retrieval system evaluation
-
-**Paper B**: A Survey on Hallucination in Large Language Models: Principles, Taxonomy, Challe
-  Claim: LLMs are prone to hallucination, generating nonfactual content in IR systems
-  Evidence: LLMs are prone to hallucination, generating plausible yet nonfactual content... raises significant concerns over the reliability of LLMs in real-world information retrieval (IR) systems
-
-**Relevance to thesis**: Minor tension about whether AI can replace human judgment, but both support that human verification is still needed
-**Beat affected**: 1
-**Suggested handling**: Note in footnote that even when LLMs show correlation with human judgments, hallucination risks make human verification essential
+**Relevance to thesis**: Suggests even human feedback can be problematic, which could undermine our human data superiority claim
+**Beat affected**: 4
+**Suggested handling**: Distinguish between anonymous crowdworker feedback and authenticated campus behavioral data - quality and context of human data matters
 
 ---
 
-## C5: 🟢 MINOR — implicit_tension
+## C3: 🟡 MODERATE — methodological_tension
 
-**Question**: How quickly does quality degradation occur?
+**Question**: Does parameter-efficient fine-tuning preserve or compromise social reasoning capabilities?
 
-**Paper A**: A Closer Look at Model Collapse: From a Generalization-to-Memorization Perspecti
-  Claim: Collapse manifests as transition from generalization to memorization driven by declining entropy
-  Evidence: Entropy-based measurements show gradual degradation
+**Paper A**: MetaMind: Modeling Human Social Thoughts with Metacognitive Multi-Agent Systems
+  Claim: MetaMind multi-agent framework emulates human-like social reasoning through collaborative Theory-of-Mind and Moral agents
+  Evidence: System-based approach claims to achieve human-like social reasoning
 
-**Paper B**: A Tale of Tails: Model Collapse as a Change of Scaling Laws
-  Claim: Model collapse manifests as changes in scaling laws
-  Evidence: Scaling law analysis reveals different degradation patterns
+**Paper B**: S3LoRA: Safe Spectral Sharpness-Guided Pruning in Adaptation of Agent Planner
+  Claim: S3LoRA mitigates safety risks in LoRA-adapted models...can unintentionally compromise safety alignment, leading to unsafe or unstable behaviors
+  Evidence: Shows that LoRA adaptations can compromise model behaviors in agent planning tasks
 
-**Relevance to thesis**: Different metrics show different degradation rates - which matters for urgency of our solution
+**Relevance to thesis**: Suggests that even with authentic data, fine-tuning methods may introduce new problems
+**Beat affected**: 4
+**Suggested handling**: Acknowledge that data quality alone isn't sufficient - proper training methods are also crucial
+
+---
+
+## C4: 🟡 MODERATE — implicit_tension
+
+**Question**: Are current evaluation methods capturing real social intelligence?
+
+**Paper A**: Social-R1: Towards Human-like Social Reasoning in LLMs
+  Claim: Social-R1 framework enables human-like social reasoning by training on adversarial cases that resist shortcuts
+  Evidence: Claims to achieve human-like social reasoning through specialized training
+
+**Paper B**: Multi-speaker Attention Alignment for Multimodal Social Interaction
+  Claim: MLLMs show substantially weaker cross-modal attention in multi-speaker scenes compared to object-centric images
+  Evidence: Shows fundamental limitations in social scene understanding despite claims of social intelligence
+
+**Relevance to thesis**: Supports our argument that current approaches miss fundamental aspects of social interaction
 **Beat affected**: 3
-**Suggested handling**: Note in limitations that degradation speed varies by metric, but all show eventual decline
+**Suggested handling**: Use to strengthen Beat 3 - even specialized social reasoning systems fail at basic multi-modal social tasks
 
 ---
 
 
 ## Summary
 
-Total contradictions: 19
-Critical (must address): 9
+Total contradictions: 25
+Critical (must address): 14
 
 ## Thesis Risk Assessments
 
-- The contradictions reveal significant ongoing debate about synthetic data's viability. The most critical challenge comes from recent 2024 work claiming accumulation strategies can prevent model collapse (C1). The Social Simulacra paper (C4) also poses a direct challenge by demonstrating AI-generated social interactions. However, most papers support concerns about synthetic data quality, and none specifically address authentic human behavioral data for social applications. The key is to narrow our claims to the specific domain of social behavioral signals rather than all synthetic data.
-- The contradictions reveal significant uncertainty about the detectability of web pollution at scale. While theoretical detection methods exist (C1), practical deployment remains challenging. The scope disagreements (C2) suggest detection capability is domain-specific, which could undermine claims about widespread undetectable pollution. However, evidence of AI systems learning spurious correlations (C3) strongly supports our thesis that web-scraped data produces brittle models. Overall risk: MODERATE - we should emphasize detection difficulty rather than impossibility, and focus on the quality degradation aspect rather than pure detectability.
-- The contradictions reveal significant debate about model collapse severity and inevitability. However, most papers agree that pure synthetic data training causes problems, and mixing with authentic data helps - directly supporting our thesis. The key risk is the definitional confusion around 'model collapse' which we must address clearly.
-- The accumulation paper (C1) poses the highest risk by suggesting synthetic+real data accumulation prevents collapse. However, this can be countered by: 1) Their approach still requires continuous real data injection, 2) They don't test on social/behavioral tasks where authenticity matters most, 3) The fundamental information theory limits (Beat 2) still apply. The social simulacra paper (C5) is also concerning but can be positioned as useful for prototyping, not production systems requiring real human understanding.
+- The contradictions reveal significant nuance in the synthetic data debate. While our core thesis about authentic human behavioral data remains defensible, we must acknowledge: (1) Synthetic data with proper curation can work for some tasks, (2) The definition and measurement of 'collapse' varies, (3) Some theoretical frameworks suggest self-improvement is possible. Our strongest position is to focus on the unique requirements of social behavioral data where authenticity cannot be synthesized.
+- The contradictions reveal a fundamental challenge: while our thesis claims web pollution is detectable (Beat 5), the evidence shows detection is an active arms race with no clear winner. Papers show detection methods can achieve 80% accuracy but simple attacks reduce this by 17.4%, and paraphrasing can evade even watermarking. This doesn't invalidate our thesis but requires reframing: instead of claiming pollution is easily detectable, we should acknowledge the detection challenge and argue that CampusGo provides verified human data as a complementary solution rather than relying solely on detection.
+- The contradictions reveal a critical weakness: while we claim web quality is declining, multiple papers show successful quality filtering and curation methods. The key distinction we must make is between relative improvements through filtering versus absolute quality decline in the raw web corpus. The measurement methodology tensions (C2, C4) are particularly concerning as they could undermine our empirical claims about degradation.
+- The contradictions reveal significant nuance in the synthetic vs human data debate. While some papers show AI-generated data can match or exceed human data in specific domains (summarization, robotics), the key distinction appears to be domain-specificity. Our thesis remains defensible if we emphasize that social behavioral data has unique properties that synthetic data cannot replicate, particularly around authentic human interactions and avoiding adversarial manipulation.
+- The contradictions reveal a fundamental split in the field: benchmarks show high performance (>93% on some ToM tasks) while behavioral studies show fundamental failures. This actually SUPPORTS our thesis by demonstrating that current evaluation methods are inadequate. The key risk is that readers might see high benchmark scores and question why CampusGo is needed - we must clearly articulate that these benchmarks test pattern matching, not genuine social understanding.

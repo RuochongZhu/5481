@@ -25,6 +25,8 @@ Usage:
   python main.py --status               # Show current pipeline state
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
@@ -80,7 +82,8 @@ def get_anthropic_client():
 def get_search_clients():
     """Initialize 3-layer search clients: OpenAlex, S2, arXiv."""
     mailto = os.environ.get("OPENALEX_MAILTO", os.environ.get("MAILTO", "user@example.com"))
-    oa = OpenAlexClient(mailto=mailto)
+    oa_key = os.environ.get("OPENALEX_API_KEY")
+    oa = OpenAlexClient(mailto=mailto, api_key=oa_key)
     s2_key = os.environ.get("S2_API_KEY")
     s2 = S2Client(api_key=s2_key)
     arxiv = ArxivClient()

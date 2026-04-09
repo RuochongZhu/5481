@@ -6,6 +6,8 @@ Used by:
 - Narrative chains: find semantically similar papers across categories
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os

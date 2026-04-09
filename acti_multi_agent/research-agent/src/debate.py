@@ -1,11 +1,13 @@
 """STORM-style 3-round debate for contradiction verification.
 
-Uses MODEL_FAST for debaters, MODEL_DEEP for judge.
+Uses Claude fast for debaters and GPT-5.4 xhigh for the judge.
 No external framework — just 3 API calls per contradiction candidate.
 """
 
+from __future__ import annotations
+
 import logging
-from .api_client import agent_run, MODEL_FAST, MODEL_DEEP
+from .api_client import BRAIN_FAST, BRAIN_GPT_XHIGH, agent_run
 
 log = logging.getLogger("research_agent")
 
@@ -46,7 +48,7 @@ def storm_debate(client, paper_a: dict, paper_b: dict) -> dict:
                 f"Their methodology: {method_b}\n\n"
                 f"Defend your position."
             ),
-            model=MODEL_FAST,
+            model=BRAIN_FAST,
             max_tokens=512,
         )
         rounds.append({"round": 1, "role": "defender_a", "text": r1})
@@ -73,7 +75,7 @@ def storm_debate(client, paper_a: dict, paper_b: dict) -> dict:
                 f"Their defense: {r1[:500]}\n\n"
                 f"Attack their position."
             ),
-            model=MODEL_FAST,
+            model=BRAIN_FAST,
             max_tokens=512,
         )
         rounds.append({"round": 2, "role": "attacker_b", "text": r2})
@@ -82,7 +84,7 @@ def storm_debate(client, paper_a: dict, paper_b: dict) -> dict:
         rounds.append({"round": 2, "role": "attacker_b", "error": str(e)})
         r2 = "Attack unavailable."
 
-    # Round 3: Neutral judge (MODEL_DEEP)
+    # Round 3: Neutral judge (GPT-5.4 xhigh)
     log.debug("  Debate R3: Judge decides")
     try:
         r3 = agent_run(
@@ -103,7 +105,7 @@ def storm_debate(client, paper_a: dict, paper_b: dict) -> dict:
                 f"Attack: {r2[:400]}\n\n"
                 f"Is this a genuine contradiction? Rate its strength."
             ),
-            model=MODEL_DEEP,
+            model=BRAIN_GPT_XHIGH,
             max_tokens=256,
         )
         rounds.append({"round": 3, "role": "judge", "text": r3})
