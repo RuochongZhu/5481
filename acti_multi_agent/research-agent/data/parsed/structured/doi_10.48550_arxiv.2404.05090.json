@@ -1,0 +1,381 @@
+{
+  "paperId": "doi:10.48550/arxiv.2404.05090",
+  "title": "How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model Collapse",
+  "year": 2024,
+  "source": "openalex+s2",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2404.05090.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2404.05090.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2404.05090.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "The phenomenon of model collapse, introduced in (Shumailov et al., 2023) , refers to the deterioration in performance that occurs when new models are trained on synthetic data generated from previously trained models. This recursive training loop makes the tails of the original distribution disappear, thereby making future-generation models forget about the initial (real) distribution. With the aim of rigorously understanding model collapse in language models, we consider in this paper a statistical model that allows us to characterize the impact of various recursive training scenarios. Specifically, we demonstrate that model collapse cannot be avoided when training solely on synthetic data. However, when mixing both real and synthetic data, we provide an estimate of a maximal amount of synthetic data below which model collapse can eventually be avoided. Our theoretical conclusions are further supported by empirical validations.",
+      "word_count": 137
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "The large-scale adoption of large language models (e.g. ChatGPT (OpenAI, 2024)) will inevitably lead to enormous amounts of synthetic (generated) data \"polluting\" the original human-created web data. Since language models are trained on web data, this raises some concerns about the impact of this synthetic data on the next generations of LLMs. One can think of a train-generate loop where models from the current generation generate data that contaminate existing web data, and the next generation models are trained on this contaminated data. This loop was studied in several works (Shumailov et al., 2023; Alemohammad et al., 2023; Briesch et al., 2023) where the authors conclude that synthetic data generally hurts performance as the number of generate-train increases, and that (naturally) the impact on model performance is linked to the amount of real data in the training set. A particular phenomenon, coined model collapse (Shumailov et al., 2023) , refers to the model's tendency to produce limited or repetitive outputs making recursive training on such outputs forget about the tails of the original underlying distribution of real data. This was further studied in (Guo et al., 2023) where the authors show that recursive training on synthetic data leads to a \"self-consuming\" loop that affects linguistic diversity.\n\nIntuitively, model collapse is a result of the distribution shift that occurs when training generative models recursively on synthetic data from previous generation models. Shumailov et al. (2023) have discussed two main sources of model collapse; 1) statistical approximation error: which is inherently related to the fact that generative models are trained on a finite number of samples, and therefore it is impossible that the learned model captures all the information about the original distribution. 2) functional approximation error: which results from the fact that the models are insufficiently expressive in real implementations, even if neural networks are known to be universal functional approximators from a theoretical standpoint. The authors provide further theoretical intuition to characterize the effect of these approximation errors, relying on simple mathematical models such as single-dimensional Gaussian distribution.\n\nIn this paper, we aim to provide a rigorous theoretical framework to understand the effects of recursive training with synthetic data. In particular, we focus on the statistical approximation error and introduce a simple next-token-prediction language model to characterize model collapse. Our model allows us to gain insights into the behaviour of the self-consuming train-generate loop leading to model collapse. From a theoretical standpoint, we consider two main recursive training scenarios:\n\n• Fully Synthetic: Training with data sampled from the previous generation model.\n\n• Partially Synthetic: Training with a mixture of data sampled from the previous generation model and original data.\n\nWe demonstrate that model collapse always occurs in the first scenario and characterize the rates at which it occurs. Furthermore, in the second scenario, we provide an upper bound on the sample size of generated data below which model collapse can eventually be attenuated. Our results are further confirmed through simulations of general scenarios with the introduced statistical model, as well as with realistic GPT2-style language models on real data. Our findings suggest that the amount of generated data should be considerably smaller compared to the original data to avoid model collapse.",
+      "word_count": 531
+    },
+    {
+      "index": 3,
+      "title": "Related work:",
+      "kind": "related_work",
+      "text": "With the adoption of generative Large Language and Vision models, the amount of synthetic data on the web is growing at an unprecedented rate -see for example (del Rio-Chanona et al., 2023) where the authors conducted an empirical study of the amount of synthetic data via activity monitoring on Stack Overflow, and (Alemohammad et al., 2023) where the authors showed that a dataset used to train Stable Diffusion contains synthetic data (Schuhmann et al., 2022) . In fact, practitioners are willingly using synthetic data to train next-generation models (Ben Allal et al., 2024; Gunasekar et al., 2023; Chen et al., 2024) .\n\nAs we mentioned above, several works studied the recursive training loop where nextgeneration models are trained on synthetic data generated from previous-generation models. Shumailov et al. (2023) studied model collapse, a phenomenon that occurs in recursive training where the quality of model outputs tend to degrade by becoming e.g. repetitive. Similar phenomena were studied in (Alemohammad et al., 2023) where the authors call it Model Autophagy Disorder (MAD). Another empirical study by (Briesch et al., 2023) studied this same Self-Consuming phenomenon and observed that the degeneracy rate (naturally) depends on the number of fresh data in the training sample. In the same direction, several works showed that incorporating synthetic data in the training can hurt the performance of trained diffusion models (Bohacek & Farid, 2023; Martínez et al., 2023a; b) .\n\nOnly a few works have tackled this question from a theoretical perspective. Shumailov et al. (2023) considered a simple recursive Gaussian distribution to provide an intuition as to why model collapse occurs, but no training is considered in that work. In (Fu et al., 2024) , authors studied recursive training of diffusion models (generally used to learn distributions over images) and obtained an upper bound on the total variation distance between the distribution of the original data and that of the synthetic data after T generations. Dohmatob et al. (2024b) studied the impact of synthetic data on scaling laws and, in a simple setting of linear regression, Dohmatob et al. (2024a) studied the behaviour of the test error of different generations and showed that a linear dependency of the degradation on generation number.\n\nIn this work, we are interested in characterizing the distribution shift in synthetic data generated with a language model, as the number of generations increases. We consider a linear Softmax classifier for next-token prediction and study the distribution of the learned conditional probabilities as the number of generations increases. The closest work to ours is (Fu et al., 2024) where the authors study the distribution of synthetic data generated by a diffusion model instead, whereas the statistical model we are considering is closer in spirit to the realm of language models.\n\nThe remainder of the paper is organized as follows. Section 2 presents our theoretical setup where we introduce our statistical model and the considered recursive training scenarios.\n\nOur main theoretical results are presented in Section 3. We further present some experiments in Section 4.1 to support our findings. Finally, Section 5 concludes the paper.\n\n2 Theoretical Setup",
+      "word_count": 514
+    },
+    {
+      "index": 4,
+      "title": "Statistical Language Model",
+      "kind": "body",
+      "text": "We consider a language model of vocabulary size s, context length denoted by ℓ and we further denote by c the number of possible contexts which is at most s ℓ . We suppose that the language data is generated from some unknown conditional probabilities given the contexts. That is, the probability of the next token being k ∈ [s] := {1, ..., s} given some context j = (j 1 , . . . , j ℓ ) ∈ [c] is denoted by\n\np jk := P{Y = k | X = j},\n\nwhere X and Y denote discrete random variables representing a context and the nexttoken respectively. In practice, we do not have access to the true conditional probabilities p jk but rather a (large) corpus sampled according to p jk . In other words, we are given a dataset {(x l , y l )} l∈[M] of M samples of contexts and next-token pairs represented by x l ∈ {e 1 , . . . , e c } and y l ∈ {e 1 , . . . , e s } where e i 's denote the canonical vectors.\n\nGiven this dataset, we consider approximating the underlying conditional probabilities via the Softmax classifier, which entails minimizing the categorical cross-entropy loss function:\n\narg min W=[w 1 ,...,w s ]∈R c×s - 1 M M ∑ l=1 y ⊤ l log σ W ⊤ x l , ( 1\n\n)\n\nwhere\n\nσ(v) = exp(v) ∑ s k=1 exp(v k )\n\nis the Softmax function and the functions exp and log are applied entry-wise. Note that in current state-of-the-art language models, the x l 's are context representations computed via transformer models, whereas, in our setting, we choose to work with one-hot embeddings as representations for tractable theoretical analysis. Solving the above objective (see Appendix B.1) yields the estimated conditional probability pjk of p jk which expresses as the following empirical mean:\n\npjk = exp( ŵ⊤ k e j ) ∑ s i=1 exp( ŵ⊤ i e j ) = 1 |C j | ∑ l∈C j y lk with C j = l ∈ [n] | x l = e j . (2)\n\nThe estimated conditional probabilities pjk are the result of training on the original data. These conditional probabilities can be used to generate new synthetic data, which can be used (with or without additional fresh data from the original dataset) to train the nextgeneration model. In this paper, we are interested in characterizing the behaviour of pjk in this recursive training loop which we will formally define in the next section. Hereafter, without loss of generality, we consider a fixed context j with N := |C j | training samples {(e j , y l )} l of context-next-token pairs, where y l ∈ R s are independent multinomial random variables with one trial and parameter p = (p 1 , . . . , p s ) := (p j1 , . . . , p js ) ∈ [0, 1] s .\n\n(3) From (2), we notice that pjk is an estimate of p jk and we further denote\n\np (1) = ( p1 , . . . , ps ) := ( pj1 , . . . , pjs ) ∈ [0, 1] s . ( 4\n\n)\n\nAs such, p (0) := p corresponds to the ground-truth distribution whereas p (1) denotes the first-generation model trained on the real data {(e j , y l )} l∈C j . m) in the Fully Synthetic setting for vocabulary size s = 3, context length ℓ = 4, total contexts c = s ℓ = 81 and sample size n = 1000. The initial distribution p (0) is some random distribution over tokens. The trained conditional distributions converge towards Dirac measures over generations illustrating total collapse in Definition 1.\n\np (0) p (10) p (20) p (30) p (40) Figure 1: Evolution of p (",
+      "word_count": 662
+    },
+    {
+      "index": 5,
+      "title": "Recursive Training",
+      "kind": "body",
+      "text": "In this section, we introduce the notations for recursive training. At generation m ≥ 1, suppose that we have samples {y\n\nl } l generated by some past models p (t) for t ∈ {0, . . . , m -1} respectively. As such, similarly to ( 2 ), the model at generation m expresses as\n\np (m) := 1 n (m) m-1 ∑ t=0 n (m) t ∑ l=1 y (t) l .\n\n(\n\nIn other words, p (m) is obtained by training the model on a mixture of real and synthetic data generated from previously trained models. Here, n (m) t stands for the number of samples used to train the m-th generation model that are generated by model p (t) , and\n\nn (m) = n (m) 0 + • • • + n (m)\n\nm-1 is the total number of training samples used to train p (m) . Note that we do not generate samples from p = p (0) but rather we are given a corpus {y (0) l } l which represent original data.\n\nNote that by definition all the models p (m) are unbiased, i.e. Ep (m) = p, which means that they recover the original distribution in case of infinite sample sizes. However, in practical settings the sample sizes are finite, and therefore p (m) may deviate from p since its variance can be large for small values of n (m) t . In the remainder of the paper, we present analytical results to rigorously quantify the impact of sample sizes n (m) t on the variance of p (m) and how they affect the learned distribution to eventually cause model collapse (Shumailov et al., 2023) , a degenerative process affecting future generation models by either losing information about the tails of the initial distribution or inducing distribution shifts over generations.\n\nSpecifically, we aim to quantify the rate of such deterioration, and to this end, we introduce a stricter version of model collapse that we call total collapse and define as follows.\n\nDefinition 1 (Total Collapse). We say that total collapse occurs in the recursive training process if p (m) converges to some Dirac mass δ i for some token i ∈ [s] as m grows.\n\nTotal collapse refers to the case where, under recursive training, the trained model p (m) completely loses information about the original distribution p over generations, leading to poor linguistic diversity. foot_0 This phenomenon is illustrated in Figure 1 where we see convergence towards the vertices of the probability simplex, i.e. Dirac measures, over generations. With this definition of total collapse, we provide a quantitative analysis of two cases of recursive training:\n\n• Fully Synthetic: Training with synthetic data from the last model. Each generation p (m) is trained only on data generated by the previous model p (m-1) . More precisely, for some fixed n ∈ N we let n (m) t = n • 1{t = m -1} for all m ≥ 1 and 0 ≤ t < m.\n\n• Partially Synthetic: Training with a mixture of real and synthetic data from the last model. Each generation p (m) is trained on a mixture of real data and synthetic data generated by the previous model p (m-1) . More precisely, for some fixed n ∈ N we let n\n\n(m) 0 = N, n (m)\n\nm-1 = n and n (m) t = 0 for all m ≥ 2 and 0 < t < m, and n\n\n0 = N. (1)\n\nFully Synthetic corresponds to the theoretical setting considered in (Shumailov et al., 2023) . However, in that paper, only Gaussian distribution was analyzed instead of discrete distributions over all possible tokens as language models entail. We point out that this setting is unlikely to happen in real-world applications but serves as the worst-case scenario.\n\nOn the other hand, the Partially Synthetic setting is more realistic for future generation models as it corresponds to training on a mixture of real and synthetic data. We consider this setting to assess whether it is possible to avoid collapse by having a fraction of the original data in the training mixture. We answer this question positively in the next section. Moreover, we show through simulations in Section 4.1 that conclusions from our theoretical analysis on both Fully Synthetic and Partially Synthetic hold beyond these simple settings, such as training on a mixture of all generations or even using realistic transformer models.",
+      "word_count": 743
+    },
+    {
+      "index": 6,
+      "title": "Main Results",
+      "kind": "results",
+      "text": "To investigate the model collapse phenomenon and the rate at which it occurs, we define the following statistical quantities that capture the randomness of p (m) :\n\n∥p (m) ∥ ∞ := max i∈[s] p (m) i , σ m := ∥p (m) ∥ 2 2 = s ∑ i=1 p (m) i 2 and S m := E[σ m ].\n\nThese quantities measure how far away p (m) is from some Dirac mass (Total Collapse, Definition 1). Since the maximum value of all three quantities is 1, the closer they are to 1, the closer p (m) is to some Dirac mass, and the less diverse p (m) is as a language model. As such, ∥p (m) ∥ ∞ or σ m being equal to 1 is equivalent to p (m) being a Dirac mass which reflects total collapse. To quantify the distribution shift incurred by the aforementioned recursive training scenarios, we further consider the 1-norm foot_1 between two distributions µ, ν ∈ R s defined by ∥µ -ν∥ 1 := ∑ s i=1 |µ(i)ν(i)|. We assume that the initial distribution p (0) is nontrivial, specifically S 0 < 1 and ∥p (0) ∥ ∞ < 1. Under this assumption, we provide results on the rate of total collapse and further quantify distribution shift under recursive training. All the proofs are presented in Appendix B.",
+      "word_count": 226
+    },
+    {
+      "index": 7,
+      "title": "Fully Synthetic: Training on synthetic data",
+      "kind": "body",
+      "text": "We start by describing the recursive training process in which only synthetic data from the last generation model are used. This process can be viewed as a Markov chain on the set of probability measures ∆ s-1 ∩ 1 n N s on [s] with denominator n, where\n\n∆ s-1 := {v ∈ R s : v 1 + v 2 + • • • + v s = 1, v i ≥ 0 for all i}\n\nis the probability simplex. Since the probability of reaching δ i is positive provided p i > 0, this random walk which starts at p (0) has absorbing states {δ i : i ∈ [s] s.t. p i > 0}. As a result, the random walk converges to one of the absorbing states almost surely (Kemeny et al., 1969) , which means that total collapse is bound to happen in the Fully Synthetic setting.\n\nTo characterize the rate at which total collapse occurs, let us denote by T := inf{t ∈ N : ∥p (t) ∥ ∞ = 1} ≥ 1 the random time at which the model first becomes a Dirac mass, and let 1. The expected sum of squared probabilities S m is given by\n\nρ m := P ∥p (m) ∥ ∞ = 1 denote\n\nS m = 1 -1 - 1 n m (1 -S 0 ). (6)\n\n2. The probability ρ m that total collapse has occurred by generation m satisfies\n\n1 -n(1 -S 0 )(1 -1/n) m ≤ ρ m ≤ 1 - 1 -S 0 1 -1/ s (1 -1/n) m . (7)\n\n3. The generation T at which total collapse happens satisfies\n\n1 + 1 -S 0 1 -1/ s (n -1) ≤ E[T] ≤ 1 + (1 -S 0 )n(n -1). (8)\n\nIn essence, Theorem 1 describes the behavior of p (m) as a function of the model generation m, the sample size n, and the dispersion of the initial distribution S 0 . Specifically, we draw the following observations:\n\n• Effect of the number of generations m: As m increases, S m and ρ m tend to 1 as per ( 6 ) and ( 7 ), making total collapse increasingly more likely. Note also that this dependence is exponential in m, making total collapse in this case relatively fast.\n\n• Effect of \"synthetic\" sample size n: The smaller n is, the more likely p (m) is to have collapsed for a given generation m as per the bounds on ρ m in (7), and the faster total collapse is expected to happen as suggested by ( 8 ). The dependence in this case is polynomial in n.\n\n• Effect of S 0 : Larger values of S 0 correspond to faster collapse as suggested by (8); namely, starting from an original distribution that is not diverse enough speeds up total collapse. The upper and lower bounds on E[T] are both linear in (1 -S 0 ).\n\nWe point out that when the number of contexts c is large, the number of samples n per context would be fairly small, which suggests that total collapse, given a single context, is expected to happen fairly quickly. The bounds on E[T] state that the expected collapse time is at least of order n and at most of order n 2 , though experiments (see Figure 2 ) suggest that the upper bound is not sharp and should be close to O(n) instead. On another note, we characterize below in Proposition 1 the limiting distribution as m gets to infinity, which demonstrates the direction of total collapse.\n\nProposition 1. In the Fully Synthetic case, we have P lim m→∞ p (m) = δ i = p i for all i ∈ [s].\n\nProposition 1 describes the limiting distribution when total collapse occurs in terms of the initial probabilities p i over tokens. Specifically, the resulting Dirac mass δ i is likely to be supported on some token i with high initial probability p i . This formally supports the description of early and late model collapse in Shumailov et al. (2023) : In the early phase of recursive training, the tails of the original distribution disappear because the probability p (m) j\n\nof outputting unlikely tokens j (those j's for which p j is small) will decrease as p (m) converges to some Dirac mass δ i . After many generations, all but one p (m) j will go to 0, exhibiting late model collapse where all the randomness of the original distribution is lost.",
+      "word_count": 759
+    },
+    {
+      "index": 8,
+      "title": "Partially Synthetic: Handling model collapse with real data",
+      "kind": "body",
+      "text": "As described in the previous section, total collapse is unavoidable when training solely on synthetic data. In this section, we consider the case in which real data is incorporated at each generation. In this case, p (m) can be simply seen as a weighted average of p (1) and an estimate of p (m-1) with n samples. We also assume that p (1) is nontrivial, thereby implying that, on average, p (m) will not be a Dirac mass. In what follows, we quantify the variability in the data distribution across different generations, as well as the distribution drift ∥p (m)p (1) ∥ 1 from the first-generation model. We particularly show that collapse can be avoided if enough real data is injected into the recursive training process.",
+      "word_count": 126
+    },
+    {
+      "index": 9,
+      "title": "Theorem 2 (Model Variation).",
+      "kind": "body",
+      "text": "Consider the Partially Synthetic setting. For m ≥ 1 we have\n\nS m+1 = 1 N 1 + 2α -1 -1 N αβ m 1 + (1 + 1/N)α + (1 -1 N )S 0 1 + (1 + 1/N)α 1 + α - αβ m N , ( 9\n\n)\n\nwhere α := n N+n and β := α (1\n\n+ 1 N )α -1 N .\n\nTheorem 2 provides a control of the variance S m in the Partially Synthetic setting. Essentially, when n ≪ N, we have S m ≈ 1 N + (1 -1 N )S 0 ≈ S 0 , which is not surprising since the training data for each generation model are dominated by real data in this case. However, even when the number of synthetic data is much larger than the original dataset (i.e. n ≫ N), we have α ≈ 1 ≈ β and hence S m+1 ≈ 1/N + (2 + 1/N) -1 (1 -1/N)(2 -1/N)S 0 , which approaches S 0 for large N.\n\nTo further refine our analysis, we present a result that directly controls the deviation E∥p (m)p (1) ∥ 1 between the conditional distributions from first and m-th generations. This allows us to have a quantitative control over the distribution shift. When n is sufficiently small, we have a sharper control over this deviation by exploiting the concentration results from (Mardia et al., 2020) . Essentially, this allows us to estimate the maximum number of synthetic samples n to ensure that the distribution p (m) stays close to p (1) . Theorem 3 (Model Deviation). Consider the Partially Synthetic setting and define\n\nG n (s) :=        C 1 se C 0 n 2e if C 0 e n + 2 ≤ s; C 1 s C 0 n s s/2 if C 0 4 n + 2 ≤ s < C 0 e n + 2; (2 s -2) if s < C 0 4 n + 2, ( 10\n\n)\n\nwhere C 0 = e 3 2π ≈ 3.19 and C 1 = 6e π 3/2 ≈ 2.93, and s is the vocabulary size. Then, for m ≥ 2,\n\nE∥p (m) -p (1) ∥ 1 < 1 N πn 2 G n (s).\n\nWe point out that the upper bound on the deviation E∥p (m)p (1) ∥ 1 is independent of the generation m. Since the deviation from p (0) to p (1) is inevitable and independent of n, we give the result in E∥p (m)p (1) ∥ 1 , from which E∥p (m)p (0) ∥ 1 can be estimated by the triangle inequality. Theorem 3 allows us to estimate the maximum number of synthetic samples n that can be used if we want p (m) to stay ϵ-close to p (1) in L 1 norm. For example, when C 0 n/e + 2 ≤ s, for any ϵ > 0 we can take\n\nn ≤ 2πe -2 min s -2, log √ 2πNϵ 6es ( 11\n\n)\n\nin order for E∥p (m)p (1) ∥ 1 to be less than ϵ. In other words, to ensure small L 1 deviation n should be taken to be logarithmic in the ratio Nϵ/s, which highlights that the amount of synthetic data should be exponentially smaller compared to real data in order to ensure that p (m) remains close to p (1) . We show through simulations the effect of the sample size n and the initial distribution p. In Figure 3 , we show that if we fix the initial distribution and increase the amount of synthetic data n, the dispersion σ m stays relatively constant while the distribution drift ∥p (m)p (1) ∥ 1 increases. In contrast, when we fix n and increase the values of S 0 , σ m increases but ∥p (m)p (1) ∥ 1 actually decreases as depicted in Figure 4 . This behavior can be explained by Theorem 4 in Appendix B, which is more general than Theorem 3 in the sense that it captures the dependence of E∥p (m)p (1) ∥ 1 on the randomness of p and hence provides a sharper bound on the expected deviation. (m)p (1) ∥ 1 decreases, as suggest by the inequality (19).",
+      "word_count": 714
+    },
+    {
+      "index": 10,
+      "title": "Transformer-based Models",
+      "kind": "body",
+      "text": "To support our findings in a realistic setting, we conduct experiments with a decoder-only generative model for text generation. For this model, we consider the aforementioned Fully Synthetic and Partially Synthetic settings using the model parameters in Appendix C. We consider a simple character-level tokenizer using the tiny Shakespeare dataset foot_2 yielding a vocabulary of size s = 65. We first train a model for 2000 iterations on this dataset and consider the trained model as the ground-truth distribution p (0) . The next-generation models are trained recursively using the exact same architecture and training parameters. This setting allows us to reduce the effect of functional approximation error thereby focusing only on the effect of statistical approximation error.\n\nThe results of these experiments are summarized in Figure 5 . The top left plot therein depicts the deviation ∥p (m)p (1) ∥ 1 which is averaged over 300 random contexts generated by the ground-truth generative model p (0) . From this plot, we clearly see that ∥p (m)p (1) ∥ 1 diverges over generations in the Fully Synthetic setting, while mixing with real data ensures stability over generations.\n\nThe effect of synthetic data is further noticed in the validation loss of the next-generation models where we see an overfitting effect in the Fully Synthetic setting. We point out that this effect might also be associated with the functional approximation error and was rigorously studied by Dohmatob et al. (2024a) in the case of linear regression, where the authors have shown that synthetic data affect the usual scaling laws. We believe that similar conclusions can be obtained with our statistical model by incorporating the functional approximation error, this can be achieved for instance by supposing that the context embeddings e i 's are\n\n1 2 3 4 5 6 7 8 9 generation m 0.4 0.5 0.6 0.7 0.8 p (m) p (1) 1 synthetic synthetic 50% -real 50% synthetic 20% -real 80% 10 0 10 1 iterations 1.25 1.50 1.75 2.00 2.25 2.50 val loss synthetic Gen 1 Gen 2 Gen 3 Gen 4 Gen 5 Gen 6 Gen 7 Gen 8 Gen 9 Gen 10 10 0 10 1 iterations 1.25 1.50 1.75 2.00 2.25 2.50 val loss synthetic 50% -real 50% Gen 1 Gen 2 Gen 3 Gen 4 Gen 5 Gen 6 Gen 7 Gen 8 Gen 9 Gen 10 10 0 10 1 iterations 1.25 1.50 1.75 2.00 2.25 2.50 val loss synthetic 20% -real 80% Gen 1 Gen 2 Gen 3 Gen 4 Gen 5 Gen 6 Gen 7 Gen 8 Gen 9 Gen 10\n\nFigure 5 : Experiments with a GPT2-type generative model. The top left plot depicts the deviation ∥p (m)p (1) ∥ 1 varying the generation model m for synthetic data and a mixture of real and synthetic data. The three other plots show the behavior of the validation loss over generations. Essentially, training solely on synthetic data causes model collapse and affects the usual scaling laws (Dohmatob et al., 2024a) .\n\nhigh-dimensional Gaussian vectors instead of canonical vectors, thereby introducing the embedding dimension as a parameter controlling model complexity.",
+      "word_count": 517
+    },
+    {
+      "index": 11,
+      "title": "Additional Experiments with the Statistical Model",
+      "kind": "results",
+      "text": "To further investigate and demonstrate the generality of our theoretical findings, we present empirical results on two more scenarios that better represent recursive training in real-world settings, as follows:\n\n• Most Recent Models: Each generation p (m) is trained on synthetic data from the most recent K models for a fixed window size K. More precisely, for some fixed n ∈ N we let n\n\nt = ⌊n/K⌋ • 1{max(0, m -K) ≤ t ≤ m -1} for all m ≥ 1. (m)\n\nWhen K = 1, this case degenerates to the Fully Synthetic setting.\n\n• Randomly Sampled Data: Each generation p (m) is trained on a mixture of synthetic data from possibly all the previous models and the real data. More precisely, the\n\nm-th generation model is trained on n = n (m) 0 + • • • + n (m) m-1 samples with n (m) t := n ∑ i=1 1{g i = t}, (t = 0, • • • , m -1),\n\nsamples from the t-th generation, where {g i } i∈[n] are independent and uniformly distributed on {0, 1, . . . m -1} indexing previous-generation models. This setting describes the scenario where data generated by all past models are mixed in a pool from which the training data for the next generation is collected.\n\nExperiments for these two cases are shown in Figure 6 . Column 1 corresponds to Fully Synthetic, columns 2 and 3 for Most Recent Models, and column 4 shows the case of Randomly Sampled Data. As we can see, when the window size K is increased, total collapse is delayed but still eventually happens. Observe that there are multiple visible horizontal yellow lines in the second row for window size 1. This is because p (m) can converge to any of the Dirac masses δ i provided p i > 0 by Proposition 1. A similar phenomenon can be observed in the second and third columns. On the other hand, in column 4 the model does deteriorate but the deviation plateaus very quickly. In particular, the 100 runs produce only one Dirac mass over the span of 500 generations, suggesting that randomly sampling from all the past models is qualitatively different from sampling from the most recent K models with a fixed K. We remark that for K > 1, even if p (m) is some Dirac mass, p (m+1) could still regain randomness from models before generation m, but with a fixed window size all the randomness eventually disappears.",
+      "word_count": 419
+    },
+    {
+      "index": 12,
+      "title": "Discussions & Conclusion",
+      "kind": "discussion",
+      "text": "In this paper, we studied model collapse in language models through a simple statistical model. We provided theoretical analysis when training with only synthetic data and when adding real data from the original distribution. Our results demonstrate that model collapse always happens when the model is training solely on synthetic data, whereas controlling deviation from the initial distribution requires careful choice of the amount of synthetic data to inject in the training set. We also provided experiments showing that these findings extend beyond the simple theoretical settings.\n\nOur current results describe only the statistical approximation error since all generation models are unbiased in our theoretical framework. However, as we discussed in the previous section, this framework can be extended to account for the functional approximation error by considering high-dimension Gaussian vectors as context embeddings instead of canonical vectors. Another possible extension is to study the effect of in-context learning (Wu et al., 2023) on model collapse, which is a key feature of transformer-based models.\n\nDespite the simple setting of our current investigation, we believe that it lays the groundwork for better understanding and mitigation of model collapse in language models, thereby opening the way for the development of more general theoretical frameworks to study next-generation language models dynamics.\n\nTsachy Weissman, Erik Ordentlich, Gadiel Seroussi, Sergio Verdu, and Marcelo J Weinberger. Inequalities for the l1 deviation of the empirical distribution. Hewlett-Packard Labs, Tech. Rep, 2003.\n\nJingfeng Wu, Difan Zou, Zixiang Chen, Vladimir Braverman, Quanquan Gu, and Peter L Bartlett. How many pretraining tasks are needed for in-context learning of linear regression? arXiv preprint arXiv:2310.08391, 2023.",
+      "word_count": 264
+    },
+    {
+      "index": 13,
+      "title": "A Technical Lemma",
+      "kind": "body",
+      "text": "For completeness, we include the concentration results from ( Mardia et al., 2020 ) which we used to prove Theorem 3. For a probability distribution p on [s] define π p := max A⊆[s] min{p(A), 1p(A)} (12) and notice that π p ≤ 1 2 . Define the function φ :\n\n[0, 1/2) → R by φ(x) := 1 1 -2x log 1 -x x\n\nand extend φ by continuity to φ(1/2) := 2. Observe that φ is strictly decreasing and 2 ≤ φ(x) < ∞. The following Lemma concerns the concentration of empirical distribution which captures the dependence on the sample size n, dimension s as well as the structure of the underlying probability distribution via φ(π p ).\n\nLemma 1. Let p be a probability distribution on [s] and p be the associated empirical distribution obtained from n samples. Then for ϵ > 0 we have\n\nP (∥ p -p∥ 1 ≥ ϵ) ≤ exp - nφ(π p )ϵ 2 4 G n (s),\n\nwhere C 0 = e 3 2π , C 1 = 6e π 3/2 and\n\nG n (s) =      C 1 s (C 0 n/s) s/2 if C 0 n 4 + 2 ≤ s ≤ C 0 n e + 2; C 1 se C 0 n 2e if C 0 n e + 2 ≤ s; (2 s -2) if s ≤ C 0 n 4 + 2. (13)\n\nThe upper bound\n\nP(∥ p -p∥ 1 ) ≤ (2 s -2) exp - nφ(π p )ϵ 2 4\n\nin fact holds for all values of s and n (Weissman et al., 2003) , but this bound is very poor when s/n is large, which is commonly the case for language models. Lemma 1 provides an improvement in the regime of small sample size n ≲ s.",
+      "word_count": 309
+    },
+    {
+      "index": 14,
+      "title": "B.1 Derivation of Formula (2)",
+      "kind": "body",
+      "text": "Proof. The categorical cross-entropy loss reads as\n\nL(w 1 , . . . , w s ) = - 1 M M ∑ i=1 s ∑ k=1 y ik log exp(w ⊤ k x i ) ∑ K j=1 exp(w ⊤ j x i ) .\n\nThe gradient of the loss is expressed as\n\n∂L ∂w k = 1 M M ∑ i=1 s ∑ ℓ=1 y iℓ ∂ ∂w k ∑ j̸ =ℓ exp((w j -w ℓ ) ⊤ x i ) 1 + ∑ j̸ =ℓ exp((w j -w ℓ ) ⊤ x i ) ,\n\nwhere\n\n∂ ∂w k ∑ j̸ =ℓ exp((w j -w ℓ ) ⊤ x i ) = -∑ j̸ =k exp((w j -w k ) ⊤ x i )x i if k = ℓ, exp((w k -w ℓ ) ⊤ x i ) if k ̸ = ℓ.\n\nTherefore,\n\n∂L ∂w k = 1 M M ∑ i=1 y ik -∑ j̸ =k exp((w j -w k ) ⊤ x i ) 1 + ∑ j̸ =k exp((w j -w k ) ⊤ x i ) + ∑ ℓ̸ =k y iℓ exp((w k -w ℓ ) ⊤ x i ) 1 + ∑ j̸ =ℓ exp((w j -w ℓ ) ⊤ x i ) x i = 1 M M ∑ i=1 ∑ ℓ̸ =k y iℓ exp(w ⊤ k x i ) ∑ s j=1 exp(w ⊤ j x i ) -y ik ∑ j̸ =k exp(w ⊤ j x i ) ∑ s j=1 exp(w ⊤ j x i ) x i = 1 M M ∑ i=1 ∑ ℓ̸ =k y iℓ exp(w ⊤ k x i ) ∑ s j=1 exp(w ⊤ j x i ) -y ik 1 - exp(w ⊤ k x i ) ∑ s j=1 exp(w ⊤ j x i ) x i = 1 M M ∑ i=1            s ∑ ℓ=1 y iℓ =1 exp(w ⊤ k x i ) ∑ s j=1 exp(w ⊤ j x i ) -y ik            x i = 1 M M ∑ i=1 exp(w ⊤ k x i ) ∑ s j=1 exp(w ⊤ j x i ) -y ik x i\n\nFinally, solving for ∂L ∂w k = 0 yields (2).",
+      "word_count": 398
+    },
+    {
+      "index": 15,
+      "title": "B.2 Proofs for the Fully Synthetic Case",
+      "kind": "body",
+      "text": "Proof of Theorem 1. Write p\n\ni = X (m) i /n where X (m) i ∼ B(n, p (m-1) i (m)\n\n) is binomial when conditioned on p (m-1) . So we have\n\nE[p (m) i 2 | p (m-1) ] = 1 n p (m-1) i + 1 - 1 n p (m-1) i 2 s ∑ i=1 E[p (m) i 2 | p (m-1) ] = 1 n + 1 - 1 n s ∑ i=1 p (m-1) i 2\n\nand by the law of total expectation\n\nS m = 1 n + 1 - 1 n S m-1 = 1 -1 - 1 n m (1 -S 0 ). (14)\n\nNote that S m ↗ 1 as m → ∞ and\n\nS m = E ∑ i p (m) i p (m) i ≤ E ∑ i p (m) i ∥p (m) ∥ ∞ = E∥p (m) ∥ ∞ .\n\nRecall that ρ m := P ∥p (m) ∥ ∞ = 1 and T := inf{m ∈ N : ∥p (m) ∥ ∞ = 1} ≥ 1. Since σ m ≥ 1/ s and ∥p (m) ∥ ∞ ∈ { 1 n , . . . , n-1 n , 1}, we have\n\n1 • ρ m + 1 s (1 -ρ m ) ≤ Eσ m = S m ≤ E∥p (m) ∥ ∞ ≤ 1 • ρ m + (1 -1/n)(1 -ρ m ),\n\nfrom which (7) follows thanks to ( 14 ).\n\nFor k = 1, 2, . . . we have P(T > k) = P(∥p (k) ∥ ∞ < 1) = 1ρ k and thus\n\n1 -S 0 1 -1/ s (1 -1/n) k ≤ P(T > k) ≤ n(1 -S 0 )(1 -1/n) k , which establishes (8) because E[T] = ∑ ∞ k=0 P(T > k).\n\nProof of Proposition 1. Fix i ∈\n\np i = lim m→∞ E[p (m) i ] = lim m→∞ P(E m )E[p (m) i | E m ] + P(E c m )E[p (m) i | E c m ] = lim m→∞ E[p (m) i | E m ] = lim m→∞ P(p (m) i = 1 | E m ) = lim m→∞ P(F m ∩ E m ) P(E m ) = lim m→∞ P(F m ) P(E m ) = lim m→∞ P(F m ) = P(∪ m F m ),\n\nwhich proves the assertion.",
+      "word_count": 406
+    },
+    {
+      "index": 16,
+      "title": "B.3 Proofs for the Partially Synthetic Case",
+      "kind": "body",
+      "text": "Proof of Theorem 2. Let ν\n\n(m) i := E p (m) i 2 , N ′ := N + n and y (m) i = (y (m) 1,i , . . . , y (m) s,i ). Then ν (1) i\n\n= p i N + 1 - 1 N p 2 i and for m ≥ 2 ν (m) i = 1 N ′2 E   N ∑ k=1 y (0) i,k 2 + n ∑ k=1 y (m-1) i,k 2 + 2 N ∑ j=1 n ∑ k=1 y (0) i,k y (m-1) i,k   = 1 N ′2 N p i + (N 2 -N)p 2 i + np i + (n 2 -n)ν (m-1) i + 2 N ′2 N ∑ j=1 n ∑ k=1 E y (0)\n\ni,j y (m-1) i,k\n\n= p i N ′ + N 2 -N N ′2 p 2 i + n 2 -n N ′2 ν (m-1) i + 2 N ′2 N ∑ j=1 n ∑ k=1 E y (0) i,j y (m-1) i,k . ( 15\n\n)\n\nFor m ≥ 2, since y (m-1) i,k\n\nis conditionally independent of y\n\n(0) i,j given p (m-1) i , by conditioning on y (0) i,j and p (m-1) i we have E y (0) i,j y (m-1) i,k = E y (0) i,j p (m-1) i and hence for m ≥ 2, ν (m) i\n\n= p i N ′ + N 2 -N N ′2 p 2 i + n 2 -n N ′2 ν (m-1) i + 2n N ′2 N ∑ j=1 E y (0)\n\ni,j p (m-1) i .",
+      "word_count": 277
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Self-consuming generative models go mad",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard G Baraniuk"
+      ],
+      "raw_text": "Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard G Baraniuk Self-consuming generative models go mad 2023"
+    },
+    {
+      "index": 2,
+      "title": "Cosmopedia",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Loubna Ben Allal",
+        "Anton Lozhkov",
+        "Guilherme Penedo",
+        "Thomas Wolf",
+        "Leandro Von",
+        "Werra"
+      ],
+      "raw_text": "Loubna Ben Allal Anton Lozhkov Guilherme Penedo Thomas Wolf Leandro Von Werra Cosmopedia 2024"
+    },
+    {
+      "index": 3,
+      "title": "Nepotistically trained generative-ai models collapse",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Matyas Bohacek",
+        "Hany Farid"
+      ],
+      "raw_text": "Nepotistically trained generative-ai models collapse Matyas Bohacek Hany Farid 2023"
+    },
+    {
+      "index": 4,
+      "title": "Large language models suffer from their own output: An analysis of the self-consuming training loop",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Martin Briesch",
+        "Dominik Sobania",
+        "Franz Rothlauf"
+      ],
+      "raw_text": "Large language models suffer from their own output: An analysis of the self-consuming training loop Martin Briesch Dominik Sobania Franz Rothlauf 2023"
+    },
+    {
+      "index": 5,
+      "title": "Self-play finetuning converts weak language models to strong language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zixiang Chen",
+        "Yihe Deng",
+        "Huizhuo Yuan",
+        "Kaixuan Ji",
+        "Quanquan Gu"
+      ],
+      "raw_text": "Self-play finetuning converts weak language models to strong language models Zixiang Chen Yihe Deng Huizhuo Yuan Kaixuan Ji Quanquan Gu arXiv:2401.01335 2024 arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "Are large language models a threat to digital public goods? evidence from activity on stack overflow",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Maria Del Rio-Chanona",
+        "Nadzeya Laurentsyeva",
+        "Johannes Wachs"
+      ],
+      "raw_text": "Are large language models a threat to digital public goods? evidence from activity on stack overflow Maria Del Rio-Chanona Nadzeya Laurentsyeva Johannes Wachs 2023"
+    },
+    {
+      "index": 7,
+      "title": "Model collapse demystified: The case of regression",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Julia Kempe"
+      ],
+      "raw_text": "Model collapse demystified: The case of regression Elvis Dohmatob Yunzhen Feng Julia Kempe 2024"
+    },
+    {
+      "index": 8,
+      "title": "A tale of tails: Model collapse as a change of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "A tale of tails: Model collapse as a change of scaling laws Elvis Dohmatob Yunzhen Feng Pu Yang Francois Charton Julia Kempe 2024"
+    },
+    {
+      "index": 9,
+      "title": "Towards theoretical understandings of self-consuming generative models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shi Fu",
+        "Sen Zhang",
+        "Yingjie Wang",
+        "Xinmei Tian",
+        "Dacheng Tao"
+      ],
+      "raw_text": "Towards theoretical understandings of self-consuming generative models Shi Fu Sen Zhang Yingjie Wang Xinmei Tian Dacheng Tao 2024"
+    },
+    {
+      "index": 10,
+      "title": "Textbooks are all you need",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Suriya Gunasekar",
+        "Yi Zhang",
+        "Jyoti Aneja",
+        "Caio César",
+        "Teodoro Mendes",
+        "Allie Del Giorno",
+        "Sivakanth Gopi",
+        "Mojan Javaheripi"
+      ],
+      "raw_text": "Suriya Gunasekar Yi Zhang Jyoti Aneja Caio César Teodoro Mendes Allie Del Giorno Sivakanth Gopi Mojan Javaheripi Piero Kauffmann Gustavo De Rosa Olli Saarikivi arXiv:2306.11644 Textbooks are all you need 2023 arXiv preprint"
+    },
+    {
+      "index": 11,
+      "title": "The curious decline of linguistic diversity: Training language models on synthetic text",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yanzhu Guo",
+        "Guokan Shang",
+        "Michalis Vazirgiannis",
+        "Chloé Clavel"
+      ],
+      "raw_text": "The curious decline of linguistic diversity: Training language models on synthetic text Yanzhu Guo Guokan Shang Michalis Vazirgiannis Chloé Clavel 2023"
+    },
+    {
+      "index": 12,
+      "title": "Finite markov chains",
+      "doi": "",
+      "year": "1969",
+      "authors": [
+        "Laurie John G Kemeny",
+        "Snell"
+      ],
+      "raw_text": "Finite markov chains Laurie John G Kemeny Snell 1969 26 Princeton, NJ"
+    },
+    {
+      "index": 13,
+      "title": "Concentration inequalities for the empirical distribution of discrete distributions: beyond the method of types. Information and Inference: A",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jay Mardia",
+        "Jiantao Jiao",
+        "Ervin Tánczos",
+        "Robert D Nowak",
+        "Tsachy Weissman"
+      ],
+      "raw_text": "Concentration inequalities for the empirical distribution of discrete distributions: beyond the method of types. Information and Inference: A Jay Mardia Jiantao Jiao Ervin Tánczos Robert D Nowak Tsachy Weissman Journal of the IMA 9 4 2020"
+    },
+    {
+      "index": 14,
+      "title": "Combining generative artificial intelligence (ai) and the internet: Heading towards evolution or degradation?",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "Combining generative artificial intelligence (ai) and the internet: Heading towards evolution or degradation? Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar 2023"
+    },
+    {
+      "index": 15,
+      "title": "Towards understanding the interplay of generative artificial intelligence and the internet",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "Towards understanding the interplay of generative artificial intelligence and the internet Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar 2023"
+    },
+    {
+      "index": 16,
+      "title": "OpenAI. Gpt-4 technical report",
+      "doi": "",
+      "year": "2024",
+      "authors": [],
+      "raw_text": "OpenAI. Gpt-4 technical report 2024"
+    },
+    {
+      "index": 17,
+      "title": "Laion-5b: An open large-scale dataset for training next generation image-text models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Christoph Schuhmann",
+        "Romain Beaumont",
+        "Richard Vencu",
+        "Cade Gordon",
+        "Ross Wightman",
+        "Mehdi Cherti",
+        "Theo Coombes",
+        "Aarush Katta"
+      ],
+      "raw_text": "Laion-5b: An open large-scale dataset for training next generation image-text models Christoph Schuhmann Romain Beaumont Richard Vencu Cade Gordon Ross Wightman Mehdi Cherti Theo Coombes Aarush Katta Clayton Mullis Mitchell Wortsman Patrick Schramowski Srivatsa Kundurthy Katherine Crowson Ludwig Schmidt Robert Kaczmarczyk Jenia Jitsev 2022"
+    },
+    {
+      "index": 18,
+      "title": "The curse of recursion: Training on generated data makes models forget",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Yarin Gal",
+        "Nicolas Papernot",
+        "Ross Anderson"
+      ],
+      "raw_text": "The curse of recursion: Training on generated data makes models forget Ilia Shumailov Zakhar Shumaylov Yiren Zhao Yarin Gal Nicolas Papernot Ross Anderson 2023"
+    }
+  ],
+  "section_count": 16,
+  "reference_count": 18,
+  "error": "",
+  "updated_at": "2026-04-12T03:11:20.307478+00:00"
+}

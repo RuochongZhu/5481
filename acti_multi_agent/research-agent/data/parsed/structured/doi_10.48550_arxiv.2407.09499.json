@@ -1,0 +1,1070 @@
+{
+  "paperId": "doi:10.48550/arxiv.2407.09499",
+  "title": "Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences",
+  "year": 2024,
+  "source": "s2+arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2407.09499.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2407.09499.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2407.09499.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "The rapid progress in generative models has resulted in impressive leaps in generation quality, blurring the lines between synthetic and real data. Web-scale datasets are now prone to the inevitable contamination by synthetic data, directly impacting the training of future generated models. Already, some theoretical results on self-consuming generative models (a.k.a., iterative retraining) have emerged in the literature, showcasing that either model collapse or stability could be possible depending on the fraction of generated data used at each retraining step. However, in practice, synthetic data is often subject to human feedback and curated by users before being used and uploaded online. For instance, many interfaces of popular text-to-image generative models, such as Stable Diffusion or Midjourney, produce several variations of an image for a given query which can eventually be curated by the users. In this paper, we theoretically study the impact of data curation on iterated retraining of generative models and show that it can be seen as an implicit preference optimization mechanism. However, unlike standard preference optimization, the generative model does not have access to the reward function or negative samples needed for pairwise comparisons. Moreover, our study doesn't require access to the density function, only to samples. We prove that, if the data is curated according to a reward model, then the expected reward of the iterative retraining procedure is maximized. We further provide theoretical results on the stability of the retraining loop when using a positive fraction of real data at each step. Finally, we conduct illustrative experiments on both synthetic datasets and on CIFAR10 showing that such a procedure amplifies biases of the reward model.",
+      "word_count": 270
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Today state-of-the-art generative models can produce multi-modal generations virtually indistinguishable from human-created content, like text (Achiam et al., 2023) , images (Stability AI, 2023) , audio (Borsos et al., 2023) , or videos (Villegas et al., 2022; Brooks et al., 2024) . The democratization of these powerful models by open-sourcing their weights (Stability AI, 2023; Jiang et al., 2023; Touvron et al., 2023) or allowing public inference (Ramesh et al., 2021; Midjourney, 2023; Achiam et al., 2023) paves the way to creating synthetic content at an unprecedented scale-the results inevitably populate the Web. In particular, existing datasets are already composed of synthetic data such as JourneyDB (Pan et al., 2023) and SAC (Pressman et al., 2022) . Moreover, Alemohammad et al. (2024, Fig. 2) showed LAION-5B (Schuhmann et al., 2022) , a large-scale Web-crawled dataset used to train future generative models, already contains synthetically generated images.\n\nThere is strong evidence that the synthetic data on the web has been, to a large extent, curated by human users. For instance, the LAION-Aesthetics datasets contains synthetically generated 3. Sample is upscaled by User with probability:\n\nx k e r(x k ) ∑ 4 i=1 e r(x i ) 4. Only the upscaled samples are in the dataset 𝒟 t 1. User picks prompts 2. Sample: y ∼ p user (y) x 1 , x 2 , x 3 , x 4 ∼ p t (x | y) … …\n\n5. Train the model on the dataset p t+1 𝒟 t REPEAT Figure 1 : Illustration of the curation phenomenon: 1. User proposes prompts such as \"butterfly going to the bathroom\", 2. Four images are generated with Midjourney, 3. User only upscale one (e.g. the top left image) image, 4. Solely upscaled images are incorporated into the JourneyDB dataset (Pan et al., 2023) . Samples from other diffusion models can be found in Figures 10a and 10b .\n\nimages that have been curated using a reward model learned from human feedback on the Simulacra Aesthetic Captions dataset (Pressman et al., 2022) . Additionally, the JourneyDB dataset, contains human-picked images from the Midjourney (Midjourney 2023 ) discord server, that have been upscaled, i.e., images that have been requested in a higher resolution (see Figure 1 ). More generally, the user interface of the most popular state-of-the-art text-to-image models (e.g., Midjourney and Stable Diffusion 2.1 Huggingface implementation) proposes four alternatives for a single prompt for the user to pick their favorite.\n\nWhile the consequences of iterative retraining of generative models on synthetically generated data have raised a lot of attention in the community (Alemohammad et al., 2024; Shumailov et al., 2023; Bertrand et al., 2024; Dohmatob et al., 2024a) , previous works do not consider that generated data could be curated. This subtle nuance may be of major importance since in numerous applications, augmenting the datasets with curated synthetically generated data is found to enhance the performance of the downstream task (Azizi et al., 2023; Wang et al., 2023; Gillman et al., 2024) and even generative models themselves (Hemmat et al., 2023; Gulcehre et al., 2023) , hinting that quality might not be the biggest problem. On the other hand, recent works Wyllie et al. (2024) ; Chen et al. (2024b) showed that this might lead to new issues, such as bias amplification. This is why, in this work, we aim to theoretically understand how the process of curation of synthetic data is connected with the reward model underlying human preferences and what distribution is learned by generative models trained on such curated synthetic data.",
+      "word_count": 590
+    },
+    {
+      "index": 3,
+      "title": "Main contributions.",
+      "kind": "body",
+      "text": "We summarize our core contributions as the following:\n\n• We first focus on the self-consuming loop on (only) curated synthetic samples: we show that the expected reward gets maximized in Lemma 2.2 and that its variance vanishes. We further provide a convergence result in Theorem 2.1.\n\nby a discrete choice model and highlight connections with RLHF. We additionally show that the expected reward increases and that its variance vanishes Lemma 2.2. Finally, inspired by stability results of Bertrand et al. (2024) , in Section 2.2 we extend our study to settings when real data is injected. More precisely, we improve previous results of stability of Bertrand et al. (2024) without curation and provide novel theoretical bounds when the synthetic data is curated.",
+      "word_count": 122
+    },
+    {
+      "index": 4,
+      "title": "Notation and conventions.",
+      "kind": "body",
+      "text": "Lowercase letters p denote densities while uppercase letters P indicate their associated probabilities. We denote p data ∈ P(R d ) the real data distribution and for t ∈ N, we denote p t ∈ P(R d ) the model distribution at step t of the iterative retraining loop. Analogously, θ t is the corresponding parameters of the learned parametric model p t . We write p 0 to indicate the initial model learned using maximum likelihood on p data , this includes many modern generative model families such as diffusion models (Ho et al., 2020; Song et al., 2021) and flow-matching methods (Lipman et al., 2022; Tong et al., 2023b) .\n\nDiscrete K-choice model. We propose using a discrete choice model for the curation phenomenon illustrated in Figure 1 , where users pick their preferred image that will be upscaled in the next dataset. Modeling human preferences is usually done via the Luce choice rule model (Shepard, 1957; Luce et al., 1963; Dumoulin et al., 2023) , where the human is modeled as a rational Bayesian subject. The probability that x 1 is preferred to x 2 is formulated using an underlying reward function r(x) and Bradley-Terry model, (Bradley and Terry 1952) . Under Luce's choice axiom (Luce, 2005) , it is possible to generalize this formula to K ≥ 1 samples as in Equation 2. For given samples x 1 , . . . , x K drawn from p t , the random curated sample denoted x is chosen according to this generalized Bradley-Terry model x ∼ BT (x 1 , . . . , x K ) as in Equation 2 (Bradley and Terry, 1952) . In particular, the curation procedure can be summarized as follows\n\n1) Sample x 1 ∼ p t , . . . , x K ∼ p t , independently, 2) Pick x ∼ BT (x 1 , . . . , x K ) , i.e., P(x = x k |x 1 , . . . , x K ) = e r(x k ) K j=1 e r(xj ) , 1 ≤ k ≤ K. (1)\n\n(2)\n\nSelf-consuming loop. After generating and curating a synthetic dataset according to Equations 1 and 2, the next generation of generative models is trained either solely on the distribution of curated samples (λ → ∞), or on a mixture of reference samples (that either comes from real data p data or a reference generative model p 0 ) and synthetic curated samples (λ < ∞) depending on the studied setting\n\np t+1 = arg max p∈P 1 1 + λ • E x∼p ref log p(x) + λ 1 + λ • E x1,...,x K ∼pt x∼BT (x1,...,x K ) log p(x) . (3)\n\nwhere P is the set of achievable distributions with our model. This work aims to study the retraining dynamics of the distribution defined in Equation 3. First, in Section 2.1 we study the simplified dynamics of Equation 3 in the regime λ → ∞, i.e., when solely retraining on curated synthetic data and show convergence of the process but variance collapse. In Section 2.2 we study the exact dynamics given in Equation 3 and the impact on the stability of retraining on a mix of real data synthetic curated data.",
+      "word_count": 551
+    },
+    {
+      "index": 5,
+      "title": "Iterative retraining only on the curated synthetic samples",
+      "kind": "body",
+      "text": "In this section, we study the dynamics of the density learned through iterative discrete K-choice curation in the fully-synthetic setting (i.e., λ → ∞): Equation 3 boils down to\n\np t+1 = arg max p∈P E x1,...,x K ∼pt x∼BT (x1,...,x K ) log p(x) . (4)\n\nAs a warm-up, we first consider the limit of K → ∞ in Lemma 2.1 and draw explicit connections with RLHF. This simplification yields a closed-form formula form for the solution of Equation 4 and provides intuitions for the dynamics of learning on curated samples.\n\nLemma 2.1. Let p t+1 be defined as in Equation 4 . If P = P(R d ) is the set of probability distributions on R d , and if we assume that E y∼pt e r(y) < ∞, then we have for all x ∈ R d , x) .\n\np t+1 (x) K→∞ ----→ p t (x) e r(x) E x∼pt e r(\n\n(5)\n\nDependency on K and connection to RLHF.. The proof of Lemma 2.1 relies on the fact that we can obtain a closed-form formula for the density p t+1 induced from discrete K-choice curation on p t (Equation 4 ). This is done in Appendix A.1.1 where we show that its density can be written xi) . (6)\n\np t+1 (x) = p t (x) • H K pt (x) , with H K pt (x) := E x1,...,x K-1 ∼pt K • e r(x) e r(x) + K-1 i=1 e r(\n\nThe latter directly implies that for all K ≥ 1, H K pt (x) ∈ (0, K). In particular, small values of K act as a regularization which prevents the density from blowing up too much in high rewards areas. On the other hand, the higher the number of samples used for curation, the more it can affect the induced distribution. In the limit K → ∞, Lemma 2.1 shows an interesting connection between iterative retraining on curated data and reward maximization via RLHF. Given a supervised-finetuned model distribution π SFT and a regularization parameter β, the goal of RLHF is to find a policy that maximizes a reward r(x) fitted on human preferences : (Go et al., 2023; Rafailov et al., 2024) .\n\nπ RLHF = arg max π E x∼π [r(x)] -βD KL π||π SFT , which has a closed form formula , π RLHF (x) ∝ π SFT (x)e r(x) /β\n\nTherefore, in the limit K → ∞, Equation 5 shows that performing iterative retraining with human curation for t iterations is equivalent to performing RLHF with hyperparameter β = 1 t from the initial distribution π SFT := p 0 . The corresponding regularization parameter β is inversely proportional to the number of retraining steps. This connection is surprising since performing maximum likelihood on a curated distribution (Equation 3 ) is a priori different than directly maximizing a reward with Kullback-Leibler (KL) regularization.\n\nTo prove that curation both increases the expected reward and reduces the variance, we need an additional assumption to ensure that it is almost surely bounded at initialization: Assumption 2.1. There exists r * ∈ R such that: (a) p 0 -almost surely, r(x) ≤ r * and (b) p 0 puts positive mass in a neighborhood of r * i.e., ∀ε > 0, P 0 (r(x) ≥ r * -ε) > 0.\n\nIn particular, Assumption 2.1 is satisfied if we suppose that the reward bounded, which is reasonable if we suppose it is continuous given that the set of images [0, 1] d is compact. Finally note that assuming (a), we can always choose r * such that (b) is satisfied by picking the smallest value that almost surely bounds the reward at initialization. On the other hand (b) imposes that r * is the smallest value that a.s. upper-bounds the reward. This shows that r * is uniquely defined which is an important point as we will show convergence of p t towards the level set r(x) = r * in Lemma 2.2 and Theorem 2.1. Lemma 2.2 states the reward expectation increases proportionally to the reward variance.\n\nLemma 2.2. Let p t+1 be the distribution induced from a discrete choice model on p t (Equation 4). Suppose Assumption 2.1 holds, then the expected reward increases proportionally to its variance at each retraining iteration:\n\nE pt+1 e r(x) ≥ E pt e r(x) + K -1 K Var pt e r(x) e r * . (7)\n\nEspecially the expected reward converges to the maximum reward and its variance vanishes:\n\nE pt e r(x) t→∞ ---→ e r * and Var pt e r(x) t→∞ ---→ 0 .\n\nDiscussion. Lemma 2.2 shows that the reward augmentation is directly proportional to the reward variance at each retraining step. In other words, the more heterogeneous the reward is, the more its expectation increases at the next step. Lemma 2.2 further shows that the expected reward converges towards the reward maximizers. We can additionally deduce that the variance is doomed to vanish. This is detailed in Appendix A.1.3 which additionally states that the reward variance decreases fast enough to have finite sum. Finally, we note that Lemma 2.2 helps us understand the fixed points of this process: due to the variance term in Equation 7 , a fixed point of the retraining loop must put mass on a single level set of the reward function. The reciprocal is obviously true as detailed in the appendix (Lemma A.3).\n\nWe can finally show a stronger result of convergence for the Kullback-Leibler divergence. We will need to assume that at initialization, the probability density puts a positive mass on the level set r(x) = r * . This corresponds to additionally assuming that ε ≥ 0 instead of only ε > 0 in Assumption 2.1 b). Without this assumption, the probability density support would consecutively vanish towards the maximizer of the reward preventing KL convergence. We therefore assume P 0 (r(x) = r * ) > 0. Further denote p * the probability density at initialization restricted to the domain that maximizes the reward and renormalized:\n\np * (x) := p0(x)1 r(x)=r * P0(r(x)=r * ) .\n\nTheorem 2.1. The self-consuming loop on curated samples p t converges to p * :\n\nD KL (p * ||p t ) t→∞ ---→ 0 .\n\nTheorem 2.1 shows that the process of retraining with curation Equation 2 eventually converges to the highest level set of the reward reached at initialization. In particular, in the limit of a large number of retraining steps, the probability of all smaller rewards vanishes. This can have strong implications when retraining the next generation of generative models on a curated Web-scaled dataset: the learned distribution will lose diversity and collapse to the highest reward samples.",
+      "word_count": 1129
+    },
+    {
+      "index": 6,
+      "title": "Stability of iterative retraining on a mixture of real and synthetic data",
+      "kind": "body",
+      "text": "After showing convergence but variance collapse of the self-consuming loop on curated synthetic samples, we now study the impact on the stability of injecting real data at each step. This setting is motivated by the recent work of Bertrand et al. (2024) that showed stability of the iterative retraining loop with real and synthetic data around a local maximizer θ * of the training distribution likelihood. This setting is furthermore relevant since Web-scrolled datasets will presumably keep containing a mixture of real data and human-curated synthetic data. In Section 2.2.1 we first improve previous results on retraining on mixed datasets which underlines the beneficial impact of real data on stability and in Section 2.2.2, we prove both stability and reward augmentation in the setting of mixed real and curated synthetic data.",
+      "word_count": 131
+    },
+    {
+      "index": 7,
+      "title": "Iterative retraining without curation",
+      "kind": "body",
+      "text": "To motivate the impact of real data on the stability of the retraining loop with curation, we focus first on its impact without curation and improve previous results in that setting in Theorem 2.2.",
+      "word_count": 34
+    },
+    {
+      "index": 8,
+      "title": "Setting.",
+      "kind": "body",
+      "text": "In this section only, following the approach of Bertrand et al. (2024) , we will not assume infinite capacity for our distribution (i.e., P ̸ = P(R d ) and hence adopt a parametric approach P = P Θ := {p θ | θ ∈ Θ}. Given the current generative model distribution p θt , p θt+1 must at the next iteration maximize the combined log-likelihood of real and generated data with hyperparameter λ, i.e., Equation 3 becomes:\n\np θt+1 = arg max p θ ∈PΘ 1 1 + λ • E p data [log p θ (x)] + λ 1 + λ • E p θ t [log p θ (x)] .\n\nWe finally denote p θ * = arg max\n\np θ ∈PΘ E p data [log p θ (x)\n\n] a maximizer of the data distribution loglikelihood. We also make the following assumption taken from Bertrand et al. (2024) : Bertrand et al. (2024) proved stability of the retraining loop provided λ is sufficiently small. However, their proof is restricted to λ < 1 2 , preventing the use of a fraction of synthetic data λ 1+λ bigger than one-third which they left as future work. In Theorem 2.2, we extend their proof to any fraction of synthetic data provided the best model distribution is sufficiently close to p data in Wasserstein distance (Villani et al., 2009) i.e., W 1 (p θ * , p data ) ≤ ε < α L . Additionally, we express the result in distribution, while they expressed it in parameter space.\n\nAssumption 2.2. For θ close enough to θ * , the mapping x → ∇ 2 θ log p θ (x) is L- Lipschitz and the mapping θ → E p data [log p θ (x)] is continuously twice differentiable with E p data ∇ 2 θ log p θ (x) ⪯ -αI ≺ 0.\n\nTheorem 2.2. If Lε < α and λ < α 2Lε , then there exists a neighborhood of the optimal distribution parameters θ * such that for any initial parameters θ 0 in that neighborhood, p θt converges to p θ * exponentially fast:\n\nD KL (p θ * ||p θt ) = Õ λ(α + εL) α + λ(α -εL) 2t .",
+      "word_count": 378
+    },
+    {
+      "index": 9,
+      "title": "Iterative retraining on a mixture of real and curated samples",
+      "kind": "body",
+      "text": "Interestingly when curating the synthetic samples we cannot expect stability around the optimal distribution (θ * in Theorem 2.2) since it is no longer a fixed point of the retraining loop. We will instead show a closeness result in KL divergence combined with an increasing property of the expectation of the reward, which bears close connections to RLHF. We therefore now study the setting described in Equation 3 where the synthetic samples are curated using a discrete K-choice model and real data is reused at each step (λ < ∞). In other words, we suppose that the retraining step uses a mixture of a reference distribution and a curated distribution as\n\np t+1 (x) = 1 1+λ p ref (x) + λ 1+λ p t (x) • H K pt (x)(H K pt is defined in Equation 6) . (8)\n\nIn Theorem 2.3, we prove that when retraining on a mixture of real and curated samples, the reward increases with respect to the initialization:\n\nTheorem 2.3. Consider the process (p t ) defined in eq. 8, with p 0 = p ref , then, for all t ≥ 1\n\nE pt e r(x) ≥ E p ref e r(x) + λ (1 + λ) 3 (K -1)Var p ref e r(x)\n\nKe r * .",
+      "word_count": 215
+    },
+    {
+      "index": 10,
+      "title": "Discussion.",
+      "kind": "discussion",
+      "text": "A first interesting case is taking the reference distribution p ref equal to p data . In that case, we recover the fact that p data is not a fixed point of the retraining loop as soon as different reward values have non-zero probabilities to happen (we recover the result from Lemma A.3). In fact, Theorem 2.3 shows that such a process initialized at p data will increase the reward expectation.\n\nThe second interesting case is taking p ref = p 0 the generative model at initialization. In that case, retraining on a mixture of samples from the initial model and curated samples from the current model improves the reward expectation with respect to initialization.\n\nAfter showing that such a retraining loop improves the expected reward, we can conversely show that this process does not deviate too much from p ref .\n\nTheorem 2.4. Consider the process (p t ) defined in Equation 8 , with p 0 = p ref .\n\nIn addition, suppose that λ < 1 K-1 , then, for all t ≥ 1\n\nD KL (p t ||p ref ) ≤ -log (1 -λ(K -1)) .\n\nApplying Theorem 2.4 with p ref = p data shows that retraining on a mixture of real and curated synthetic samples does not deviate too much from the data distribution. On the other hand, when setting p ref to be any initial model distribution, we see that reusing samples from the initial model stabilizes the retraining loop around initialization.\n\nConnection with RLHF. Theorem 2.3 and Theorem 2.4 together emphasize that retraining on a mixture of reference and filtered synthetic data bears important connections with RLHF. Indeed, the RLHF objective is composed of both a reward maximization term and a KL regularization between the current and initial model. In turn, Theorem 2.3 states that the expected reward increases and Theorem 2.4 shows that the KL divergence with respect to initialization remains bounded. The upper bound on the KL divergence further indicates that setting K small, i.e., using fewer samples for comparison acts as a regularizer, as previously noticed.\n\n3 Related work Aligning models with human preferences. With the urgent and critical safety concerns of public deployment, the need to align models with human preferences has gained significant importance. RLHF is a popular reinforcement learning technique to align an already pretrained and finetuned model on human preferences (Stiennon et al., 2020; Christiano et al., 2017; Lee et al., 2021; Ouyang et al., 2022; Shin et al., 2023) . It consists of two steps: first fitting a reward r(x) on human preferences using a dataset of pairwise human comparisons and then, maximizing the expected reward over the model distribution. A Kullback-Leibler regularization to the initial model is further used during the maximization step to avoid reward hacking (Skalse et al., 2022; Chen et al., 2024a) or catastrophic forgetting (Korbak et al., 2022) . Variants of RLHF have recently been proposed such as Direct Preference Optimization (DPO) which maximizes the reward directly without modeling it (Rafailov et al., 2024) , Identity Preference Optimization (IPO) (Azar et al., 2024) or Kahneman-Tversky Optimization (KTO) (Ethayarajh et al., 2024) .",
+      "word_count": 523
+    },
+    {
+      "index": 11,
+      "title": "Experiments",
+      "kind": "results",
+      "text": "This section aims to empirically illustrate our previous theoretical results on how curation impacts the self-consuming loop. In Algorithm 1, we recall and detail the different steps performed in our experiments.",
+      "word_count": 31
+    },
+    {
+      "index": 12,
+      "title": "Synthetic datasets.",
+      "kind": "body",
+      "text": "We first focus on two synthetic datasets: a mixture of Gaussians and the two moons dataset. For both datasets, we study the two settings of solely retraining on curated synthetic samples (λ = ∞) and mixed datasets (λ = 1). In Figure 4 , we iteratively retrain a denoising diffusion probabilistic model (DDPM, Ho et al. 2020) on a mixture of 8 Gaussians. The reward r(x) used for the discrete choice model is the clipped negative Euclidean distance to one of the centers of the Gaussians x * , i.e., r(x) := -γ max{0, ∥x -x * ∥ -r min } where we choose γ = 10, r min = 1. Clipping the distance is used to ensure that the process does not collapse to a single point. Indeed applying Theorem 2.1, we know that the density will converge to a renormalized Gaussian distribution restricted to the ball centered at x * of radius r min . In Figure 5 , we plot the retraining curves on the two moons dataset: to compute the reward, we use an MLP classifier with 2 hidden layers of width 512 which yields probabilities q 0 (x), q 1 (x) for each class. The reward is then defined as : r(x) := γq 0 (x), γ > 0. Both Figure 4 and Figure 5 illustrate that retraining on solely curated samples induces collapse to regions that maximize the reward: respectively one mode of the MoG or one single moon. On the other hand, the use of real data results at the same time both in stability and higher density in high reward regions. Further experimental details are provided in Appendix A.2.",
+      "word_count": 277
+    },
+    {
+      "index": 13,
+      "title": "Natural images on CIFAR10",
+      "kind": "body",
+      "text": "Setting. We train a normalizing flow using optimal transport conditional flow matching (Lipman et al., 2022; Shaul et al., 2023; Tong et al., 2023b) with the torchcfm library Tong et al. (2023a Tong et al. ( , 2024)) . The initial model has been pretrained on the 50000 train images of the CIFAR-10 dataset (Krizhevsky et al., 2009) . At each iteration, we generate 5 • 10 4 samples using the current model from which we keep 2.5 • 10 3 samples filtered by discrete K-choice comparisons. The reward r(x) is computed using the class probabilities q 0 (x), . . . , q 9 (x) from a pretrained VGG11 classifier (Simonyan and Zisserman, 2014) with 92.39% test accuracy. Due to the expensive compute cost of retraining a generative model for multiple iterations (c.f. Appendix A.2.3), we plot only one run on each figure. To ensure the reproducibility of our results, we plot the retraining curves for 3 independent runs in Figure 9 in the appendix, illustrating that they have small variance.\n\nUsing probability of one class as reward. As a first experiment, we filter samples following the probability of the classifier on a predefined class. We arbitrarily chose the class 0 corresponding to planes. The reward is then defined as r(x) = γ • q 0 (x), γ > 0. We plot the evolution of the class proportions as well as the averaged reward across 10 retraining steps in Figure 2 with γ = 5. Figure 2 shows collapse to the single plane class as the reward increases monotonically, illustrating Lemma 2.2.\n\nUsing the confidence of the classifier as a reward: the emergence of bias. As a second experiment, we use the confidence of the classifier as a reward, i.e., r(x) = γ • max 0≤i≤9 q i (x), γ > 0. As written, the reward is therefore uncorrelated from the class but, remains implicitly correlated to it by the fact that the classifier statistics are class dependent. In Figure 3 we plot the evolution of the class proportions as well as the average reward. As expected by our theoretical results in Section 2, the average reward increases monotonically. On the other hand, we clearly see that the class proportions become more and more heterogeneous throughout the retraining loop. While confirming our theoretical study this plot therefore additionally shows that retraining on filtered samples increases bias, in a setting where the reward is implicitly correlated to diversity. Taking a step back, this has strong societal and ethical implications as it may imply that in a filtered internet biases may emerge or strengthen as we explain in Section 6.\n\nReusing real samples: stability and reward augmentation. Finally, we illustrate our results from Section 2.2.1 by mixing real and filtered synthetic samples with hyperparameter λ = 1 2 . Figure 3 shows that the process remains stable as the proportion of classes remains approximately uniform (as suggested by Theorem 2.3). On the other hand, the average reward increases before stabilizing as predicted by Theorem 2.3.\n\nAirplane Automobile Bird Cat Deer Dog Frog Horse Ship Truck 0.0 0.5 Proportion Only Curated Synthetic Real & Curated Synthetic 0 5 10 15 20 # retraining 0.925 0.950 0.975 Avg. Confidence 0 5 10 15 20 # retraining",
+      "word_count": 543
+    },
+    {
+      "index": 14,
+      "title": "Conclusion and open questions",
+      "kind": "conclusion",
+      "text": "We study the impact of data curation on the training of generative models in the self-consuming loop. We provide theoretical results demonstrating that the expected reward underlying the curation process increases and its variance collapses (Lemma 2.2) as well as a convergence result (Theorem 2.1) for the generative model. We additionally provide stability guarantees when reusing real data at each step (Theorem 2.3 and Theorem 2.4) establishing close connections with RLHF and preference optimization. Our work sheds light and theoretically grounds a novel phenomenon: increasing the proportion of curated synthetic data on the Web automatically optimizes preferences for future trained large models. A limitation is that we do not propose an algorithm to address emerging issues like bias amplification as we feel it goes beyond the scope of our paper and is a substantially complex field already intensively explored (Grover et al., 2019; Wyllie et al., 2024; Chen et al., 2024b) . We believe, however, that it should be a research priority and constitutes an interesting avenue for future work. Another interesting direction is to study the impact of the particular reward function underlying filtering (confidence, quality, diversity...) on the emerging bias amplification.",
+      "word_count": 193
+    },
+    {
+      "index": 15,
+      "title": "Broader impacts",
+      "kind": "body",
+      "text": "Training and alignment of large generative models are prone to substantial ethical concerns regarding their alignment objective (Shen et al., 2023) , representational disparities of the training datasets (Clemmensen and Kjaersgaard, 2022) , or the presence of harmful images in the datasets (Birhane et al., 2021; Schramowski et al., 2023; Birhane et al., 2024) . Our work mostly focuses on the impact of the curation of synthetic datasets which itself heavily depends on the agent performing the curation and its underlying reward function. In particular the documentation of the Simulacra Aesthetic Captions dataset (Pressman et al., 2022) alerts that the human-based curation step is performed by a group of individuals that lacks diversity, mostly from Western, Educated, Industrialized, Rich, and Democratic (WEIRD) individuals (Henrich et al., 2010) . A similar bias is likely occurring in the JourneyDB (Pan et al., 2023) dataset and, more generally, in the synthetic data appearing on the web. However, our work mostly revolves around a theoretical analysis and raises awareness of the implicit alignment and potential bias amplification of self-consuming generative models. We therefore firmly believe that the potential benefits of this awareness outweigh the potential unforeseen negative consequences of this work.\n\nH K pt (x) K→∞ ----→ e r(x)\n\nE y∼pt e r(y) which directly implies\n\np t+1 (x) K→∞ ----→ p t (x) e r(x)\n\nE y∼pt e r(y)",
+      "word_count": 226
+    },
+    {
+      "index": 16,
+      "title": "A.1.2 Additional lemma: the reward expectation is increasing",
+      "kind": "body",
+      "text": "Without assuming that the reward is bounded, we can show using Jensen inequality that the reward expectation increases at each retraining step.\n\nLemma A.1. When performing K-wise filtering, the expected reward increases, i.e., ∀t ≥ 0:\n\nE pt+1 e r(x) ≥ E pt e r(x) . ( 12\n\n)\n\nProof. Consider the random variable\n\nY = K-1 K K-1 i=1 e r(y i ) K-1 when y 1 , • • • , y K-1 i.i.d. ∼ p t .\n\nFor a, b > 0, the function x → a b+x is convex on R * + . Hence by Jensen inequality, for any x:\n\nH K pt (x) = E Y e r(x) e r(x) K + Y ≥ e r(x) e r(x) K + E[Y ] = e r(x) e r(x) K + K-1 K E pt e r(x)\n\nFinally, we can write:\n\nE pt+1 e r(x) = e r(x) p t (x)H K pt (x)dx ≥ p t (x) e 2r(x) e r(x) K + K-1 K E y∼pt e r(y) dx ≥ E x∼pt e r(x) 2 Ex∼p t [e r(x) ] K + K-1 K E y∼pt e r(y) = E x∼pt e r(x)\n\nwhere we have used again Jensen inequality on the convex function\n\nx 2 x K +c on R * + where\n\nc := K -1 K E y∼pt e r(y) > 0 A.1.3 Proof of Lemma 2.2\n\nLemma 2.2. Let p t+1 be the distribution induced from a discrete choice model on p t (Equation 4 ). Suppose Assumption 2.1 holds, then the expected reward increases proportionally to its variance at each retraining iteration:\n\nE pt+1 e r(x) ≥ E pt e r(x) + K -1 K Var pt e r(x) e r * . (7)\n\nEspecially the expected reward converges to the maximum reward and its variance vanishes:\n\nE pt e r(x) t→∞ ---→ e r * and Var pt e r(x) t→∞ ---→ 0 .\n\nProof. By symmetry, we can write:\n\nKE pt+1 e r(x) = x1,••• ,x K K e 2r(x1) + • • • + e 2r(x K ) e r(x1) + • • • + e r(x K ) K k=1 p t (x k )dx k = x1,...,x K K j=1 e r(xj ) e r(x1) + • • • + e r(x K ) e r(x1) + • • • + e r(x K ) + e r(xj ) (K -1)e r(xj ) -i̸ =j e r(xi) e r(x1) + • • • + e r(x K ) K k=1 p t (x k )dx k = KE pt e r(x) + x1,...,x K i<j e r(xi) -e r(xj ) 2 e r(x1) + • • • + e r(x K ) K k=1 p t (x k )dx k ≤ KE pt e r(x) + i<j 2Var pt e r(x) Ke r * ≤ KE pt e r(x) + K(K -1) 2 2Var pt e r(x) Ke r * ≤ KE pt e r(x) + (K -1)Var pt e r(x) e r * This brings finally, E pt+1 e r(x) ≥ E pt+1 e r(x) + K -1 K Var pt e r(x) e r *\n\nWe now prove that the expected reward converges and we will first show the following lemma:\n\nLemma A.2. ∀ε ≥ 0, ∀t ≥ 0, P t+1 (r(x) ≥ r * -ε) ≥ P t (r(x) ≥ r * -ε) ( 13\n\n) Proof. Consider (x 1 , . . . , x K ) i.i.d. ∼ p t and denote B ε := {x, r(x) ≥ r * -ε}. Then, P t (r(x) ≥ r * -ε) = 1 K E x1,...,x K K i=1 1 xi∈Bε .\n\nOn the other hand, x k ) . We can then write:\n\nP t+1 (r(x) ≥ r * -ε) = E x1,...,x K K i=1 1 xi∈Bε e r(xi) K k=1 e r(x k ) Proving Lemma A.2 is then equivalent, by permutation symmetries to showing that ∀k ≤ K, if r(x 1 ), . . . , r(x k ) ≥ r * -ε and r(x k+1 ), . . . , r(x K ) < r * -ε, then k K ≤ k i=1 e r(x i ) K k=1 e r(\n\nk i=1 e r(xi) K k=1 e r(x k ) = k i=1 e r(xi) K k=1 e r(x k ) = kµ 1 kµ 1 + (K -k)µ 2 ≥ k K Where µ 2 := K i=k+1 e r(x i ) K-k ≤ k i=1 e r(x i ) k =: µ 1 Let ε > 0.\n\nBy assumption on r * (Assumption 2.1), we know that there exists δ > 0 such that\n\nP 0 (r(x) ≥ r * -ε) ≥ δ and hence using Lemma A.2, ∀t ≥ 0, P t (r(x) ≥ r * -ε) ≥ δ. Therefore, while E pt e r(x) ≤ e r * -2ε, we know that Var pt e r(x) ≥ ε 2 P t (r(x) ≥ r * -ε) ≥ ε 2 δ .\n\nTherefore, while E pt e r(x) ≤ e r * -2ε, we have using Lemma 2.2 that\n\nE pt+1 e r(x) ≥ E pt+1 e r(x) + K -1 K ε 2 δ e r * . Since K-1 K ε 2 δ e r * > 0,\n\nthis can happen for only a finite number of steps and hence we know that there exists a time T ε ≥ 0 such that (remind that the expectation of the reward is increasing by Lemma 2.2):\n\n∀t ≥ T ε , E pt e r(x) > e r * -2ε .\n\nSince, the expected reward is obviously recursively bounded by e r * at any iteration t, we just have proved that it converges.\n\nWe now prove that the variance has finite sum. Indeed, just notice that using Lemma 2.2 that ∀T ≥ 0:\n\nT t=0 Var pt e r(x) ≤ e r * K K -1 E p T +1 e r(x) -E p0 e r(x) ≤ K K -1 e 2r * .\n\nThis proves that\n\nT t=0 Var pt e r(x) < ∞.\n\nEspecially since the reward variance has finite sum and is positive, it converges to 0.",
+      "word_count": 1050
+    },
+    {
+      "index": 17,
+      "title": "A.1.4 Fixed points of the retraining loop with filtering",
+      "kind": "body",
+      "text": "Lemma A.3. A probability density p is a fixed point of Equation 10 if and only if it puts all its mass on a single level set of the reward function. In other words, there exists r * ∈ R such that\n\nP(r(x) = r * ) = 1.\n\nProof. Given the density p, denote P the corresponding probability function and F K (p) the curated distribution using Equations 1 and 2. When the reward r is p-a.s. bounded, this is a direct consequence of Lemma 2.2. When this is not the case, we know the existence of two disjoint interval I, J ⊂ R such that P(r(x) ∈ I) > 0 and P(r(x) ∈ J) > 0. From the proof of Lemma 2.2, we have seen that, taking p t := p: x) using that I, J have strictly positive mass and disjoint rewards. Therefore, p cannot be a fixed point.\n\nKE F K (p) e r(x) = KE p e r(x) + x1,...,x K i<j e r(xi) -e r(xj ) 2 e r(x1) + • • • + e r(x K ) K k=1 p(x k )dx k > KE p e r(\n\nConversely, if p puts mass on a single level set of r, it is straightforward that it is a fixed point of the filtering operator because H K p (x) is almost surely constant.\n\nA.1.5 Proof of Theorem 2.1\n\nTheorem 2.1. The self-consuming loop on curated samples p t converges to p * :\n\nD KL (p * ||p t ) t→∞ ---→ 0 .\n\nWe can now prove P t (r(x) = r * ) t→∞ ---→ 1. Let δ > 0, suppose that at time t,\n\nP t (r(x) = r * ) ≤ 1 -δ . Denote for ε > 0, U ε = {x ∈ R d |r * > r(x) ≥ r * -ε}.\n\nWe know that ε>0 U ε = ∅. Therefore, ∃ε t > 0 such that P t (U ε t ) ≤ δ 4 . Furthermore, for any t ′ ≥ t, we know that\n\nP t ′ (r(x) ≤ r * -ε t ) t ′ →∞ ----→ 1 ( 15\n\n)\n\nby convergence of the expectation (Lemma 2.2) and Markov property. We therefore know that ∃t ′ ≥ t such that P t ′ (r(x) ≤ r * -ε t ) ≥ 1 -δ 2 . By using the preceding Lemma A.4, we get:\n\nP t ′ (r(x) = r * ) -P t (r(x) = r * ) ≥ p 0 • (P t ′ (r(x) ≥ r * -ε t ) -P t (r(x) ≥ r * -ε t )) ≥ P 0 (r(x) = r * ) • ((1 - δ 2 ) -(1 -δ + δ 4 )) ≥ P 0 (r(x) = r * ) • δ 4\n\nand P t (r(x) = r * ) hence increases by at least δ 4 . Therefore, the condition P t (r(x) = r * ) ≤ 1 -δ must become invalid at some point. Since we have shown this for any δ > 0, this shows that P t (r(x) = r * ) → 1.\n\nA.1.6 Proof of Theorem 2.3 Theorem 2.3. Consider the process (p t ) defined in eq. 8, with p 0 = p ref , then, for all t ≥ 1\n\nE pt e r(x) ≥ E p ref e r(x) + λ (1 + λ) 3 (K -1)Var p ref e r(x) Ke r * .\n\nProof. We proceed by recursion. First, we know that ∀t ≥ 1, Var pt e r(x) ≥ 1 1+λ 2 Var p ref e r(x) . Furthermore it is straightforward using Lemma A.1 and a recursion that (x) . This brings that\n\n∀t ≥ 0, E pt e r(x) ≥ E p ref e r\n\n∀t ≥ 1, E pt e r(x) ≥ 1 1+λ E p ref e r(x) + λ 1+λ E p ref e r(x) + λ (1+λ) 3 (K-1)Varp ref [e r(x) ] Ke r *\n\nwhich brings the result.\n\nWe can actually show the following lower bound on the limit:\n\nLemma A.5. Consider the process p t+1 (x) = 1 1+λ p ref (x)+ λ 1+λ p t (x)•H K pt (x) with p 0 = p ref . Then, lim inf t→∞ E pt e r(x) ≥ E p ref e r(x) + λ (1 + λ) 2 (K -1)Var p ref e r(x) Ke r * .\n\nProof. Using the proof of Theorem 2.3 we can show the following more precise lower bound at each step: denote A := λ 1+λ and B = 1\n\n(1+λ) 2 (K-1)Varp ref [e r(x) ] Ke r *\n\n, then for all t ≥ 1:\n\nE pt e r(x) ≥ E p ref e r(x) + A t B + A t-1 B + • • • + AB .\n\naccumulating data with fixed relative ratios breaks the curse of recursion. However, note that the focus is different since they are in the finite sample setting while we study the infinite sample setting. Finally Lemma A.6 implies that to ensure convergence, we need to relatively decrease the proportion of previous iterations and comparatively increase the relative proportion of the data distribution or only use the distribution of the current iteration. This has been done in Bertrand et al. (2024) for parametrized generative models under some assumptions\n\nProof. We prove the result by recursion starting t = T . By definition:\n\nθ T = arg max θ T -1 i=0 α i E p θ i log(p θ (x))\n\nThen suppose that for all j such that T ≤ j ≤ t, θ j = θ T . Then we can write:\n\nθ t+1 = arg max θ t i=0 α i log(p θ (x))\n\nBut we know by cross-entropy minimization that\n\nθ T = arg max θ E p θ T log(p θ (x)) = arg max θ t i=T E p θ i log(p θ (x)) .\n\nFurthermore, by definition,\n\nθ T = arg max θ T -1 i=0 α i E p θ i log(p θ (x)) .\n\nIn particular it maximizes the sum of both previous terms and hence θ t+1 = θ T",
+      "word_count": 1053
+    },
+    {
+      "index": 18,
+      "title": "A.1.9 Additional lemma of convergence in parameters",
+      "kind": "body",
+      "text": "Lemma A.7. ∀λ ∈ R + , if λ < α 2Lε , then for θ 0 in a neighborhood of θ * , we have the following rate of convergence:\n\n∥θ t -θ * ∥ = Õ λ(α + εL) α + λ(α -εL) t . (16)\n\nProof. We follow the same steps and notations as in Bertrand et al. (2024) . The main idea is to get another bound on the operator norm of the Jacobian at θ * : ∥J G(θ * )∥ (their lemma E.1 (iii)). We begin with their intermediate result (lemma E.1 (ii)):\n\nJ G(θ * ) = (I + λA -1 B) -1 λA -1 B\n\nHowever we will bound this term differently. First note that ∥B -A∥ ≤ Lε.\n\nFrom this, we deduce by sub-multiplicativity of the matrix norm that:\n\n∥A -1 B -I∥ ≤ ∥A -1 ∥∥B -A∥ ≤ Lε α\n\nand by triangular inequality:\n\n∥A -1 B∥ = ∥A -1 (B -A) + I∥ ≤ ∥A -1 ∥∥B -A∥ + 1 ≤ 1 + Lε α .\n\nNow we use the triangular inequality again to write:\n\n∥J G(θ * )∥ ≤ ∥(I + λA -1 B) -1 ∥∥λA -1 B∥ .\n\nBut,\n\n∥(I + λA -1 B) -1 ∥ = ∥((I + λI) + λ(A -1 B -I)) -1 ∥ = 1 1 + λ ∥(I + λ 1 + λ (A -1 B -I)) -1 ∥ ≤ 1 1 + λ 1 1 -λ 1+λ ∥A -1 B -I∥ ≤ 1 1 + λ -λ Lε α where we have used that Lε α < 1. Finally, ∥J G(θ * )∥ ≤ λ 1 1 + λ -λ Lε α (1 + Lε α ) and a sufficient condition for having ∥J G(θ * )∥ < 1 is λ 1 1 + λ -λ Lε α (1 + Lε α ) < 1 or equivalently, λ < α 2Lε .\n\nWith this new bound λ < α 2Lε which ensures that the operator norm of the Jacobian is smaller than 1, i.e., ∥J G(θ * )∥ < 1, we can unroll the remaining steps of their proof to get Equation 16 A.1.10 Proof of Theorem 2.2 Theorem 2.2. If Lε < α and λ < α 2Lε , then there exists a neighborhood of the optimal distribution parameters θ * such that for any initial parameters θ 0 in that neighborhood, p θt converges to p θ * exponentially fast:\n\nD KL (p θ * ||p θt ) = Õ λ(α + εL) α + λ(α -εL) 2t . Proof. We know that θ * locally maximizes θ → E x∼p θ * log(p θ (x)) and hence locally minimizes θ → D KL (p θ * ||p θ ). Hence, ∇ θ D KL (p θ * ||p θ * ) = 0. Furthermore we know that ∇ 2 θ D KL (p θ * ||p θ ) = -p θ * (x)∇ 2 θ log(p θ )dx\n\nFor fixed parameters θ, denote for s ∈ [0, 1], θ s = sθ + (1 -s)θ * and f (s) = D KL (p θ * ||p θs ). We have f ′ (0) = 0 and\n\nf ′′ (s) = (θ -θ * ) ⊤ -p θ * (x)∇ 2 θ log(p θs )dx (θ -θ * )\n\nUsing Taylor expansion with explicit remaining, we know the existence of s ∈ [0, 1] such that f (1) = f (0) + f ′ (0) + s 2 f ′′ (s) 2 . There remains to bound the spectral norm of\n\nAlgorithm 1 Iterative retraining with curated synthetic data input : D real := {x i } n i=1 , A // True data, learning procedure, param: T , λ, β // Number of retraining iterations, proportion of gen. data, reward multiplicative factor p 0 = A(D real ) // Learn generative model on true data for t in 1, . . . , T do for i in 1, . . . , ⌊λ • n⌋ do x1 , . . . , xK ∼ p t-1 // Sample K synthetic data points xk is selected by a user with probability e r(x k )\n\nK j=1 e r(x j ) , 1 ≤ k ≤ K . // Luce's model xi ← xk D filtered = {x i } ⌊λ•n⌋ i=1 // New filtered dataset p t = A(D real ∪ D filtered ) //\n\nGenerative model is learned on synthetic and true data return p T (-p θ * (x)∇ 2 θs log(p θ )dx). Since by assumption the mapping θ → E p data ∇ 2 θ log(p θ (x)) is locally continuous, and that the spectral norm is itself continuous, we know that we can bound on a\n\nneighborhood of θ * , ∥E p data ∇ 2 θ log(p θ (x))∥ ≤ 2∥E p data ∇ 2 θ log(p θ * (x))∥ := 2C < ∞. Further- more, using that x → ∇ 2 θ log(p θ (x)) is L-Lipschitz (Assumption 2.\n\n2) and that W(p θ * , p data ) ≤ ε by assumption, using Kantorovitch-Rubinstein duality we know that\n\np θ * (x)∇ 2 θ log(p θs )dx -p data (x)∇ 2 θ log(p θs )dx ≤ εL\n\nPutting all things together, we know the existence of a constant C ′ such that for θ in a neighborhood of θ * (that we can in particular choose convex), we have for s ≤ 1, |f ′′ (s)| ≤ 2C ′ ∥θ -θ * ∥ 2 2 and hence D KL (p θ * ||p θ ) ≤ C ′ ∥θ t -θ * ∥ 2 for C ′ < ∞ on a neighborhood of θ * . Using the previous Lemma A.7, we deduce the convergence rate:\n\nD KL (p θ * ||p θt ) = Õ λ(α + εL) α + λ(α -εL) 2t .",
+      "word_count": 996
+    },
+    {
+      "index": 19,
+      "title": "A.2 Experiments",
+      "kind": "results",
+      "text": "We recall and detail the general set-up of iteratively retraining on a mixture of real data and curated synthetic samples in Algorithm 1 A.2.1 MoG and two moons datasets -DDPM Experimental details. For both experiments, the learned vector field is parametrized by an MLP of 2 hidden layers and hidden width 128. We use a time discretization in 250 steps. Finally, we retrain the model for 5 iterations, first only on real data and then on filtered synthetic samples from the previous iteration using pairwise comparisons. We use 5 • 10 3 initial samples from the real data distribution and 5 • 10 3 generated samples filtered from 10 4 generated initial samples. When mixing, we use equal fractions of real and filtered samples. For the two moons we add a Gaussian noise with standard deviation 1.10 -1 .",
+      "word_count": 139
+    },
+    {
+      "index": 20,
+      "title": "Ground Truth Iteration 0 Iteration 1 Iteration 2 Iteration 3 Iteration 4",
+      "kind": "body",
+      "text": "Real & Synth.\n\nFigure 4 : Mixture of Gaussians. Iterative retraining on the two moons dataset for 5 iterations. On the top row, we display the fully filtered synthetic loop, and below we use a mixture of real and filtered data.\n\nOnly Synth.",
+      "word_count": 43
+    },
+    {
+      "index": 21,
+      "title": "Ground Truth Iteration 0 Iteration 1 Iteration 2 Iteration 3 Iteration 4",
+      "kind": "body",
+      "text": "Real & Synth.",
+      "word_count": 3
+    },
+    {
+      "index": 22,
+      "title": "Figure 5: Two moons.",
+      "kind": "body",
+      "text": "Iterative retraining on the two moons dataset for 5 iterations. On the top row, we display the fully filtered synthetic loop, and below we use a mixture of real and filtered data.",
+      "word_count": 32
+    },
+    {
+      "index": 23,
+      "title": "A.2.2 FID, precision, recall",
+      "kind": "body",
+      "text": "We measured FID, precision and recall for the three different settings on CIFAR10 presented in Section 4, i.e., a) filtering based on the probability of a classifier on class 0 of planes (Figure 6 ), b) filtering based on the confidence of the classifier (Figure 7 ) and c) filtering based on the confidence of the classifier and using a mixture of real data and filtered synthetic samples at each retraining step (Figure 8 ).\n\nIn the first two settings, we observe that the FID dramatically increases during retraining. We want to point out that it is not only due to a degradation in quality of the generated samples but also and mostly from the inequalities of the class proportions emerging during retraining. A clear indicator of this is the correlation between the FID behavior in Figure 6 and the behavior of the proportion of class 0 shown in Figure 2 : the FID stabilizes at the end of the retraining loop when the proportion of class 0 reaches its maximum. A second interesting fact is that in all three settings, the precision increases, which hints that filtering does not necessarily degrades the quality of generated samples in our case. Additionally, we can clearly see the impact on stability of real data on Figure 8 where the FID witnesses much smaller variations compared to Figure 7 and Figure 7 . Interestingly, we see on Figure 7 that using the confidence of the classifier as a reward function implies a bigger increase of the precision than on Figure 6 or Figure 8 , which correlates with the intuition that confidence is linked to precision. Finally, notice that the three runs on Figure 7 have small variance, as we have already highlighted. 0 10 20 Step 0 20 40 60 80 FID 0 10 20 Step 0.675 0.700 0.725 0.750 0.775 0.800 Precision 0 10 20 Step 0.1 0.2 0.3 0.4 0.5 0.6 Recall Figure 7: FID, precision and recall when retraining with filtering and r(x) = γ arg max 0≤i≤9 p i (x), γ = 15 0 10 20 Step 4.25 4.50 4.75 5.00 5.25 FID 0 10 20 Step 0.680 0.685 0.690 0.695 Precision 0 10 20 Step 0.560 0.565 0.570 0.575 Recall Figure 10 : Two sets of four images were generated using two different generative models. For Midjourney (Figure 10a ), users can select which image to upscale. The upscaled images are then incorporated into the JourneyDB dataset (Pan et al., 2023) . For Stable Diffusion, users can choose the preferred generated image.",
+      "word_count": 425
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "References Hugging face Stable Diffusion 2.1",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "References Hugging face Stable Diffusion 2.1"
+    },
+    {
+      "index": 2,
+      "title": "GPT-4 technical report",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "J Achiam",
+        "S Adler",
+        "S Agarwal",
+        "L Ahmad",
+        "I Akkaya",
+        "F L Aleman",
+        "D Almeida",
+        "J Altenschmidt"
+      ],
+      "raw_text": "J Achiam S Adler S Agarwal L Ahmad I Akkaya F L Aleman D Almeida J Altenschmidt S Altman S Anadkat arXiv:2303.08774 GPT-4 technical report 2023 arXiv preprint"
+    },
+    {
+      "index": 3,
+      "title": "Self-consuming generative models go MAD",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "S Alemohammad",
+        "J Casco-Rodriguez",
+        "L Luzi",
+        "A I Humayun",
+        "H Babaei",
+        "D Lejeune",
+        "A Siahkoohi",
+        "R G Baraniuk"
+      ],
+      "raw_text": "Self-consuming generative models go MAD S Alemohammad J Casco-Rodriguez L Luzi A I Humayun H Babaei D Lejeune A Siahkoohi R G Baraniuk International Conference on Learning and Representations 2024"
+    },
+    {
+      "index": 4,
+      "title": "A general theoretical paradigm to understand learning from human preferences",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "M G Azar",
+        "Z D Guo",
+        "B Piot",
+        "R Munos",
+        "M Rowland",
+        "M Valko",
+        "D Calandriello"
+      ],
+      "raw_text": "A general theoretical paradigm to understand learning from human preferences M G Azar Z D Guo B Piot R Munos M Rowland M Valko D Calandriello International Conference on Artificial Intelligence and Statistics 2024"
+    },
+    {
+      "index": 5,
+      "title": "Synthetic data from diffusion models improves imagenet classification",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "S Azizi",
+        "S Kornblith",
+        "C Saharia",
+        "M Norouzi",
+        "D J Fleet"
+      ],
+      "raw_text": "Synthetic data from diffusion models improves imagenet classification S Azizi S Kornblith C Saharia M Norouzi D J Fleet TMLR 2023"
+    },
+    {
+      "index": 6,
+      "title": "On the stability of iterative retraining of generative models on their own data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Q Bertrand",
+        "A J Bose",
+        "A Duplessis",
+        "M Jiralerspong",
+        "G Gidel"
+      ],
+      "raw_text": "On the stability of iterative retraining of generative models on their own data Q Bertrand A J Bose A Duplessis M Jiralerspong G Gidel International Conference on Learning and Representations 2024"
+    },
+    {
+      "index": 7,
+      "title": "Multimodal datasets: misogyny, pornography, and malignant stereotypes",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "A Birhane",
+        "V U Prabhu",
+        "E Kahembwe"
+      ],
+      "raw_text": "A Birhane V U Prabhu E Kahembwe arXiv:2110.01963 Multimodal datasets: misogyny, pornography, and malignant stereotypes 2021 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "Into the LAION's Den: Investigating hate in multimodal datasets",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "A Birhane",
+        "S Han",
+        "V Boddeti",
+        "S Luccioni"
+      ],
+      "raw_text": "Into the LAION's Den: Investigating hate in multimodal datasets A Birhane S Han V Boddeti S Luccioni Advances in Neural Information Processing Systems 2024"
+    },
+    {
+      "index": 9,
+      "title": "Audiolm: a language modeling approach to audio generation",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Z Borsos",
+        "R Marinier",
+        "D Vincent",
+        "E Kharitonov",
+        "O Pietquin",
+        "M Sharifi",
+        "D Roblek",
+        "O Teboul"
+      ],
+      "raw_text": "Audiolm: a language modeling approach to audio generation Z Borsos R Marinier D Vincent E Kharitonov O Pietquin M Sharifi D Roblek O Teboul D Grangier M Tagliasacchi IEEE/ACM Transactions on Audio, Speech, and Language Processing 2023"
+    },
+    {
+      "index": 10,
+      "title": "Rank analysis of incomplete block designs: I. the method of paired comparisons",
+      "doi": "",
+      "year": "1952",
+      "authors": [
+        "R A Bradley",
+        "M E Terry"
+      ],
+      "raw_text": "Rank analysis of incomplete block designs: I. the method of paired comparisons R A Bradley M E Terry Biometrika 1952"
+    },
+    {
+      "index": 11,
+      "title": "Large language models suffer from their own output: An analysis of the self-consuming training loop",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "M Briesch",
+        "D Sobania",
+        "F Rothlauf"
+      ],
+      "raw_text": "Large language models suffer from their own output: An analysis of the self-consuming training loop M Briesch D Sobania F Rothlauf arXiv:2311.16822 2023 arXiv preprint"
+    },
+    {
+      "index": 12,
+      "title": "Video generation models as world simulators",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "T Brooks",
+        "B Peebles",
+        "C Holmes",
+        "W Depue",
+        "Y Guo",
+        "L Jing",
+        "D Schnurr",
+        "J Taylor"
+      ],
+      "raw_text": "Video generation models as world simulators T Brooks B Peebles C Holmes W Depue Y Guo L Jing D Schnurr J Taylor T Luhman E Luhman C Ng R Wang A Ramesh 2024"
+    },
+    {
+      "index": 13,
+      "title": "Disentangled reward mitigates hacking in rlhf",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "L Chen",
+        "C Zhu",
+        "D Soselia",
+        "J Chen",
+        "T Zhou",
+        "T Goldstein",
+        "H Huang",
+        "M Shoeybi"
+      ],
+      "raw_text": "L Chen C Zhu D Soselia J Chen T Zhou T Goldstein H Huang M Shoeybi B Catanzaro Odin arXiv:2402.07319 Disentangled reward mitigates hacking in rlhf 2024 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Would deep generative models amplify bias in future models? arXiv preprint",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "T Chen",
+        "Y Hirota",
+        "M Otani",
+        "N Garcia",
+        "Y Nakashima"
+      ],
+      "raw_text": "T Chen Y Hirota M Otani N Garcia Y Nakashima arXiv:2404.03242 Would deep generative models amplify bias in future models? arXiv preprint 2024"
+    },
+    {
+      "index": 15,
+      "title": "Deep reinforcement learning from human preferences",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "P F Christiano",
+        "J Leike",
+        "T Brown",
+        "M Martic",
+        "S Legg",
+        "D Amodei"
+      ],
+      "raw_text": "Deep reinforcement learning from human preferences P F Christiano J Leike T Brown M Martic S Legg D Amodei Advances in neural information processing systems 2017"
+    },
+    {
+      "index": 16,
+      "title": "Data representativity for machine learning and AI systems",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "L H Clemmensen",
+        "R D Kjaersgaard"
+      ],
+      "raw_text": "L H Clemmensen R D Kjaersgaard arXiv:2203.04706 Data representativity for machine learning and AI systems 2022 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "Model collapse demystified: The case of regression",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "E Dohmatob",
+        "Y Feng",
+        "J Kempe"
+      ],
+      "raw_text": "Model collapse demystified: The case of regression E Dohmatob Y Feng J Kempe arXiv:2402.07712 2024 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "A tale of tails: Model collapse as a change of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "E Dohmatob",
+        "Y Feng",
+        "P Yang",
+        "F Charton",
+        "J Kempe"
+      ],
+      "raw_text": "A tale of tails: Model collapse as a change of scaling laws E Dohmatob Y Feng P Yang F Charton J Kempe International Conference on Machine Learning 2024b"
+    },
+    {
+      "index": 19,
+      "title": "A density estimation perspective on learning from pairwise human preferences",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "V Dumoulin",
+        "D D Johnson",
+        "P S Castro",
+        "H Larochelle",
+        "Y Dauphin"
+      ],
+      "raw_text": "V Dumoulin D D Johnson P S Castro H Larochelle Y Dauphin arXiv:2311.14115 A density estimation perspective on learning from pairwise human preferences 2023 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "Kto: Model alignment as prospect theoretic optimization",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "K Ethayarajh",
+        "W Xu",
+        "N Muennighoff",
+        "D Jurafsky",
+        "D Kiela"
+      ],
+      "raw_text": "K Ethayarajh W Xu N Muennighoff D Jurafsky D Kiela arXiv:2402.01306 Kto: Model alignment as prospect theoretic optimization 2024 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "M Gerstgrasser",
+        "R Schaeffer",
+        "A Dey",
+        "R Rafailov",
+        "H Sleight",
+        "J Hughes",
+        "T Korbak",
+        "R Agrawal"
+      ],
+      "raw_text": "Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data M Gerstgrasser R Schaeffer A Dey R Rafailov H Sleight J Hughes T Korbak R Agrawal D Pai A Gromov arXiv:2404.01413 2024 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Self-correcting self-consuming loops for generative model training",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "N Gillman",
+        "M Freeman",
+        "D Aggarwal",
+        "C H Hsu",
+        "C Luo",
+        "Y Tian",
+        "C Sun"
+      ],
+      "raw_text": "Self-correcting self-consuming loops for generative model training N Gillman M Freeman D Aggarwal C H Hsu C Luo Y Tian C Sun arXiv:2402.07087 2024 arXiv preprint"
+    },
+    {
+      "index": 23,
+      "title": "Aligning language models with preferences through f-divergence minimization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "D Go",
+        "T Korbak",
+        "G Kruszewski",
+        "J Rozen",
+        "N Ryu",
+        "M Dymetman"
+      ],
+      "raw_text": "Aligning language models with preferences through f-divergence minimization D Go T Korbak G Kruszewski J Rozen N Ryu M Dymetman arXiv:2302.08215 2023 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "Bias correction of learned generative models using likelihood-free importance weighting",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "A Grover",
+        "J Song",
+        "A Kapoor",
+        "K Tran",
+        "A Agarwal",
+        "E J Horvitz",
+        "S Ermon"
+      ],
+      "raw_text": "Bias correction of learned generative models using likelihood-free importance weighting A Grover J Song A Kapoor K Tran A Agarwal E J Horvitz S Ermon Advances in neural information processing systems 2019"
+    },
+    {
+      "index": 25,
+      "title": "Reinforced self-training (rest) for language modeling",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C Gulcehre",
+        "T L Paine",
+        "S Srinivasan",
+        "K Konyushkova",
+        "L Weerts",
+        "A Sharma",
+        "A Siddhant",
+        "A Ahern"
+      ],
+      "raw_text": "C Gulcehre T L Paine S Srinivasan K Konyushkova L Weerts A Sharma A Siddhant A Ahern M Wang C Gu W Macherey arXiv:2308.08998 Reinforced self-training (rest) for language modeling 2023 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Will large-scale generative models corrupt future datasets?",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "R Hataya",
+        "H Bao",
+        "H Arai"
+      ],
+      "raw_text": "Will large-scale generative models corrupt future datasets? R Hataya H Bao H Arai Proceedings of the IEEE/CVF International Conference on Computer Vision the IEEE/CVF International Conference on Computer Vision 2023"
+    },
+    {
+      "index": 27,
+      "title": "Feedback-guided data synthesis for imbalanced classification",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "R A Hemmat",
+        "M Pezeshki",
+        "F Bordes",
+        "M Drozdzal",
+        "A Romero-Soriano"
+      ],
+      "raw_text": "R A Hemmat M Pezeshki F Bordes M Drozdzal A Romero-Soriano arXiv:2310.00158 Feedback-guided data synthesis for imbalanced classification 2023 arXiv preprint"
+    },
+    {
+      "index": 28,
+      "title": "The weirdest people in the world?",
+      "doi": "",
+      "year": "2010",
+      "authors": [
+        "J Henrich",
+        "S J Heine",
+        "A Norenzayan"
+      ],
+      "raw_text": "The weirdest people in the world? J Henrich S J Heine A Norenzayan Behavioral and brain sciences 2010"
+    },
+    {
+      "index": 29,
+      "title": "Denoising diffusion probabilistic models. Advances in neural information processing systems",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "J Ho",
+        "A Jain",
+        "P Abbeel"
+      ],
+      "raw_text": "Denoising diffusion probabilistic models. Advances in neural information processing systems J Ho A Jain P Abbeel 2020 33"
+    },
+    {
+      "index": 30,
+      "title": "Mistral 7B",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "A Q Jiang",
+        "A Sablayrolles",
+        "A Mensch",
+        "C Bamford",
+        "D S Chaplot",
+        "D Casas",
+        "F Bressand",
+        "G Lengyel"
+      ],
+      "raw_text": "A Q Jiang A Sablayrolles A Mensch C Bamford D S Chaplot D Casas F Bressand G Lengyel G Lample L Saulnier arXiv:2310.06825 Mistral 7B 2023 arXiv preprint"
+    },
+    {
+      "index": 31,
+      "title": "On reinforcement learning and distribution matching for fine-tuning language models with no catastrophic forgetting",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "T Korbak",
+        "H Elsahar",
+        "G Kruszewski",
+        "M Dymetman"
+      ],
+      "raw_text": "On reinforcement learning and distribution matching for fine-tuning language models with no catastrophic forgetting T Korbak H Elsahar G Kruszewski M Dymetman Advances in Neural Information Processing Systems 2022"
+    },
+    {
+      "index": 32,
+      "title": "Learning multiple layers of features from tiny images",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "A Krizhevsky",
+        "G Hinton"
+      ],
+      "raw_text": "Learning multiple layers of features from tiny images A Krizhevsky G Hinton 2009"
+    },
+    {
+      "index": 33,
+      "title": "Pebble: Feedback-efficient interactive reinforcement learning via relabeling experience and unsupervised pre-training",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "K Lee",
+        "L Smith",
+        "P Abbeel"
+      ],
+      "raw_text": "Pebble: Feedback-efficient interactive reinforcement learning via relabeling experience and unsupervised pre-training K Lee L Smith P Abbeel arXiv:2106.05091 2021 arXiv preprint"
+    },
+    {
+      "index": 34,
+      "title": "Flow matching for generative modeling",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Y Lipman",
+        "R T Chen",
+        "H Ben-Hamu",
+        "M Nickel",
+        "M Le"
+      ],
+      "raw_text": "Y Lipman R T Chen H Ben-Hamu M Nickel M Le arXiv:2210.02747 Flow matching for generative modeling 2022 arXiv preprint"
+    },
+    {
+      "index": 35,
+      "title": "Handbook of mathematical psychology: I",
+      "doi": "",
+      "year": "1963",
+      "authors": [
+        "R Luce",
+        "R R Bush",
+        "E E Galanter"
+      ],
+      "raw_text": "Handbook of mathematical psychology: I R Luce R R Bush E E Galanter 1963"
+    },
+    {
+      "index": 36,
+      "title": "Individual choice behavior: A theoretical analysis",
+      "doi": "",
+      "year": "2005",
+      "authors": [
+        "R D Luce"
+      ],
+      "raw_text": "Individual choice behavior: A theoretical analysis R D Luce 2005 Courier Corporation"
+    },
+    {
+      "index": 37,
+      "title": "Combining generative artificial intelligence (AI) and the internet: Heading towards evolution or degradation? arXiv preprint",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "G Martínez",
+        "L Watson",
+        "P Reviriego",
+        "J A Hernández",
+        "M Juarez",
+        "R Sarkar"
+      ],
+      "raw_text": "G Martínez L Watson P Reviriego J A Hernández M Juarez R Sarkar arXiv:2303.01255 Combining generative artificial intelligence (AI) and the internet: Heading towards evolution or degradation? arXiv preprint 2023"
+    },
+    {
+      "index": 38,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Midjourney"
+      ],
+      "raw_text": "Midjourney 2023"
+    },
+    {
+      "index": 39,
+      "title": "Training language models to follow instructions with human feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "L Ouyang",
+        "J Wu",
+        "X Jiang",
+        "D Almeida",
+        "C Wainwright",
+        "P Mishkin",
+        "C Zhang",
+        "S Agarwal"
+      ],
+      "raw_text": "Training language models to follow instructions with human feedback L Ouyang J Wu X Jiang D Almeida C Wainwright P Mishkin C Zhang S Agarwal K Slama A Ray Advances in neural information processing systems 2022"
+    },
+    {
+      "index": 40,
+      "title": "JourneyDB: A benchmark for generative image understanding",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "J Pan",
+        "K Sun",
+        "Y Ge",
+        "H Li",
+        "H Duan",
+        "X Wu",
+        "R Zhang",
+        "A Zhou"
+      ],
+      "raw_text": "JourneyDB: A benchmark for generative image understanding J Pan K Sun Y Ge H Li H Duan X Wu R Zhang A Zhou Z Qin Y Wang J Dai Y Qiao H Li 2023"
+    },
+    {
+      "index": 41,
+      "title": "Simulacra aesthetic captions",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "J D Pressman",
+        "K Crowson",
+        "S C Contributors"
+      ],
+      "raw_text": "Simulacra aesthetic captions J D Pressman K Crowson S C Contributors Version 1.0 Stability AI 2022 Technical Report"
+    },
+    {
+      "index": 42,
+      "title": "Direct preference optimization: Your language model is secretly a reward model",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "R Rafailov",
+        "A Sharma",
+        "E Mitchell",
+        "C D Manning",
+        "S Ermon",
+        "C Finn"
+      ],
+      "raw_text": "Direct preference optimization: Your language model is secretly a reward model R Rafailov A Sharma E Mitchell C D Manning S Ermon C Finn Advances in Neural Information Processing Systems 2024"
+    },
+    {
+      "index": 43,
+      "title": "Zero-shot text-to-image generation",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "A Ramesh",
+        "M Pavlov",
+        "G Goh",
+        "S Gray",
+        "C Voss",
+        "A Radford",
+        "M Chen",
+        "I Sutskever"
+      ],
+      "raw_text": "Zero-shot text-to-image generation A Ramesh M Pavlov G Goh S Gray C Voss A Radford M Chen I Sutskever International Conference on Machine Learning 2021"
+    },
+    {
+      "index": 44,
+      "title": "Safe latent diffusion: Mitigating inappropriate degeneration in diffusion models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "P Schramowski",
+        "M Brack",
+        "B Deiseroth",
+        "K Kersting"
+      ],
+      "raw_text": "Safe latent diffusion: Mitigating inappropriate degeneration in diffusion models P Schramowski M Brack B Deiseroth K Kersting Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2023"
+    },
+    {
+      "index": 45,
+      "title": "LAION-5B: An open large-scale dataset for training next generation image-text models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "C Schuhmann",
+        "R Beaumont",
+        "R Vencu",
+        "C Gordon",
+        "R Wightman",
+        "M Cherti",
+        "T Coombes",
+        "A Katta"
+      ],
+      "raw_text": "LAION-5B: An open large-scale dataset for training next generation image-text models C Schuhmann R Beaumont R Vencu C Gordon R Wightman M Cherti T Coombes A Katta C Mullis M Wortsman Advances in Neural Information Processing Systems 2022"
+    },
+    {
+      "index": 46,
+      "title": "On kinetic optimal probability paths for generative models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "N Shaul",
+        "R T Chen",
+        "M Nickel",
+        "M Le",
+        "Y Lipman"
+      ],
+      "raw_text": "On kinetic optimal probability paths for generative models N Shaul R T Chen M Nickel M Le Y Lipman International Conference on Machine Learning 2023"
+    },
+    {
+      "index": 47,
+      "title": "Large language model alignment: A survey",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "T Shen",
+        "R Jin",
+        "Y Huang",
+        "C Liu",
+        "W Dong",
+        "Z Guo",
+        "X Wu",
+        "Y Liu"
+      ],
+      "raw_text": "T Shen R Jin Y Huang C Liu W Dong Z Guo X Wu Y Liu D Xiong arXiv:2309.15025 Large language model alignment: A survey 2023 arXiv preprint"
+    },
+    {
+      "index": 48,
+      "title": "Stimulus and response generalization: A stochastic model relating generalization to distance in psychological space",
+      "doi": "",
+      "year": "1957",
+      "authors": [
+        "R Shepard"
+      ],
+      "raw_text": "Stimulus and response generalization: A stochastic model relating generalization to distance in psychological space R Shepard Psychological Review 22 32545 1958. 1957 stimulus and response generalization: Deduction of the generalization gradient from a trace model psychometrika"
+    },
+    {
+      "index": 49,
+      "title": "Benchmarks and algorithms for offline preference-based reward learning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "D Shin",
+        "A D Dragan",
+        "D S Brown"
+      ],
+      "raw_text": "Benchmarks and algorithms for offline preference-based reward learning D Shin A D Dragan D S Brown arXiv:2301.01392 2023 arXiv preprint"
+    },
+    {
+      "index": 50,
+      "title": "The curse of recursion: Training on generated data makes models forget",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "I Shumailov",
+        "Z Shumaylov",
+        "Y Zhao",
+        "Y Gal",
+        "N Papernot",
+        "R Anderson"
+      ],
+      "raw_text": "The curse of recursion: Training on generated data makes models forget I Shumailov Z Shumaylov Y Zhao Y Gal N Papernot R Anderson arXiv:2305.17493 2023 arXiv preprint"
+    },
+    {
+      "index": 51,
+      "title": "Very deep convolutional networks for large-scale image recognition",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "K Simonyan",
+        "A Zisserman"
+      ],
+      "raw_text": "Very deep convolutional networks for large-scale image recognition K Simonyan A Zisserman arXiv:1409.1556 2014 arXiv preprint"
+    },
+    {
+      "index": 52,
+      "title": "Defining and characterizing reward gaming",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "J Skalse",
+        "N Howe",
+        "D Krasheninnikov",
+        "D Krueger"
+      ],
+      "raw_text": "Defining and characterizing reward gaming J Skalse N Howe D Krasheninnikov D Krueger Advances in Neural Information Processing Systems 2022"
+    },
+    {
+      "index": 53,
+      "title": "Score-based generative modeling through stochastic differential equations",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Y Song",
+        "J Sohl-Dickstein",
+        "D P Kingma",
+        "A Kumar",
+        "S Ermon",
+        "B Poole"
+      ],
+      "raw_text": "Score-based generative modeling through stochastic differential equations Y Song J Sohl-Dickstein D P Kingma A Kumar S Ermon B Poole International Conference on Learning Representations 2021"
+    },
+    {
+      "index": 54,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "A I Stability"
+      ],
+      "raw_text": "A I Stability 2023"
+    },
+    {
+      "index": 55,
+      "title": "Learning to summarize with human feedback",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "N Stiennon",
+        "L Ouyang",
+        "J Wu",
+        "D Ziegler",
+        "R Lowe",
+        "C Voss",
+        "A Radford",
+        "D Amodei"
+      ],
+      "raw_text": "Learning to summarize with human feedback N Stiennon L Ouyang J Wu D Ziegler R Lowe C Voss A Radford D Amodei P F Christiano Advances in Neural Information Processing Systems 2020 33"
+    },
+    {
+      "index": 56,
+      "title": "Simulation-free schrödinger bridges via score and flow matching",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "A Tong",
+        "N Malkin",
+        "K Fatras",
+        "L Atanackovic",
+        "Y Zhang",
+        "G Huguet",
+        "G Wolf",
+        "Y Bengio"
+      ],
+      "raw_text": "Simulation-free schrödinger bridges via score and flow matching A Tong N Malkin K Fatras L Atanackovic Y Zhang G Huguet G Wolf Y Bengio 2307.03672 2023 arXiv preprint"
+    },
+    {
+      "index": 57,
+      "title": "Conditional flow matching: Simulation-free dynamic optimal transport",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "A Tong",
+        "N Malkin",
+        "G Huguet",
+        "Y Zhang",
+        "J Rector-Brooks",
+        "K Fatras",
+        "G Wolf",
+        "Y Bengio"
+      ],
+      "raw_text": "A Tong N Malkin G Huguet Y Zhang J Rector-Brooks K Fatras G Wolf Y Bengio arXiv:2302.00482 Conditional flow matching: Simulation-free dynamic optimal transport 2 2023 arXiv preprint"
+    },
+    {
+      "index": 58,
+      "title": "Improving and generalizing flow-based generative models with minibatch optimal transport",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "A Tong",
+        "K Fatras",
+        "N Malkin",
+        "G Huguet",
+        "Y Zhang",
+        "J Rector-Brooks",
+        "G Wolf",
+        "Y Bengio"
+      ],
+      "raw_text": "Improving and generalizing flow-based generative models with minibatch optimal transport A Tong K Fatras N Malkin G Huguet Y Zhang J Rector-Brooks G Wolf Y Bengio Transactions on Machine Learning Research 2835-8856 2024 Expert Certification"
+    },
+    {
+      "index": 59,
+      "title": "Open and efficient foundation language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Touvron",
+        "T Lavril",
+        "G Izacard",
+        "X Martinet",
+        "M.-A Lachaux",
+        "T Lacroix",
+        "B Rozière",
+        "N Goyal"
+      ],
+      "raw_text": "H Touvron T Lavril G Izacard X Martinet M.-A Lachaux T Lacroix B Rozière N Goyal E Hambro F Azhar arXiv:2302.13971 Open and efficient foundation language models 2023 arXiv preprint"
+    },
+    {
+      "index": 60,
+      "title": "Optimal transport: old and new",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "C Villani"
+      ],
+      "raw_text": "Optimal transport: old and new C Villani 2009 Springer"
+    },
+    {
+      "index": 61,
+      "title": "Phenaki: Variable length video generation from open domain textual descriptions",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "R Villegas",
+        "M Babaeizadeh",
+        "P.-J Kindermans",
+        "H Moraldo",
+        "H Zhang",
+        "M T Saffar",
+        "S Castro",
+        "J Kunze"
+      ],
+      "raw_text": "Phenaki: Variable length video generation from open domain textual descriptions R Villegas M Babaeizadeh P.-J Kindermans H Moraldo H Zhang M T Saffar S Castro J Kunze D Erhan International Conference on Learning Representations 2022"
+    },
+    {
+      "index": 62,
+      "title": "Better diffusion models further improve adversarial training",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Z Wang",
+        "T Pang",
+        "C Du",
+        "M Lin",
+        "W Liu",
+        "S Yan"
+      ],
+      "raw_text": "Better diffusion models further improve adversarial training Z Wang T Pang C Du M Lin W Liu S Yan International Conference on Machine Learning 2023"
+    },
+    {
+      "index": 63,
+      "title": "Fairness feedback loops: Training on synthetic data amplifies bias",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "S Wyllie",
+        "I Shumailov",
+        "N Papernot"
+      ],
+      "raw_text": "S Wyllie I Shumailov N Papernot arXiv:2403.07857 Fairness feedback loops: Training on synthetic data amplifies bias 2024 arXiv preprint"
+    }
+  ],
+  "section_count": 23,
+  "reference_count": 63,
+  "error": "",
+  "updated_at": "2026-04-12T03:11:07.880309+00:00"
+}

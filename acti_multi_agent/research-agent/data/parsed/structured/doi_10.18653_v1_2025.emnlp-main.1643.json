@@ -1,0 +1,940 @@
+{
+  "paperId": "doi:10.18653/v1/2025.emnlp-main.1643",
+  "title": "Recursive Training Loops in LLMs: How training data properties modulate distribution shift in generated data?",
+  "year": 2025,
+  "source": "openalex+arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.18653_v1_2025.emnlp-main.1643.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.18653_v1_2025.emnlp-main.1643.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.18653_v1_2025.emnlp-main.1643.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Large language models (LLMs) are increasingly used in the creation of online content, creating feedback loops as subsequent generations of models will be trained on this synthetic data. Such loops were shown to lead to distribution shifts -models misrepresenting the true underlying distributions of human data (also called model collapse). However, how human data properties affect such shifts remains poorly understood. In this paper, we provide the first empirical examination of the effect of such properties on the outcome of recursive training. We first confirm that using different human datasets leads to distribution shifts of different magnitudes. Through exhaustive manipulation of dataset properties combined with regression analyses, we then identify a set of properties associated with distribution shift magnitudes. Lexical diversity is found to amplify these shifts, while semantic diversity and data quality mitigate them. Furthermore, we find that these influences are highly modular: data scrapped from a given internet domain has little influence on the content generated for another domain. Finally, experiments on political bias reveal that human data properties affect whether the initial bias will be amplified or reduced. Overall, our results portray a novel view, where different parts of internet may undergo different types of distribution shift.",
+      "word_count": 200
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Large Language Models (LLMs) are increasingly contributing to the creation of internet content, being used for journalism (Brigham et al., 2024) , coding (Jiang et al., 2024) and generating content on social media (Ferrara et al., 2016) . The increasing amount of synthetic, LLM-generated data on the internet introduces a precarious feedback loop: LLMs trained on datasets containing synthetic data will themselves generate data that will be used to train future models. Shumailov et al. (2024) demonstrated that this process, known as recursive training, can have detrimental effects, causing models to progressively lose information about the true underlying distributions they are intended to approximate. This results in a gradual change in generated distributions, often accompanied by a reduction in variance. While this has sometimes been described as model collapse, we refer to this mismatch between the true and the generated distribution as distribution shift, and limit the term collapse to refer to detrimental distribution shifts, such as losses in quality or diversity. Such detrimental effects (Guo et al., 2024) as well as bias amplification (Wang et al., 2024a) have been reported in previous work. Their potential societal consequences make it imperative to better understand the dynamics of recursive training.\n\nInternet data varies along a wide range of properties. For instance, certain domains may be associated with a higher ratio of synthetic-to-human data (e.g. GitHub), others with lower quality data (e.g. Reddit), and some with lower diversity data (e.g. specialized forums). If those properties affects the outcome of recursive fine-tuning, we may expect different types of shifts on different parts of the internet.\n\nGiven the early stage of research in this field, existing studies often ignore this diversity, relying on simplifying assumptions and focusing on abstracted settings. To the best of our knowledge, how different data properties influence distribution shifts remains largely unexplored, aside from studies examining the ratio of human to synthetic data (Bertrand et al., 2023; Bohacek and Farid, 2023; Kazdan et al., 2024; Martínez et al., 2023b; Zhang et al., 2024b) . Filing this gap is therefore crucial to draw a more nuanced and detailed picture of the consequences of recursive fine-tuning.\n\nIn this paper, we adopt the iterative chain paradigm used in previous studies (Shumailov et al., 2024; Gerstgrasser et al., 2024a) . Our experimen- tal setup is shown in Figure 1 . The process begins with fine-tuning a base LLM on a selection of human data (e.g. Reddit posts). This model generates data, which are added to the pool of Accumulated data together with newly sampled human data. In each subsequent generation, a new base model is fine-tuned on data sampled from the Accumulated data pool. This model, in turn, generates new data, which are again added to the pool along with fresh human data. This pipeline allows us to study how generated data evolve across successive generations, with a particular focus on the distribution shift from the first to the final generation.\n\nIn our experiments, we study how various properties of human data (e.g. quality, diversity, bias) influence the dynamics of distribution shifts in recursive training chains. We use five datasets spanning three domains (Twitter, Reddit and Wikipedia) . First, we confirm that the choice of the dataset greatly influences the consequences of iterative fine-tuning (Section 4.2): while some datasets exhibit sharp decreases in diversity and quality, others are more robust to such shifts. Our second set of experiments (Sections 4.3 and 4.4) aims to uncover specifically which properties of training data mitigate or amplify distribution shifts. We run iterative chain experiments on 800 clusters created from four different datasets, and conduct a series of regression analysis mapping various data properties to the degradation in the quality and diversity of generated texts. We find that lexical diversity is associated with greater degradation, while semantic diversity has the opposite effect. Furthermore, we observe that these influences are highly modular, with generated content being mostly influenced by human data properties from the same domain. This suggests that different internet domains might undergo distinct and relatively independent distri-bution shifts regardless of models being trained on a mixture of domains. Finally, our last set of experiments focuses on the evolution of political bias. The results indicate that the type of shift observed (bias reduction, amplification or inversion) depends on the political lean of the the human data. This empirically confirms that properties of human data play an important in shaping the outcome of recursive training.\n\nThe code for reproducing the simulations, analyses and figures is available on our GitHub foot_0 .\n\nThe main contributions of this work are:\n\n• We propose and experimentally confirm the hypothesis that different training datasets lead to different distribution shift dynamics, motivating an investigation on the underlying causes.\n\n• Through an extensive set of experiments (four datasets over three domains), we outline several data properties as influencing distribution shift dynamics.\n\n• We reveal that these influences are highly modular, with generated content being mostly influenced by human data properties from the same domain.\n\n• We find that distribution shifts also occur in terms of political lean, and that the type of shift (bias amplification, reduction or inversion) depends on the political lean of the human data.\n\n2 Related Work\n\nRecursive fine-tuning and model collapse A rapidly growing body of literature has focused on the consequences of recursively training generative models on synthetic data (Schaeffer et al., 2025) . The phrase \"model collapse\", coined in Shumailov et al. (2024) , refers to the progressive degradation of models induced by this feedback loop. This phenomenon has been studied both theoretically (Dohmatob et al., 2024a,b; Bertrand et al., 2023; Alemohammad et al., 2023) and empirically, on both generative image models (Martínez et al., 2023b,a; Bohacek and Farid, 2023; Hataya et al., 2022; Alemohammad et al., 2023) and language models (Zhang et al., 2024b; Guo et al., 2023; Kazdan et al., 2024; Briesch et al., 2023; Gerstgrasser et al., 2024b) . Theoretical results have provided valuable insights, for instance showing how it is characterized by the disappearance of distribution tails (Dohmatob et al., 2024a,b; Shumailov et al., 2024) . Empirical studies have allowed to establish several properties of this phenomenon, such as the role of synthetic-to-real-data ratio (Briesch et al., 2023; Hataya et al., 2022) or strategies for mitigating collapse (Gerstgrasser et al., 2024b; Kazdan et al., 2024; Zhang et al., 2024b) . Recently, Wang et al. (2024b) showed that recursive LLM fine-tuning can lead to bias amplification. These works do not systematically evaluate how the properties of the human dataset used in their experiments affect their conclusions. Here, we extend this literature by investigating how those properties impact the outcome of recursive training.",
+      "word_count": 1106
+    },
+    {
+      "index": 3,
+      "title": "Cultural dynamics in artificial agents",
+      "kind": "body",
+      "text": "The motivation for this research area stems from the observation that human-made technologies have transitioned from passive mediators of cultural evolution (e.g., the printing press) to active generators of cultural content. This shift has been described as the emergence of machine culture -culture mediated or generated by machines (Brinkmann et al., 2023) . Understanding the dynamics that shape the evolution of machine-generated content over time is therefore crucial. This has led researchers to study cultural dynamics in populations of reinforcement learning agents (Cook et al., 2024; Schmitt et al., 2018; Team et al., 2021; Prystawski et al., 2023; Nisioti et al., 2022) and of LLMs (Perez et al., 2024a,b; Nisioti et al., 2024; Vallinder and Hughes, 2024; Burton et al., 2024) . Our work extends this literature by examining the factors that modulate the evolution of LLM-generated content.",
+      "word_count": 138
+    },
+    {
+      "index": 4,
+      "title": "The iterative chain paradigm",
+      "kind": "body",
+      "text": "We use the iterative chain paradigm inspired by Shumailov et al. (2024); Gerstgrasser et al. (2024a) .\n\nOur experimental design is shown in Figure 1 . First, a base LLM is fine-tuned on 8000 samples from a human dataset (e.g. Wikipedia articles or Reddit posts). This model generates 4000 * r posts, where r is the synthetic-data ratio.\n\nThose posts are added to the pool of accumulated data together with 4000 * (1 -r) newly sampled human posts. In all subsequent generations, a new base model is fine-tuned on 4000 posts sampled from the accumulated data pool, and 4000 * r posts generated by this model are added to the accumulated data pool together with 4000 * (1 -r) newly sampled human data. In each generation, a new base model is sampled from four possible options: LLaMa-3.2-1B (Dubey et al., 2024) (LLAMA 3.1 Community), Qwen2.5-1.5B (Team, 2024b) (Apache), SmolLM-1.7B (Allal et al., 2024) (Apache), Falcon3-1B-Base (Team, 2024a)), and fine-tuned using LoRA (Hu et al., 2021) (see appendix B.5 for details). Five seeds were used in all experiments. This pipeline enables us to study the evolution of generated data over generations, and most notably, the difference between data generated in the first and last generations.",
+      "word_count": 204
+    },
+    {
+      "index": 5,
+      "title": "Datasets",
+      "kind": "body",
+      "text": "We conducted our experiments on five datasets: two consisting of Twitter posts, two of Reddit posts, and one of Wikipedia paragraphs. These platforms were chosen because they are likely to be increasingly populated with AI-generated content, often indistinguishable from human-written text. Additionally, they are frequently scraped to construct training dataset for language models. Finally, they cover a diverse range of topics and language styles -an essential requirement for investigating the effects of data properties on recursive training dynamics. Refer to Appendix B.2 for details.",
+      "word_count": 84
+    },
+    {
+      "index": 6,
+      "title": "Metrics",
+      "kind": "body",
+      "text": "In this work, we study distribution shift dynamics in terms of quality, semantic diversity and political lean. Irrespective of how much content a model outputs (which varies with the synthetic-data ratio), we always evaluate those metrics on a sample of 250 generated texts.\n\nQuality Generation Synthetic data ratio 0.0625 0.125 0.25 0.5 0.75 1.0 Diversity Generation Synthetic data ratio 0.0625 0.125 0.25 0.5 0.75 1.0 Figure 2: Evolution of quality (left) and diversity (right) over generations for different synthetic data ratios on the 100M_tweets dataset. Recursive finetuning leads to losses of data quality and diversity when the synthetic data ratio is high enough.\n\nThe Semantic Diversity of a set of texts is measured as the pairwise cosine diversity in the stella_en_1.5B_v5 model (Zhang et al., 2024a) , as in previous studies (Guo et al., 2024) . Quality and Political lean are estimated by using LLaMa-3.3-70B-Instruct (Dubey et al., 2024) in the LLM-as-a-Judge setup. The prompt is inspired by Wang et al. (2023) and Chen et al. (2023) , and adapted to our task of evaluating the quality of short texts (see appendix B.3 or details and validation of that adaptation). In sections 4.3 and 4.4, we additionally rely on the following metrics. Lexical Diversity is estimated as SelfBLEU (Zhu et al., 2018) , computed as the average BLEU score (Papineni et al., 2002) of each text using all other texts as references, following prior work (Guo et al., 2024) . Gaussianity is measured by fitting a 2D UMAP projection on embeddings from the stella_en_1.5B_v5 model, and computing the AIC (Akaike, 1974) of a 2D Gaussian distribution fit to this space. Positivity is assessed using the SentimentIntensityAnalyzer tool from NLTK (Hardeniya et al., 2016) , which assigns a sentiment score to each text ranging from -1.0 (highly negative) to 1.0 (highly positive).",
+      "word_count": 301
+    },
+    {
+      "index": 7,
+      "title": "Experiments",
+      "kind": "results",
+      "text": "In this section, we study the following questions:\n\n• Does synthetic data ratio impact distribution shift dynamics?\n\n• Do different datasets exhibit different distribution shifts dynamics?\n\n• Which dataset properties are associated with distribution shift dynamics?\n\n• Does training on multiple domains influence distribution shift dynamics?\n\nWebis Reddit 100M Twitter Reddit Submissions Senators Tweets Wikipedia Absolute metrics 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 20 30 40 50 60 Quality 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 Semantic Diversity Relative metrics 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 0.4 0.6 0.8 1.0 Quality 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 0.6 0.7 0.8 0.9 1.0 Semantic Diversity Figure 3: Effect of synthetic data ratio on absolute and relative quality (left column) and diversity (right column) at the last generation, in four different datasets. Absolute measures (top row) correspond to the value of the corresponding metric at generation 19. Relative measures (bottom row) correspond to absolute values divided by the metric value after a single fine-tuning (i.e. generation 0). Different datasets lead to different sensitivities to synthetic data ratio, with 100M_tweets (blue) and webis_reddit (orange) exhibiting greater losses in quality and diversity.\n\n• Do datasets with different political biases lead to different shifts in political lean?",
+      "word_count": 221
+    },
+    {
+      "index": 8,
+      "title": "Does synthetic data ratio impact distribution shift dynamics?",
+      "kind": "body",
+      "text": "In this experiment, we aim to reproduce the effect of the synthetic data ratio (Briesch et al., 2023) on the shifts toward lower quality and lower diversity induced by recursive fine-tuning. This ratio corresponds to the proportion between the AI-generated data and the freshly sampled human data that are added to the Accumulated data pool at each generation.\n\nFigure 2 shows the evolution of quality and semantic diversity over consecutive generations, where human data comes from the 100M_tweets dataset. For both quality and diversity, we see that chains with larger synthetic data ratios undergo larger distribution shifts. Chains with r = 1/16 exhibit almost no shifts and chains with ratios r = 1/8 and r = 1/4 exhibit increasingly more shift. This seems to plateau at r = 1/2, with ratios r >= 1/2 exhibiting shifts of similar magnitude. This experiment shows that, for the 100M_tweets dataset, synthetic data ratio has a significant impact on distribution shift dynamics, and that the loss in quality and diversity appears to plateau when half or more training data is synthetic.",
+      "word_count": 177
+    },
+    {
+      "index": 9,
+      "title": "Do different datasets exhibit different distribution shifts dynamics?",
+      "kind": "body",
+      "text": "In this experiment, we explore how the distribution shift dynamics vary over different datasets. The experiment is methodologically identical to the one in 4.1, but we consider five datasets: 100M_tweets , senator_tweets , reddit_submissions , webis_reddit , and wikipedia .\n\nFigure 3 shows the values of the metrics at the end of the iterative chain (i.e. those measured at generation 19 in Figure 2 ) as a function of synthetic data ratio. Figure 3 shows both absolute (top) and relative (bottom) quality (left) and diversity (right) scores. Relative scores correspond to absolute scores divided by the score of the data generated in generation zero. This enables us to isolate the shift caused by recursive fine-tuning: we compare the distribution shift induced by several iterations of fine-tuning to the shift obtained after a single episode of fine-tuning. It also allows comparing different datasets while controlling for their \"starting point\", i.e. the value of quality and diversity in the human dataset. Quite naturally, the Absolute plots reveal a general tendency of datasets with higher initial quality and diversity (i.e. those observed for synthetic data ratio = 0) to remain at higher values when increasing the synthetic data ratio. Relative plots allow to control for these initial differences by normalizing the absolute values with the values obtained after a single iteration of fine-tuning, i.e. relative loss in quality and diversity. webis_reddit exhibits a relative loss both in quality and diversity. reddit_submissions and sen-ator_tweets datasets exhibit small relative losses in quality and diversity, and 100M_tweets dataset also exhibits a small relative loss in diversity. We observe an curious effect on the wikipedia dataset, where biggest drops are observed for intermediate synthetic data ratios. Our hypothesis is that this is due an particular interplay of models' biases and human data. In appendix C.3, we discuss this hypothesis in more detail and conduct a toy experiment to provide further support for this hypothesis. Overall, this experiment reveals that the choice of the dataset greatly impacts the distribution shifts' dynamics.",
+      "word_count": 333
+    },
+    {
+      "index": 10,
+      "title": "Which dataset properties are associated",
+      "kind": "body",
+      "text": "with distribution shift dynamics?\n\nThe previous sections indicate that the extent to which recursive fine-tuning leads to distribution shifts varies greatly between datasets. This suggests that some dataset properties play an important role in modulating distribution shift dynamics.\n\nIn this section, we describe a series of regression analysis experiments aimed at uncovering which properties have such strong influence on distribution shifts. We focused on six dataset properties as relevant candidates: Semantic diversity (using pair-wise cosine diversity), Lexical diversity (using self-BLEU), Gaussianity, Quality, Positivity and Text length (see Appendix B.3.1 for details on how those were selected). We study the influence of those six properties on the detrimental distribution shifts towards lower diversity and quality (i.e. model collapse).\n\nWe extracted 200 clusters from four of the five datasets from the previous section, using the method described in appendix B.4 (the sen-ator_tweets dataset was excluded due to its insufficient size). This resulted in 800 clusters varying with respect to the six outlined properties. We used those properties as predictors in our regression analysis. For each of these clusters, we ran two iterative chain experiments, respectively with synthetic data ratios 1/4 and 1/8, using the corresponding cluster as the \"true distribution\". For each of the 1600 iterative chain simulations, we measured the loss in quality and semantic diversity after 20 generations (relative quality and semantic diversity). We used those values as dependent variables. This provides us with an extensive mapping (800 datapoints) between the values of the 6 properties of interest and magnitudes of shifts in quality and diversity.\n\nBy performing regression analyses, we were then able to determine which properties correlate with distribution shifts. We performed nine separate regressions: two for each of the four datasets across two synthetic data ratios (grouping chains from the same dataset and ratio), and one with all datasets and ratios. the following properties as significant. For shift in diversity: lexical diversity and gaussianity were associated with greater relative losses (red); and quality with smaller losses (blue). For shift in quality: lexical diversity, gaussianity, and text length were associated with greater relative losses; and semantic diversity, quality, and positivity with smaller losses. Comparing all regressions reveals that some of those predictors are quite robust: when significant, their directions are consistent across regressions. Lexical diversity is the most robust predictor appearing 11 times. Quality and length appear 7 times and often together. Semantic diversity appears 5 times and Gaussianity 4 times. The consistency of these effects across multiple datasets and dependent variables strongly suggests that these relationships are robust and likely to generalize beyond the specific conditions studied here.\n\n4.4 What happens when models are trained on data from multiple domains?\n\nSo far we have considered situations in which models are trained on data from a single Internet domain. For instance, we studied the potential degradation of generated Reddit posts when a model is trained exclusively on Reddit posts (either humanwritten or AI-generated). That setup, in addition to allowing to perform highly controlled experiments presented in the previous section, captures situations in which models are trained to specialize in one specific domain. However, one can assume that models are also very often fine-tuned and used on multiple domains. In this section, we explore whether training from (and generating content for) multiple domains modifies the relationships between dataset properties and distribution shifts identified in the previous section.\n\nOn the one hand, we could expect models trained on data from multiple domains to merge internal representations, and therefore that the properties of content from a given domain (e.g. Reddit) influences the content generated in another domain (e.g. Wikipedia) (Hypothesis 1). Alternatively, models may keep the representations of different domains separate, in which case the properties of data in one domain would not influence on the generation in another domain (Hypothesis 2). This would result in different domains being independent with respect to their distribution shifts dynamics.\n\nTo explore that question, we slightly modified the experimental pipeline from the previous sections. Having already extracted 200 clusters from wikipedia , webis_reddit and 100M_tweets datasets, we merge those 600 \"pure\" clusters into 200 \"mixed\" clusters so that each \"mixed\" cluster consists of one \"pure\" cluster from each dataset (i.e. mixed i = wikipedia i ∪ webis_reddit i ∪ 100M _tweets i , i ∈ [1, 200] ). We then run 200 iterative chain experiments using those clusters. At each generation, we generate an equal amount of texts for each of the three domains by prompting the model to generate Reddit posts, Twitter posts, or Wikipedia paragraphs with three distinct instructions. This enables us to measure the changes in quality and diversity for each of the three domains. We map those changes to the properties of the \"pure\" clusters constituting each \"mixed\" cluster. For instance, it links the semantic diversity of Twitter posts in the initial \"pure\" Twitter cluster with the loss in quality in generated Wikipedia paragraphs. This enables us to study the influence of data from one domain on the generation in that domain, as well as generation in another domain.\n\nWe performed regression analyses to estimate the effect of 18 predictors (the six properties over three domains) on 6 dependent variables (relative losses in quality and diversity in the three domains).\n\nFigures 4 show the results of the aforementioned experiments. Columns correspond to the two dependent variables in three domains. Highlighted in gray are predictors corresponding to the same domains as the dependent variable. We can make two key observations. First, these results indicate that distribution shift dynamics are highly modular: it is very rare that features from one domain (e.g. Reddit) are significantly associated with distribution shifts in an unrelated domain (e.g. Wikipedia). Indeed, our analyses revealed 21 significant predictors, only 3 of which are inter-domain. This would suggest support for Hypothesis 2, with different domains undergoing distribution shifts independently from one another. Second, regarding intra-domain effects, when semantic diversity, quality, lexical diversity, and gaussianity are significant they are always consistent with the analyses from the pre- vious section. This consistency between different training conditions further supports the generality of the uncovered effects.",
+      "word_count": 1013
+    },
+    {
+      "index": 11,
+      "title": "Political lean",
+      "kind": "body",
+      "text": "While most works on recursive fine-tuning studied detrimental distribution shifts (e.g. losses in quality or diversity) those shifts are likely to also affect other dimensions of generated data, such as political lean. In this section, we study the distribution shift of political lean as a function of human data lean on the senator_tweets dataset.\n\nTo manipulate the political lean of the human data, we annotated the political lean of the dataset (as described in Section 3.3) and split it into leftwing and right wing partitions. We then created 5 datasets by sampling 0,25,50,75 and 100% of data from the left-wing partition and the rest from the right-wing partition. We conduct experiments using each of these datasets and track the political lean of the generated data.\n\nOn Figure 5a , we observe a progressive shift from the initial political lean towards more neutral content. In Appendix C.5, we observe a rise in the proportion of politically neutral tweets, as well as a marginal rise in non-political tweets. This suggests that the topic of generated tweets remains political, but that they drift towards less extreme texts.\n\nFigure 5b aims to assess the effect of political lean in human data on the dynamics of political lean shift. It shows the political lean measured at the last generation as a function of the political lean in the human dataset. Regarding the magnitude of the shift (distance to the diagonal), we observe that it is greater for more extreme values of the human data lean. Regarding the direction of the shift, we observe three different regimes: 1) bias is reduced when the human distribution's bias is extreme rightwing and extreme left-wing, 2) bias is amplified when the initial distribution's bias is moderately left-wing, and 3) bias is reversed when the initial distribution's bias is moderately right-wing. This experiment demonstrates the effect of human data political lean on both magnitude and direction of the political lean shift in generated tweets.\n\nIn the results presented above, we considered the evolution of the average political lean. To get a more detailed view of the dynamics, we consider the change of specific buckets of political lean. On Figure 6 , we observe that the proportion of neutral tweets tends to increase, and the proportions of extreme left and extreme right tweets tend to decrease. The proportions of more nuanced left-wing and right-wing tweets appear to remain the same. This suggests that the evolution of average political lean reported above may be due to extreme tweets (either left-wing or right-wing) being gradually replaced by neutral tweets.",
+      "word_count": 426
+    },
+    {
+      "index": 12,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "This paper studies the effect of human data properties on distribution shift dynamics in recursive training loops with large language models (LLMs). We investigate detrimental shifts in quality and diversity, and shifts in political lean, as a function of human data properties. First, we show that distribution shift dynamics vary depending on the datasets used as the \"true distribution\". To uncover some of the dataset properties behind these differences, we conducted regression analyses to assess the influence of various properties on distribution shifts. This revealed significant and consistent effects: lexical diversity and gaussianity are associated with larger detrimental distribution shifts, while semantic diversity and data quality with smaller ones. We also observe a strong modularity between domains: the properties of data from a given internet domain (e.g. Reddit) has little influence on the data generated for a different domain (e.g. Wikipedia) Additionally, we study distribution shifts in terms of political bias. We find that the type of shift observed (bias amplification, reduction or inversion) is modulated by the lean in the human data. Our experiments suggest that the properties of human data greatly influence the nature of distribution shift dynamics. As online data in different domains varies in terms of those properties, these results indicate that the nature of shifts across those domains will likely vary as well. Overall, this paper highlights the importance of understanding how data properties influence distribution shift dynamics, and thus complements the emerging understanding of the consequences of recursive fine-tuning -an increasingly relevant issue given the growing role of AI in generating online content. See Appendix A for a longer discussion.",
+      "word_count": 266
+    },
+    {
+      "index": 13,
+      "title": "Limitations",
+      "kind": "limitations",
+      "text": "The main limitation of this paper is that the experimental design remains significantly simplified compared to real-world settings. More specifically, recursive fine-tuning happens in networks of LLMs rather than in linear chains, and discrete generations are only an approximation of the continuous interactions that actually take place. Moreover, we considered chains of LLMs without any human intervention. In reality, humans may decide not to use a model that generates low quality text. Having humans-in-the-loop could also in some cases create bi-directional influences if human behavior is influenced by synthetic data. Furthermore, we focus only on relatively small language models (1-2B parameters) trained only with supervised fine-tuning. It would be relevant to explore how the effect of data properties varies over different training methods such as DPO, training from scratch and different model sizes. Because of the recency of this research area, such simplifications are very common in studies of recursive training. Exploring the consequences of relaxing such assumptions is undoubtedly a crucial direction for the field.\n\nAnother limitation is that we only considered English text, and our experiments with political lean were limited to tweets from US senators. This represents a small subset of online political discourse, which also includes comments from the general public, individuals across different socioeconomic backgrounds, as well as content about non-US non-Western politics. Studying texts from diverse populations, cultures and languages is a crucial future direction to ensure that our conclusions are representative and general.\n\nWhile LLM-as-a-judge has been shown to correlate with human judgments, this validation was done on story generation, while we use it to evaluate social media posts, with manual inspection of quality on social media posts. Using different ways of measuring quality, or using methods directly validated on the corresponding distributions would be beneficial to further reinforce the robustness of our results about the role of text quality on distribution shifts.\n\nFinally, although we attempted to cover a wide set of dataset properties that might affect distributions shift, this set is not exhaustive, and it's highly likely that some metrics we didn't account for are important predictors of distribution shifts.",
+      "word_count": 349
+    },
+    {
+      "index": 14,
+      "title": "Ethics Statement",
+      "kind": "body",
+      "text": "The results we present reveal how the magnitude and direction of shifts in generated content can be modulated by manipulating various features of training datasets. It is then the responsibility of end-users to make an ethical use of these tools, for instance by using them to ensure that LLMs remain aligned with ethical standards even after recursive training.",
+      "word_count": 58
+    },
+    {
+      "index": 15,
+      "title": "A Broader Impact",
+      "kind": "body",
+      "text": "Existing studies have allowed to characterize various consequences of recursively fine-tuning generative models, most notably showing how this process leads the learned distribution to deviate from the true distribution. However, how properties of the true distribution (such as quality, diversity) affect the magnitude and direction of this distribution shift had not yet been investigated.\n\nIn this work, we tackle this question by simulating many different \"true\" distributions and measuring the distributions shifts observed. This approach confirmed that distribution shifts are highly dependent on properties of the training data. For instance, we uncover the role of data quality, semantic diversity, and lexical diversity. We also show that not only the magnitude, but also the direction of these shifts depends on properties of the training data, as illustrated by studying shifts in political bias.\n\nThose results have several implications. First, they highlight that the dynamics of distribution shifts observed when recursively training or finetuning LLMs should not be seen as an emergent property of generative models alone, but rather as emerging from the interaction between a LLM and a specific true distribution. As a consequence, this predicts that LLMs might exhibit different types of distribution shifts depending on the tasks (training data) they are meant to accomplish. For instance, LLMs trained to be coding assistants will mainly be fine-tuned on data from GitHub, while LLMs meant to be used as bots on social media will likely be trained on data from platforms like X/Twitter. The distributions underlying these two sources of data are likely to have very different properties. Our results suggest that these differing features may translate to different types of distribution shifts as these datasets start being polluted by synthetic data.\n\nSecond, one of the main motivations for studying the consequences of recursive fine-tuning is to identify strategies to mitigate the resulting undesired distribution shifts. Better understanding how features of a training distribution map to distribution shifts is therefore crucial for being able to optimally filter and clean training datasets. For instance, our results suggest that ensuring that only high-quality data is used, or that lexical diversity remains low (if not coupled with semantic diversity), may be efficient strategies for mitigating degenerative distribution shifts.\n\nFinally, our results also have implications for future studies on recursive fine-tuning. Indeed, the current approach was generally to rely on a single or a few true distributions, and to interpret obtained distribution shifts as being a general consequence of recursive fine-tuning. Our findings suggest that one should be cautious when making such generalizations. For instance, one may conclude that recursive fine-tuning results in bias amplification or in bias reduction, depending on the specific true distribution used to conduct the experiments. What we argue here is that it is only by manipulating features of the training distribution that one can get a complete picture of this phenomenon.",
+      "word_count": 471
+    },
+    {
+      "index": 16,
+      "title": "B.1 Computational cost",
+      "kind": "body",
+      "text": "Experiments were ran mostly on H100 GPUs, as well as on A100 for a smaller part. The whole project, including pilot experiments, represented about 10.000 GPU-hours. This represents about 82kg of CO2 (approximate value based on potentially outdated estimates from 2021).",
+      "word_count": 41
+    },
+    {
+      "index": 17,
+      "title": "B.2 Dataset details",
+      "kind": "body",
+      "text": "Throughout the study we use the following five datasets. The 100M_tweets foot_1 (CC-BY-4.0) dataset contains a large collection of tweets from July 2018 to April 2024. We cleaned it by removing links, filtering non-English posts using LLaMA-3.3-70B-Instruct, and excluding posts longer than 200 tokens or shorter than 20 tokens. Additionally, we removed all posts newer than June 2020 (the GPT-3 release date). The final cleaned dataset consists of 2 million posts. The senator_tweets foot_2 dataset contains all tweets made by United States senators during the first year of the Biden Administration (2021). We cleaned it by removing links and posts shorter than 10 tokens. The final cleaned dataset consists of 94878 posts. The wikipedia (Foundation) foot_3 (CC-BY-SA-3.0) dataset was created by compiling and cleaning articles from Wikipedia dumps foot_4 in November 2023. We extracted the first paragraphs of articles in english, and kept only paragraphs between 200 and 20 tokens. The final dataset consists of 5603766 paragraphs (each extracted from a different article). The reddit_submissions foot_5 (arXiv.org) dataset contains posts from 50 high-quality subreddits, extracted from the REDDIT PushShift data dumps (from 2006 to Jan 2023). We pre-processed this dataset by merging post titles with bodies, sampling 25000 posts from each Subreddit, removing those that have [deleted] or [removed] tags, and removing posts longer than 200 tokens or shorter than 20 tokens. The final cleaned dataset consists of 1243794 posts. The webis_reddit (Völske et al., 2017) (CC-BY) dataset contains preprocessed posts from the Reddit dataset (Webis-TLDR-17). We pre-processed this dataset by merging titles with bodies, removing \"tldr\" tags, removing posts that are marked as \"nsfw\" or \"+18\", removing duplicates, and removing posts longer than 200 tokens or shorter than 20 tokens. The final cleaned dataset consists of 1458003 posts.",
+      "word_count": 289
+    },
+    {
+      "index": 18,
+      "title": "B.3 LLM-as-a-judge validation Quality",
+      "kind": "body",
+      "text": "We measured text quality using LLMas-a-judge method whose performance been empirically confirmed in previous studies (Chen et al., 2023) . We use LLama-3.3-70B-Instruct to annotate texts on a scale of 0 to 100 using the following prompt:",
+      "word_count": 37
+    },
+    {
+      "index": 19,
+      "title": "Quality evaluation prompt",
+      "kind": "results",
+      "text": "On a scale of 0 to 100, evaluate the post. A score of 0 indicates that the post is of very low quality, semantically meaningless, and contains broken-off or repetitive text, while a score of 100 means that the post is of very high quality, addressing a complex topic with advanced vocabulary, phrasing, and style. Post: <text> Reply ONLY with the integer score (0-100). DO NOT reply with text.\n\nTo confirm the correctness of our judge, we compare it to the judge from (Chen et al., 2023) , which was shown to outperform many other quality metrics. We use the same experimental setup as in Chen et al. (2023) and compare to numbers extracted from Table 10 in Chen et al. (2023) . Table 2 shows the correlations for the two judges with human annotations of the OpenMEVA-ROC dataset (Guan et al., 2021) of generated stories. We can see that our judge matches that of (Chen et al., 2023) justifying its use in our experiments.",
+      "word_count": 165
+    },
+    {
+      "index": 20,
+      "title": "Judge",
+      "kind": "body",
+      "text": "Pearson Spearman Ours 51.6 52.2 Chen et al. (2023) 53.5 50.8\n\nTable 2: Comparison of our judge to that of (Chen et al., 2023) using human annotations on OpenMEVA-ROC (Guan et al., 2021) . Our judge matches their performance justifying its use in this paper.\n\nPolitical lean Similarly, we used LLM-as-ajudge to evaluate the political lean of texts. We asked LLaMa-3.3-70B-Instruct to annotate texts on a scale of 0 to 100, with 0 being radical left-wing and 100 being radical right-wing. Additionally, the model was asked to output -1 if it deemed the text to be non-political. We used the following prompt:",
+      "word_count": 102
+    },
+    {
+      "index": 21,
+      "title": "Political Lean evaluation prompt",
+      "kind": "results",
+      "text": "Score the following post on a continual scale from 0 (left-wing) to 100 (right-wing) where a score of 0 means \"The post reflects radical left-wing ideology\" and a score of 100 means \"The post reflects radical right-wing ideology\", and a score of 50 means \"The post reflects a neutral ideology\". Reply with -1 if the post is not political. Reply ONLY with the integer score (0-100 or -1). DO NOT reply with text. Here is the text: <text>",
+      "word_count": 78
+    },
+    {
+      "index": 22,
+      "title": "B.3.1 Data properties selection",
+      "kind": "body",
+      "text": "To define the final set of data properties to study in the final experiment, we first considered a larger set of data properties on which we performed feature selection.\n\nHere we outline all the metrics considered.\n\n• Quality: described in Appendix B.3.\n\n• Semantic Diversity: We compute several semantic diversity metrics as pairwise cosine diversity in the embeddings of the stella_en_1.5B_v5 model (Zhang et al., 2024a) . Cosine diversity computes the pairwise diversity between all data points, and k-nn Cosine diversity computes the pairwise diversity for the nearest n neighbors (we use this metric with n=50 and n=1000).\n\n• Lexial diversity: Self-BLEU (Zhu et al., 2018) is a metric that computes the average BLEU (Papineni et al., 2002) score for each text, with all other text taken as references.\n\n• Word Entropy: computes the entropy using the word frequencies in the given texts\n\n• Type Token Ratio (TTR) (Johnson, 1944) : calculates the number of unique words (types) divided by the number of total word in the first 200 characters of each text.\n\n• Text Length: average number of characters in each text.\n\n• Positivity: uses the SentimentIntensityAnalyzer tool from NLTK (Hardeniya et al., 2016) )(Apache) to assign a sentiment score for the text, ranging from -1.0 (highly negative) to 1.0 (highly positive).\n\n• Toxicity: quantifies the presence of rude, disrespectful, or unreasonable language, using a probability score that ranges from 0.0 (benign and non-toxic) to 1.0 (highly likely to be toxic), as estimated by the classifier introduced in (Hanu and Unitary team, 2020).\n\n• KL-Entropy: fits a 2D UMAP on the stella_en_1.5B_v5 text embeddings, and then used Kozachenko Leonenko entropy estimator (Kozachenko and Leonenko, 1987) to estimate entropy. This estimator uses the volume around the k-nearest neighbor to estimate density. We create 2 kl_entropy metics, one with k=50 and one with k=1000.\n\n• Gaussianity: uses the same UMAP representations as KL-entropy. In this space, it fits a 2D Gaussian distribution. The AIC (Akaike, 1974) score of this distribution is taken as the gaussianity score.\n\nFigure 7 shows Variance Inflation Factor (VIF) scores before and after predictor variable selection. In the first step, we eliminated all predictors except lexical_entropy (word_entropy), semantic_entropy (kl_entropy), quality, text_length (primarily to serve as a control for quality), lexical_diversity (diversity_selfbleu), semantic diversity (cos_diversity), Gaussianity, and Positivity. In the first step, we kept the entropy metrics despite kl_entropy having a relatively hight VIF score. With those predictors, we conduct a pilot regression analyses (alike those in section 4.3) experiment on four datasets from two domains: webis_reddit , reddit_submissions , senator_tweets , 100M_tweets . In the pilot study we observed that entropy and diversity metrics interact in unclear ways making interpretability difficult. Given that the benefit of separating entropy and diversity for interpretability is not clear, we decided to remove entropy predictors for the final experiments. To ensure the validity of our results, for the final experiments we rerun the simulation by sampling 200 new clusters for each dataset as well as by adding an additional dataset from a new domain (wikipedia )",
+      "word_count": 505
+    },
+    {
+      "index": 23,
+      "title": "B.4 Clustering",
+      "kind": "body",
+      "text": "To obtain data to be used for regression analysis, we create a number of subsets from each of the datasets. This is done by the following procedure. A 2D UMAP is fit on the 90k text embedded with stella_en_1.5B_v5 model (Zhang et al., 2024a) . A series of clustering methods (dbscan, hdbscan, gmm, k-means) with different hyperparameters are done separately, each annotating the 90k samples. Then the rest of the dataset is annotated by k-nn, with k=1. This is done in two ways, with and without excluding the noise cluster for the k-nn classifier. This gives us a total of 120 different clusterings of the dataset. Then for each clustering 10 clusters are taken, if there are not enough clusters over the size of 60k. The remaining clusters are constructed by merging smaller clusters, either by uniformly sampling which cluster to merge or by iteratively merging the cluster that is the furthest away from the currently merged cluster. As this results in a large number of clusters (e.g. 1088 for webis_reddit ), we then obtain the final cluster set by subsampling 200 clusters.\n\nTo clarify, from the 200 clusters created for each dataset, some are created in a straight forward way (e.g. with k-nn) which will create the nice narrow clusters as the reviewer describes. However, as discussed in this section, some clusters are created in a slightly more complex way, precisely to address this issue. Some of the used clustering methods create very small clusters (miniclusters) which are then merged to create bigger final clusters to be used in the experiments. This is sometimes done by randomly selecting the miniclusters to merge, and sometimes by iteratively adding the farthest away minicluster from the already merged miniclusters. Therefore, the final set of 200 clusters will be quite diverse.",
+      "word_count": 298
+    },
+    {
+      "index": 24,
+      "title": "B.5 Fine-tuning procedure",
+      "kind": "body",
+      "text": "We use the Unsloth library (Daniel Han and team, 2023)(Apache license) to train model suing LoRA (Hu et al., 2021) . The hyperparameters used are the default ones given by Unsloth, i.e. rank = 16, alpha = 16 batch size = 16, leaning rate = 2e-4, we use a linear schedules with 5 steps of warm-up. For generation with use a temperature of 1.5 with min_p (Nguyen et al., 2024) of 0.2.",
+      "word_count": 72
+    },
+    {
+      "index": 25,
+      "title": "B.6 Iterative chain pseudocode",
+      "kind": "body",
+      "text": "Figure 8 shows the pseudocode describing the iterative chain experiment used. Each iteration a fresh base model is selected and finetuned.",
+      "word_count": 21
+    },
+    {
+      "index": 26,
+      "title": "B.7 Discussion on corrections for multiple comparisons",
+      "kind": "discussion",
+      "text": "We report uncorrected p-values in our regression analyses as our goal is not to test specific hypotheses about individual coefficients, but rather to identify general patterns of robust influence across datasets and conditions. On a related note, variable selection was conducted prior to these analyses and applied to newly collected data (last sentence in VIF scores before variable selection VIF scores after variable selection 1 function iterative_chain(human_data, ai_ratio): 2 base_models = [llama-3.2-1B, Qwen2.5-1.5B, SmolLM-1.7B, Falcon3-1B-Base]\n\n3 accumulated_data_pool = []\n\n4 for i in 20: Appendix B.3.1). We therefore believe that the risk of multiple testing bias is minimal.\n\nIn other words, we address the issue of Type I errors in the way we interpret our results and make conclusions (i.e. in a way that is robust to potential Type I errors): the fact that we consistently find the same predictors to be significant across different experiments gives a high confidence that those are not statistical artifacts.",
+      "word_count": 156
+    },
+    {
+      "index": 27,
+      "title": "C.1 Increasing the number of models per generation",
+      "kind": "body",
+      "text": "In the main text, we adopted the same experimental design as previous studies, where at each generation a single model is fine-tuned and used to generate new data. However, this may be unrealistic compared to real-life situations, where many new models are trained of the outputs of many pre-existing models. To ensure that using a single model per generation approximates well these reallife situations, we ran an experiment manipulating the number of models per generation from 1 to 20. In Figure 9 ), we observe that increasing the number of models per generation does not qualitatively change the conclusion about the effect of synthetic data ratio on distribution shifts with respect to quality and diversity. This confirms that the simplified setting we use is relevant for making predictions about real-life situations.\n\nAs a note, this pilot experiment was conducted with a slightly different quality metric, which ranks quality as either 0, 1 or 2. Although we ended using a different quality metric for the main experiments, we did not re-run the experiment on the number of models per generation with this new quality metric. This was motivated by the significant computational cost of running this experiment.",
+      "word_count": 196
+    },
+    {
+      "index": 28,
+      "title": "Quality Diversity Number of models per generation",
+      "kind": "body",
+      "text": "Number of models per generation",
+      "word_count": 5
+    },
+    {
+      "index": 29,
+      "title": "C.2 The effect of manipulating dataset quality on the distribution shift dynamics",
+      "kind": "body",
+      "text": "In this experiment, we explore the hypothesis that data quality is one of the potential factors influencing distribution shifts. To test this hypothesis, we split the datasets into four mutually exclusive subsets with different quality levels (20, 40, 60, 80) . The exception is the senator_tweets dataset, for which we merged the quality levels of 40 and 60 due to smaller dataset size. Likewise, due to lack of data, the experiments for this dataset were conducted only for higher ratios (r >= 3/4). Similarly, low quality subset (20) for the reddit_submission dataset was also conducted only on ratios r >= 1/2. We conduct this experiment of four datasets: webis_reddit , 100M_tweets , senator_tweets , and reddit_submissions .",
+      "word_count": 117
+    },
+    {
+      "index": 30,
+      "title": "C.2.1 Effect on quality",
+      "kind": "body",
+      "text": "Figure 10 shows the quality values of iterative chains for different quality levels. As in section 4.2, we show the final absolute and relative quality levels as a function of synthetic data ratio. Looking at absolute quality levels (top row), we observe that, as expected, higher quality datasets also end with higher quality in the final generations. More interestingly, looking at the relative quality levels of twitter datasets (bottom row), we observe that higher quality datasets lead to lower rate of quality loss (distribution shift). That is, not only does higher input data quality increase the quality of the final generated dataset, it also decreases the percentage of original quality lost due to recursive training. Furthermore, focusing on lower ratios (< 1/4) of the 100M_tweets dataset, we observe that the higher quality dataset are more robust to increasing synthetic data ratio. For the quality of 80, major quality losses are observed only at r = 1/4, while for lower qualities it is observed already at r = 1/8. Finally, it should also be noted that the 100M_tweets dataset with quality 20 does not appear to lead to significant shifts with higher synthetic data ratios. Given that the very low starting quality of this dataset, we believe that this is likely due to a floor effect (i.e. there are no losses in quality because the initial dataset was already close to the lower bound. Curiously, on both Reddit datasets, we do not observe strong differences when manipulating quality, implying that there are other factors than quality influencing collapse. A similar study focusing on losses of diversity is presented in Appendix C.2.2, where an effect is observed only on the senator_tweets dataset. Overall, this experiment shows that, in some conditions, high-quality datasets lead to increased robustness to distribution shifts.",
+      "word_count": 297
+    },
+    {
+      "index": 31,
+      "title": "C.2.2 Effect on diversity",
+      "kind": "body",
+      "text": "Figure 11 shows the semantic diversity values of iterative chains for different quality levels. We do not observe any clear effects, except on the senator_tweets dataset. On this dataset, it appears that low-quality dataset lead to more pronounced distribution shifts towards lower diversity.",
+      "word_count": 43
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "A new look at the statistical model identification",
+      "doi": "",
+      "year": "1974",
+      "authors": [
+        "Hirotugu Akaike"
+      ],
+      "raw_text": "A new look at the statistical model identification Hirotugu Akaike IEEE transactions on automatic control 19 6 1974"
+    },
+    {
+      "index": 2,
+      "title": "Self-consuming generative models go mad",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard G Baraniuk"
+      ],
+      "raw_text": "Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard G Baraniuk Self-consuming generative models go mad 2023"
+    },
+    {
+      "index": 3,
+      "title": "Smollmblazingly fast and remarkably powerful",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Loubna Ben Allal",
+        "Anton Lozhkov",
+        "Elie Bakouch",
+        "Leandro Von Werra",
+        "Thomas Wolf"
+      ],
+      "raw_text": "Loubna Ben Allal Anton Lozhkov Elie Bakouch Leandro Von Werra Thomas Wolf Smollmblazingly fast and remarkably powerful 2024"
+    },
+    {
+      "index": 4,
+      "title": "On the stability of iterative retraining of generative models on their own data",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Quentin Bertrand",
+        "Joey Avishek",
+        "Alexandre Bose",
+        "Marco Duplessis",
+        "Gauthier Jiralerspong",
+        "Gidel"
+      ],
+      "raw_text": "On the stability of iterative retraining of generative models on their own data Quentin Bertrand Joey Avishek Alexandre Bose Marco Duplessis Gauthier Jiralerspong Gidel 2023"
+    },
+    {
+      "index": 5,
+      "title": "Nepotistically trained generative-ai models collapse",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Matyas Bohacek",
+        "Hany Farid"
+      ],
+      "raw_text": "Nepotistically trained generative-ai models collapse Matyas Bohacek Hany Farid 2023"
+    },
+    {
+      "index": 6,
+      "title": "Large language models suffer from their own output: An analysis of the self-consuming training loop",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Martin Briesch",
+        "Dominik Sobania",
+        "Franz Rothlauf"
+      ],
+      "raw_text": "Large language models suffer from their own output: An analysis of the self-consuming training loop Martin Briesch Dominik Sobania Franz Rothlauf 2023"
+    },
+    {
+      "index": 7,
+      "title": "Breaking news: Case studies of generative ai's use in journalism",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Natalie Grace Brigham",
+        "Chongjiu Gao",
+        "Tadayoshi Kohno",
+        "Franziska Roesner",
+        "Niloofar Mireshghallah"
+      ],
+      "raw_text": "Breaking news: Case studies of generative ai's use in journalism Natalie Grace Brigham Chongjiu Gao Tadayoshi Kohno Franziska Roesner Niloofar Mireshghallah arXiv:2406.13706 2024 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "others. 2023. Machine culture",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Levin Brinkmann",
+        "Fabian Baumann",
+        "Jean-François Bonnefon",
+        "Maxime Derex",
+        "Thomas F Müller",
+        "Anne-Marie Nussberger",
+        "Agnieszka Czaplicka",
+        "Alberto Acerbi"
+      ],
+      "raw_text": "others. 2023. Machine culture Levin Brinkmann Fabian Baumann Jean-François Bonnefon Maxime Derex Thomas F Müller Anne-Marie Nussberger Agnieszka Czaplicka Alberto Acerbi Thomas L Griffiths Joseph Henrich Nature Human Behaviour 7 11"
+    },
+    {
+      "index": 9,
+      "title": "Levin Brinkmann, and 1 others. 2024. How large language models can reshape collective intelligence",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jason W Burton",
+        "Ezequiel Lopez-Lopez",
+        "Shahar Hechtlinger",
+        "Zoe Rahwan",
+        "Samuel Aeschbach",
+        "A Michiel",
+        "Joshua A Bakker",
+        "Aleks Becker"
+      ],
+      "raw_text": "Levin Brinkmann, and 1 others. 2024. How large language models can reshape collective intelligence Jason W Burton Ezequiel Lopez-Lopez Shahar Hechtlinger Zoe Rahwan Samuel Aeschbach A Michiel Joshua A Bakker Aleks Becker Julian Berditchevskaia Berger Nature human behaviour 8 9"
+    },
+    {
+      "index": 10,
+      "title": "Exploring the use of large language models for reference-free text quality evaluation: An empirical study",
+      "doi": "10.18653/v1/2023.findings-ijcnlp.32",
+      "year": "2023",
+      "authors": [
+        "Yi Chen",
+        "Rui Wang",
+        "Haiyun Jiang",
+        "Shuming Shi",
+        "Ruifeng Xu"
+      ],
+      "raw_text": "Exploring the use of large language models for reference-free text quality evaluation: An empirical study Yi Chen Rui Wang Haiyun Jiang Shuming Shi Ruifeng Xu 10.18653/v1/2023.findings-ijcnlp.32 Findings of the Association for Computational Linguistics: IJCNLP-AACL 2023 (Findings) Nusa Dua, Bali. Association for Computational Linguistics 2023"
+    },
+    {
+      "index": 11,
+      "title": "Artificial Generational Intelligence: Cultural Accumulation in Reinforcement Learning",
+      "doi": "10.48550/arXiv.2406.00392",
+      "year": "2024",
+      "authors": [
+        "Jonathan Cook",
+        "Chris Lu",
+        "Edward Hughes",
+        "Joel Z Leibo",
+        "Jakob Foerster"
+      ],
+      "raw_text": "Jonathan Cook Chris Lu Edward Hughes Joel Z Leibo Jakob Foerster 10.48550/arXiv.2406.00392 ArXiv:2406.00392 Artificial Generational Intelligence: Cultural Accumulation in Reinforcement Learning 2024 arXiv preprint cs"
+    },
+    {
+      "index": 12,
+      "title": "Yunzhen Feng, and Julia Kempe. 2024a. Model collapse demystified: The case of regression",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Elvis Dohmatob"
+      ],
+      "raw_text": "Elvis Dohmatob Yunzhen Feng, and Julia Kempe. 2024a. Model collapse demystified: The case of regression"
+    },
+    {
+      "index": 13,
+      "title": "A tale of tails: Model collapse as a change of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "Elvis Dohmatob Yunzhen Feng Pu Yang Francois Charton Julia Kempe arXiv:2402.07043 A tale of tails: Model collapse as a change of scaling laws 2024 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Angela Fan, and 1 others. 2024. The llama 3 herd of models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Abhimanyu Dubey",
+        "Abhinav Jauhri",
+        "Abhinav Pandey",
+        "Abhishek Kadian",
+        "Ahmad Al-Dahle",
+        "Aiesha Letman",
+        "Akhil Mathur",
+        "Alan Schelten"
+      ],
+      "raw_text": "Abhimanyu Dubey Abhinav Jauhri Abhinav Pandey Abhishek Kadian Ahmad Al-Dahle Aiesha Letman Akhil Mathur Alan Schelten Amy Yang arXiv:2407.21783 Angela Fan, and 1 others. 2024. The llama 3 herd of models arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "The rise of social bots",
+      "doi": "10.1145/2818717",
+      "year": "2016",
+      "authors": [
+        "Emilio Ferrara",
+        "Onur Varol",
+        "Clayton Davis",
+        "Filippo Menczer",
+        "Alessandro Flammini"
+      ],
+      "raw_text": "The rise of social bots Emilio Ferrara Onur Varol Clayton Davis Filippo Menczer Alessandro Flammini 10.1145/2818717 Commun. ACM 59 7 2016"
+    },
+    {
+      "index": 16,
+      "title": "Wikimedia Foundation. Wikimedia downloads",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Wikimedia Foundation. Wikimedia downloads"
+    },
+    {
+      "index": 17,
+      "title": "2024a. Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Matthias Gerstgrasser",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Rafael Rafailov",
+        "Tomasz Korbak",
+        "Henry Sleight",
+        "Rajashree Agrawal",
+        "John Hughes"
+      ],
+      "raw_text": "2024a. Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data Matthias Gerstgrasser Rylan Schaeffer Apratim Dey Rafael Rafailov Tomasz Korbak Henry Sleight Rajashree Agrawal John Hughes Dhruv Bhandarkar Pai Andrey Gromov Dan Roberts Diyi Yang David L Donoho Sanmi Koyejo First Conference on Language Modeling"
+    },
+    {
+      "index": 18,
+      "title": "2024b. Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Matthias Gerstgrasser",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Rafael Rafailov",
+        "Henry Sleight",
+        "John Hughes",
+        "Dhruv Pai",
+        "Andrey Stanford"
+      ],
+      "raw_text": "2024b. Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data Matthias Gerstgrasser Rylan Schaeffer Apratim Dey Rafael Rafailov Henry Sleight John Hughes Dhruv Pai Andrey Stanford Daniel A Gromov Diyi Roberts David Yang Sanmi Donoho Koyejo Technical report"
+    },
+    {
+      "index": 19,
+      "title": "OpenMEVA: A benchmark for evaluating open-ended story generation metrics",
+      "doi": "10.18653/v1/2021.acl-long.500",
+      "year": "2021",
+      "authors": [
+        "Jian Guan",
+        "Zhexin Zhang",
+        "Zhuoer Feng",
+        "Zitao Liu",
+        "Wenbiao Ding",
+        "Xiaoxi Mao",
+        "Changjie Fan",
+        "Minlie Huang"
+      ],
+      "raw_text": "OpenMEVA: A benchmark for evaluating open-ended story generation metrics Jian Guan Zhexin Zhang Zhuoer Feng Zitao Liu Wenbiao Ding Xiaoxi Mao Changjie Fan Minlie Huang 10.18653/v1/2021.acl-long.500 Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing Online. Association for Computational Linguistics 2021 1 Long Papers)"
+    },
+    {
+      "index": 20,
+      "title": "The curious decline of linguistic diversity: Training language models on synthetic text",
+      "doi": "10.18653/v1/2024.findings-naacl.228",
+      "year": "2024",
+      "authors": [
+        "Yanzhu Guo",
+        "Guokan Shang",
+        "Michalis Vazirgiannis",
+        "Chloé Clavel"
+      ],
+      "raw_text": "The curious decline of linguistic diversity: Training language models on synthetic text Yanzhu Guo Guokan Shang Michalis Vazirgiannis Chloé Clavel 10.18653/v1/2024.findings-naacl.228 Findings of the Association for Computational Linguistics: NAACL 2024 Mexico City, Mexico Association for Computational Linguistics 2024"
+    },
+    {
+      "index": 21,
+      "title": "Michalis Vazirgiannis, and Chloé Clavel. 2023. The curious decline of linguistic diversity: Training language models on synthetic text",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Yanzhu Guo",
+        "Guokan Shang"
+      ],
+      "raw_text": "Yanzhu Guo Guokan Shang Michalis Vazirgiannis, and Chloé Clavel. 2023. The curious decline of linguistic diversity: Training language models on synthetic text"
+    },
+    {
+      "index": 22,
+      "title": "Laura Hanu and Unitary team",
+      "doi": "",
+      "year": "2020",
+      "authors": [],
+      "raw_text": "Laura Hanu and Unitary team Detoxify. Github 2020"
+    },
+    {
+      "index": 23,
+      "title": "Natural language processing: python and NLTK",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "Nitin Hardeniya",
+        "Jacob Perkins",
+        "Deepti Chopra",
+        "Nisheeth Joshi",
+        "Iti Mathur"
+      ],
+      "raw_text": "Natural language processing: python and NLTK Nitin Hardeniya Jacob Perkins Deepti Chopra Nisheeth Joshi Iti Mathur 2016 Packt Publishing Ltd"
+    },
+    {
+      "index": 24,
+      "title": "Will large-scale generative models corrupt future datasets?",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Ryuichiro Hataya",
+        "Han Bao",
+        "Hiromi Arai"
+      ],
+      "raw_text": "Will large-scale generative models corrupt future datasets? Ryuichiro Hataya Han Bao Hiromi Arai 2022"
+    },
+    {
+      "index": 25,
+      "title": "Lora: Low-rank adaptation of large language models",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "J Edward",
+        "Yelong Hu",
+        "Phillip Shen",
+        "Zeyuan Wallis",
+        "Yuanzhi Allen-Zhu",
+        "Shean Li",
+        "Lu Wang",
+        "Weizhu Wang"
+      ],
+      "raw_text": "J Edward Yelong Hu Phillip Shen Zeyuan Wallis Yuanzhi Allen-Zhu Shean Li Lu Wang Weizhu Wang Chen arXiv:2106.09685 Lora: Low-rank adaptation of large language models 2021 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "A survey on large language models for code generation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Juyong Jiang",
+        "Fan Wang",
+        "Jiasi Shen",
+        "Sungju Kim",
+        "Sunghun Kim"
+      ],
+      "raw_text": "Juyong Jiang Fan Wang Jiasi Shen Sungju Kim Sunghun Kim arXiv:2406.00515 A survey on large language models for code generation 2024 arXiv preprint"
+    },
+    {
+      "index": 27,
+      "title": "Studies in language behavior: A program of research",
+      "doi": "",
+      "year": "1944",
+      "authors": [
+        "Wendell Johnson"
+      ],
+      "raw_text": "Studies in language behavior: A program of research Wendell Johnson Psychological Monographs 56 2 1944"
+    },
+    {
+      "index": 28,
+      "title": "Collapse or thrive? perils and promises of synthetic data in a self-generating world",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Joshua Kazdan",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Matthias Gerstgrasser",
+        "Rafael Rafailov",
+        "David L Donoho",
+        "Sanmi Koyejo"
+      ],
+      "raw_text": "Collapse or thrive? perils and promises of synthetic data in a self-generating world Joshua Kazdan Rylan Schaeffer Apratim Dey Matthias Gerstgrasser Rafael Rafailov David L Donoho Sanmi Koyejo 2024"
+    },
+    {
+      "index": 29,
+      "title": "Sample estimate of the entropy of a random vector",
+      "doi": "",
+      "year": "1987",
+      "authors": [
+        "L F Kozachenko",
+        "N N Leonenko"
+      ],
+      "raw_text": "Sample estimate of the entropy of a random vector L F Kozachenko N N Leonenko Problems of Information Transmission 23 2 1987. 1987"
+    },
+    {
+      "index": 30,
+      "title": "2023a. Combining generative artificial intelligence (ai) and the internet: Heading towards evolution or degradation?",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "2023a. Combining generative artificial intelligence (ai) and the internet: Heading towards evolution or degradation? Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar"
+    },
+    {
+      "index": 31,
+      "title": "Towards understanding the interplay of generative artificial intelligence and the internet",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar Towards understanding the interplay of generative artificial intelligence and the internet 2023"
+    },
+    {
+      "index": 32,
+      "title": "Turning up the heat: Min-p sampling for creative and coherent llm outputs",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Minh Nguyen",
+        "Andrew Baker",
+        "Clement Neo",
+        "Allen Roush",
+        "Andreas Kirsch",
+        "Ravid Shwartz-Ziv"
+      ],
+      "raw_text": "Turning up the heat: Min-p sampling for creative and coherent llm outputs Minh Nguyen Andrew Baker Clement Neo Allen Roush Andreas Kirsch Ravid Shwartz-Ziv arXiv:2407.01082 2024 arXiv preprint"
+    },
+    {
+      "index": 33,
+      "title": "Social Network Structure Shapes Innovation: Experience-sharing in RL with SAPIENS",
+      "doi": "10.48550/arXiv.2206.05060",
+      "year": "2022",
+      "authors": [
+        "Eleni Nisioti",
+        "Mateo Mahaut",
+        "Pierre-Yves Oudeyer",
+        "Ida Momennejad",
+        "Clément Moulin-Frier"
+      ],
+      "raw_text": "Eleni Nisioti Mateo Mahaut Pierre-Yves Oudeyer Ida Momennejad Clément Moulin-Frier 10.48550/arXiv.2206.05060 ArXiv:2206.05060 Social Network Structure Shapes Innovation: Experience-sharing in RL with SAPIENS 2022 arXiv preprint cs"
+    },
+    {
+      "index": 34,
+      "title": "Collective innovation in groups of large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Eleni Nisioti",
+        "Sebastian Risi",
+        "Ida Momennejad",
+        "Pierre-Yves Oudeyer",
+        "Clément Moulin-Frier"
+      ],
+      "raw_text": "Collective innovation in groups of large language models Eleni Nisioti Sebastian Risi Ida Momennejad Pierre-Yves Oudeyer Clément Moulin-Frier ALIFE 2024: Proceedings of the 2024 Artificial Life Conference MIT Press 2024"
+    },
+    {
+      "index": 35,
+      "title": "Bleu: a method for automatic evaluation of machine translation",
+      "doi": "10.3115/1073083.1073135",
+      "year": "2002",
+      "authors": [
+        "Kishore Papineni",
+        "Salim Roukos",
+        "Todd Ward",
+        "Wei-Jing Zhu"
+      ],
+      "raw_text": "Bleu: a method for automatic evaluation of machine translation Kishore Papineni Salim Roukos Todd Ward Wei-Jing Zhu 10.3115/1073083.1073135 Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics the 40th Annual Meeting of the Association for Computational Linguistics Philadelphia, Pennsylvania, USA Association for Computational Linguistics 2002"
+    },
+    {
+      "index": 36,
+      "title": "Cédric Colas, Gaia Molinaro, Maxime Derex, Pierre-Yves Oudeyer, and Clément Moulin-Frier. 2024a. When llms play the telephone game: Cumulative changes and attractors in iterated cultural transmissions",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jérémy Perez",
+        "Corentin Léger",
+        "Grgur Kovač"
+      ],
+      "raw_text": "Cédric Colas, Gaia Molinaro, Maxime Derex, Pierre-Yves Oudeyer, and Clément Moulin-Frier. 2024a. When llms play the telephone game: Cumulative changes and attractors in iterated cultural transmissions Jérémy Perez Corentin Léger Grgur Kovač arXiv:2407.04503 arXiv preprint"
+    },
+    {
+      "index": 37,
+      "title": "Cultural evolution in populations of large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jérémy Perez",
+        "Corentin Léger",
+        "Marcela Ovando-Tellez",
+        "Chris Foulon",
+        "Joan Dussauld",
+        "Pierre-Yves Oudeyer",
+        "Clément Moulin-Frier"
+      ],
+      "raw_text": "Jérémy Perez Corentin Léger Marcela Ovando-Tellez Chris Foulon Joan Dussauld Pierre-Yves Oudeyer Clément Moulin-Frier arXiv:2403.08882 Cultural evolution in populations of large language models 2024 arXiv preprint"
+    },
+    {
+      "index": 38,
+      "title": "Cultural reinforcement learning: a framework for modeling cumulative culture on a limited channel",
+      "doi": "10.31234/osf.io/q4tz8",
+      "year": "2023",
+      "authors": [
+        "Ben Prystawski",
+        "Dilip Arumugam",
+        "Noah D Goodman"
+      ],
+      "raw_text": "Cultural reinforcement learning: a framework for modeling cumulative culture on a limited channel Ben Prystawski Dilip Arumugam Noah D Goodman 10.31234/osf.io/q4tz8 2023"
+    },
+    {
+      "index": 39,
+      "title": "Position: Model collapse does not mean what you think",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Rylan Schaeffer",
+        "Joshua Kazdan"
+      ],
+      "raw_text": "Position: Model collapse does not mean what you think Rylan Schaeffer Joshua Kazdan arXiv:2503.03150 2025 arXiv preprint Alvan Caleb Arulandu, and Sanmi Koyejo"
+    },
+    {
+      "index": 40,
+      "title": "Kickstarting Deep Reinforcement Learning",
+      "doi": "10.48550/arXiv.1803.03835",
+      "year": "2018",
+      "authors": [
+        "Simon Schmitt",
+        "Jonathan J Hudson",
+        "Augustin Zidek",
+        "Simon Osindero",
+        "Carl Doersch",
+        "Wojciech M Czarnecki",
+        "Joel Z Leibo",
+        "Heinrich Kuttler"
+      ],
+      "raw_text": "Simon Schmitt Jonathan J Hudson Augustin Zidek Simon Osindero Carl Doersch Wojciech M Czarnecki Joel Z Leibo Heinrich Kuttler Andrew Zisserman Karen Simonyan S M Ali Eslami 10.48550/arXiv.1803.03835 ArXiv:1803.03835 Kickstarting Deep Reinforcement Learning 2018 arXiv preprint cs"
+    },
+    {
+      "index": 41,
+      "title": "AI models collapse when trained on recursively generated data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Nicolas Papernot",
+        "Ross Anderson",
+        "Yarin Gal"
+      ],
+      "raw_text": "AI models collapse when trained on recursively generated data Ilia Shumailov Zakhar Shumaylov Yiren Zhao Nicolas Papernot Ross Anderson Yarin Gal Nature 631 8022 2024"
+    },
+    {
+      "index": 42,
+      "title": "The falcon 3 family of open models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Falcon-Llm Team"
+      ],
+      "raw_text": "The falcon 3 family of open models Falcon-Llm Team 2024"
+    },
+    {
+      "index": 43,
+      "title": "Open-Ended Learning Leads to Generally Capable Agents",
+      "doi": "10.48550/arXiv.2107.12808",
+      "year": "2021",
+      "authors": [
+        "Adam Stooke",
+        "Anuj Mahajan",
+        "Catarina Barros",
+        "Charlie Deck",
+        "Jakob Bauer",
+        "Jakub Sygnowski",
+        "Maja Trebacz",
+        "Max Jaderberg"
+      ],
+      "raw_text": "Adam Stooke Anuj Mahajan Catarina Barros Charlie Deck Jakob Bauer Jakub Sygnowski Maja Trebacz Max Jaderberg Michael Mathieu Nat Mcaleese Nathalie Bradley-Schmieg Nathaniel Wong Nicolas Porcel Roberta Raileanu Steph Hughes-Fitt Valentin Dalibard Wojciech Marian Czarnecki 10.48550/arXiv.2107.12808 ArXiv:2107.12808 Open-Ended Learning Leads to Generally Capable Agents 2021 Open Ended Learning Team arXiv preprint cs"
+    },
+    {
+      "index": 44,
+      "title": "Cultural evolution of cooperation among llm agents",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Aron Vallinder",
+        "Edward Hughes"
+      ],
+      "raw_text": "Aron Vallinder Edward Hughes arXiv:2412.10270 Cultural evolution of cooperation among llm agents 2024 arXiv preprint"
+    },
+    {
+      "index": 45,
+      "title": "TL;DR: Mining Reddit to learn automatic summarization",
+      "doi": "10.18653/v1/W17-4508",
+      "year": "2017",
+      "authors": [
+        "Michael Völske",
+        "Martin Potthast",
+        "Shahbaz Syed",
+        "Benno Stein"
+      ],
+      "raw_text": "TL;DR: Mining Reddit to learn automatic summarization Michael Völske Martin Potthast Shahbaz Syed Benno Stein 10.18653/v1/W17-4508 Proceedings of the Workshop on New Frontiers in Summarization the Workshop on New Frontiers in Summarization Copenhagen, Denmark Association for Computational Linguistics 2017"
+    },
+    {
+      "index": 46,
+      "title": "Is ChatGPT a good NLG evaluator? a preliminary study",
+      "doi": "10.18653/v1/2023.newsum-1.1",
+      "year": "2023",
+      "authors": [
+        "Jiaan Wang",
+        "Yunlong Liang",
+        "Fandong Meng",
+        "Zengkui Sun",
+        "Haoxiang Shi",
+        "Zhixu Li",
+        "Jinan Xu",
+        "Jianfeng Qu"
+      ],
+      "raw_text": "Is ChatGPT a good NLG evaluator? a preliminary study Jiaan Wang Yunlong Liang Fandong Meng Zengkui Sun Haoxiang Shi Zhixu Li Jinan Xu Jianfeng Qu Jie Zhou 10.18653/v1/2023.newsum-1.1 Proceedings of the 4th New Frontiers in Summarization Workshop the 4th New Frontiers in Summarization Workshop Singapore 2023 Association for Computational Linguistics"
+    },
+    {
+      "index": 47,
+      "title": "Xin Guan, and Adriano Koshiyama. 2024a. Bias amplification: Language models as increasingly biased media",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Ze Wang",
+        "Zekun Wu",
+        "Jeremy Zhang",
+        "Navya Jain"
+      ],
+      "raw_text": "Ze Wang Zekun Wu Jeremy Zhang Navya Jain arXiv:2410.15234 Xin Guan, and Adriano Koshiyama. 2024a. Bias amplification: Language models as increasingly biased media arXiv preprint"
+    },
+    {
+      "index": 48,
+      "title": "Xin Guan, and Adriano Koshiyama. 2024b. Bias amplification: Language models as increasingly biased media",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Ze Wang",
+        "Zekun Wu",
+        "Jeremy Zhang",
+        "Navya Jain"
+      ],
+      "raw_text": "Ze Wang Zekun Wu Jeremy Zhang Navya Jain Xin Guan, and Adriano Koshiyama. 2024b. Bias amplification: Language models as increasingly biased media"
+    },
+    {
+      "index": 49,
+      "title": "Jasper and stella: distillation of sota embedding models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Dun Zhang",
+        "Jiacheng Li",
+        "Ziyang Zeng",
+        "Fulong Wang"
+      ],
+      "raw_text": "Dun Zhang Jiacheng Li Ziyang Zeng Fulong Wang arXiv:2412.19048 Jasper and stella: distillation of sota embedding models arXiv preprint"
+    },
+    {
+      "index": 50,
+      "title": "2024b. Regurgitative training: The value of real data in training large language models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jinghui Zhang",
+        "Dandan Qiao",
+        "Mochen Yang",
+        "Qiang Wei"
+      ],
+      "raw_text": "2024b. Regurgitative training: The value of real data in training large language models Jinghui Zhang Dandan Qiao Mochen Yang Qiang Wei"
+    },
+    {
+      "index": 51,
+      "title": "Texygen: A benchmarking platform for text generation models",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Yaoming Zhu",
+        "Sidi Lu",
+        "Lei Zheng",
+        "Jiaxian Guo",
+        "Weinan Zhang",
+        "Jun Wang",
+        "Yong Yu"
+      ],
+      "raw_text": "Texygen: A benchmarking platform for text generation models Yaoming Zhu Sidi Lu Lei Zheng Jiaxian Guo Weinan Zhang Jun Wang Yong Yu CoRR, abs/1802.01886 2018"
+    }
+  ],
+  "section_count": 31,
+  "reference_count": 51,
+  "error": "",
+  "updated_at": "2026-04-12T03:11:57.659218+00:00"
+}

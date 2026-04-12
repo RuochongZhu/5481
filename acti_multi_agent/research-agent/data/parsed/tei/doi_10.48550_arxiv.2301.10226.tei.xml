@@ -1,0 +1,2320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">A Watermark for Large Language Models</title>
+				<funder ref="#_WxGWf2m">
+					<orgName type="full">Capital One Bank</orgName>
+				</funder>
+				<funder ref="#_U4ZJupt">
+					<orgName type="full">Office of Naval Research</orgName>
+				</funder>
+				<funder ref="#_Jpqzs3h">
+					<orgName type="full">National Science Foundation</orgName>
+				</funder>
+				<funder ref="#_QW4wj2q">
+					<orgName type="full">unknown</orgName>
+				</funder>
+				<funder ref="#_nz2wZR2">
+					<orgName type="full">Amazon</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2024-05-01">1 May 2024</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">John</forename><surname>Kirchenbauer</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Jonas</forename><surname>Geiping</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yuxin</forename><surname>Wen</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Jonathan</forename><surname>Katz</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Ian</forename><surname>Miers</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Tom</forename><surname>Goldstein</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Maryland</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">A Watermark for Large Language Models</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2024-05-01">1 May 2024</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">CBDDDCBD517CB42A35B55DA625DE1C31</idno>
+					<idno type="arXiv">arXiv:2301.10226v4[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Potential harms of large language models can be mitigated by watermarking model output, i.e., embedding signals into generated text that are invisible to humans but algorithmically detectable from a short span of tokens. We propose a watermarking framework for proprietary language models. The watermark can be embedded with negligible impact on text quality, and can be detected using an efficient opensource algorithm without access to the language model API or parameters. The watermark works by selecting a randomized set of "green" tokens before a word is generated, and then softly promoting use of green tokens during sampling. We propose a statistical test for detecting the watermark with interpretable p-values, and derive an informationtheoretic framework for analyzing the sensitivity of the watermark. We test the watermark using a multi-billion parameter model from the Open Pretrained Transformer (OPT) family, and discuss robustness and security.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>Large language models (LLMs), such as the recently developed ChatGPT, can write documents, create executable code, and answer questions, often with human-like capabilities <ref type="bibr" target="#b45">(Schulman et al., 2022)</ref>. As these systems become more pervasive, there is increasing risk that they may be used for malicious purposes <ref type="bibr" target="#b7">(Bergman et al., 2022;</ref><ref type="bibr" target="#b36">Mirsky et al., 2023)</ref>. These include social engineering and election manipulation campaigns that exploit automated bots on social media platforms, creation of fake news and web content, and use of AI systems for cheating on academic writing and coding assignments. Furthermore, the proliferation of synthetic data on the web complicates future dataset creation efforts, as synthetic data is often inferior to human content and must be detected and excluded before model training <ref type="bibr" target="#b42">(Radford et al., 2022)</ref>. For many reasons, the ability to detect and audit the usage of machine-generated text becomes a key principle of harm reduction for large language models <ref type="bibr" target="#b6">(Bender et al., 2021;</ref><ref type="bibr" target="#b13">Crothers et al., 2022;</ref><ref type="bibr" target="#b21">Grinbaum &amp; Adomaitis, 2022)</ref>.</p><p>…The watermark detection algorithm can be made public, enabling third parties (e.g., social media platforms) to run it themselves, or it can be kept private and run behind an API. We seek a watermark with the following properties: Prompt No watermark With watermark -minimal marginal probability for a detection attempt.</p><p>-Good speech frequency and energy rate reduction.</p><p>-messages indiscernible to humans.</p><p>-easy for humans to verify. Extremely efficient on average term lengths and word frequencies on synthetic, microamount text (as little as 25 words) Very small and low-resource key/hash (e.g., 140 bits per key is sufficient for 99.999999999% of the Synthetic Internet Outputs of a language model, both with and without the application of a watermark. The watermarked text, if written by a human, is expected to contain 9 "green" tokens, yet it contains 28. The probability of this happening by random chance is ≈ 6×10 -14 , leaving us extremely certain that this text is machine generated. Words are marked with their respective colors. The model is OPT-6.7B using multinomial sampling. Watermark parameters are γ, δ = (0.25, 2). The prompt is the whole paragraph marked in blue below.</p><p>In this work, we study watermarking of language model output. A watermark is a hidden pattern in text that is imperceptible to humans, while making the text algorithmically identifiable as synthetic. We propose an efficient watermark that makes synthetic text detectable from short spans of tokens (as few as 25 tokens), while false-positives (where human text is marked as machine-generated) are statistically improbable. The watermark detection algorithm can be made public, enabling third parties (e.g., social media platforms) to run it themselves, or it can be kept private and run behind an API. We seek a watermark with the following properties:</p><p>• The watermark can be algorithmically detected without any knowledge of the model parameters or access to the language model API. This property allows the detection algorithm to be open sourced even when the model is not. This also makes detection cheap and fast because the LLM does not need to be loaded or run.</p><p>• Watermarked text can be generated using a standard language model without re-training.</p><p>• The watermark is detectable from only a contiguous portion of the generated text. This way, the watermark remains detectable when only a slice of the generation is used to create a larger document.</p><p>• The watermark cannot be removed without modifying a significant fraction of the generated tokens.</p><p>• We can compute a rigorous statistical measure of confidence that the watermark has been detected.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.1.">Notation &amp; Language model basics</head><p>Language models have a "vocabulary" V containing words or word fragments known as "tokens." Typical vocabularies contain |V| = 50, 000 tokens or more <ref type="bibr" target="#b41">(Radford et al., 2019;</ref><ref type="bibr" target="#b32">Liu et al., 2019)</ref>. Consider a sequence of T tokens {s (t) } ∈ V T . Entries with negative indices, s (-Np) , • • • , s (-1) , represent a "prompt" of length N p and s (0) , • • • , s (T ) are tokens generated by an AI system in response to the prompt.</p><p>A language model (LM) for next word prediction is a function f , often parameterized by a neural network, that accepts as input a sequence of known tokens s (-Np) , • • • , s (t-1) , which contains a prompt and the first t -1 tokens already produced by the language model, and then outputs a vector of |V | logits, one for each word in the vocabulary. These logits are then passed through a softmax operator to convert them into a discrete probability distribution over the vocabulary. The next token at position t is then sampled from this distribution using either standard multinomial sampling, or greedy sampling (greedy decoding) of the single most likely next token. Additionally, a procedure such as beam search can be employed to consider multiple possible sequences before selecting the one with the overall highest score.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.2.">A caveat: The difficulty of watermarking low-entropy sequences</head><p>Consider the following two sequences of tokens, with prompts in red:</p><p>The quick brown fox jumps over the lazy dog for(i=0;i&lt;n;i++) sum+=array <ref type="bibr">[i]</ref> Were they produced by a human or by a language model? Determining this is fundamentally hard because these se-quences have low entropy; the first few tokens strongly determine the following tokens.</p><p>Low entropy text creates two problems for watermarking. First, both humans and machines provide similar if not identical completions for low entropy prompts, making it impossible to discern between them. Second, it is difficult to watermark low entropy text, as any changes to the choice of tokens may result in high perplexity, unexpected tokens that degrade the quality of the text. Later, we rigorously define sentence entropy, and analyze its impact on watermark detection.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">A simple proof of concept</head><p>We start out by describing a simple "hard" red list watermark in Algorithm 1 that is easy to analyze, easy to detect and hard to remove. The simplicity of this approach comes at the cost of poor generation quality on low entropy sequences. We will discuss more sophisticated strategies later.</p><p>Algorithm 1 Text Generation with Hard Red List Input: prompt, s (-Np) • • • s (-1)  for t = 0, 1, • • • do 1.</p><p>Apply the language model to prior tokens s (-Np) • • • s (t-1) to get a probability vector p (t)  over the vocabulary.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>2.</head><p>Compute a hash of token s (t-1) , and use it to seed a random number generator.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>3.</head><p>Using this seed, randomly partition the vocabulary into a "green list" G and a "red list" R of equal size. 4. Sample s (t) from G , never generating any token in the red list. end for</p><p>The method works by generating a pseudo-random red list of tokens that are barred from appearing as s (t) . The red list generator is seeded with the prior token s (t-1) , enabling the red list to be reproduced later without access to the entire generated sequence.</p><p>Detecting the watermark. While producing watermarked text requires access to the language model, detecting the watermark does not. A third party with knowledge of the hash function and random number generator can re-produce the red list for each token and count how many times the red list rule is violated. We can detect the watermark by testing the following null hypothesis, H 0 : The text sequence is generated with no knowledge of the red list rule.</p><p>(</p><p>Because the red list is chosen at random, a natural writer is expected to violate the red list rule with half of their tokens, while the watermarked model produces no violations. The probability that a natural source produces T tokens without violating the red list rule is only 1/2 T , which is vanishingly small even for short text fragments with a dozen words. This enables detection of the watermark (rejection of H 0 ) for, e.g., a synthetic tweet.</p><p>A more robust detection approach uses a one proportion z-test to evaluate the null hypothesis. If the null hypothesis is true, then the number of green list tokens, denoted |s| G , has expected value T /2 and variance T /4. The z-statistic for this test is</p><formula xml:id="formula_1">z = 2(|s| G -T /2)/ √ T .<label>(2)</label></formula><p>We reject the null hypothesis and detect the watermark if z is above a chosen threshold. Suppose we choose to reject the null hypothesis if z &gt; 4. In this case, the probability of a false positive is 3 × 10 -5 , which is the one-sided p-value corresponding to z &gt; 4. At the same time, we will detect any watermarked sequence with 16 or more tokens (the minimum value of T that produces z = 4 when |s| G =T).</p><p>How hard is it to remove the watermark? The use of the one proportion z-test makes removal of the watermark difficult. Consider the case of a watermarked sequence of length T = 1000. Suppose an adversary modifies 200 tokens in the sequence to add red list words and scrub the watermark. A modified token at position t can violate the red list rule at position t. Furthermore, the value of s t determines the red list for token s t+1 , and a maximally adversarial choice of s t will put s t+1 in violation of the red list rule as well. For this reason, 200 token flips can create at most 400 violations of the red list rule. Unfortunately for the attacker, this maximally adversarial sequence with 600 remaining green list tokens still produces a z-statistic of 2(600 -1000/2)/ √ 1000 ≈ 6.3, and a p-value of ≈ 10 -10 , leaving the watermark readily detectable with extremely high confidence. In general, removing the watermark of a long sequence requires modifying roughly one quarter of the tokens or more. Note the analysis above assumes the attacker has complete knowledge of the watermark, and each selected token is maximally adversarial (which likely has a negative impact on quality). Without knowledge of the watermark algorithm, each flipped token has only a 50% chance of being in the red list, as does the adjacent token. In this case, the attacker above only creates 200 red list words (in expectation) by modifying 200 tokens. Methods for keeping the watermark algorithm secret but available via API are discussed in Section 5.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Drawbacks of the hard red list rule.</head><p>The hard red list rule handles low entropy sequences in a simple way; it prevents the language model from producing them. For example, the token "Barack" is almost deterministically followed by "Obama" in many text datasets, yet "Obama" may be disallowed by the red list.</p><p>A better behavior is to use a "soft" watermarking rule that is only active for high-entropy text that can be imperceptibly watermarked. As long as low-entropy sequences are wrapped inside a passage with enough total entropy, the passage will still easily trigger a watermark detector, solving the problem described in Section 1.2. Further, one can combine the watermark with a beam search decoder that "irons-in" the watermark. By searching the hypothesis space of likely token sequences, candidates sequences with a high density of tokens in the green list are found, resulting in a high strength watermark with minimal perplexity cost.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">A more sophisticated watermark</head><p>We now discuss the "soft" watermark that promotes the use of the green list for high entropy tokens when many good choices are available, while having little impact on the choice of low-entropy tokens that are nearly deterministic.</p><p>To derive this watermark, we examine what happens in the language model just before it produces a probability vector. The last layer of the language model outputs a vector of logits l (t) . These logits get converted into a probability vector p (t) using the softmax operator</p><formula xml:id="formula_2">p (t) k = exp(l (t) k )/ i exp(l (t) i ).</formula><p>Rather than strictly prohibiting the red list tokens, Algorithm 2 adds a constant δ to the logits of the green list tokens.</p><p>The soft red list rule adaptively enforces the watermark in situations where doing so will have little impact on quality, while almost ignoring the watermark rule in the low entropy case where there is a clear and unique choice of the "best" word. A highly likely word with p (t)</p><p>k ≈ 1 has a much larger logit than other candidates, and this will remain the largest regardless of whether it is in the red list. But when the entropy is high, there are many comparably large logits to choose from, and the δ rule has a large impact on the sampling distribution, strongly biasing the output towards the green list.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">Detecting the soft watermark</head><p>The process for detecting the soft watermark is identical to that for the hard watermark. We assume the null hypothesis (1) and compute a z-statistic using Equation (2). We reject the null hypothesis and detect the watermark if z is greater than a threshold. For arbitrary γ we have</p><formula xml:id="formula_3">z = (|s| G -γT )/ T γ(1 -γ).<label>(3)</label></formula><p>Algorithm 2 Text Generation with Soft Red List Input: prompt, s (-Np) • • • s (-1)  green list size, γ ∈ (0, 1) hardness parameter, δ &gt; 0 for t = 0, 1, • • • do 1.</p><p>Apply the language model to prior tokens s (-Np) • • • s (t-1) to get a logit vector l (t) over the vocabulary.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>2.</head><p>Compute a hash of token s (t-1) , and use it to seed a random number generator.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>3.</head><p>Using this random number generator, randomly partition the vocabulary into a "green list" G of size γ|V |, and a "red list" R of size (1 -γ)|V |.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>4.</head><p>Add δ to each green list logit. Apply the softmax operator to these modified logits to get a probability distribution over the vocabulary.</p><formula xml:id="formula_4">p(t) k =      exp(l (t) k +δ) i∈R exp(l (t) i )+ i∈G exp(l (t) i +δ) , k ∈ G exp(l (t) k ) i∈R exp(l (t) i )+ i∈G exp(l (t) i +δ)</formula><p>, k ∈ R.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>5.</head><p>Sample the next token, s (t) , using the watermarked distribution p(t) . end for Consider again the case in which we detect the watermark for z &gt; 4. Just like in the case of the hard watermark, we get false positives with rate 3 × 10 -5 . In the case of the hard watermark, we could detect any watermarked sequence of length 16 tokens or more, regardless of the properties of the text. However, in the case of the soft watermark our ability to detect synthetic text depends on the entropy of the sequence. High entropy sequences are detected with relatively few tokens, while low entropy sequences require more tokens for detection. Below, we rigorously analyze the detection sensitivity of the soft watermark, and its dependence on entropy.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Analysis of the soft watermark</head><p>In this section, we examine the expected number of green list tokens used by a watermarked language model and analyze the dependence of this quantity on the entropy of a generated text fragment. Our analysis assumes the red list is sampled uniformly at random. This is a deviation from the method used in practice, which generates red lists using a pseudorandom number generator seeded with previous tokens. The consequences of pseudo-random sampling are explored in Section 5. We analyze the case in which text is generated by multinomial random sampling. In our experiments, we consider two more sampling schemes, greedy decoding and beam search.</p><p>We need a definition of entropy that is appropriate for our analysis. The strength of our watermark is weak when the distribution over tokens has a large "spike" concentrated on one or several tokens. We define the following type of entropy to quantify this phenomenon.</p><p>Definition 4.1. Given a discrete probability vector p and a scalar z, we define the spike entropy of p with modulus z as</p><formula xml:id="formula_5">S(p, z) = k p k 1 + zp k .</formula><p>Like the classical Shannon entropy, the spike entropy is a measure of how spread out a distribution is; The spike entropy assumes its minimal value of 1 1+z when the entire mass of p is concentrated at a single location, and its maximal value of N N +z when the mass of p is uniformly distributed. For large z, the value of p k 1+zp k ≈ 1/z when p k &gt; 1/z and ≈ 0 for p k &lt; 1/z. For this reason, one can interpret the spike entropy as a softened measure of the number of entries in p greater than 1/z.</p><p>The following theorem predicts the number of green list tokens that appear in a sequence with the watermark.</p><p>Theorem 4.2. Consider watermarked text sequences of T tokens. Each sequence is produced by sequentially sampling a raw probability vector p (t) from the language model, sampling a random green list of size γN , and boosting the green list logits by δ using Equation 4 before sampling each token. Define α = exp(δ), and let |s| G denote the number of green list tokens in sequence s.</p><p>If a randomly generated watermarked sequence has average spike entropy at least S ⋆ , i.e.,</p><formula xml:id="formula_6">1 T t S p (t) , (1 -γ)(α -1) 1 + (α -1)γ ≥ S ⋆ ,</formula><p>then the number of green list tokens in the sequence has expected value at least</p><formula xml:id="formula_7">E |s| G ≥ γαT 1 + (α -1)γ S ⋆ ,</formula><p>Furthermore, the number of green list tokens has variance at most</p><formula xml:id="formula_8">Var |s| G ≤ T γαS ⋆ 1 + (α -1)γ 1 - γαS ⋆ 1 + (α -1)γ .</formula><p>If we have chosen γ ≥ .5, then we can use the strictly looser but simpler bound</p><formula xml:id="formula_9">Var |s| G ≤ T γ(1 -γ).</formula><p>Remark. It may seem like there are a lot of messy constants floating around in this bound. However, when we choose γ = 1 2 and δ = ln(2) ≈ 0.7, this bound simplifies to</p><formula xml:id="formula_10">E |s| G ≥ 2 3 T S ⋆ , Var |s| G ≤ 2 3 T S ⋆ 1 - 2 3 S ⋆</formula><p>where S ⋆ is a bound on spike entropy with modulus 1/3. If we study the "hard" red list rules by choosing γ = 1 2 and letting δ → ∞, we have</p><formula xml:id="formula_11">E |s| G ≥ T S ⋆ , Var |s| G ≤ T S ⋆ (1 -S ⋆ )</formula><p>where S ⋆ is a bound on spike entropy with modulus 1.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.">Sensitivity of the watermark test</head><p>The sensitivity of the soft watermark can be computed using standard type-II error analysis. For illustrative purposes, we estimate the type-II (false negative) error rate of a soft watermark with γ = .5 and δ = 2. We assume 200 tokens are generated using OPT-1.3B <ref type="bibr" target="#b59">(Zhang et al., 2022)</ref> using prompts from the C4 dataset's RealNewsLike subset <ref type="bibr" target="#b43">(Raffel et al., 2019)</ref>. We also assume a detection threshold of z = 4 (which occurs at ∼ 128.2/100 tokens) which gives us a type-I error (false positive) rate of 3 × 10 -5 . Theoretical bound. Our generations have an average spike entropy per sample of S = 0.807 over ∼ 500 generations. Theorem 4.2 says that the expected number of green list tokens per generation is at least 142.2. Indeed, the empirical average is 159.5. For sequences with entropy equal to the mean (S = 0.807) we get σ ≤ 6.41 tokens, and 98.6% sensitivity (1.4% type-II error rate), using a standard Gaussian approximation for the green list count. Note, this is a lower bound on the sensitivity for this particular entropy. If we use the true empirical mean of 159.5 rather than the theoretical bound, we get a 5.3 × 10 -7 type-II error rate, a realistic approximation but not a rigorous lower bound.</p><p>Empirical sensitivity. Empirically, 98.4% of generations are detected at the z = 4 (128 token) threshold when multinomial sampling is used. When 4-way beam search over a greedy decoding is used, we get 99.6% empirical sensitivity. Unlike the theoretical bounds, these are computed over all generations, which have the same length but vary in their individual entropies. Here, the primary source of type-II errors is low entropy sequences, as calculations above show that we expect a very low error rate when the entropy lies near the mean. To validate this, we examine the subset of 375/500 generations that have spike entropy above the 25th percentile, of which we detect 100% of generations at the z = 4 threshold.</p><p>What do failure cases look like? We display typical success and failure cases for the watermark in Table <ref type="table">1</ref>. We observe that low-entropy (undetectable) sequences typically involve data memorization; the model regurgitates a copy (or near copy) of human-written text which is therefore not detectable as machine-written. A detailed exploration of model accuracy is presented in Section 6, with more generation examples provided in Appendix A.1.</p><p>Evaluating Repetitive Text. A subtlety of the proposed approach is that tokens in the green list are only pseudorandom, and n-grams of text that are repeated will always be scored in the same manner. Assume a 2-gram, such as "Barack Obama" happens to green-list "Obama". Repetitive usage of this 2-gram would result in a higher than expected number of green tokens. In a worst-case scenario, humangenerated text with a high number of repetitions of this 2-gram may be erroneously flagged as machine-generated.</p><p>Two remedies are possible: The first is to simply increase the length h of the PRNG function, thereby increasing the variability of the green-listed words, as larger (h + 1)-grams are much less likely to be repeated. A better remedy (possibly used in conjunction with the first) is not to count repeated n-grams when checking for the watermark. In the example above, the 2-gram "Barack Obama" would be counted on its first occurrence, and then subsequently ignored when it appears again; it is counted as neither green nor red, and the token counter T is not incremented.</p><p>In addition to preventing false positives, skipping repeated n-grams can also make the detector more sensitive. A repeated n-gram is likely to be low-entropy, and so it will not contribute to the strength of the watermark. By excluding these from the count, we keep the green list fraction high and maintain high sensitivity.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.">Impact on quality of generated text</head><p>A soft watermark has very little impact on the perplexity of tokens with extremely high or low entropy. When the distribution produced by the language model is uniform (maximal entropy), the randomness of the green list results in tokens being uniformly sampled, and the perplexity remains untouched. Conversely, in the case of minimal entropy, where all probability mass is concentrated on a single token, the soft watermark rule has no effect and there is once again no impact on perplexity.</p><p>The watermark rule does impact perplexity for tokens of moderate entropy. In this case, we can provide the following simple bound that holds uniformly over all entropy values.</p><p>Theorem 4.3. Consider a sequence s (i) , -N p &lt; i &lt; T. Suppose the (non-watermarked) language model produces a probability vector p (T ) for the token at position T. The watermarked model predicts the token at position T using modified probability vector p(T ) . The expected perplexity of the T th token with respect to the randomness of the red list</p><p>prompt real completion no watermark (NW) watermarked (W) S (W) z (NW) PPL (W) PPL ...tled out of court and publicly reconciled.\nIn the '80s the band's popularity waned in the United States but remained strong abroad. Robin released three solo albums, with limited success. The Bee Gees returned with some moderate hits in the late 1990s and were inducted into the Rock and Roll Hall of Fame in 1997. With his brothers, Mr. Gibb won six Grammys.\nIn addition to his wife and his brother [...continues] continued to tour, and Barry became a television producer.\nBut in the early '90s, the Bee Gees' popularity remained high. They scored a hit with "Don't Stop Believing" in 1990, and in 1992 the Bee Ge[...continues] ' 1990 album, "Spirits of the Century," was a mixed critical and commercial success.\nWhen the brothers were nominated for a Grammy Award in 1990, Mr. Gibb's "You Should Be Dancing" and "Massachusetts,[...continues] 0.68 12.73 3.15 1.93 ... logged into their Google account and have verified profiles that match queries for the site.\nGoogle's John Mueller said there is no ranking benefit in using different Google Search Console and Google Analytics accounts for each individual web site you manage. The topic came up before, as long as you are not spamming Googlethere also is no down side to using the same accounts across multiple we[...continues] Analytics data to calculate ranking sentiment.\nGoogle have a new feature called Keyword Difficulty Analysis that shows you the keywords your competitors are ranking for. It shows the demand curve as [...continues] + accounts to see different numbers.\nGoogle also released their own great blog post on the news algorithm. They give lots of great advice to help your site do better.\nFinally, at the end of September [...continues] 0.77 11.88 9.24 4.10 ...1 on the season with a 2.76 GAA and.906 save percentage.\nMar. 11 5:28 PM PT6:28 PM MT7:28 PM CT8:28 PM ET0:28 GMT8:28 5:28 PM MST6:28 PM CST7:28 PM EST4:28 UAE (+1)20:28 ET21:28 BRT -Sergei Bobrovsky stopped 18 of 19 shots in the Blue Jackets' 2-0 loss to the Islanders on Monday. The defeat dropped him to 29-22-1 on the season with a 2.74 GAA and.907 save percentage.\nMar. 9 5:41 PM PT6:41 PM MT7:[...continues] stopped 28 of 30 shots in the Blue Jackets' 3-2 shootout loss to the Islanders on Sunday. The loss dropped him to 30-22-1 on the season with a 2.76 GAA and.906 save percentage.\nMar. 10 6:15 PM PT7:15[...continues] stopped 30 of 34 shots in the Blue Jackets' 6-2 win over the Canadiens on Monday. The victory pushed him to 31-21-1 on the season with a 2.72 GAA and.908 save percentage.\nMar. 10 11:49 AM PT12:49 PM [...continues] 0.62 2.40 1.33 1.45 ...cond season at Hall Bros Oval.\nThe defender also admitted his surprise at Young's run to the finals but credited the injection of youth into the side.\n"We were really in a building phase last year and we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\nROCK[...continues] we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\n"Tha[...continues] we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\n"Tha[...continues] 0.58 -1.13 1.05 1.04</p><p>Table <ref type="table">1</ref>. Selected outputs from non-watermarked (NW) and watermarked (W) multinomial sampling using γ = 0.5 and δ = 2.0. The examples in the first two rows have high entropy and correspondingly high z-scores, without any perceptible degradation in output quality. The two lower rows are failure cases where the watermark is too weak to be detected -they have low entropy and corresponding low z-scores. Anecdotally, failure cases typically seem to involve data memorization in which the model regurgitates a near-copy of human text. Note the output similarity between the generated and "real" human text in the bottom two rows. Memorization leads to large, high confidence logit values that constrain the outputs. Another common factor in failure cases is templated outputs (see the date/time formatting in row 3) that constrain model choices.</p><p>partition is</p><formula xml:id="formula_12">E G,R k p(T ) k ln(p (T ) k ) ≤ (1 + (α -1)γ)P * , where P * = k p (T ) k ln(p (T )</formula><p>k ) is the perplexity of the original model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Private Watermarking</head><p>The watermark algorithms above are designed to be public. A watermark can also be operated in private mode, in which the algorithm uses a random key that is kept secret and hosted behind a secure API. If the attacker has no knowledge of the key used to produce the red list, it becomes more difficult for the attacker to remove the watermark as the attacker does not know which tokens are in the red list. However, testing for the presence of the watermark now requires using the same secure API and, if this API is public, access needs to be monitored to prevent an adversary from making too many queries using minor variants of the same sequence.</p><p>Let F be a pseudorandom function (PRF) that, for simplicity, we view as accepting arbitrary length inputs and producing output as long as needed. F could be a standard block cipher like AES or a cryptographic hash function like SHA3. To create a private watermark, we first choose a random key K; a private red list for token s (t) can then be generated in a manner similar to what was described earlier, but now by first computing F K (s (t-h) , • • • , s (t-1) ), a pseudorandom function evaluated on the prior h tokens.</p><p>An attacker can discover the watermarking rules by observing occurrences of token tuples in generated text and tabulating the frequencies of the immediately subsequent tokens, even if the underlying key is unknown. To tabulate every red list in such a brute-force attack, |V| 1+h tokens need to be submitted to the detection API. When h = 1, the red lists produced by many tokens could be discovered (at least partially) with conceivable effort. This brute-force method is ineffective for h ≫ 1, as there is now a unique red list for each ordered combination of words. At the same time, large values of h decrease watermark robustness when a naive method is used. When, say, h = 5 consecutive tokens are used to produce a red list, an adversarial change to just one of those tokens randomizes the red list for 5 different downstream tokens, increasing the number of red list words by 2.5 (in expectation) if γ = .5. We call this downstream impact attack amplification. To limit amplification, we suggest using a small window (h = 2 or 3) when using the naive watermarking rule.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 3 Robust Private Watermarking</head><formula xml:id="formula_13">Input: prompt s (-Np) • • • s (-1) PRF F with key K hardness parameter δ &gt; 0 window width h &gt; 0 for t = 0, 1, • • • do 1.</formula><p>Apply the language model to s</p><formula xml:id="formula_14">(-Np) • • • s (t-1)</formula><p>to get a logit vector l (t) over the vocabulary.</p><p>2. Sort the vocabulary so l (t) is in descending order. Set k = 0, the index of the most likely token.</p><p>3. Temporarily set s (t) to be the kth token in the vocabulary. Compute</p><formula xml:id="formula_15">H i = F K (s (t) , s (t-i) ) for 1 ≤ i ≤ h. 4. Set i ⋆ = arg min i&gt;0 H i .</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>5.</head><p>Using H i ⋆ as a seed, produce a random bit to decide if token k is on the green or red list. if green list is chosen then keep s (t) and continue. else if red list is chosen, and t) to be the most likely (k = 0) token, which is in the red list, and continue. else set k ← k + 1, goto to step 3. end if end for When a wider window h is desired, more complex, robust watermarking rules can achieve security against brute-force attacks without attack amplification. We describe such a rule in Algorithm 3. Here, the red list for s (t) depends on itself, and additionally on one prior token s (t-i ⋆ ) chosen using a pseudo-random rule. To satisfy this self-hash condition, we iteratively test different tokens as s (t) , from highest logit to least logit, until the red list rule is satisfied. If, during this search, the logit of the test token falls by more than δ, we give up and accept the token in the red list with largest logit.</p><formula xml:id="formula_16">l (t) k+1 &lt; l (t) 0 -δ, then choose s (</formula><p>Algorithm 3 has several nice security properties. When one of the prior h tokens is changed, the watermark at position t changes with probability only 1/h. As such, this rule is free of attack amplification; in expectation, a change to a token results in one additional red list token.<ref type="foot" target="#foot_0">foot_0</ref> Like the naive method with h = 2, there are |V| 2 unique red lists, but now the choice of the index i ⋆ depends on combinations of s (t)  and all h tokens before it, which hides the choice of tokens used as input to F . For simplicity, Algorithm 3 is presented as a greedy sampler, but can be easily extended to handle multinomial sampling or beam search.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Boosting Watermark Privacy with Multiple Keys.</head><p>A straightforward add-on to significantly boost the difficulty of brute-forcing a hidden watermark scheme is to have k &gt; 1 different hidden keys, and to randomly choose one for each generation. At detection time, we run k tests, one for each of the possible keys. This comes at the cost of only a minor decrease in power, as we need to correct for multiple hypotheses, for example via Bonferroni correction. When γ = .5 (half the vocabulary is colored green), lists should further be constructed so that each word is green for k/2 of the keys and red for the other k/2. In this way, the lists can no longer be discovered by brute forced frequency analysis, as there is no observable bias when averaging over a large number of separately generated strings.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">Experiments</head><p>In this section we explore the behavior of the watermark using the OPT-1.3B model <ref type="bibr" target="#b59">(Zhang et al., 2022)</ref>. We measure watermark strength using the rate of type-I errors (human text falsely flagged as watermarked) and type-II errors (watermarked text not detected).</p><p>We implement the proposed watermark using the Pytorch backend of the Huggingface library <ref type="bibr" target="#b56">(Wolf et al., 2020)</ref>. The generate API provides useful abstractions, including modules for warping the logit distribution that comes out of the language model. We generate red lists using the torch random number generator and one previous token as described in Section 3.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Datasets and Prompts.</head><p>To simulate a variety of realistic language modeling scenarios we slice and dice a random selection of texts from the news-like subset of the C4 dataset <ref type="bibr" target="#b43">(Raffel et al., 2019)</ref>. For each random string, we trim a fixed length of tokens from the end and treat them as a "baseline" completion. The remaining tokens are a prompt. For the experimental runs using multinomial sampling, we pull examples from the dataset until we achieve at least 500 of generations with length T = 200 ± 5 tokens. In the runs using greedy and beam search decoding, we suppress the EOS token during generation to combat the tendency of beam search to generate short sequences. We then truncate all sequences to T = 200. A larger oracle language model (OPT-2.7B) is used to compute perplexity (PPL) for the generated completions and for the human baseline.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Watermark</head><p>Strength vs Text Quality. One can achieve a very strong watermark for short sequences by choosing a small green list size γ and a large green list bias δ. However, creating a stronger watermark may distort generated text. Figure <ref type="figure" target="#fig_1">2</ref> (left) shows the tradeoff between watermark  strength (z-score) and text quality (perplexity) for various combinations of watermarking parameters. We compute results using 500 ± 10 sequences of length T = 200 ± 5 tokens for each parameter choice. Interestingly, we see that a small green list, γ = .1 is pareto-optimal.</p><p>In addition to these quantitative results, we show examples of real prompts and watermarked outputs in Table <ref type="table">1</ref> to provide a qualitative sense for the behavior of the test statistic and quality measurement on different kinds of prompts. Additional examples are compiled in Appendix A.1.</p><p>Ironing in the Watermark with Beam Search. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Watermark Strength vs Number of Tokens.</head><p>Theory pre-dicts that the type I and type II error rates of the watermark should decay to zero as the sequence length T increases.</p><p>Figure <ref type="figure" target="#fig_2">3</ref> shows the strength of the watermark, measured using the average z-score over samples, as T sweeps from 2 to 200. Curves are shown for various values of δ and γ. The left two charts use multinomial sampling, while the right chart uses 8-way beam search and γ = .25. Once again, we see the power of the beam search in achieving high green list ratios; even for the moderate bias of δ = 2, an average z-score greater than 5 is achieved for as few as 35 tokens.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Performance and Sensitivity for Multinomial Sampling.</head><p>To show the sensitivity of the resulting hypothesis test based on the observed z-scores, we provide a table of error rate for various watermarking parameters in Table <ref type="table" target="#tab_0">2</ref>. We also sweep a range of thresholds in ROC charts in Figure <ref type="figure" target="#fig_4">4</ref>. We further report detection performance and error rates for various cutoffs in Appendix C, and provide a comparison between empirical z-scores and theoretical predictions. Note that no type-I (false positive) errors were observed for any run</p><p>0.0 0.2 0.4 0.6 0.8 1.0 False Positive Rate 0.0 0.2 0.4 0.6 0.8 1.0 True Positive Rate (a) 0.0 0.2 0.4 0.6 0.8 1.0 False Positive Rate 0.0 0.2 0.4 0.6 0.8 1.0 True Positive Rate (b) 10 -2 10 -1 10 0 False Positive Rate 0.5 0.6 0.7 0.8 0.9 1.0</p><p>True Positive Rate δ : 10.0, γ : 0.5, AUC:1.000, PPL:11.6 δ : 10.0, γ : 0.25, AUC:1.000, PPL:12.4 δ : 5.0, γ : 0.5, AUC:1.000, PPL:9.1 δ : 5.0, γ : 0.25, AUC:1.000, PPL:10.7 δ : 2.0, γ : 0.5, AUC:0.998, PPL:6.2 δ : 2.0, γ : 0.25, AUC:0.998, PPL:6.6 δ : 1.0, γ : 0.5, AUC:0.985, PPL:5.4 δ : 1.0, γ : 0.25, AUC:0.989, PPL:5.5 δ = 0, PPL: 5.1 (c) 10 -2 10 -1 10 0 False Positive Rate 0.5 0.6 0.7 0.8 0.9 1.0 True Positive Rate δ : 10.0, γ : 0.5, AUC:1.000, PPL:1.2 δ : 10.0, γ : 0.25, AUC:1.000, PPL:1.2 δ : 5.0, γ : 0.5, AUC:1.000, PPL:1.2 δ : 5.0, γ : 0.25, AUC:1.000, PPL:1.3 δ : 2.0, γ : 0.5, AUC:0.999, PPL:1.2 δ : 2.0, γ : 0.25, AUC:1.000, PPL:1.3 δ : 1.0, γ : 0.5, AUC:0.987, PPL:1.2 δ : 1.0, γ : 0.25, AUC:0.977, PPL:1.2 δ = 0, PPL: 1.2 (d)  shown in the error tables (see the columns of 0.0's</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.">Attacking the watermark</head><p>Like any software tool, care must be taken when implementing a watermark and watermark detector so that security is maintained. Otherwise, an adversarial user may modify text to add red list tokens, and thus avoid detection. In many cases, simple attacks can be avoided by properly normalizing text before hashes are computed. We now discuss a range of attacks that we are currently aware of, and methods to mitigate them. We assume a threat model in which an attacker must create watermark-free text using a combination of a private watermarked model and other public models, but the public models are much weaker than the watermarked model. We only consider attacks that maintain text of quality similar to the raw private model.</p><p>Three types of attacks are possible. Text insertion attacks add additional tokens after generation that may be in the red list and may alter the red list computation of downstream to-kens. Text deletion removes tokens from the generated text, potentially removing tokens in the green list and modifying downstream red lists. This attack increases the monetary costs of generation, as the attacker is "wasting" tokens, and may reduce text quality due to effectively decreased LM context width. Text substitution swaps one token with another, potentially introducing one red list token, and possibly causing downstream red listing. This attack can be automated through dictionary or LM substitution, but may reduce the quality of the generated text.</p><p>Below we catalog a range of attacks that fall into these categories.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Paraphrasing Attacks.</head><p>A baseline substitution attack is manual paraphrasing by the human attacker. This attack is technically outside the threat model we are interested in, as it requires extensive human intervention. Note that, especially on longer text fragments such as essays, a few sentences that are partially or not at all paraphrased can be sufficient to trigger watermark detection at a statistically significant threshold. This attack can defeat watermarks, but with a notable reduction in language modeling capability.</p><p>A more scalable version of this attack is to use automated paraphrasing. An attacker that has access to a public language model can use this model to rephrase the output of the generated model. We provide an experimental evaluation of this attack in Section 7.1. Here, it is crucial to note the trade-off that an attacker is making: The attacker is using a weaker paraphrasing model to modify the text, reducing both watermark strength and text fluency. If the attacker had an equally strong language model at hand, there would be no need to use the watermarked API, the attacker could generate their own text.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Discreet Alterations.</head><p>An attacker could make small alterations, adding additional whitespaces, or misspelling a few words to impact the computation of the hash. A wellconstructed watermark should normalize text to ignore explicit whitespaces when computing the hash. Changing the spelling of many words is likely to severely degrade the quality of text. When implemented carefully, surface level alterations should not pose a serious threat to a watermark.</p><p>Tokenization Attacks.. An attacker can modify text so that sub-word tokenization of a subsequent word changes. For example (again with BPE), if the text fragment life.\nVerrilius is modified to life. Verrilius (i.e. \n is replaced), then the tokenization of the succeeding word also switches from V err ili us to Ver r ili us. This results in more red list tokens than one would expect from a single insertion. The attack can contribute to the effectiveness of a more powerful attack, but most tokens in a default sentence will not be vulnerable.</p><p>Homoglyph and Zero-Width Attacks. This is a special case of the discreet alteration attack. The effect of tokeniza-tion attacks can be multiplied through homoglyph attacks <ref type="bibr" target="#b18">(Gabrilovich &amp; Gontmakher, 2002)</ref>. Homoglyphs attacks are based on the fact that unicode characters are not unique, with multiple unicode IDs resolving to the same (or a very similar-looking) letter. This breaks tokenization, for example the word Lighthouse (two tokens) expands to 9 different tokens if i and s are replaced with their equivalent Cyrillic unicode characters. Security against Homoglyph and tokenization attacks can be maintained using input normalization before the text is tested for watermarks, for example via canonicalization as in <ref type="bibr" target="#b25">Helfrich &amp; Neff (2012)</ref>. Otherwise, simple replacements of characters with their homoglyphs could break enough tokens to remove the watermark.</p><p>Likewise, there are zero-width joiner/non-joiner unicode characters that encode zero-width whitespace and hence are effectively invisible in most languages. Like homoglyphs, these characters must be removed through canonicalization <ref type="bibr" target="#b39">(Pajola &amp; Conti, 2021;</ref><ref type="bibr" target="#b9">Boucher et al., 2022)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Generative Attacks.</head><p>Generative attacks abuse the capability of large language models for in-context learning, and prompt the model to change its output in a predictable and easily reversible way. For example, the Emoji attack of <ref type="bibr" target="#b20">Goodside (2023)</ref> proceeds by prompting the model to generate an emoji after every token, see Figure <ref type="figure" target="#fig_5">5</ref>, left. These emojis can be removed, randomizing the red list for subsequent tokens. More broadly, all attacks that prompt the model to change its output "language" in a predictable way can potentially cause this, for example prompting the model to replace all letters a with e, see Figure <ref type="figure" target="#fig_5">5</ref>, right. Or, as a reverse homoglyph attack, prompting the model to "switch the letter i with i", where the second i is a Cyrillic letter. These attacks are the strongest tools against watermarking to our knowledge, but also require a strong LM with the capacity to follow the prompted rule without a loss in output quality. Additionally, this increases the cost of text generation by requiring more tokens than usual to be generated and reducing effective context width.</p><p>A defense against these attacks is to include negative examples of such prompts during finetuning, training the model to reject these requests. Note that instruction finetuning is already common (for example in ChatGPT) for other categories of malicious prompts, using reinforcement learning protocols (RLHF) <ref type="bibr" target="#b12">(Christiano et al., 2017;</ref><ref type="bibr" target="#b38">Ouyang et al., 2022;</ref><ref type="bibr">Bai et al., 2022)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.1.">Degradation Under Attack: Span Replacement Using a LM</head><p>We study a realistic black-box attack by attempting to remove the presence of the watermark by replacing spans in the original output text using another language model. We treat the watermark algorithm as if it is private, mocking seclusion behind an API. The attacker does not have access to the locations of green list tokens and instead tries to modify the text through token replacement at random indices until a certain word replacement budget, ε, is reached. The budget constraint maintains a level semantic similarity between the original watermarked text and the attacked text, otherwise the "utility" of the original text for its intended task may be lost. Also, each span replacement in the attack is performed via inference using a multi-million parameter language model. While this is roughly a third the size of the target model, it means that the attack incurs an associated cost per step implying that a base level of efficiency with respect to model calls would be desired in practice.</p><p>In our experiment, we adopt T5-Large <ref type="bibr" target="#b44">(Raffel et al., 2020)</ref> as the replacement model and iteratively select and replace tokens until the attacker either reaches the budget, or no more suitable replacement candidates are returned.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Details of the T5 Span Attack.</head><p>We tokenize the watermarked text using the T5 tokenizer. Then, while fewer than εT successful replacements have been performed or a maximal iteration count is reached:</p><p>1. Randomly replace one word from the tokenization with a &lt;mask&gt;.</p><p>2. Pass the region of text surrounding the mask token to T5 to obtain a list of k = 20 candidate replacement token sequences via a 50-way beam search, with associated scores corresponding to their likelihood.</p><p>3. Each candidate is decoded into a string. If one of the k candidates returned by the model is not equal to the original string corresponding to the masked span, then the attack succeeds, and the span is replaced with the new text.</p><p>After attacking a set of 500 sequences of length T = 200±5 token sequences this way, we compute updated z-scores and tabulate error rates (Table <ref type="table">8</ref> in the Appendix). We also generate ROC plots for a range of ε budgets. While this attack is effective at increasing the number of red list tokens in the text, as shown in Figure <ref type="figure" target="#fig_6">6</ref>, we only measure a decrease in watermark strength of 0.01 AUC when ε = 0.1. While the watermark removal is more successful at a larger budget of 0.3, the average PPL of attacked sequences increases by 3× in addition to requiring more model calls.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8.">Related Work</head><p>The idea of watermarking, defined as unseen modifications to data that hide identifying information, has a long history. However, watermarking of digital text has been considered challenging in the past, due to its discrete nature <ref type="bibr" target="#b31">(Katzenbeisser &amp; Petitcolas, 2000)</ref>. Watermarking is considered easier for continuous-valued data, where watermarks can be encoded with a variety of well-studied strategies <ref type="bibr" target="#b40">(Petitcolas et al., 1999;</ref><ref type="bibr" target="#b60">Zhu et al., 2018;</ref><ref type="bibr" target="#b33">Lu et al., 2021;</ref><ref type="bibr" target="#b8">Boenisch, 2021)</ref>.</p><p>In the following, we note that watermarking, as a method that encodes enough information to identify the source of a text fragment, is strictly a subset of steganography, the task of embedding arbitrary hidden information into data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Watermarking Natural Language.</head><p>Early approaches to watermarking natural text in digital form in <ref type="bibr" target="#b3">Atallah et al. (2001;</ref><ref type="bibr" target="#b4">2003)</ref> pose a similar problem with similar desiderata as in our setting, except targeted towards classical models. Given a string of text s, <ref type="bibr" target="#b3">Atallah et al. (2001)</ref> propose to generate text s ′ with the properties that s ′ has similar meaning, contains a watermark with an extremely small false-positive rate that is not readable by a party without knowledge of the secret key that generated the watermark, is hard to remove through editing of s ′ and is further detectable without knowledge of s (or the scheme generating s). The actual steganography scheme described therein is limited by its rule-based understanding of natural text to modifications of parsed syntactic tree structures. Finally, the watermark can be read by reconstructing the tree structure, with the chance of a falsepositive for a watermark of w bits vanishing quickly at 2 -w .</p><p>Rule-based watermarks were further developed in a series of works <ref type="bibr" target="#b11">(Chiang et al., 2004;</ref><ref type="bibr">Topkara et al., 2006a;</ref><ref type="bibr">b;</ref><ref type="bibr" target="#b34">Meral et al., 2009;</ref><ref type="bibr" target="#b54">Venugopal et al., 2011)</ref> with variants also embedding watermarks based on synonym tables instead of only parse trees. Early developments were summarized in <ref type="bibr" target="#b26">Jalil &amp; Mirza (2009)</ref>, but strong watermarks significantly degraded the text quality due to the limited flexibility of language models at the time.</p><p>While approaches via hierarchical language models in Wilson et al. ( <ref type="formula">2014</ref>) still required human interactions, the emergence of modern neural language models <ref type="bibr" target="#b53">(Vaswani et al., 2017;</ref><ref type="bibr" target="#b15">Devlin et al., 2019)</ref> also allowed for improved watermarking/steganography <ref type="bibr" target="#b16">(Fang et al., 2017;</ref><ref type="bibr" target="#b61">Ziegler et al., 2019;</ref><ref type="bibr" target="#b14">Dai &amp; Cai, 2019;</ref><ref type="bibr">He et al., 2022a;</ref><ref type="bibr">b)</ref>. <ref type="bibr" target="#b16">Fang et al. (2017)</ref> propose such a neural steganography approach where, to encode a message of w bits, the message is first separated into blocks of length b. Then, the vocabulary V of a language model is partitioned at random into disjoint sets of size |V |/2 b . A generative LM can then encode the message by generating only a token from the "allowed" set at each position. However, this hard rule reduces the quality of generated text, boxing the LM into only a small selection of valid tokens at every step. Other approaches, such as Ueoka et al. (2021) use mask-infilling models such as BERT to edit already-generated text for the purpose of steganography. Finally, <ref type="bibr" target="#b1">Abdelnabi &amp; Fritz (2021)</ref> design an end-to-end system where both encoding and decoding are handled by text-to-text language models that are trained adversarially.</p><p>With similar motivation to our proposal, <ref type="bibr" target="#b30">Kaptchuk et al. (2021)</ref> constructs a framework that adapts traditional publickey cryptographic steganography specifically for "natural" comunication channels like text using generative models. However, their method, Meteor, relies on a synchronized model framework where the sender and receiver agree on a shared generative model used to embed and decode the hidden bits of information being sent.</p><p>Recently, <ref type="bibr" target="#b0">Aaronson (2022)</ref> announced that he is studying cryptographic approaches to watermarking in collaboration with OpenAI. Their preliminary method is based only on biasing of the LM output, as opposed to complete determination as in <ref type="bibr" target="#b16">Fang et al. (2017)</ref>. While details are not currently available, the description suggests that hashing of n-gram sequences is involved. We hope to extend our comparison to this work when more information becomes available.</p><p>Note that a separate line of work investigates watermarking model parameters themselves. This would not be used to watermark model output (as in this work), but to defend against model stealing <ref type="bibr" target="#b2">(Adi et al., 2018;</ref><ref type="bibr" target="#b8">Boenisch, 2021)</ref>. Approaches, such as <ref type="bibr" target="#b22">Gu et al. (2022)</ref>, implant backdoor triggers through a finetuning process to cause biased responses to specific inputs, a behavior detectable at verification time.</p><p>In contrast to other currently published works, we want to focus on strategies that are simultaneously minimally restrictive to a language model, leverage the LMs own understanding of natural text, require no usage of the LM to decode the watermark, and can be theoretically analyzed and validated.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Post-hoc Detection.</head><p>An alternative to watermarking is to develop detection models that perform a post-hoc analysis of machine-generated text, for example using language model features or finetuning existing large language models to behave as detectors <ref type="bibr" target="#b58">(Zellers et al., 2019;</ref><ref type="bibr" target="#b46">Tan et al., 2020)</ref>, see an overview in <ref type="bibr" target="#b27">Jawahar et al. (2020)</ref>. These detectors work because LMs still leave detectable signals in generated text. Implementation details, such as sampling strategies, can be reverse-engineered from text <ref type="bibr" target="#b47">(Tay et al., 2020)</ref>. However, detection approaches are slowly losing ground as LM capabilities increase, for example <ref type="bibr" target="#b19">Gambini et al. (2022)</ref> note that a range of detection strategies for GPT-2 already struggle with GPT-3. Further, known detectors are also vulnerable to adversarial attacks that degrade their functionality <ref type="bibr" target="#b57">(Wolff &amp; Wolff, 2022)</ref>.</p><p>While efforts to provide strong detectors continue, as in Tian ( <ref type="formula">2023</ref>), ultimately language model progress may make detection infeasible. All post-hoc detection methods require the LM to be significantly biased away from human text in some measurable way, such as low variation in perplexity across sentences <ref type="bibr" target="#b49">(Tian, 2023)</ref>. Even for current LLMs, this margin might be small. This is already problematic, as detection schemes that operate within this small margin are susceptible to labeling human text as false-positive, a concern that is especially pressing for people who produce unusual text, such as a non-native speakers, and people who use computer tools to assist them in writing. Such populations might be especially at risk for false-positives, which could lead to academic problems if these detectors are used in schools <ref type="bibr" target="#b10">(Butoi, 2023)</ref>.</p><p>The watermarking scheme we propose is designed so that false positives are statistically improbable, regardless of the writing patterns of any given human.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="9.">Conclusion</head><p>The presented watermark has a number of nice properties that make it a practical choice: the watermark is computationally simple to verify without access to the underlying model, false positive detections are statistically improbable, and the watermark degrades gracefully under attack. Further, the proposed scheme can be retro-fitted to any existing model that generates text via sampling from a next token distribution, without retraining. Note, however, that careful implementation and instruction tuning against generative attacks may be required for very large models.</p><p>There is one more important property of the proposed method that we have not discussed: The z-statistic used to detect the watermark depends only on the green list size parameter γ and the hash function for generating green lists.</p><p>There is no dependence on δ or any other factor related to how the green list is enforced. For this reason, one can deploy the watermark using context-specific δ choices or green list enforcement rules for different kinds of text (e.g., prose vs code, or small vs large models) while using the same downstream watermark detector. One can also change a proprietary implementation of the watermarked sampling algorithm without any need to change the detector. Finally, the watermarking method could be turned on only in certain contexts, for example when a specific user seems to exhibit suspicious behavior.</p><p>There are still a number of remaining open questions regarding watermarking. For example, what kind of robust hashing rules are possible, and when are these rules provably optimal? What is the best way to test for the watermark in a streaming context, or in a context where a short span of watermarked text lives inside a longer non-watermarked span? Are there simple sensitivity bounds that are more accurate than those presented above for large δ and small γ? We hope our present results are enough to convince readers that watermarks could be a practical tool for combating malicious uses of generative models, and we leave these additional questions for future research</p><p>idx prompt real completion no watermark (NW) watermarked (W) S (NW) z (W) z (NW) PPL (W) PPL 1011 [...]nned any special treatment as an officer. The living quarters reserved for him -palatial by camp standards -remained empty as he bunked nearer to the workers. Straight-talking and cigar-chomping ( a habit that earned him the nickname "Big Smoke"), he and politics didn't mix well. Signing on in 1905 "until he could predict success or failure according to his own judgment," Stevens resigned in 19[...truncated] he was nicknamed "The Devil"), Stevens was a man who could get anything done. He had one major flaw: He was an expert at getting things done -without getting anything done. The problem was, he got t[...truncated] another Stevens habit), Stevens impressed them so much that he even earned the nickname "Bully Stevens" from a group of workers.\nAs the tedious, years-long construction dragged on -years and years a[...truncated] 0.87 0.14 8.20 8.77 10.33 924 [...] Helen Cavallo.... She's so funny and so warm, and she's the kind of person the kids won't look away from, and the moms won't look away from."\nTelevision personality and author of "Courtney's Creative Adventurers," Courtney Watkins, hosts "Thinking Up" -which provides imaginative children's activities, drawing from her eclectic background as a teacher of kindergarten and art and a designer of je[...truncated] Child," Courtney Love, is one of the series' executive producers. Gilmore said the Disney team has a "talent for building relationships" with the target audience, who, she said, are "very passionate [...truncated] World: The Parental Roadmap for Success," Gilmore also noted that there's an opportunity to harness the power of social media to share stories and provide expert advice.\n"We've seen that, too," she s[...truncated] 0.87 -0.28 9.62 6.95 10.30 1151 [...]Carrie and a formidable Heather Orth as her frighteningly religious mother.\nIt's not Oeschger's fault that there's a big disconnect between the painfully shy outsider she plays so convincingly and the forceful notes she sings with dynamic conviction. Cohen's book works best for those who know the story wellno small number -jumping from one plot point to the next without connecting the dots. Ca[...truncated] confident, vampish Carrie whose songwriting is in a state of constant revising. It's a shame, because Oeschger is an able actress. And a terrific singer.\nThe original production, which had just two a[...truncated] awful person inside that she fights so hard to control with forced bravado.\nBut the script's missteps and musical shortcomings, especially in the tightly-crafted scenes, leave the main characters far[...truncated] 0.87 -0.99 8.77 8.40 12.33 853 [...]? Transferring misbehaving government servants will not solve any problem. They must be suspended and demoted. This is to ensure they will think twice before doing anything.\nAnonymous #18452573: Bigot ry is the by-product of racism. This is just another form of ethnocentrism and xenophobia due to BN's 50 years of racially divided political parties and racist policies.\nIslam, Christianity and other [...truncated] ry in schools is rampant and this is not acceptable. Muslims should not be allowed to enter the schools.\nTun: I am saddened and disappointed at how our education system is being used to promote discri[...truncated] ry against Orang Asli children is a new low. They're not children to be bullied or manipulated by the teachers.\nHow come the teachers are the only people doing such acts? Why not the parents?\nI read o[...truncated] 0.87 0.99 10.47 7.42 10.55 341 [...]When more responsible people carry, violent crime goes down. The FBI crime statistics don't lie. Why do the left and gun grabbing crowd ignore this fact? Liberalism is a mental disorder.\nLets look one poll that this particular article is using for it's numbers.\nThe poll used 2 Senate Districts in the State of VA. District 21 and District 38.\nwith the total numbers of respondents being 305 voters i[...truncated] more time at the facts.\nThe "Fix Gun Checks Act" would make it tougher for the mentally ill to legally buy guns by strengthening background checks so people like James Holmes (the Aurora shooter) can[...truncated] day at the number of school shootings that have occurred since Columbine. They were not just random shootings. They were planned. In the preplanned shootings, the students/victims were well trained a[...truncated] 0.88 -0.42 9.22 1.12 13.66</p><p>Table 3. High spike entropy examples under a δ = 2.0, γ = 0.5 watermark with multinomial sampling.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A. Experimental Details</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1. Sample Outputs</head><p>We provide series of representative outputs from different ranges in the sample space for model generations under a soft watermark with parameters δ = 2.0, γ = 0.5 under the multinomial sampling scheme. To tabulate these outputs, the ∼ 500 generations collected at this setting are either sorted by the average spike entropy of the watermarked model's output distribution at generation time, or the measured test statistic, the z-score for that sequence. The top and bottom 5 samples according to these orderings are shown for both entropy (Table <ref type="table">4</ref> and Table <ref type="table">3</ref>) and z-score (Table <ref type="table" target="#tab_1">6</ref> and Table <ref type="table">5</ref>).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2. Measuring Perplexity: Oracle Language Model</head><p>To compute perplexity, the larger, Oracle Language Model is fed the original prompt as input, as described in the main body, and perplexity is computed via taking the exponential of the average token-wise loss according to the oracle's next token distribution at every output index. Note that loss is computed for only the generated tokens produced by either a watermarked or non-watermarked model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B. Detailed Threat Model</head><p>For completeness, we formally define the threat model for the attacks discussed in Section 7 here. As described, attacks may occur when malicious users operate bots/sock-puppets on social media, try to fool a CATPCHA, or complete an academic assignment <ref type="bibr" target="#b17">(Foltýnek et al., 2019)</ref>. In this work we formally define adversarial behavior as all efforts by a party the using machine-generated text to remove the watermark. It is ultimately important to remember that we describe a watermark only on the tokens of the generated text, i.e. on its form and style, and not on its semantic content. For example, a completely</p><p>idx prompt real completion no watermark (NW) watermarked (W) S (NW) z (W) z (NW) PPL (W) PPL 132 [...]cond season at Hall Bros Oval.\nThe defender also admitted his surprise at Young's run to the finals but credited the injection of youth into the side.\n"We were really in a building phase last year and we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\nROCK[...truncated] we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\n"Tha[...truncated] we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\n"Tha[...truncated] 0.58 -1.27 -1.13 1.05 1.04 850 [...]son tear through the banner Friday, Nov. 16, in Copper Mountain's East Village.\nBetty the Yeti rallies the first chairlift riders of the 2018-2019 ski season Friday, Nov. 16, in Copper Mountain's East Village.\nCopper Ski Resort Chief Operations Officer Jesse True high fives first chairlift riders of the 2018-2019 ski season Friday, Nov. 16, in Copper Mountain's East Village.\nCopper Mountain reside[...truncated] Village.\nCopper Mountain Resort will open Friday with 275 acres of skiable terrain based out of East and West villages.\nThe ski area will open on a limited schedule on Friday, Nov. 16, followed by a [...truncated] Village.\nA rider heads down a slope on the opening day of 2018-2019 season at Copper Mountain.\nA rider heads down a slope on the opening day of 2018-2019 season at Copper Mountain.\nA rider heads down[...truncated] 0.61 0.00 5.37 4.58 1.18 939 [...]ngs.\nAnd now we have Trump calling on Bee to be fired. You know who else hates comedy at their expense? Authoritarian leaders. Egypt's President Abdel Fattah el-Sisi, a man Trump loves, banned Egypt's version of The Daily Show because of the way its comedy mocked the government. The show's star, Bassem Youssef, had to flee the country and is now living in exile with his family.\nTurkey's strongman [...truncated] top comedy show after the host criticized the military's coup over a year ago. And then President Vladimir Putin banned comedy on Russian television over the same topic.\nIt's not hard to see why Trum[...truncated] leading comedy show and radio host, Ahmed Mansour, from entering the country.\nTrump's attacks on freedom of expression go far beyond just news media. Trump also wants to silence those in the entertai[...truncated] 0.61 0.99 2.83 4.86 1.27 444 [...]1 on the season with a 2.76 GAA and.906 save percentage.\nMar. 11 5:28 PM PT6:28 PM MT7:28 PM CT8:28 PM ET0:28 GMT8:28 5:28 PM MST6:28 PM CST7:28 PM EST4:28 UAE (+1)20:28 ET21:28 BRT -Sergei Bobrovsky stopped 18 of 19 shots in the Blue Jackets' 2-0 loss to the Islanders on Monday. The defeat dropped him to 29-22-1 on the season with a 2.74 GAA and.907 save percentage.\nMar. 9 5:41 PM PT6:41 PM MT7:[...truncated] stopped 28 of 30 shots in the Blue Jackets' 3-2 shootout loss to the Islanders on Sunday. The loss dropped him to 30-22-1 on the season with a 2.76 GAA and.906 save percentage.\nMar. 10 6:15 PM PT7:15[...truncated] stopped 30 of 34 shots in the Blue Jackets' 6-2 win over the Canadiens on Monday. The victory pushed him to 31-21-1 on the season with a 2.72 GAA and.908 save percentage.\nMar. 10 11:49 AM PT12:49 PM [...truncated] 0.62 -0.99 2.40 1.33 1.45 1171 [...]South Elliott Place, near Lafayette Street, Fort Greene; $; no smoking; Mastercard and Visa.\n(718) 857-8863; 620 Vanderbilt Avenue, Prospect Heights; $$; no smoking; American Express, Mastercard, Visa .\n(718) 624-9267; 218 Court Street, near Warren Street, Cobble Hill; $; no smoking; American Express, Mastercard and Visa.\n(718) 499-5557; 426A Seventh Avenue, near 15th Street, Park Slope; $; no smok[...truncated] .\n(718) 857-8863; 620 Vanderbilt Avenue, Prospect Heights; $$; no smoking; American Express, Mastercard, Visa.\n(718) 857-8863; 620 Vanderbilt Avenue, Prospect Heights; $$; no smoking; American Express[...truncated] .\n\nBusiness in the Park\n\nHaley's, 77\n\nHaley's Restaurant, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's, 77\n\nHaley's,[...truncated] 0.62 -0.71 11.17 1.09 1.48</p><p>Table 4. Low spike entropy examples under a δ = 2.0, γ = 0.5 watermark with multinomial sampling.</p><p>new essay written based on an outline or initial draft provided by a LM could not be detected. Such semantic watermarks may be possible, but we do not study this setting here.</p><p>Threat Model. We assume two parties, a model owner providing a text generation API, and an attacker attempting to remove the watermark from the API output. The attacker moves second, and is aware that the API contains a watermark. In public mode, the attacker is aware of all details of the hashing scheme and initial seed. In private mode, the attacker is aware of the watermark implementation, e.g. Algorithm 3, but has no knowledge of the key of the pseudo-random function F . The attacker attempts to reduce the number of green-listed occurrences in the text, reducing the z-score computed by a defender. In public mode, any party can evaluate the watermark. In private mode, only the model owner can evaluate the watermark and provides a text detection API. We assume that this API is rate-limited. We assume the attacker has access to other non-watermarked language models, but these models are weaker than the API under attack. The attacker is allowed to modify the generated text in any way.</p><p>Note that removing the watermark is always a trivial task if language model quality is disregarded -one can simply replace the entire text with random characters. For this reason only attacks that result in a reasonable language quality trade-off for the attacker are relevant. A defense is hence also successful if any watermark removal by the attacker reduces the quality of generated text to that of generated text achievable using a public model.</p><p>idx prompt real completion no watermark (NW) watermarked (W) S (NW) z (W) z (NW) PPL (W) PPL 1105 [...]ent to mark 80 important moments in our shared history. Looking back it's easy to see these moments changed the way Australians lived and thought.\nThe Opera House Project is an online documentary that tells the story behind one of the greatest buildings of the twentieth century and explores the cultural heritage that has ensued for more than forty years to the present day.\nA selection of archival [...truncated] uses archive footage to explore the history of the Opera House. It's the first and only full-length documentary on the Opera House, and the production is helmed by 90s documentary maker and broadcast[...truncated] explores Australia's National Art Gallery. It tells the history of the construction, and evolution of a work that has been called one of the most significant cultural legacies of Australian art.\nSydn[...truncated] 0.78 0.85 11.46 3.40 5.22 354 [...]epeatedly to first see the group list, then the correct usage of the commands.\nwill turn the Tool Tips on. Using the value 0 in front of the above command will turn the Tool Tips off. This is shown as 1/0 below (called a Boolean value -[bool]), which indicates that using 1 enables a function, 0 disables it. The use of # (or [float]) after a command below means a numeric value is required for the [...truncated] the command "tooltips 0" in the Console.\n\nThere are a range of useful commands which can be accessed through the game console, or entered into the.con files. To open the console, press the tilde (˜) [...truncated] the tooltip to the right of this group list.\n\nA list of all commands can also be displayed by pressing the ˜key repeatedly, typing the commands and then pressing the TAB key repeatedly, again.\n\nA li[...truncated] 0.71 -0.42 11.46 1.59 3.00 808 [...]called it Kevin Hart Presents Chris Rock's "Top Five With Kevin Hart." Hillary should announce Kevin as her running mate and be done with it.\nAfter he makes you laugh for an hour, you feel like you're his friend-you feel his joy and his pain. If he has asthma, you have asthma. That's because Kevin's vulnerable. When he's talking about his kids, his kids know more than him. He's not afraid to be "f[...truncated] in bed with him, and you're ready to go to sleep. I met Kevin the night before the show, and he came up to my dressing room and hugged me and said, "This is the best show of the year." He was just li[...truncated] the luckiest man in the world. And then just like that, Kevin Hart makes you feel like a complete moron.\nI just finished playing an iPhone game called You're the Best Dad Ever, and I was trying to gi[...truncated] 0.81 3.68 11.74 3.75 5.17 438 [...] logged into their Google account and have verified profiles that match queries for the site.\nGoogle's John Mueller said there is no ranking benefit in using different Google Search Console and Google Analytics accounts for each individual web site you manage. The topic came up before, as long as you are not spamming Google -there also is no down side to using the same accounts across multiple we[...truncated] Analytics data to calculate ranking sentiment.\nGoogle have a new feature called Keyword Difficulty Analysis that shows you the keywords your competitors are ranking for. It shows the demand curve as [...truncated] + accounts to see different numbers.\nGoogle also released their own great blog post on the news algorithm. They give lots of great advice to help your site do better.\nFinally, at the end of September [...truncated] 0.77 1.41 11.88 9.24 4.10 315 [...]tled out of court and publicly reconciled.\nIn the '80s the band's popularity waned in the United States but remained strong abroad. Robin released three solo albums, with limited success. The Bee Gees returned with some moderate hits in the late 1990s and were inducted into the Rock and Roll Hall of Fame in 1997. With his brothers, Mr. Gibb won six Grammys.\nIn addition to his wife and his brother [...truncated] continued to tour, and Barry became a television producer.\nBut in the early '90s, the Bee Gees' popularity remained high. They scored a hit with "Don't Stop Believing" in 1990, and in 1992 the Bee Ge[...truncated] ' 1990 album, "Spirits of the Century," was a mixed critical and commercial success.\nWhen the brothers were nominated for a Grammy Award in 1990, Mr. Gibb's "You Should Be Dancing" and "Massachusetts,[...truncated] 0.68 2.97 12.73 3.15 1.93</p><p>Table <ref type="table">5</ref>. High z-score examples under a δ = 2.0, γ = 0.5 watermark with multinomial sampling.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C. Detection Accuracy of Multinomial Sampling</head><p>When a multinomial sampler is used (which is assumed by Theorem 4.2), we use the softmax output with standard temperature hyperparameter temp=0.7. We analyze the alignment between the empirical strength of the watermark and the theoretical lower bound for γ = .5 in Figure <ref type="figure" target="#fig_7">7</ref>. We find that the theoretical bound is quite tight for smaller values of δ, but the theorem under-estimates watermark sensitivity for larger δ.</p><p>ROC curves for multinomial sampling, and greedy decoding with 8-way beam search in the 200 token case are depicted in Figure <ref type="figure">8</ref> and Figure <ref type="figure">9</ref> (Subsets of Figure <ref type="figure" target="#fig_4">4</ref> from the main work.). Tables with error rates and accuracy numbers at selected z values are provided in Table <ref type="table" target="#tab_0">2</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D. Minor Variations</head><p>Multiple Watermarks. A company might also apply multiple watermarks to generated text, taking the union of all red lists at each token. This is a compromise in terms of watermark effectiveness, compared to a single watermark, however it allows additional flexibility. A company could run a public/private watermarking scheme, giving the public access to one of the watermarks to provide transparency and independent verification that text was machine-generated. At the same time, the company can keep the second watermark private and test text against both watermarks, to verify cases reported by the public watermark, or again to provide a stronger detection API. Such a setup would be especially effective in detecting whether an attack took place that attempted to remove the public watermark.</p><p>Selective Watermarks in response to malicious activity Watermarks could also be used selectively. An API owner could turn on watermarking (or dial up its strength considerably via increased δ) only when faced with suspicious API usage by some accounts, for example if a request appears to be part of malicious activity like creating synthetic tweets.</p><p>This would idx prompt real completion no watermark (NW) watermarked (W) S (NW) z (W) z (NW) PPL (W) PPL 132 [...]cond season at Hall Bros Oval.\nThe defender also admitted his surprise at Young's run to the finals but credited the injection of youth into the side.\n"We were really in a building phase last year and we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\nROCK[...truncated] we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\n"Tha[...truncated] we copped a few floggings with all those juniors blokes coming in," Galvin said.\n"Now, we've kept that core group together for two years and I think we've come along quicker than we anticipated.\n"Tha[...truncated] 0.58 -1.27 -1.13 1.05 1.04 444 [...]1 on the season with a 2.76 GAA and.906 save percentage.\nMar. 11 5:28 PM PT6:28 PM MT7:28 PM CT8:28 PM ET0:28 GMT8:28 5:28 PM MST6:28 PM CST7:28 PM EST4:28 UAE (+1)20:28 ET21:28 BRT -Sergei Bobrovsky stopped 18 of 19 shots in the Blue Jackets' 2-0 loss to the Islanders on Monday. The defeat dropped him to 29-22-1 on the season with a 2.74 GAA and.907 save percentage.\nMar. 9 5:41 PM PT6:41 PM MT7:[...truncated] stopped 28 of 30 shots in the Blue Jackets' 3-2 shootout loss to the Islanders on Sunday. The loss dropped him to 30-22-1 on the season with a 2.76 GAA and.906 save percentage.\nMar. 10 6:15 PM PT7:15[...truncated] stopped 30 of 34 shots in the Blue Jackets' 6-2 win over the Canadiens on Monday. The victory pushed him to 31-21-1 on the season with a 2.72 GAA and.908 save percentage.\nMar. 10 11:49 AM PT12:49 PM [...truncated] 0.62 -0.99 2.40 1.33 1.45 302 [...] rating. The price target for Sol Gel Technologies is set to $20. Sol Gel Technologies shares closed at $11.13 on Friday.\nAnalysts at Wells Fargo initiated coverage on Landmark Infrastructure Partners LP (NASDAQ: LMRK) with a Market Perform rating. The price target for Landmark Infrastructure Partners is set to $18.50. Landmark Infrastructure Partners closed at $17.75 on Friday.\nBarclays initiated[...truncated] L.P. (NASDAQ: LMRK) with an Overweight rating. The price target for Landmark Infrastructure Partners is set to $12. Landmark Infrastructure Partners shares closed at $10.02 on Friday.\nAnalysts at Jef[...truncated] , L.P. (NASDAQ: LMRK) with an Overweight rating. Landmark Infrastructure Partners shares rose 7.39 percent to close at $22.75 on Friday.\nWells Fargo initiated coverage on Freshpet Inc. (NASDAQ: FRPT) [...truncated] 0.66 -2.55 2.83 1.75 2.08 482 [...]nika Aigner, with sister Elisabeth as her guide, sprang a surprise in women's visually impaired event on the fourth day of the World Para Alpine Skiing World Cup at the Spanish resort of La Molina.\nSw itzerland's Theo Gmur, Paralympic champion in the men's standing giant slalom, succeeded at the third attempt in beating France's 18-year-old world champion Arthur Bauchet at the World Para Alpine Ski[...truncated] eden's Chris Vos won gold in the men's super-G at the World Para Snowboard World Cup Finals in Klövsjö in Sweden.\nThe final day of action in Klövsjö concludes today with the men's super-G and women's [...truncated] eden's Chris Vos clinched gold as the World Para Snowboard World Cup Finals in Klövsjö concluded on Friday with the main event for men's and women's single and double slalom.\nKlövsjö is set to host th[...truncated] 0.70 -0.71 2.83 2.86 3.34 939 [...]ngs.\nAnd now we have Trump calling on Bee to be fired. You know who else hates comedy at their expense? Authoritarian leaders. Egypt's President Abdel Fattah el-Sisi, a man Trump loves, banned Egypt's version of The Daily Show because of the way its comedy mocked the government. The show's star, Bassem Youssef, had to flee the country and is now living in exile with his family.\nTurkey's strongman [...truncated] top comedy show after the host criticized the military's coup over a year ago. And then President Vladimir Putin banned comedy on Russian television over the same topic.\nIt's not hard to see why Trum[...truncated] leading comedy show and radio host, Ahmed Mansour, from entering the country.\nTrump's attacks on freedom of expression go far beyond just news media. Trump also wants to silence those in the entertai[...truncated] 0.61 0.99 2.83 4.86 1.27 FP -Text that is not watermarked is flagged. FN -Text is watermarked, but cannot be detected. TN -Text is not watermarked and is not flaggged.</p><p>Table <ref type="table">7</ref>. Reference table for possible outcomes of the hypothesis test. Type-I errors, false positives, are improbable by construction of the watermarking approach, but type-II errors, false negatives, appear naturally for low-entropy sequences that cannot be watermarked.</p><p>give more leeway to benign API usages, but allow for improved tracing of malicious API utilization.</p><p>Discovering A Watermarking Scheme So far we assumed that an attacker is aware that a watermark is present. Could the attack discover this fact only by analyzing generated text? For a hard watermark, this would be easy: Some combinations of tokens will never be generated by the model, no matter how strongly they are prompted. Yet, for a soft watermark (especially with small δ), that depends on, e.g. h = 10 tokens via Algorithm 3, this becomes harder. The attacker would need to distinguish the modification of green list logits via δ from naturally occurring biases of the LM.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E. Proof of Theorem 4.2</head><p>We begin our proof with a useful lemma. Using the spike entropy, we can predict how often a watermarked language model will spit out a green list token. When the entropy is high, the language model has a lot of freedom and we expect the model to use green list tokens aggressively. When the entropy is low, the model is more constrained and it is more likely to use a red list token.</p><p>Lemma E.1. Suppose a language model produces a raw (pre-watermark) probability vector p ∈ (0, 1) N . Randomly partition p into a green list of size γN and a red list of size (1 -γ)N for some γ ∈ (0, 1). Form the corresponding watermarked distribution by boosting the green list logits by δ, as in Equation (4). Define α = exp(δ). TPR@5.0 w/attck FNR@5.0 m-nom. 0.1 487 0.984 0.016 0.819 0.181 0.977 0.023 0.577 0.423 m-nom. 0.3 487 0.984 0.016 0.353 0.647 0.977 0.023 0.127 0.873 m-nom. 0.5 487 0.984 0.016 0.094 0.906 0.977 0.023 0.029 0.971 m-nom. 0.7 487 0.984 0.016 0.039 0.961 0.977 0.023 0.012 0.988 beams 0.1 489 0.998 0.002 0.834 0.166 0.998 0.002 0.751 0.249 beams 0.3 489 0.998 0.002 0.652 0.348 0.998 0.002 0.521 0.479 beams 0.5 489 0.998 0.002 0.464 0.536 0.998 0.002 0.299 0.701 beams 0.7 489 0.998 0.002 0.299 0.701 0.998 0.002 0.155 0.845</p><p>Table <ref type="table">8</ref>. Error rates for watermarked text before and after attack (w/attck) for generations of length T = 200 ± 5. For all settings we use (δ, γ) = (2.0, 0.5). Results are shown for both multinomial sampling and greedy 8-way beam search. The TPR and FNR rates without the attack are shown for reference, but they have no dependence on the attack budget ε. For all experiments, no false positives were observed and so FPR= 0 and TPR= 1.</p><p>Sample a token index k from the watermarked distribution. The probability that the token is sampled from the green list is at least</p><formula xml:id="formula_17">P[k ∈ G] ≥ γα 1 + (α -1)γ S p, (1 -γ)(α -1) 1 + (α -1)γ .</formula><p>Proof. When we add δ to the logits corresponding to the green list words, we increase their probabilities of being sampled. We replace the raw probability p k for each green list word with the enlarged probability</p><formula xml:id="formula_18">p w k ≜ αp k i∈R p i + α i∈G p i ,</formula><p>where G is the set of green list indices and R is the complementary set of red list indices. We denote the sizes of these sets as N G and N R , respectively.</p><p>We begin our proof by bounding the size of a randomly chosen gre-list probability after it has been enlarged. Consider the following process for creating the lists. First, choose a random entry p k and place it in the green list. Then, randomly sample the remaining entries in the green list. The expected value of a randomly chosen probability from the green list can be written</p><formula xml:id="formula_19">E k&lt;N E G,R αp k i∈R p i + α i∈G p i ,<label>(4)</label></formula><p>where the inner expectation is over uniformly random green/red partitions that satisfy k ∈ G.</p><p>The expectation on the right contains a concave function of S t . By Jensen's inequality, we can pass the expectation inside the function to get</p><formula xml:id="formula_20">Var |s| G ≤ T γα E t S (t) 1 + (α -1)γ 1 - γα E t S (t) 1 + (α -1)γ .</formula><p>Finally, note that the probability of a token being in the green list is always at least γ, regardless of the distribution coming from the language model. Lemma E.1 is never vacuous, and the success probability predicted by the Lemma is always at least γ. If γ ≥ .5, then the variance of each Bernoulli trial is at most the variance of a Bernoulli trial with success probability γ, which is given by γ(1 -γ). Plugging this into our bound gives</p><formula xml:id="formula_21">Var |s| G ≤ T γα E t S (t) 1 + (α -1)γ 1 - γα E t S (t) 1 + (α -1)γ ≤ T γ(1 -γ).</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F. Proof of Proposition 4.3</head><p>Proof. The probability of sampling token k from the modified distribution is</p><formula xml:id="formula_22">pk = E G,R αp k i∈R p i + α i∈G p i ,<label>(11)</label></formula><p>where G and R are random partitions of the vocabulary indices. We can write this expected value as the sum of a contribution from the case in which k ∈ G, and one in which k ∈ R. We get</p><formula xml:id="formula_23">E G,R αp k i∈R p i + α i∈G p i = E G,R,k∈G αp k i∈R p i + α i∈G p i<label>(12)</label></formula><formula xml:id="formula_24">+ E G,R,k / ∈G αp k i∈R p i + α i∈G p i ≤ γαp k + (1 -γ)p k = (1 + (α -1)γ)p k .<label>(13)</label></formula><p>The expected perplexity is then given by</p><formula xml:id="formula_25">E G,R k p(t) k ln(p (t) k ) = k E G,R p(t) k ln(p (t)</formula><p>k ) ≤ (1 + (α -1)γ)p * . </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G. Impact of Watermarking on Model Factuality</head><p>A key benefit of the soft watermarking scheme is that it (passively) adapts to the current entropy in the model's output distribution. If the model is highly confident on its next few token predictions, say those representing a specific named entity, then a soft watermark will not affect those predictions regardless of their factuality or groundedness. On the other hand, if the model is not confident on any particular tokens, then under standard decoding schemes, whether or not the final decoded output is hallucinatory will be a random event, and the watermark has an equal chance of upweighting tokens that result in more factual or more hallucinatory utterances.</p><p>To illustrate this, we present a small experiment that isolates this behavior. We take a model with reasonable competency in knowledge-intensive, closed-book question answering and evaluate its performance on the validation set of the TriviaQA question answering dataset <ref type="bibr" target="#b29">(Joshi et al., 2017)</ref>. Hypothesis: since answers to factoid questions should be short, low entropy sequences, a soft watermark will yield low detection statistics, however, task performance will not degrade much under application of the watermark. The results for this experiment are shown in Table <ref type="table" target="#tab_2">9</ref> and provide some evidence that in factuality critical generation scenarios, a softly watermarked model is unlikely to deviate that much from its unwatermarked behavior (for better or worse). We observe less than a 4 point drop in Exact Match performance under the application of a standard soft watermark (γ, δ = 0.5, 2.0) for both Google's FLAN-UL2 model <ref type="bibr" target="#b48">(Tay et al., 2022)</ref> and Huggingface BigScience's BLOOMZ model <ref type="bibr" target="#b37">(Muennighoff et al., 2022)</ref>.</p><p>However, we note that this particular experimental setup is not a situation where we would actually deploy the watermark or expect it to work very well. Generating 5 to 10 tokens per question under greedy decoding and then testing those tokens for exact correctness, is something of a worst-case estimate on the cost of watermarking. In this scenario the prompt is highly constraining and the only things the watermark can do are either nothing, or directly cause the model to deviate from the argmax. Such deviations would be detrimental on any question where the model "knows" the correct answer but isn't overwhelmingly confident in the token sequence required to represent it (especially the surface form). We leave a more comprehensive study of the impacts of watermarking strategies on the factuality of LLMs in question answering and other knowledge intensive settings to future research.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><figDesc>Figure1. Outputs of a language model, both with and without the application of a watermark. The watermarked text, if written by a human, is expected to contain 9 "green" tokens, yet it contains 28. The probability of this happening by random chance is ≈ 6×10 -14 , leaving us extremely certain that this text is machine generated. Words are marked with their respective colors. The model is OPT-6.7B using multinomial sampling. Watermark parameters are γ, δ = (0.25, 2). The prompt is the whole paragraph marked in blue below.</figDesc><graphic coords="1,320.10,155.05,235.07,481.90" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 .</head><label>2</label><figDesc>Figure 2. The tradeoff between average z-score and language model perplexity for T = 200 ± 5 tokens. (left) Multinomial sampling.(right) Greedy and beam search with 4 and 8 beams for γ = .5. Beam search promotes higher green list usage and thus larger z-scores with smaller impact to model quality (perplexity, PPL).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 3 .</head><label>3</label><figDesc>Figure 3. The average z-score as a function of T the token length of the generated text. (a) The dependence of the z-score on the green list size parameter γ, under multinomial sampling. (b) The effect of δ on z-score, under multinomial sampling. (c) The impact of the green list size parameter γ on the z-score, but with greedy decoding using 8-way beam search.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><figDesc>Figure 2 (right) shows the tradeoff between watermark strength and accuracy when beam search is used. Beam search has a synergistic interaction with the soft watermarking rule. Particularly when 8 beams are used, the points in Figure 2 form an almost vertical line, showing very little perplexity cost to achieve strong watermarking.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. ROC curves with AUC values for watermark detection. Several choices of watermark parameter δ are shown for (a) multinomial sampling and (b) greedy decoding with 8-way beam search.(c,d) The same charts with semilog axes. Higher δ values achieve stronger performance, but additionally we see that for a given δ, the beam search allows the watermark to capture slightly more AUC than the corresponding parameters under the multinomial sampling scheme.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 5 .</head><label>5</label><figDesc>Figure5. Left: The "Emoji Attack" of<ref type="bibr" target="#b20">Goodside (2023)</ref> shown on the chatGPT web API on Dec15th 2022. After generation, the attacker can remove the emoji tokens, which randomizes the red lists of subsequent non-emoji tokens. For simplicity we show this attack on a word-level basis, instead of the token level. Right: A more complicated character substitution attack, also against chatGPT. This attack can defeat watermarks, but with a notable reduction in language modeling capability.</figDesc><graphic coords="10,298.44,67.06,238.13,208.86" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 6 .</head><label>6</label><figDesc>Figure6. ROC curves for watermark detection under attack via the T5 Attack detailed in Section 7.1, with various replacement budgets ε. The initial, unattacked watermark is a γ = 0.5, δ = 2.0 soft watermark generated using multinomial sampling. The attack achieves a high level of watermark degradation, but only at ε = 0.3, which costs the attacker an average of ∼ 15 points of perplexity compared the PPL of the original watermarked text.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 7 .</head><label>7</label><figDesc>Figure 7. Empirical green list fraction vs bias parameter δ. We compare to the theoretical bound predicted by Theorem 4.2. sampling ε count TPR@4.0 FNR@4.0 w/attck TPR@4.0 w/attck FNR@4.0 TPR@5.0 FNR@5.0 w/attck TPR@5.0</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2 .</head><label>2</label><figDesc>Empirical</figDesc><table><row><cell>z=4.0</cell><cell>z=5.0</cell></row></table><note><p>error rates for watermark detection using multinomial sampling and beam search. Each row is averaged over ∼ 500 generated sequences of length T = 200 ± 5. A maximum of one type-I (false positive) error was observed for any given run. All soft watermarks at δ = 2.0 incur at most 1.6% (8/500) type-II error at z = 4. No type-II errors occurred for the hardest watermarks with δ = 10.0 and γ = 0.25.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 6 .</head><label>6</label><figDesc>Low z-score examples under a δ = 2.0, γ = 0.5 watermark with multinomial sampling.</figDesc><table><row><cell>Text is watermarked, i.e. machine-generated</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 9 .</head><label>9</label><figDesc>Performance measured using standard metrics Exact Match (EM) and whitespace-tokenized F1 score against each question's answer alias list. "(W)" indicates generation with the watermark. Data is 50,000 samples from the validation split of the unfiltered version of TriviaQA dataset. Questions are posed to the model in a zero-shot manner with no in-context demonstrations. Prompt template used: f"The following is a trivia question with a single correct factual answer. Please provide the answer to the question.\n\nQuestion {q}\n\nAnswer: ". Generation is performed using greedy decoding to maximize baseline/unwatermarked performance.</figDesc><table><row><cell>Model</cell><cell>EM</cell><cell>EM (W)</cell><cell>F1</cell><cell>F1 (W)</cell><cell>z</cell><cell>z (W)</cell></row><row><cell>google/flan-ul2</cell><cell>0.374</cell><cell>0.336</cell><cell>0.415</cell><cell>0.378</cell><cell cols="2">-0.007 0.402</cell></row><row><cell cols="2">bigscience/bloomz 0.296</cell><cell>0.259</cell><cell>0.343</cell><cell>0.312</cell><cell>0.008</cell><cell>0.255</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>When γ = .5, the flipped token is in the red list 1/2 of the time, and one of the h downstream red lists is expected to randomize, resulting in another 1/2 red list token.</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head n="10.">Acknowledgements</head><p>This work was made possible by the <rs type="programName">ONR MURI program</rs>, <rs type="grantNumber">DARPA GARD (HR00112020007</rs>), the <rs type="funder">Office of Naval Research</rs> (<rs type="grantNumber">N000142112557</rs>), and the <rs type="programName">AFOSR MURI program</rs>. Commercial support was provided by <rs type="funder">Capital One Bank</rs>, the <rs type="funder">Amazon</rs> <rs type="programName">Research Award program</rs>, and <rs type="person">Open Philanthropy</rs>. Further support was provided by the <rs type="funder">National Science Foundation</rs> (<rs type="grantNumber">IIS-2212182</rs>), and by the <rs type="institution">NSF TRAILS Institute</rs> (<rs type="grantNumber">2229885</rs>).</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_U4ZJupt">
+					<idno type="grant-number">DARPA GARD (HR00112020007</idno>
+					<orgName type="program" subtype="full">ONR MURI program</orgName>
+				</org>
+				<org type="funding" xml:id="_WxGWf2m">
+					<idno type="grant-number">N000142112557</idno>
+					<orgName type="program" subtype="full">AFOSR MURI program</orgName>
+				</org>
+				<org type="funding" xml:id="_nz2wZR2">
+					<orgName type="program" subtype="full">Research Award program</orgName>
+				</org>
+				<org type="funding" xml:id="_Jpqzs3h">
+					<idno type="grant-number">IIS-2212182</idno>
+				</org>
+				<org type="funding" xml:id="_QW4wj2q">
+					<idno type="grant-number">2229885</idno>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>0.0 0.2 0.4 0.6 0.8 1.0 False Positive Rate 0.0 0.2 0.4 0.6 0.8 1.0 True Positive Rate (a) 10 -2 10 -1 10 0 False Positive Rate 0.5 0.6 0.7 0.8 0.9 1.0</p><p>True Positive Rate δ : 10.0, γ : 0.5, AUC:1.000, PPL:11.6 δ : 10.0, γ : 0.25, AUC:1.000, PPL:12.4 δ : 5.0, γ : 0.5, AUC:1.000, PPL:9.1 δ : 5.0, γ : 0.25, AUC:1.000, PPL:10.7 δ : 2.0, γ : 0.5, AUC:0.998, PPL:6.2 δ : 2.0, γ : 0.25, AUC:0.998, PPL:6.6 δ : 1.0, γ : 0.5, AUC:0.985, PPL:5.4 δ : 1.0, γ : 0.25, AUC:0.989, PPL:5.5 δ = 0, PPL: 5.1 (b) </p><formula xml:id="formula_26">f k (p) = E G,R αp k i∈R p i + α i∈G p i ,</formula><p>where G and R are sampled at random from the set of partitions that satisfy k ∈ G. The value of f k is invariant to permutations in the order of the indices {p i , i ̸ = k}. For this reason f (p) = E Π f (Πp), where Π is a random permutation that leaves p k in place. Also, f k is convex in p -k . By Jensen's inequality,</p><formula xml:id="formula_27">f (p) = E Π f (Πp) ≥ f (E Π Πp).</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>The expectation on the right involves a probability vector</head><formula xml:id="formula_28">p ≜ E Π Πp in which pi = (1 -p 0 )/(N -1) for i ̸ = k. We now have f k (p) ≥ f k (p) = αp k N R (1 -p k )/(N -1) + α(N G -1)(1 -p 0 )/(N -1) + αp 0 (<label>5</label></formula><formula xml:id="formula_29">) = αp k (N -1) (N R + αN G -α)(1 -p k ) + αp 0 (N -1) (6) = αp k (N -1) N R + αN G -α + (αN -N R -αN G )p k (<label>7</label></formula><formula xml:id="formula_30">) = p k αN -α N R + αN G -α + (αN R -N R )p k (8) ≥ p k αN N R + αN G + (αN R -N R )p k . (<label>9</label></formula><formula xml:id="formula_31">)</formula><p>In the last step we used the fact that the numerator is larger than the denominator, and so adding α to the numerator and denominator results in a small decrease in the bound. Also, note that the fraction on the right side of ( <ref type="formula" target="#formula_30">9</ref>) is strictly greater than 1 for any value of p k ∈ (0, 1) and α ≥ 1. For this reason the bound is never vacuous, as f k (p) &gt; p k .</p><p>Now let γ = N G /N. This simplifies the notation of our intermediate result to</p><formula xml:id="formula_32">f k (p) ≥ αp k (1 -γ) + αγ + (α -1)(1 -γ)p k . (<label>10</label></formula><p>) 0.0 0.2 0.4 0.6 0.8 1.0 False Positive Rate 0.0 0.2 0.4 0.6 0.8 1.0 True Positive Rate</p><p>(a) 10 -2 10 -1 10 0 False Positive Rate 0.5 0.6 0.7 0.8 0.9 1.0</p><p>True Positive Rate δ : 10.0, γ : 0.5, AUC:1.000, PPL:1.2 δ : 10.0, γ : 0.25, AUC:1.000, PPL:1.2 δ : 5.0, γ : 0.5, AUC:1.000, PPL:1.2 δ : 5.0, γ : 0.25, AUC:1.000, PPL:1.3 δ : 2.0, γ : 0.5, AUC:0.999, PPL:1.2 δ : 2.0, γ : 0.25, AUC:1.000, PPL:1.3 δ : 1.0, γ : 0.5, AUC:0.987, PPL:1.2 δ : 1.0, γ : 0.25, AUC:0.977, PPL:1.2 δ = 0, PPL: 1.2 (b) Using this expression to simplify (4) we get</p><formula xml:id="formula_33">E k&lt;N E G,R αp k i∈R p i + α i∈G p i = E k&lt;N f k (p) ≥ αN -1 1 + (α -1)γ S p, (1 -γ)(α -1) 1 + (α -1)γ .</formula><p>The probability of sampling a token from the green list is exactly N G times larger than an average green list probability. The probability of sampling from the green list is thus given by</p><formula xml:id="formula_34">N G E k&lt;N E G,R αp k i∈R p i + α i∈G p i ≥ γα 1 + (α -1)γ S p, (1 -γ)(α -1) 1 + (α -1)γ .</formula><p>It can be observed that the bound in Lemma E.1 is never vacuous; The probability of choosing a token from the green list is trivially at least γ, and for any combination of finite logits the bound in Lemma E.1 is strictly greater than this trivial lower bound. See the proof for a discussion of why.</p><p>Using this lemma, it's now fairly straightforward to prove the main theorem.</p><p>Proof. Lemma E.1 bounds the probability of a single token being in the green list. To compute the total number of green list tokens in the sequence, we simply sum this bound over all the tokens to get.</p><formula xml:id="formula_35">E |s| G = t γα 1 + (α -1)γ S t = T E t γα 1 + (α -1)γ S t ≥ γαT 1 + (α -1)γ S ⋆ ,</formula><p>where S (t) represents the entropy of the distribution of token t.</p><p>To get the variance bound, we begin by noting that the variance of a Bernoulli random variable with success probability p is p(1 -p). The expected number of green list tokens is a sum of independent random Bernoulli variables, each representing one token. These variables are not identically distributed, but rather each has a success probability given by Lemma E.1. The variance of the sum is the sum of the variances, which is</p><formula xml:id="formula_36">Var |s| G = t γαS (t) 1 + (α -1)γ 1 - γαS (t) 1 + (α -1)γ = T E t γαS (t) 1 + (α -1)γ 1 - γαS (t) 1 + (α -1)γ</formula><p>.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 8 .</head><label>8</label><figDesc>(a) ROC curve with AUC values for watermark detection. Curves for several choices of watermark parameters γ and δ are shown -multinomial sampling is used across all settings. (b) The same chart, but with different axes to make detail visible. The stronger watermarks corresponding to lower γ values and higher δ values achieve the best error characteristics. Now let's bound the inner expectation on the right. Consider the helper function</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><head>Figure 9 .</head><label>9</label><figDesc>(a) ROC curve with AUC values for watermark detection. Curves for several choices of watermark parameter δ are showngreedy decoding and 8-way beam search is used to generate tokens in all settings. (b) The same chart, but with different axes to make detail visible. Similarly to Figure8, higher δ values achieve stronger performance, but additionally we see that for a given δ, the beam search allows the watermark to capture slightly more AUC than the corresponding parameters under the multinomial sampling scheme.</figDesc></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title level="m" type="main">My AI Safety Lecture for UT Effective Altruism</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Aaronson</surname></persName>
+		</author>
+		<ptr target="https://scottaaronson.blog/?p=6823" />
+		<imprint>
+			<date type="published" when="2022-11">November 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Adversarial Watermarking Transformer: Towards Tracing Text Provenance with Data Hiding</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Abdelnabi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Fritz</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/SP40001.2021.00083</idno>
+	</analytic>
+	<monogr>
+		<title level="m">2021 IEEE Symposium on Security and Privacy (SP)</title>
+		<imprint>
+			<date type="published" when="2021-05">May 2021</date>
+			<biblScope unit="page" from="121" to="140" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Turning your weakness into a strength: Watermarking deep neural networks by backdooring</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Adi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Baum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Cisse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Pinkas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Keshet</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 27th USENIX Conference on Security Symposium, SEC&apos;18</title>
+		<meeting>the 27th USENIX Conference on Security Symposium, SEC&apos;18<address><addrLine>USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>USENIX Association</publisher>
+			<date type="published" when="2018-08">August 2018</date>
+			<biblScope unit="page" from="1615" to="1631" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Natural Language Watermarking: Design, Analysis, and a Proofof-Concept Implementation</title>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">J</forename><surname>Atallah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Raskin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Crogan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Hempelmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Kerschbaum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Mohamed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Naik</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/3-540-45496-914</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Information Hiding</title>
+		<title level="s">Lecture Notes in Computer Science</title>
+		<editor>
+			<persName><forename type="first">I</forename><forename type="middle">S</forename><surname>Moskowitz</surname></persName>
+		</editor>
+		<meeting><address><addrLine>Berlin, Heidelberg</addrLine></address></meeting>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2001">2001</date>
+			<biblScope unit="page" from="185" to="200" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Natural Language Watermarking and Tamperproofing</title>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">J</forename><surname>Atallah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Raskin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">F</forename><surname>Hempelmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Karahan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Sion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">U</forename><surname>Topkara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">E</forename><surname>Triezenberg</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/3-540-36415-313</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Information Hiding</title>
+		<title level="s">Lecture Notes in Computer Science</title>
+		<editor>
+			<persName><forename type="first">F</forename><forename type="middle">A P</forename><surname>Petitcolas</surname></persName>
+		</editor>
+		<meeting><address><addrLine>Berlin</addrLine></address></meeting>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2003">2003</date>
+			<biblScope unit="page" from="196" to="212" />
+		</imprint>
+	</monogr>
+	<note type="report_type">Heidelberg</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kundu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Goldie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mirhoseini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Mckinnon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tran-Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kerr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Mueller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ladish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Landau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lukosiute</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Lovitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sellitto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Schiefer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Mercado</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lasenby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Larson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ringer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Johnston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kravec</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">E</forename><surname>Showk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Fort</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lanham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Telleen-Lawton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Conerly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Hume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">R</forename><surname>Bowman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">I</forename><surname>Constitutional</surname></persName>
+		</author>
+		<ptr target="https://www.anthropic.com/constitutional.pdf" />
+		<title level="m">Harmlessness from AI Feedback</title>
+		<imprint>
+			<biblScope unit="page">2022</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">On the Dangers of Stochastic Parrots: Can Language Models Be Too Big?</title>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">M</forename><surname>Bender</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Gebru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mcmillan-Major</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Shmitchell</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3442188.3445922</idno>
+		<ptr target="https://doi.org/10.1145/3442188.3445922" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 ACM Conference on Fairness, Accountability, and Transparency, FAccT &apos;21</title>
+		<meeting>the 2021 ACM Conference on Fairness, Accountability, and Transparency, FAccT &apos;21<address><addrLine>New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2021-03">March 2021</date>
+			<biblScope unit="page" from="610" to="623" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Guiding the Release of Safer E2E Conversational AI through Value Sensitive Design</title>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">S</forename><surname>Bergman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Abercrombie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Spruit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hovy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Dinan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y.-L</forename><surname>Boureau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Rieser</surname></persName>
+		</author>
+		<ptr target="https://aclanthology.org/2022.sigdial-1.4" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 23rd Annual Meeting of the Special Interest Group on Discourse and Dialogue</title>
+		<meeting>the 23rd Annual Meeting of the Special Interest Group on Discourse and Dialogue<address><addrLine>Edinburgh, UK</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2022-09">September 2022</date>
+			<biblScope unit="page" from="39" to="52" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Review on Model Watermarking for Neural Networks</title>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">A</forename><surname>Boenisch</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Systematic</surname></persName>
+		</author>
+		<idno type="DOI">10.3389/fdata.2021.729663</idno>
+		<ptr target="https://www.frontiersin.org/articles/10.3389/fdata.2021.729663" />
+	</analytic>
+	<monogr>
+		<title level="m">Frontiers in Big Data</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="volume">4</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Bad Characters: Imperceptible NLP Attacks</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Boucher</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/SP46214.2022.9833641</idno>
+	</analytic>
+	<monogr>
+		<title level="m">2022 IEEE Symposium on Security and Privacy (SP)</title>
+		<imprint>
+			<date type="published" when="2022-05">May 2022</date>
+			<biblScope unit="page" from="1987" to="2004" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Things like GPTZero are scary. I&apos;m sure the creator didn&apos;t have the intention, but the fact that it&apos;s marketed as &quot;a solution to detecting AI written responses&quot; even though there&apos;s no evidence to show it works consistently and is nevertheless being EMPLOYED by schools, is crazy</title>
+		<author>
+			<persName><forename type="first">V</forename><surname>Butoi</surname></persName>
+		</author>
+		<ptr target="https://twitter.com/VictorButoi/status/1614779846210752512" />
+		<imprint>
+			<date type="published" when="2023-01">January 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Natural Language Watermarking Using Semantic Substitution for Chinese Text</title>
+		<author>
+			<persName><forename type="first">Y.-L</forename><surname>Chiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L.-P</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W.-T</forename><surname>Hsieh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W.-C</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/978-3-540-24624-410</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Digital Watermarking</title>
+		<title level="s">Lecture Notes in Computer Science</title>
+		<editor>
+			<persName><forename type="first">T</forename><surname>Kalker</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">I</forename><surname>Cox</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Y</forename><forename type="middle">M</forename><surname>Ro</surname></persName>
+		</editor>
+		<meeting><address><addrLine>Berlin, Heidelberg</addrLine></address></meeting>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2004">2004</date>
+			<biblScope unit="page" from="129" to="140" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Deep reinforcement learning from human preferences</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Martic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Legg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.1706.03741</idno>
+		<ptr target="http://arxiv.org/abs/1706.03741" />
+		<imprint>
+			<date type="published" when="2017-07">July 2017</date>
+		</imprint>
+	</monogr>
+	<note>cs, stat</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Machine Generated Text: A Comprehensive Survey of Threat Models and Detection Methods</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Crothers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Japkowicz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Viktor</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2210.07321</idno>
+		<ptr target="http://arxiv.org/abs/2210.07321" />
+		<imprint>
+			<date type="published" when="2022-11">November 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Towards Near-imperceptible Steganographic Text</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Cai</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P19-1422</idno>
+		<ptr target="https://aclanthology.org/P19-1422" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 57th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Florence, Italy</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019-07">July 2019</date>
+			<biblScope unit="page" from="4303" to="4308" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M.-W</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Toutanova</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Bert</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1810.04805</idno>
+		<ptr target="http://arxiv.org/abs/1810.04805" />
+		<title level="m">Pre-training of Deep Bidirectional Transformers for Language Understanding</title>
+		<imprint>
+			<date type="published" when="2019-05">May 2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Generating Steganographic Text with LSTMs</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Jaggi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Argyraki</surname></persName>
+		</author>
+		<ptr target="https://aclanthology.org/P17-3017" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ACL 2017, Student Research Workshop</title>
+		<meeting>ACL 2017, Student Research Workshop</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2017-07">July 2017</date>
+			<biblScope unit="page" from="100" to="106" />
+		</imprint>
+	</monogr>
+	<note type="report_type">Vancouver</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Academic Plagiarism Detection: A Systematic Literature Review</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Foltýnek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Meuschke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Gipp</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3345317</idno>
+		<ptr target="https://doi.org/10.1145/3345317" />
+	</analytic>
+	<monogr>
+		<title level="j">ACM Computing Surveys</title>
+		<idno type="ISSN">0360-0300</idno>
+		<imprint>
+			<biblScope unit="volume">52</biblScope>
+			<biblScope unit="issue">6</biblScope>
+			<date type="published" when="2019-10">October 2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">The homograph attack</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Gabrilovich</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gontmakher</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/503124.503156</idno>
+		<ptr target="https://dl.acm.org/doi/10.1145/503124.503156" />
+	</analytic>
+	<monogr>
+		<title level="j">Communications of the ACM</title>
+		<idno type="ISSN">0001-0782</idno>
+		<imprint>
+			<biblScope unit="volume">45</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page" from="1557" to="7317" />
+			<date type="published" when="2002">2002</date>
+		</imprint>
+	</monogr>
+	<note>February</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">On pushing DeepFake Tweet Detection capabilities to the limits</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gambini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Fagni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Falchi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Tesconi</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3501247.3531560</idno>
+		<ptr target="https://doi.org/10.1145/3501247.3531560" />
+	</analytic>
+	<monogr>
+		<title level="m">14th ACM Web Science Conference 2022, WebSci &apos;22</title>
+		<meeting><address><addrLine>New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2022-06">June 2022</date>
+			<biblScope unit="page" from="154" to="163" />
+		</imprint>
+	</monogr>
+	<note>Association for Computing Machinery</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">There are adversarial attacks for that proposal as well -in particular, generating with emojis after words and then removing them before submitting defeats it</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Goodside</surname></persName>
+		</author>
+		<ptr target="https://twitter.com/goodside/status/1610682909647671306" />
+		<imprint>
+			<date type="published" when="2023-01">January 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">The Ethical Need for Watermarks in Machine-Generated Language</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Grinbaum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Adomaitis</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2209.03118</idno>
+		<ptr target="http://arxiv.org/abs/2209.03118" />
+		<imprint>
+			<date type="published" when="2022-09">September 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Watermarking Pre-trained Language Models with Backdooring</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K.-W</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C.-J</forename><surname>Hsieh</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2210.07543</idno>
+		<ptr target="http://arxiv.org/abs/2210.07543" />
+		<imprint>
+			<date type="published" when="2022-10">October 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Protecting Intellectual Property of Language Generation APIs with Lexical Watermark</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="DOI">10.1609/aaai.v36i10.21321</idno>
+		<ptr target="https://ojs.aaai.org/index.php/AAAI/article/view/21321" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the AAAI Conference on Artificial Intelligence</title>
+		<meeting>the AAAI Conference on Artificial Intelligence</meeting>
+		<imprint>
+			<date type="published" when="2022-06">June 2022</date>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="10758" to="10766" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">CATER: Intellectual Property Protection on Text Generation APIs via Conditional Watermarks</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Jia</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=L7P3IvsoUXY" />
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems, October 2022b</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">Dual canonicalization: An answer to the homograph attack</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">N</forename><surname>Helfrich</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Neff</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/eCrime.2012.6489517</idno>
+	</analytic>
+	<monogr>
+		<title level="m">2012 eCrime Researchers Summit</title>
+		<imprint>
+			<date type="published" when="2012-10">October 2012</date>
+			<biblScope unit="page" from="1" to="10" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">A Review of Digital Watermarking Techniques for Text Documents</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Jalil</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">M</forename><surname>Mirza</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/ICIMT.2009.11</idno>
+	</analytic>
+	<monogr>
+		<title level="m">2009 International Conference on Information and Multimedia Technology</title>
+		<imprint>
+			<date type="published" when="2009-12">December 2009</date>
+			<biblScope unit="page" from="230" to="234" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Automatic Detection of Machine Generated Text: A Critical Survey</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Jawahar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Abdul-Mageed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">S</forename><surname>Lakshmanan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename></persName>
+		</author>
+		<idno>doi: 10.18653</idno>
+		<ptr target="1/2020.coling-main" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 28th International Conference on Computational Linguistics</title>
+		<meeting>the 28th International Conference on Computational Linguistics<address><addrLine>Barcelona, Spain (Online</addrLine></address></meeting>
+		<imprint>
+			<publisher>December</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="2296" to="2309" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<ptr target="https://aclanthology.org/2020.coling-main.208" />
+		<title level="m">URL</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Triviaqa: A large scale distantly supervised challenge dataset for reading comprehension</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Joshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">S</forename><surname>Weld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 55th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Vancouver, Canada</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2017-07">July 2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Meteor: Cryptographically secure steganography for realistic distributions</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Kaptchuk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">M</forename><surname>Jois</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Green</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">D</forename><surname>Rubin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 ACM SIGSAC Conference on Computer and Communications Security</title>
+		<meeting>the 2021 ACM SIGSAC Conference on Computer and Communications Security</meeting>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="1529" to="1548" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Information Hiding Techniques for Steganography and Digital Watermarking</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Katzenbeisser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">A</forename><surname>Petitcolas</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2000">2000</date>
+			<publisher>Artech House, Inc</publisher>
+		</imprint>
+	</monogr>
+	<note>USA, 1st edition</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Ott</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Joshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Levy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Lewis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Stoyanov</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Roberta</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1907.11692</idno>
+		<ptr target="http://arxiv.org/abs/1907.11692" />
+		<title level="m">A Robustly Optimized BERT Pretraining Approach</title>
+		<imprint>
+			<date type="published" when="2019-07">July 2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Large-Capacity Image Steganography Based on Invertible Neural Networks</title>
+		<author>
+			<persName><forename type="first">S.-P</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Zhong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">L</forename><surname>Rosin</surname></persName>
+		</author>
+		<ptr target="https://openaccess.thecvf.com/content/CVPR2021/html/Lu_Large-Capacity_Image_Steganography_Based_on_Invertible_Neural_Networks_CVPR_2021_paper.html" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="10816" to="10825" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Natural language watermarking via morphosyntactic alterations</title>
+		<author>
+			<persName><forename type="first">H</forename><forename type="middle">M</forename><surname>Meral</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Sankur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sumru Özsoy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Güngör</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">¸</forename><surname>Sevinc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename></persName>
+		</author>
+		<idno type="DOI">10.1016/j.csl.2008.04</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Computer Speech &amp; Language</title>
+		<idno type="ISSN">0885-2308</idno>
+		<imprint>
+			<biblScope unit="volume">23</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="107" to="125" />
+			<date type="published" when="2009-01">January 2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<ptr target="https://www.sciencedirect.com/science/article/pii/S0885230808000284" />
+		<title level="m">URL</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">The Threat of Offensive AI to Organizations</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Mirsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Demontis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kotak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Shankar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Gelei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Pintor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Elovici</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Biggio</surname></persName>
+		</author>
+		<idno type="DOI">10.1016/j.cose.2022.103006</idno>
+		<ptr target="https://www.sciencedirect.com/science/article/pii/S0167404822003984" />
+	</analytic>
+	<monogr>
+		<title level="j">Computers &amp; Security</title>
+		<idno type="ISSN">0167-4048</idno>
+		<imprint>
+			<biblScope unit="volume">124</biblScope>
+			<biblScope unit="page">103006</biblScope>
+			<date type="published" when="2023-01">January 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<author>
+			<persName><forename type="first">N</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Sutawika</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">L</forename><surname>Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">S</forename><surname>Bari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z.-X</forename><surname>Yong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Schoelkopf</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2211.01786</idno>
+		<title level="m">Crosslingual generalization through multitask finetuning</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">Training language models to follow instructions with human feedback</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">L</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Kelton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Miller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Simens</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Welinder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lowe</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2203.02155</idno>
+		<ptr target="http://arxiv.org/abs/2203.02155" />
+		<imprint>
+			<date type="published" when="2022-03">March 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<analytic>
+		<title level="a" type="main">Fall of Giants: How popular text-based MLaaS fall against a simple evasion attack</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Pajola</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Conti</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/EuroSP51992.2021.00023</idno>
+	</analytic>
+	<monogr>
+		<title level="m">2021 IEEE European Symposium on Security and Privacy (EuroS&amp;P)</title>
+		<imprint>
+			<date type="published" when="2021-09">September 2021</date>
+			<biblScope unit="page" from="198" to="211" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Information hiding-a survey</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Petitcolas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Kuhn</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/5.771065</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Proceedings of the IEEE</title>
+		<idno type="ISSN">1558-2256</idno>
+		<imprint>
+			<biblScope unit="volume">87</biblScope>
+			<biblScope unit="issue">7</biblScope>
+			<biblScope unit="page" from="1062" to="1078" />
+			<date type="published" when="1999-07">July 1999</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Language Models are Unsupervised Multitask Learners</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">OpenAI</title>
+		<imprint>
+			<biblScope unit="page">24</biblScope>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<title level="m" type="main">Robust Speech Recognition via Large-Scale Weak Supervision</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">W</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Brockman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Mcleavey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2212.04356</idno>
+		<ptr target="http://arxiv.org/abs/2212.04356" />
+		<imprint>
+			<date type="published" when="2022-12">December 2022</date>
+		</imprint>
+	</monogr>
+	<note>cs, eess</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title level="m" type="main">Exploring the limits of transfer learning with a unified text-to-text transformer</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Matena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">J</forename><surname>Liu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note>arXiv e-prints</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<title level="m" type="main">Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Matena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">J</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1910.10683</idno>
+		<ptr target="http://arxiv.org/abs/1910.10683" />
+		<imprint>
+			<date type="published" when="2020-07">July 2020</date>
+		</imprint>
+	</monogr>
+	<note>cs, stat</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zoph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Menick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Weng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">F C</forename><surname>Uribe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Fedus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Metz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Pokorny</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Gontijo-Lopes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Vijayvergiya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Sigler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Perelman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Heaton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Parish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Cummings</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Nayak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Balcom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Schnurr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Kaftan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Hallacy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Turley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Deutsch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Goel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ward</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Konstantinidis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zaremba</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Bogndonoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Gross</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Medina</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yoo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lowe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Mossing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Huizinga</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bills</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Pachocki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Tillet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Brockman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Chatgpt</surname></persName>
+		</author>
+		<ptr target="https://openai.com/blog/chatgpt/" />
+		<title level="m">Optimizing Language Models for Dialogue</title>
+		<imprint>
+			<date type="published" when="2022-11">November 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<analytic>
+		<title level="a" type="main">Detecting Cross-Modal Inconsistency to Defend Against Neural Fake News</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Plummer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Saenko</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.emnlp-main.163</idno>
+		<ptr target="https://aclanthology.org/2020.emnlp-main.163" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</title>
+		<meeting>the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2020-11">November 2020</date>
+			<biblScope unit="page" from="2081" to="2106" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<analytic>
+		<title level="a" type="main">Reverse Engineering Configurations of Neural Text Generation Models</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Tay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Bahri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Brunk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Metzler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Tomkins</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.acl-main.25</idno>
+		<ptr target="https://aclanthology.org/2020.acl-main.25" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 58th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2020-07">July 2020</date>
+			<biblScope unit="page" from="275" to="279" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Tay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Dehghani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">Q</forename><surname>Tran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Garcia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Bahri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Schuster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><forename type="middle">S</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Houlsby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Metzler</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2205.05131</idno>
+		<title level="m">Unifying language learning paradigms</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<monogr>
+		<title level="m" type="main">Gptzero update v1</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tian</surname></persName>
+		</author>
+		<idno type="DOI">10.1117/12.2039213.full</idno>
+		<ptr target="https://gptzero.substack.com/p/gptzero-update-v1" />
+		<imprint>
+			<date type="published" when="2023-01">January 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<analytic>
+		<title level="a" type="main">Natural language watermarking: Challenges in building a practical system</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Topkara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Riccardi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hakkani-Tür</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">J</forename><surname>Atallah</surname></persName>
+		</author>
+		<idno type="DOI">10.1117/12.643560.full</idno>
+		<ptr target="https://www.spiedigitallibrary.org/conference-proceedings-of-spie/6072/60720A/Natural-language-watermarking-challenges-in-building-a-practical-system/10.1117/12.643560.full" />
+	</analytic>
+	<monogr>
+		<title level="m">Security, Steganography, and Watermarking of Multimedia Contents VIII</title>
+		<imprint>
+			<date type="published" when="2006-02">February 2006</date>
+			<biblScope unit="volume">6072</biblScope>
+			<biblScope unit="page" from="106" to="117" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<analytic>
+		<title level="a" type="main">The hiding virtues of ambiguity: Quantifiably resilient watermarking of natural language text through synonym substitutions</title>
+		<author>
+			<persName><forename type="first">U</forename><surname>Topkara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Topkara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">J</forename><surname>Atallah</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/1161366.1161397</idno>
+		<ptr target="https://doi.org/10.1145/1161366.1161397" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 8th Workshop on Multimedia and Security, MM&amp;Sec &apos;06</title>
+		<meeting>the 8th Workshop on Multimedia and Security, MM&amp;Sec &apos;06<address><addrLine>New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2006-09">September 2006</date>
+			<biblScope unit="page" from="164" to="174" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<analytic>
+		<title level="a" type="main">Frustratingly Easy Edit-based Linguistic Steganography with a Masked Language Model</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ueoka</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Murawaki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kurohashi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.naacl-main.433</idno>
+		<ptr target="https://aclanthology.org/2021.naacl-main.433" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<meeting>the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2021-06">June 2021</date>
+			<biblScope unit="page" from="5486" to="5492" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<monogr>
+		<title level="m" type="main">Attention Is All You Need</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Polosukhin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1706.03762</idno>
+		<ptr target="http://arxiv.org/abs/1706.03762" />
+		<imprint>
+			<date type="published" when="2017-12">December 2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b54">
+	<analytic>
+		<title level="a" type="main">Watermarking the Outputs of Structured Prediction with an application in Statistical Machine Translation</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Venugopal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Talbot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Och</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ganitkevitch</surname></persName>
+		</author>
+		<ptr target="https://aclanthology.org/D11-1126" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2011 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2011 Conference on Empirical Methods in Natural Language Processing<address><addrLine>Edinburgh, Scotland, UK.</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2011-07">July 2011</date>
+			<biblScope unit="page" from="1363" to="1372" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b55">
+	<analytic>
+		<title level="a" type="main">Linguistic steganography on Twitter: Hierarchical language modeling with manual interaction</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Wilson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Blunsom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">D</forename><surname>Ker</surname></persName>
+		</author>
+		<idno type="DOI">10.1117/12.2039213.full</idno>
+		<ptr target="https://www.spiedigitallibrary.org/conference-proceedings-of-spie/9028/902803/Linguistic-steganography-on-Twitter--hierarchical-language-modeling-with-manual/10.1117/12.2039213.full" />
+	</analytic>
+	<monogr>
+		<title level="m">Media Watermarking, Security, and Forensics</title>
+		<imprint>
+			<date type="published" when="2014-02">2014. February 2014</date>
+			<biblScope unit="volume">9028</biblScope>
+			<biblScope unit="page" from="9" to="25" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b56">
+	<monogr>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Delangue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Moi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Cistac</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Rault</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Louf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Funtowicz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Davison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Shleifer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Von Platen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Jernite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Plu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">L</forename><surname>Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gugger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Drame</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Lhoest</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">M</forename><surname>Rush</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1910.03771</idno>
+		<ptr target="http://arxiv.org/abs/1910.03771" />
+		<title level="m">Hugging-Face&apos;s Transformers: State-of-the-art Natural Language Processing</title>
+		<imprint>
+			<date type="published" when="2020-07">July 2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b57">
+	<monogr>
+		<title level="m" type="main">Attacking Neural Text Detectors</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Wolff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wolff</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2002.11768</idno>
+		<ptr target="http://arxiv.org/abs/2002.11768" />
+		<imprint>
+			<date type="published" when="2022-01">January 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b58">
+	<analytic>
+		<title level="a" type="main">Defending Against Neural Fake News</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zellers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Holtzman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Rashkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bisk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Farhadi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Roesner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Choi</surname></persName>
+		</author>
+		<ptr target="https://proceedings.neurips.cc/paper/2019/hash/3" />
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">32</biblScope>
+		</imprint>
+	</monogr>
+	<note>e9f0fc9b2f89e043bc6233994dfcf76-Abstract.html</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b59">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Roller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Artetxe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Dewan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Diab</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><forename type="middle">V</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Mihaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Ott</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Shleifer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Shuster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Simig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">S</forename><surname>Koura</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sridhar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note>Opt: Open pre-trained transformer language models</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b60">
+	<analytic>
+		<title level="a" type="main">Hiding Data with Deep Networks</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Fei-Fei</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Hidden</surname></persName>
+		</author>
+		<ptr target="https://openaccess.thecvf.com/content_ECCV_2018/html/Jiren_Zhu_HiDDeN_Hiding_Data_ECCV_2018_paper.html" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the European Conference on Computer Vision (ECCV)</title>
+		<meeting>the European Conference on Computer Vision (ECCV)</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="657" to="672" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b61">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Rush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Linguistic</forename><surname>Neural</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Steganography</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1115</idno>
+		<ptr target="https://aclanthology.org/D19-1115" />
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019-11">November 2019</date>
+			<biblScope unit="page" from="1210" to="1215" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

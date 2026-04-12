@@ -1,0 +1,937 @@
+{
+  "paperId": "arxiv:2510.13928v1",
+  "title": "LLMs Can Get \"Brain Rot\"!",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2510.13928v1.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2510.13928v1.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2510.13928v1.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "We propose and test the LLM Brain Rot Hypothesis: continual exposure to junk web text induces lasting cognitive decline in large language models (LLMs). To causally isolate data quality, we run controlled experiments on real Twitter/X corpora, constructing junk and reversely controlled datasets via two orthogonal operationalizations: M1 (engagement degree) and M2 (semantic quality), with matched token scale and training operations across conditions. Contrary to the control group, continual pre-training of 4 LLMs on the junk dataset causes nontrivial declines (Hedges' g > 0.3) on reasoning, long-context understanding, safety, and inflating \"dark traits\" (e.g., psychopathy, narcissism). The gradual mixtures of junk and control datasets also yield dose-response cognition decay: for example, under M1, ARC-Challenge with Chain Of Thoughts drops 74.9 → 57.2 and RULER-CWE 84.4 → 52.3 as junk ratio rises from 0% to 100%. Error forensics reveal several key insights. First, we identify thought-skipping as the primary lesion: models increasingly truncate or skip reasoning chains, explaining most of the error growth. Second, partial but incomplete healing is observed: scaling instruction tuning and clean data pre-training improve the declined cognition yet cannot restore baseline capability, suggesting persistent representational drift rather than format mismatch. Finally, we discover that the popularity, a non-semantic metric, of a tweet is a better indicator of the Brain Rot effect than the length in M1. Together, the results provide significant, multiperspective evidence that data quality is a causal driver of LLM capability decay, reframing curation for continual pretraining as a training-time safety problem and motivating routine \"cognitive health checks\" for deployed LLMs.",
+      "word_count": 256
+    },
+    {
+      "index": 2,
+      "title": "INTRODUCTION",
+      "kind": "introduction",
+      "text": "In 2024, the term \"Brain Rot\" was named the Oxford word of year (Oxford University Press, 2024) when it drew increasing concern in modern society. Brain rot is defined as the deleterious effect on human cognition that comes from consuming large volumes of trivial and unchallenging online content (or junk data) due to Internet addiction. The cognitive impact of Internet addiction have been found to be significant (Firth et al., 2019) along three dimensions: (i) Attentional capacities -the constant stream of online information often undermines the ability to sustain focus on reading articles or solving challenging problems (Haliti-Sylaj & Sadiku, 2024) ; (ii) Memory processes -the abundance of online information alters how individuals store, retrieve, and prioritize knowledge (Vedechkina & Borgonovi, 2021) ; and (iii) Social cognition -online interactions mimic real-world social dynamics, reshaping self-concepts and influencing self-esteem (Yousef et al., 2025) . Beyond for these cognitive impacts, a recent study in Turkish population (Satici et al., 2023) found that Internet addiction (mainly on X.com) is associated with higher psychological distress and changes in personality, including negative relationship with conscientiousness, extroversion, and agreeableness, as well as a significant positive relationship with neuroticism.\n\nIn parallel to the rise of Brain Rot in human cognition, artificial intelligence, represented by Large Language Models (LLMs), grows to gain human-like cognition (Binz & Schulz, 2023) from trillions of the very similar Internet data (Hoffmann et al., 2022; Henighan et al., 2020; Hestness et al., 2017) . As a consequence of such a learning mechanism, LLMs inevitably and constantly consume enormous amounts of junk data like humans. Therefore, it is natural to ask if the analogous \"Brain Rot\" emerges in LLMs. Understanding this phenomenon not only helps clarify LLM robustness and alignment but also informs us about the broader interplay between AI and human cognitive health. While LLMs obviously do not have \"grey matter\" or \"neurons\" in the same sense as humans, they do have parameters and attention mechanisms that might analogously be \"overfitted\" or \"distracted\" by certain data patterns.\n\nPrior work has identified data patterns that threaten LLM safety. For example, Qi et al. (2023) demonstrated that fine-tuning LLMs on malicious or benign supervised tasks can void safety alignment. Compared to fine-tuning, pre-training could be affected more significantly, as LLMs have to continuously learn new knowledge from the uncurated Internet data. For instance, LLMs can be taught to leak private information by poisoning pre-training data with crafted repetitive patterns (Panda et al., 2024) . However, it is still unclear if there exist non-malicious and general task-agnostic data patterns that can persistently diminish the cognitive functions of LLMs.\n\nIn this work, we translate insights from human cognition to LLM cognition by establishing the LLM Brain Rot Hypothesis: continual pre-training on junk web text induces lasting cognitive decline in LLMs. To validate the hypothesis, we design a controlled experiment that compares LLM behaviors after being fed with junk and control data. As outlined in Fig. 1 , we construct junk and control datasets from social media (Twitter/X) via the two junk metrics: M1 (engagement degree) selects short but highly popular posts that often engage users longer online; and M2 (semantic quality) flags content based on content styles that draw users' attention. Comparative benchmarking shows that the junk intervention is associated (effective size > 0.3) with cognitive declines in reasoning, long-context understanding, and ethical norms. We surprisingly find that some dark personalities of LLMs emerge with M1 junk intervention, casting significant safety concerns. Experiments on mixtures of junk and control data demonstrate gradual dose responses on reasoning and long-context understanding: For example, under M1 intervention, ARC-Challenge (Clark et al., 2018) with Chain Of Thoughts Wei et al. (2022) drops 74.9 → 57.2 and RULER-CWE (Hsieh et al., 2024) 84.4 → 52.3 as junk ratio rises from 0% to 100%.\n\nOur major contributions include three-fold: (i) We proposed the LLM Brain Rot Hypothesis and validated it via controlled experiments; (ii) Our detailed analysis uncovered fine-grained failure modes caused by junk intervention, including thought skipping in reasoning, and that popular data and short data contribute to different kinds of cognitive declines individually; and (iii) We examined potential post-hoc mitigation using a similar scale of data, observing that instruction tuning is an effective strategy with more samples, but cannot fully restore the cognitive capabilities. Such persistent Brain Rot effect calls for future research to carefully curate data to avoid cognitive damages in pre-training.",
+      "word_count": 732
+    },
+    {
+      "index": 3,
+      "title": "RELATED WORK",
+      "kind": "related_work",
+      "text": "Our work introduces a novel perspective on the data quality that affects LLM training. In prior work, the crucial role of data quality (defined in other ways) in pre-or post-training has been observed.\n\nData Quality in Pre-training. On the positive side, selecting high-quality data (e.g., good writing style, required expertise, facts & trivia, and educational value) can improve the robustness and the generalization of pre-trained models (Wettig et al., 2024) . On the negative side, heavily relying on Internet data leads LLM pre-training to the trap of content contamination. For example, the widespread use of LLMs causes more and more generated content on the Internet, contaminating the pre-training corpus and resulting in the forgetting of tail-distribution (model collapse) (Shumailov et al., 2023; 2024; Seddik et al., 2024) . Even worse, malicious Internet users can implant backdoors or malicious behaviors (e.g., denials of service, belief manipulation) by controlling only 0.1% of the pre-training data (Zhang et al., 2024) .",
+      "word_count": 158
+    },
+    {
+      "index": 4,
+      "title": "Data Quality in Post-training.",
+      "kind": "body",
+      "text": "The quality of data is also critical in post-training, particularly in alignment of LLM responses toward human preference (Christiano et al., 2017; Bai et al., 2022b) . Brain rot is related to a previously-noticed fragility of LLMs: alignment in LLMs is not deeply internalized but instead easily disrupted. Prior studies have shown the superficial nature of alignment: It can be achieved using small amounts of high-quality data (Zhou et al., 2023; Chen et al., 2025; Raghavendra et al., 2024) , and therefore can be easily undone by jailbreaking (Zou et al., 2023) or few-shot fine-tuning on common tasks (Qi et al., 2023) . Even modest data shifts during preference fine-tuning can dramatically affect safety, with models reverting to unsafe on unseen data (Wang et al., 2025) or being implanted with malicious behaviors (Fu et al., 2024) .\n\nDistinct from prior work, we provide a new view on data quality -the extent to which content is trivial and easy to consume in social media. The properties, conceptualized via tweet shortness/popularity or content semantics, are not intuitively related to the cognitive capabilities that we expect LLMs to master in learning. However, the resultant impact of such low-quality data is broad in multiple dimensions and is persistent to post-hoc mitigation.",
+      "word_count": 207
+    },
+    {
+      "index": 5,
+      "title": "LLM BRAIN ROT HYPOTHESIS",
+      "kind": "body",
+      "text": "In this section, we establish the LLM Brain Rot Hypothesis by designing controlled experiments.",
+      "word_count": 14
+    },
+    {
+      "index": 6,
+      "title": "CONTROLLED EXPERIMENT METHODOLOGY",
+      "kind": "methods",
+      "text": "We conceptualize the Brain Rot hypothesis in the context of LLM as continual pre-training LLMs on junk data. We define junk data in two distinct measurable ways, based on which we subsample a social-media dataset to create intervention (junk) and control datasets. As outlined in Fig. 1 , we use controlled experiments to test the hypothesis, i.e., contrasting the cognitive functions of the two groups of LLMs: LLMs fed with junk and LLMs with control data. The essence of a controlled experiment, rather than directly analyzing the junk intervention, stems from the fact that clean fine-tuning could dramatically change LLM behaviors, e.g., safety (Qi et al., 2023 ). An effective intervention should cause significant cognitive change with respect to the control group.\n\nDefining Junk Data from the First Principle. Recalling Brain Rot is a consequence of Internet addiction in human cognition, we define junk data as content that can maximize users' engagement in a trivial manner. Based on the principle, we propose two metrics to formulate junk data. M1: Engagement Degree. As the proposed principle aligns with the design objective of Twitter's recommendation algorithm, we can follow the definition in (X Corp., 2023) to formulate the engagement of a post as the number of likes, retweets, and replies. The association between the algorithmic tweet feed and engagement was also evidenced by Milli et al. (2025) . In addition, from the marketing perspective, shortening tweets is a trivial method that can greatly improve the engagement (Malhotra et al., 2011) . Therefore, we augment the definition of engagement-based junk standard to include two factors: popularity -the total number of likes, retweets, replies, and quotes; length -the number of tokens in a tweet. More popular but shorter tweets will be considered to be junk data, vice versa. M2: Semantic Quality. One limitation of M1 is that it does not consider the content semantics at all. For example, a well-written and concise tweet could gain a lot of attention and may not necessarily result in a bad influence on human brains. Orthogonal to M1, we use semantic quality to define the junk data. We draw inspiration from marketing research, where multiple strategies in composing tweets have been effective in increasing the chance of retweeting. Typical tweet styles include using attention words, such as hashtag, WOW, LOOK, or TODAY ONLY, that are capitalized to gain more attention (Malhotra et al., 2011; Suh et al., 2010) . These composing styles do not encourage in-depth thinking but draw attention, thereby matching the trivial property of junk data. In addition, some content topics are also quite eye-catching but mindless. Together, we define junk data that include superficial topics (like conspiracy theories, exaggerated claims, unsupported assertions or superficial lifestyle content), and attention-drawing style (such as sensationalized headlines using clickbait language or excessive trigger words).\n\nJunk/Control Data Formula. Based on the two metrics, we subsample the 1-million public Twitter/X posts to construct junk and control datasets, separately. The dataset was collected in 2010 foot_0 , which includes detailed information like the number of retweets, etc. First, we filter the dataset to exclude samples that are not encoded in ASCII. We then subsample data. For M1, we choose samples with a length < 30 and a popularity of > 500 as junk data, and samples with a length > 100 and a popularity of ≤ 500 as control data. As the maximal number of available control data tokens is 1.22 million, we balance the number of tokens in junk data to the same scale. For M2, we prompt GPT-4o-mini to classify a tweet as high-quality or junk. The prompt is given in Fig. 8 . To maximize the difference between junk and control data, we leverage the criteria from QuRating (Wettig et al., 2024) for the high-quality data.",
+      "word_count": 627
+    },
+    {
+      "index": 7,
+      "title": "M1 Blends Semantic and Non-Semantic Metrics.",
+      "kind": "body",
+      "text": "In M1, we select samples without looking at the semantics, which looks orthogonal to the prior wisdom on data quality and model training. Therefore, we are asking how the two metrics are correlated. In Fig. 2 , we demonstrate the relation between the two factors in M1 and M2 metrics, respectively. We notice that there is no strong correlation between popularity and length. Neither is the Point-Biserial correlation between popularity and the semantic quality. The observation strongly suggests that the non-semantic metric, popularity, provides a quite new dimension in parallel to length or semantic quality. Meanwhile, token length presents a strong correlation with M2 semantic quality. The correlation aligns with previous research in LLM-as-a-Judge -LLMs prefer longer responses in selecting preference data for alignment (Zheng et al., 2023; Saito et al., 2023; Hu et al., 2024) . As a result, M1 metric is able to capture both semantic characteristics (by token length) and the non-semantic ones (by popularity), providing a novel perspective in data intervention.",
+      "word_count": 165
+    },
+    {
+      "index": 8,
+      "title": "M2 Data Quality Aligns with Human Preferences.",
+      "kind": "body",
+      "text": "In the right panel of Fig. 2 , we compare the labels predicted by GPT to humans' preferences. The human labels are generated by 3 graduate students on randomly sampled examples from the dataset. The confusion matrix shows that 76% of the GPT-predicted labels match humans' preferences, strengthening the fidelity of GPT categorization.\n\nBaseline Models. Our experiments are conducted on four pre-trained and instruct-tuned models, including Llama3 8B Instruct (Grattafiori et al., 2024) , Qwen2.5 7B Instruct, Qwen2.5 0.5B Instruct (Qwen et al., 2025) , and Qwen3 4B Instruct (Yang et al., 2025) . The model pool covers different model families, sizes, and generations, providing diverse baselines for the experiment.\n\nTraining Recipe for Intervention. To intervene in LLMs with the junk datasets, we train the baseline models in two steps: (1) We execute continuing pre-training by using the next-token prediction loss on synthetic corpora that we construct with varying proportions of junk and control data. Training is performed with full-parameter optimization, learning rate 1 × 10 -5 , AdamW, cosine learning rate schedule, bf16 precision, an effective batch size of 8, and 3 training epochs. (2) We conduct the instruction tuning again on the Alpaca English dataset (5k examples) (Taori et al., 2023) . The model is fine-tuned for 3 epochs with learning rate 1 × 10 -5 , AdamW, cosine decay, bf16 precision, an effective batch size of 16, and context length 2048. All model training and inferences are executed on the NVIDIA H100 GPU.\n\nBenchmarks. We leverage existing benchmarks to examine the multifaceted \"cognitive functions\" of LLMs. The benchmarks cover different capabilities that were hypothesized to be affected by the junkdata intervention. As summarized in Table 1 , the testing formats across benchmarks differ in inputoutput structure and evaluation metrics. Reasoning -ARC (AI2 Reasoning Challenge) (Clark et al., 2018) presents 7,787 grade-school science problems (authored for human tests) in a multiple-choice question-answering (QA) format, with performance measured by accuracy. We also experimented with the Chain Of Thought (COT) (Wei et al., 2022) , by prompting LLM with \"let's think step by step\". Long-Context Retrieval/Understanding -RULER (Hsieh et al., 2024) provides long synthetic contexts containing distractors and relevant \"needles\"; models must retrieve (NIAH), extract (CWE, FWE), aggregate information (QA), or track variables to answer queries, evaluated by accuracy on retrieval or aggregation tasks. In total, 13 tasks are included in the benchmark. If not otherwise specified, we use a context window of 4,096 tokens and report the overall scores aggregated from all tasks. Ethical Norms (Safety). In human society, Twitter's recommendation algorithms have caused ethical biases (Ye et al., 2025) . Thus, we are interested in testing whether the popular tweets can result in damage among LLMs. For that, we use two safety benchmarks. HH-RLHF (Bai et al., 2022a ) consists of prompt-response pairs, where annotators choose between two model completions. AdvBench (Zou et al., 2023) supplies harmful instructions as prompts, and models are judged on whether they comply, yielding a binary pass/fail safety score. Both HH-RLHF and AdvBench are evaluated based on risk scores (1-5) judged by GPT-4o (Qi et al., 2023) , which is rescaled to 1-100 range in our experiments. Personality -TRAIT (Lee et al., 2024) Finally, as engagement-driven ranking may amplify hostile emotions (Milli et al., 2025) , we use TRAIT to probe LLM personality tendencies via multiple-choice personality-inventory style items, with evaluation focusing on correctness against reference keys and consistency across responses. TRAIT includes Big Five traits (Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism) and three socially undesirable traits (Psychopathy, Machiavellism, and Narcissism).",
+      "word_count": 588
+    },
+    {
+      "index": 9,
+      "title": "Junk Intervention Effectively Results in Cognitive Decline.",
+      "kind": "results",
+      "text": "We analyze intervention effects by comparing the difference on benchmarks after feeding junk/control data to 4 LLMs. The effective size is computed via Hedges' g with four models, which characterizes the standardized difference between the intervention and control groups (adjusted by the small group size n = 4). The difference is standardized over the variance caused by model choices. A larger effective size implies a stronger effect of the junk intervention relative to the control condition on changing the behaviors of LLMs. Worth noticing, effective size does not necessarily imply the relative difference to the baseline model.\n\nFor instance, the control group may have better performance than the baseline, while the intervention group may have worse performance. Effective sizes on different cognitive functions are shown in Fig. 3 . Both M1 and M2 have non-trivial effects (Hedges' g > 0.3) on the reasoning and long-context capabilities. But the junk content operationalized by engagement degree (M1) damages the functional cognitions (reasoning or longcontext) and safety more significantly. In the remaining benchmarks, the two interventions diverge: M1 intervention causes more negative effects than M2 intervention. Specifically, M1 gives rise to safety risks, two bad personalities (narcissism and psychopathy), when lowering agreeableness. Besides the bad effects, the positive ones can emerge with increased agreeableness, extroversion, and openness, particularly under M2. The significant divergence between M1 and M2 implies that engagement degree (M1) is not a proxy for the semantic quality (M2) but a new dimension in quality.",
+      "word_count": 244
+    },
+    {
+      "index": 10,
+      "title": "Dose-response of Junk Intervention on Llama3 8B Instruct.",
+      "kind": "body",
+      "text": "To understand how junk intervention changes LLMs gradually versus the control and base models, we vary the ratio of junk data in the mixture with control data to test \"dose\" responses. In Table 2 , we summarize all benchmarks after training with different portions of junk or control data: 100% (Junk), 80%, 50%, 20%, and 0% (Control). We also include baseline models (before intervention). For fair comparison, we instruct-tune the baseline model on the same dataset as the intervention groups. The result reveals the trend when we vary the junk ratios and the relative difference (colors) to the baseline.",
+      "word_count": 99
+    },
+    {
+      "index": 11,
+      "title": "Impacts of Continual Pre-training.",
+      "kind": "body",
+      "text": "Compared to baselines, the controlled continual pre-training already causes some change in the models. Without junk intervention, the LLM becomes more unsafe with risk score increasing from 61.4 to 77.6 (M1) or 83.8 (M2). The impacts on personalities are non-trivial but inconsistent. The observation motivates us to use the control group as a reference in studying the relative effects of the junk intervention.\n\nReasoning. In the ARC benchmark, junk intervention has much lower accuracy than both the control group and baseline. The gap is more significant for M1 than M2. The gaps are similar between the easy and hard ones. In M2, the dose response is less smooth: Once a small portion of control data (≥ 20%) is blended, performance is restored to the control condition. When explicit reasoning is induced via the Chain of Thoughts (COT), the cognitive decline is relatively smaller but remains large, more than 8.9 points.\n\nLong-Context Understanding. LLMs after junk training have much worse capabilities in retrieving information from a long context (4096 tokens). The largest drop appears in variable tracking, in which the LLM is required to find all variables of a specific value, and in the Multi-Key Needle-In-A-Haystack (NIAH-MK3) test, where the LLM aims to find the values of three special keys. The junk-induced drop in M1 is more significant than that in M2. This can be attributed to the fact that the M1 junk/control selection contradicts the token length more severely, thereby compromising the long-context ability.",
+      "word_count": 244
+    },
+    {
+      "index": 12,
+      "title": "Ethical and Social Norms (Safety).",
+      "kind": "body",
+      "text": "In HH-RLHF and AdvBench, both intervention and control groups suffer from increasing safety risks, but the dose effect is fluctuating. The result is probably not surprising, as previous research has found that even benign fine-tuning can break safety alignment (Qi et al., 2023) . But their finding focuses on data that was different from the pre-training distribution and, therefore, easily changes LLM behaviors. Instead, our study unveils the phenomenon on a more general source of data, social media -similar data was used in some pre-training (Gao et al., 2020) . Personality. Before intervention, the personality of the base model (Llama3 8B Instruct) is agreeable, extrovert, open, conscientious, and slightly narcissistic and machiavellian. With the increasing M1 junk dose, the influence is contradictory. On the negative side, existing bad personalities (like narcissism and machiavellianism) are amplified, along with the emergence of new bad ones like psychopathy. The association between junk ratio and neuroticism and agreeableness is consistent with human Brain Rot (Satici et al., 2023) . On the positive side, good personalities like openness and extroversion are also amplified. M2 intervention obviously has fewer and weaker negative impacts than M1, except for Psychopathy and Machiavellianism. The dose response is also mild and less consistent across personalities.\n\nKey Takeaways\n\n• Junk intervention has non-trivial effects, namely Brain Rot, on degrading reasoning, long-context understanding/retrieval, and safety, and changing personalities (either bad or good).\n\n• M1 (engagement) intervention presents distinct effects (particularly in safety and personalities) versus M2 (quality) intervention, reflecting their inherent differences.\n\n• In dose-response testing, M1 engagement intervention demonstrates more significant and progressive impacts on reasoning and long-context capabilities than M2 intervention.",
+      "word_count": 271
+    },
+    {
+      "index": 13,
+      "title": "ANALYSIS ON BRAIN ROT EFFECTS",
+      "kind": "results",
+      "text": "Focusing on Llama3 8B Instruct, we analyze the factors behind the Brain Rot and how it causes reasoning failures.\n\nPopularity Plays An Important Role. As the popularity presents a unique view in data selection orthogonal to the length and semantic quality (referring to Section 3.1), it is essential to ask whether their effects differ. Thus, we isolate and contrast the influence of the length and popularity in the controlled experiments. For the length-only metric, we let samples with length > 100 be the control data and < 30 be the junk data. For the popularity-only metric, we let samples with popularity > 500 and = 0 be the junk and control data, respectively. In Table 3 , we found that only using popularity or token length is not enough for fully capturing the M1 intervention effects, and the two factors weigh differently in different tasks. Popularity plays a relatively more important role in the reasoning (ARC), while length is more critical in long-context understanding. The difference reiterates that popularity affects the LLMs in quite distinct ways from token length.",
+      "word_count": 179
+    },
+    {
+      "index": 14,
+      "title": "Question",
+      "kind": "body",
+      "text": "Now, think about what would happen if we changed multiple variables at once… Then step 2. A.",
+      "word_count": 17
+    },
+    {
+      "index": 15,
+      "title": "Step 1-2.",
+      "kind": "body",
+      "text": "Think about what would happen if we changed all variables at once. The answer is A.",
+      "word_count": 16
+    },
+    {
+      "index": 16,
+      "title": "No Plan",
+      "kind": "body",
+      "text": "The answer is A.",
+      "word_count": 4
+    },
+    {
+      "index": 17,
+      "title": "No Thinking",
+      "kind": "body",
+      "text": "Testing different bacteria with different hand soaps would not be a confounding variable, since confounding only happens with human participants.",
+      "word_count": 20
+    },
+    {
+      "index": 18,
+      "title": "Factual Error",
+      "kind": "body",
+      "text": "This means that the student is going to test the effect of different hand soaps on a single type of bacteria. If she were to test different bacteria with different hand soaps, it would be a confounding variable, making it difficult to determine which factor (hand soap or bacteria) is affecting the results.",
+      "word_count": 53
+    },
+    {
+      "index": 19,
+      "title": "Wrong Logic",
+      "kind": "body",
+      "text": "The correct answer is B. Junk M1 Control M1 Junk M2 Control M2 Baseline 0 100 200 300 400 500 Failure Count unknown skipping steps in plan wrong logic in plan factual error in thinking no thinking plan no thinking Figure 5: Failure categorization of COT reasoning on ARC Challenge.",
+      "word_count": 50
+    },
+    {
+      "index": 20,
+      "title": "Final Answer",
+      "kind": "body",
+      "text": "Reasoning Failure Modes. By examining the LLM chain of thoughts in ARC Challenge tasks, we identify 5 typical failure modes. Three modes are related to thought skipping where the thinking structure is disrupted, resulting in a wrong final answer.\n\n• No Thinking: The model did not think before answering.\n\n• No Plan: The model did not make a step-by-step breakdown of the problem before thinking.\n\n• Skipping Steps in Plan: The model begins reasoning with valid steps, but does not complete the full planned steps.\n\nWe also found two classic failure modes in reasoning:\n\n• Wrong Logic: The thinking plan is logically flawed.\n\n• Factual Error: The model makes incorrect claims about the subject matter.\n\nNote that some modes are conditioned. Factual Error and No Plan are conditioned on the presence of thoughts. Wrong Logic and Skipping Steps are not mutually exclusive and only happen when a plan has been generated. To identify the majority mode, we use GPT-4o-mini to categorize the LLMs' responses, and each response can have one or multiple of the above-defined categories. The categorization results are shown in Fig. 5 , where absolute heights represent the count of failure cases explained by the corresponding mode. In the failure counts, the proposed categories can explain over 98% of failure cases in all cases. Almost all failure cases are related to thought skipping. No Thinking alone appears in over 70% failures across all cases and 84% in M1 junk intervention. Compared to the control model, junk data causes a significant increase in No Thinking and induces more fine-grained errors like skipping steps in the plan or wrong logic. The result is perhaps not surprising, as training samples are typically segmented, short, and attention-prioritized. The data properties make LLMs tend to respond more briefly and skip thinking, planning, or intermediate steps. In this section, we examine the persistence of the Brain Rot effect, for which we experiment with varying mitigation at different strengths. By default, we use Llama3 8B Instruct after 100% junk intervention.",
+      "word_count": 335
+    },
+    {
+      "index": 21,
+      "title": "BRAIN ROT IS PERSISTENT AFTER MITIGATION",
+      "kind": "body",
+      "text": "Training-free Mitigation via Reflective Reasoning. As thought skipping is an important factor for Brain Rot (see Section 4), we aim to understand if it is a superficial cause. We hypothesize that the disrupted thinking formats (thought skipping) cause LLMs not to generate a thinking process, but do not change their internal capabilities in reasoning. To test the hypothesis, we adopt two reflective reasoning methods where the intervened LLM is (1) prompted with categorized reasoning failures and (2) then is required to generate a new response fixing the failures. For Self-Reflect, we use the inference model itself to provide the failure critique, and for Ext-Reflect, we use a stronger external model (GPT-4o-mini) instead. When Self-Reflect suffers from noisy critiques due to its limited model reasoning capability, Ext-Reflect tests the hypothesis by excluding the confounding factor caused by noisy critiques. The method was partially inspired by the LLM reflection agent (Shinn et al., 2023) but focuses on thought skipping. In Fig. 6 , we compare the junk-intervened models -with and without reflection -to the baseline model, which exhibits the lowest failure count on ARC. Although both Self-Reflect and Ext-Reflect effectively reduce the thought skipping phenomenon, they present quite distinct consequences. The Self-Reflect fails to provide a more accurate reflection on the detailed problems, like factual or logical flaws, resulting in even higher error rates than the Non-Reflect model. Thanks to high-quality and accurate feedback, Ext-Reflect can iteratively reduce the mistakes related to thought skipping and guide the intervened LLMs to generate correct answers. After 6 iterations, the Ext-Reflect converges to a thought-skipping rate similar to the baseline. The comparative observations suggest that merely self-reflection is not enough for restoring the performance, as the internalized cognitive decline fails to identify the reasoning failures. Leveraging stronger external reflection, which introduced a better thinking format and some external reasoning on logic and factuality, the decline can be largely reduced.",
+      "word_count": 314
+    },
+    {
+      "index": 22,
+      "title": "Brain Rot is Persistent Against Post-hoc Tuning.",
+      "kind": "body",
+      "text": "Upon the failure of training-free mitigation, we instead consider two training methods to wash out the effects of junk intervention: instruction tuning (IT) and continual control training (CCT). Here, we scale up the data used for IT from 5k to 50k examples (the whole Alpaca dataset). CCT uses control data scaled from 0 to 1.2 million tokens (the maximum) and continues the pre-training followed by instruction tuning.\n\nIn Fig. 7 , we observe a more obvious scaling effect by IT than by CCT. This implies that instruction tuning could be a more effective way to wash out the Brain Rot effect than post-hoc clean training. However, the effect is limited. Even if we used up all instruction Preprint data, consisting of 4.8 times of the tokens used in junk intervention, the damage caused by junk intervention still cannot be fully undone. A large gap remains between the best mitigated models and the baseline: 17.3% (ARC-C COT), 9% (RULER), 17.4% (AdvBench) absolute difference. The gap implies that the Brain Rot effect has been deeply internalized, and the existing instruction tuning cannot fix the issue. Stronger mitigation methods are demanded in the future.",
+      "word_count": 191
+    },
+    {
+      "index": 23,
+      "title": "CONCLUSION",
+      "kind": "conclusion",
+      "text": "In this work, we introduced and empirically validated the LLM Brain Rot Hypothesis, demonstrating that continual exposure to junk data-defined as engaging (fragmentary and popular) or semantically low-quality (sensationalist) content-induces systematic cognitive decline in large language models. The decline includes worse reasoning, poorer long-context understanding, diminished ethical norms, and emergent socially undesirable personalities. Fine-grained analysis shows that the damage is multifaceted in changing the reasoning patterns and is persistent against large-scale post-hoc tuning. These results call for a re-examination of current data collection from the Internet and continual pre-training practices. As LLMs scale and ingest ever-larger corpora of web data, careful curation and quality control will be essential to prevent cumulative harms. Limited by the scope of the paper, we leave it as an open question how popular tweets or other junk data change the learning mechanism, resulting in cognitive declines. Answering the question is essential for building stronger defense methods in the future. AUTHOR CONTRIBUTIONS S. Xing, J. Hong and Z. Wang are the major contributors to the idea formulation. S. Xing completed data preparation, conducted most pilot experiments, and tested the initial idea. J. Hong designed the experiments with S. Xing, analyzed most of the experiment results, and wrote the manuscript. Y. Wang trained all the models used in the paper. R. Chen and Y. Wang performed most of the benchmarking tasks and some of the analysis. Z. Zhang offered regular suggestions during the project. Z. Tu and A. Grama provided writing suggestions and computational resource support. Z. Wang developed the original idea, provided guidance on method design and experiments, and helped with paper writing.",
+      "word_count": 267
+    },
+    {
+      "index": 24,
+      "title": "Ethical Statements.",
+      "kind": "body",
+      "text": "Though our work unveils novel risks to LLM pre-training that may not be mitigated using existing safety countermeasures, we intend to use the results as an alert to the community. Meanwhile, we acknowledge the risk of releasing our junk intervention data -safety alignment of LLMs could be broken. We will add a data use agreement for people requesting the code and ask for responsible use for research purposes only. Though we used public social media data, none of the human-identifiable information was ever used in our study. Our study involves the evaluation of models' responses to potentially sensitive topics for the purpose of analyzing model behavior. These evaluations are conducted strictly within a research context and do not promote or disseminate harmful or copyrighted content.",
+      "word_count": 125
+    },
+    {
+      "index": 25,
+      "title": "Reproducibility Statement.",
+      "kind": "body",
+      "text": "We comprehensively present the details of experiments in the main content, including models, training recipe, and hardware. All evaluations are done using open-source code and datasets. Source code for data preparation and testing will be released upon acceptance if they are not from an online codebase. All data will be released upon acceptance as well. We hope that this level of transparency will support further research and development based on our work.",
+      "word_count": 72
+    },
+    {
+      "index": 26,
+      "title": "Disclosure of LLM Use in Paper Preparation.",
+      "kind": "body",
+      "text": "We acknowledge the use of LLMs in our paper writing, including paper polishing and assisting with the literature survey. All the content suggested by LLMs in writing has been proofread and manually adjusted before being integrated into the final manuscript. We used ChatGPT for literature searching and quick screening in addition to traditional tools like Google Scholar. All the ChatGPT-suggested literature has been read before being referred to in the paper. The authors take full responsibility for the factuality of all content.\n\nYou are a content quality classifier. Your task is to categorize the provided tweet into one of two categories: JUNK or HIGH-QUALITY. ## Classification Criteria: JUNK -Classify as junk if the tweet contains:\n\n• Conspiracy theories, exaggerated claims, or unsupported assertions\n\n• Sensationalized headlines using clickbait language or excessive trigger words\n\n• Extremely brief content that lacks meaningful context or substance\n\n• Misleading information or obvious misinformation\n\n• Spam-like repetitive phrases or promotional content\n\n• Superficial lifestyle content that flaunts personal success, exotic vacations, perfect relationships, or idealized appearances HIGH-QUALITY -Classify as high-quality if the tweet:\n\n• Presents factually accurate, well-sourced information\n\n• Demonstrates thoughtful analysis or insight that requires careful consideration\n\n• Provides educational value or substantive commentary on important topics\n\n• Shows clear reasoning and logical structure despite character limitations\n\n• Contributes meaningfully to discourse or knowledge ## Instructions:\n\n• Read the tweet carefully\n\n• Determine which category best fits based on the criteria above\n\n• Respond with only the classification: \"JUNK\" or \"HIGH-QUALITY\"\n\n• Do not provide explanations unless specifically requested ## Tweet to classify: <Twitter Post> 1 if mode == \"NO_REASONING\": 2 critiques.append(\"-The answer lacks any reasoning or explanation. You should provide step-by-step thinking to justify your choice.\") 3 4 elif mode == \"NO_REASONING_OUTLINE\": 5 critiques.append(\"-The reasoning lacks a clear outline or structured approach. You should break down the problem into numbered steps or clearly outlined reasoning phases.\") 6 7 elif mode == \"THOUGHT_SKIPPING\": 8 if i < len(mode_reasons) and mode_reasons[i]: 9 reason = mode_reasons[i] if isinstance(mode_reasons[i], str) else str(mode_reasons[i]) 10 critiques.append(f\"-The reasoning skips important steps: {reason}. Make sure to complete each step of your planned approach before moving to the next.\") 11 else: 12 critiques.append(\"-The reasoning appears to skip important intermediate steps. Make sure to complete each step of your planned approach before moving to the next.\") 13 14 elif mode == \"FACTUAL_ERROR\": 15 if i < len(mode_reasons) and mode_reasons[i]: 16 specific_errors = mode_reasons[i] if isinstance(mode_reasons[i], list) else [mode_reasons[i]] 17 for error in specific_errors: 18 if error: # Only add non-empty errors 19 critiques.append(f\"-Factual error identified: {error}. Please verify and correct this information.\") 20 21 elif mode == \"WRONG_LOGIC\": 22 if i < len(mode_reasons) and mode_reasons[i]: 23 specific_errors = mode_reasons[i] if isinstance(mode_reasons[i], list) else [mode_reasons[i]] 24 for error in specific_errors: 25 if error: # Only add non-empty errors 26 critiques.append(f\"-Logical error identified: {error}. Please reconsider this reasoning step. \") However, in RULER, IT can effectively reduce the gap: 51.1 → 19.1. The potential cause is that the RULER tasks do not require complex thinking but only basic instruction following and context retrieval -capabilities closely related to IT.\n\nRevise the draft answer using the critiques. Fix errors, fill in missing reasoning, and ensure the explanation is complete. Finally, return the letter or number of the option as your answer like 'The answer is the letter or number of the option' Query: <query> Options: <options> Draft Answer: <draft> Critiques: <critiques> Revised Answer:\n\nFigure 10: Prompt for reflection where we use the critiques to guide the revision of the answer.\n\n1 2 class HasReasoning(dspy.Signature): 3 \"\"\"Determine if the model response contains reasoning steps.\"\"\" 4 model_response: str = dspy.InputField() 5 has_reasoning: bool = dspy.OutputField() 6 7 class HasReasoningOutline(dspy.Signature): 8 \"\"\"Determine if the model response contains reasoning outline steps (explicitly numbered) before providing detailed reasons.\"\"\" 9 model_response: str = dspy.InputField() 10 has_reasoning_outline: bool = dspy.OutputField() 11 12 class HasSkipThoughts(dspy.Signature): 13 \"\"\"In the reasoning steps of model response, check if there are any skipped thoughts. 14 Example of thought skipping: 15 model response: \"Good question. Let's think about steps.\\n1. Identify candidates; 2. Compare their weights.\\nHydrogen and Carbon are possible candidates. The answer is B.\" 16 reason: The reasoning only finished the planned step 1, but skipped the step 2.\"\"\" 17 model_response: str = dspy.InputField() 18 has_skip_thoughts: bool = dspy.OutputField() 19 20 class FactualErrorInReasoning(dspy.Signature): 21 \"\"\"In the reasoning steps (instead of final answer) of model response, check if there are any factual errors.\"\"\" 22 query_to_model: str = dspy.InputField() 23 model_response: str = dspy.InputField() 24 identified_factual_errors: List[str] = dspy.OutputField() 25 has_factual_error: bool = dspy.OutputField() 26 27 class HasWrongLogic(dspy.Signature): 28 \"\"\"Read model response for the outline the steps taken to arrive at the conclusion. Check if there are any wrong logic errors in the outline.\"\"\" 29 query_to_model: str = dspy.InputField() 30 model_response: str = dspy.InputField() 31 identified_logic_errors: List[str] = dspy.OutputField() 32 has_logic_error: bool = dspy.OutputField()",
+      "word_count": 803
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Training a helpful and harmless assistant with reinforcement learning from human feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Yuntao Bai",
+        "Andy Jones",
+        "Kamal Ndousse",
+        "Amanda Askell",
+        "Anna Chen",
+        "Nova Dassarma",
+        "Dawn Drain",
+        "Stanislav Fort"
+      ],
+      "raw_text": "Training a helpful and harmless assistant with reinforcement learning from human feedback Yuntao Bai Andy Jones Kamal Ndousse Amanda Askell Anna Chen Nova Dassarma Dawn Drain Stanislav Fort Deep Ganguli Tom Henighan arXiv:2204.05862 2022 arXiv preprint"
+    },
+    {
+      "index": 2,
+      "title": "Constitutional ai: Harmlessness from ai feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Yuntao Bai",
+        "Saurav Kadavath",
+        "Sandipan Kundu",
+        "Amanda Askell",
+        "Jackson Kernion",
+        "Andy Jones",
+        "Anna Chen",
+        "Anna Goldie"
+      ],
+      "raw_text": "Yuntao Bai Saurav Kadavath Sandipan Kundu Amanda Askell Jackson Kernion Andy Jones Anna Chen Anna Goldie Azalia Mirhoseini Cameron Mckinnon arXiv:2212.08073 Constitutional ai: Harmlessness from ai feedback 2022 arXiv preprint"
+    },
+    {
+      "index": 3,
+      "title": "Using cognitive psychology to understand gpt-3",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Marcel Binz",
+        "Eric Schulz"
+      ],
+      "raw_text": "Using cognitive psychology to understand gpt-3 Marcel Binz Eric Schulz Proceedings of the National Academy of Sciences 120 6 2218523120 2023"
+    },
+    {
+      "index": 4,
+      "title": "Extracting and understanding the superficial knowledge in alignment",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Runjin Chen",
+        "Gabriel Jacob Perin",
+        "Xuxi Chen",
+        "Xilun Chen",
+        "Yan Han",
+        "Nina St Hirata",
+        "Junyuan Hong",
+        "Bhavya Kailkhura"
+      ],
+      "raw_text": "Extracting and understanding the superficial knowledge in alignment Runjin Chen Gabriel Jacob Perin Xuxi Chen Xilun Chen Yan Han Nina St Hirata Junyuan Hong Bhavya Kailkhura arXiv:2502.04602 2025 arXiv preprint"
+    },
+    {
+      "index": 5,
+      "title": "Deep reinforcement learning from human preferences",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Jan Paul F Christiano",
+        "Tom Leike",
+        "Miljan Brown",
+        "Shane Martic",
+        "Dario Legg",
+        "Amodei"
+      ],
+      "raw_text": "Deep reinforcement learning from human preferences Jan Paul F Christiano Tom Leike Miljan Brown Shane Martic Dario Legg Amodei Advances in neural information processing systems 30 2017"
+    },
+    {
+      "index": 6,
+      "title": "Think you have solved question answering? try arc, the ai2 reasoning challenge",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Peter Clark",
+        "Isaac Cowhey",
+        "Oren Etzioni",
+        "Tushar Khot",
+        "Ashish Sabharwal",
+        "Carissa Schoenick",
+        "Oyvind Tafjord"
+      ],
+      "raw_text": "Peter Clark Isaac Cowhey Oren Etzioni Tushar Khot Ashish Sabharwal Carissa Schoenick Oyvind Tafjord arXiv:1803.05457 Think you have solved question answering? try arc, the ai2 reasoning challenge 2018 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "Generative ai and brain rot",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Lance Eliot"
+      ],
+      "raw_text": "Lance Eliot Generative ai and brain rot Forbes June 2024"
+    },
+    {
+      "index": 8,
+      "title": "The \"online brain\": how the internet may be changing our cognition",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Joseph Firth",
+        "John Torous",
+        "Brendon Stubbs",
+        "Josh A Firth",
+        "Genevieve Z Steiner",
+        "Lee Smith",
+        "Mario Alvarez-Jimenez",
+        "John Gleeson"
+      ],
+      "raw_text": "The \"online brain\": how the internet may be changing our cognition Joseph Firth John Torous Brendon Stubbs Josh A Firth Genevieve Z Steiner Lee Smith Mario Alvarez-Jimenez John Gleeson Davy Vancampfort Christopher J Armitage World psychiatry 18 2 2019"
+    },
+    {
+      "index": 9,
+      "title": "Poisonbench: Assessing large language model vulnerability to data poisoning",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tingchen Fu",
+        "Mrinank Sharma",
+        "Philip Torr",
+        "David Shay B Cohen",
+        "Fazl Krueger",
+        "Barez"
+      ],
+      "raw_text": "Tingchen Fu Mrinank Sharma Philip Torr David Shay B Cohen Fazl Krueger Barez arXiv:2410.08811 Poisonbench: Assessing large language model vulnerability to data poisoning 2024 arXiv preprint"
+    },
+    {
+      "index": 10,
+      "title": "The Pile: An 800gb dataset of diverse text for language modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Leo Gao",
+        "Stella Biderman",
+        "Sid Black",
+        "Laurence Golding",
+        "Travis Hoppe",
+        "Charles Foster",
+        "Jason Phang",
+        "Horace He"
+      ],
+      "raw_text": "Leo Gao Stella Biderman Sid Black Laurence Golding Travis Hoppe Charles Foster Jason Phang Horace He Anish Thite Noa Nabeshima Shawn Presser Connor Leahy arXiv:2101.00027 The Pile: An 800gb dataset of diverse text for language modeling 2020 arXiv preprint"
+    },
+    {
+      "index": 11,
+      "title": "The llama 3 herd of models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Aaron Grattafiori",
+        "Abhimanyu Dubey",
+        "Abhinav Jauhri",
+        "Abhinav Pandey",
+        "Abhishek Kadian",
+        "Ahmad Al-Dahle",
+        "Aiesha Letman",
+        "Akhil Mathur"
+      ],
+      "raw_text": "Aaron Grattafiori Abhimanyu Dubey Abhinav Jauhri Abhinav Pandey Abhishek Kadian Ahmad Al-Dahle Aiesha Letman Akhil Mathur Alan Schelten Alex Vaughan arXiv:2407.21783 The llama 3 herd of models 2024 arXiv preprint"
+    },
+    {
+      "index": 12,
+      "title": "Impact of short reels on attention span and academic performance of undergraduate students",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Trendeline Haliti",
+        "- Sylaj",
+        "Alisa Sadiku"
+      ],
+      "raw_text": "Impact of short reels on attention span and academic performance of undergraduate students Trendeline Haliti - Sylaj Alisa Sadiku Eurasian Journal of Applied Linguistics 10 3 2024"
+    },
+    {
+      "index": 13,
+      "title": "Scaling laws for autoregressive generative modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Henighan",
+        "Jared Kaplan",
+        "Mor Katz",
+        "Mark Chen",
+        "Christopher Hesse",
+        "Jacob Jackson",
+        "Heewoo Jun",
+        "Prafulla Tom B Brown"
+      ],
+      "raw_text": "Scaling laws for autoregressive generative modeling Tom Henighan Jared Kaplan Mor Katz Mark Chen Christopher Hesse Jacob Jackson Heewoo Jun Prafulla Tom B Brown Scott Dhariwal Gray arXiv:2010.14701 2020 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Deep learning scaling is predictable, empirically",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Joel Hestness",
+        "Sharan Narang",
+        "Newsha Ardalani",
+        "Gregory Diamos",
+        "Heewoo Jun",
+        "Hassan Kianinejad",
+        "Md Mostofa",
+        "Ali Patwary"
+      ],
+      "raw_text": "Joel Hestness Sharan Narang Newsha Ardalani Gregory Diamos Heewoo Jun Hassan Kianinejad Md Mostofa Ali Patwary Yang Yang Yanqi Zhou arXiv:1712.00409 Deep learning scaling is predictable, empirically 2017 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "Training compute-optimal large language models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jordan Hoffmann",
+        "Sebastian Borgeaud",
+        "Arthur Mensch",
+        "Elena Buchatskaya",
+        "Trevor Cai",
+        "Eliza Rutherford",
+        "Diego De Las",
+        "Lisa Anne Casas"
+      ],
+      "raw_text": "Training compute-optimal large language models Jordan Hoffmann Sebastian Borgeaud Arthur Mensch Elena Buchatskaya Trevor Cai Eliza Rutherford Diego De Las Lisa Anne Casas Johannes Hendricks Aidan Welbl Clark arXiv:2203.15556 2022 arXiv preprint"
+    },
+    {
+      "index": 16,
+      "title": "Ruler: What's the real context size of your long-context language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Cheng-Ping Hsieh",
+        "Simeng Sun",
+        "Samuel Kriman",
+        "Shantanu Acharya",
+        "Dima Rekesh",
+        "Fei Jia",
+        "Yang Zhang",
+        "Boris Ginsburg"
+      ],
+      "raw_text": "Ruler: What's the real context size of your long-context language models Cheng-Ping Hsieh Simeng Sun Samuel Kriman Shantanu Acharya Dima Rekesh Fei Jia Yang Zhang Boris Ginsburg arXiv:2404.06654 2024 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "Explaining length bias in llm-based preference evaluations",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zhengyu Hu",
+        "Linxin Song",
+        "Jieyu Zhang",
+        "Zheyuan Xiao",
+        "Tianfu Wang",
+        "Zhengyu Chen",
+        "Nicholas Jing Yuan",
+        "Jianxun Lian"
+      ],
+      "raw_text": "Explaining length bias in llm-based preference evaluations Zhengyu Hu Linxin Song Jieyu Zhang Zheyuan Xiao Tianfu Wang Zhengyu Chen Nicholas Jing Yuan Jianxun Lian Kaize Ding Hui Xiong arXiv:2407.01085 2024 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "Compiling declarative language model calls into self-improving pipelines",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Omar Khattab",
+        "Arnav Singhvi",
+        "Paridhi Maheshwari",
+        "Zhiyuan Zhang",
+        "Keshav Santhanam",
+        "Sri Vardhamanan",
+        "Saiful Haq",
+        "Ashutosh Sharma"
+      ],
+      "raw_text": "Omar Khattab Arnav Singhvi Paridhi Maheshwari Zhiyuan Zhang Keshav Santhanam Sri Vardhamanan Saiful Haq Ashutosh Sharma Thomas T Joshi Hanna Moazam arXiv:2310.03714 Compiling declarative language model calls into self-improving pipelines 2023 arXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "Do llms have distinct and consistent personality? trait: Personality testset designed for llms with psychometrics",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Seungbeen Lee",
+        "Seungwon Lim",
+        "Seungju Han",
+        "Giyeong Oh",
+        "Hyungjoo Chae",
+        "Jiwan Chung",
+        "Minju Kim",
+        "Beong-Woo Kwak"
+      ],
+      "raw_text": "Seungbeen Lee Seungwon Lim Seungju Han Giyeong Oh Hyungjoo Chae Jiwan Chung Minju Kim Beong-Woo Kwak Yeonsoo Lee Dongha Lee arXiv:2406.14703 Do llms have distinct and consistent personality? trait: Personality testset designed for llms with psychometrics 2024 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "How to get your messages retweeted",
+      "doi": "",
+      "year": "2011",
+      "authors": [
+        "Arvind Malhotra",
+        "Claudia Kubowicz Malhotra",
+        "Alan See"
+      ],
+      "raw_text": "How to get your messages retweeted Arvind Malhotra Claudia Kubowicz Malhotra Alan See 2011 MIT Sloan Management Review"
+    },
+    {
+      "index": 21,
+      "title": "Engagement, user satisfaction, and the amplification of divisive content on social media",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Smitha Milli",
+        "Micah Carroll",
+        "Yike Wang",
+        "Sashrika Pandey",
+        "Sebastian Zhao",
+        "Anca D Dragan"
+      ],
+      "raw_text": "Engagement, user satisfaction, and the amplification of divisive content on social media Smitha Milli Micah Carroll Yike Wang Sashrika Pandey Sebastian Zhao Anca D Dragan PNAS nexus 4 3 62 2025"
+    },
+    {
+      "index": 22,
+      "title": "Media multitasking is associated with distractibility and increased prefrontal activity in adolescents and young adults",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "Mona Moisala",
+        "Viljami Salmela",
+        "Lauri Hietajärvi",
+        "Emma Salo",
+        "Synnöve Carlson",
+        "Oili Salonen",
+        "Kirsti Lonka",
+        "Kai Hakkarainen"
+      ],
+      "raw_text": "Media multitasking is associated with distractibility and increased prefrontal activity in adolescents and young adults Mona Moisala Viljami Salmela Lauri Hietajärvi Emma Salo Synnöve Carlson Oili Salonen Kirsti Lonka Kai Hakkarainen Katariina Salmela-Aro Kimmo Alho NeuroImage 134 2016"
+    },
+    {
+      "index": 23,
+      "title": "Brain rot' named Oxford Word of the Year",
+      "doi": "",
+      "year": "2024",
+      "authors": [],
+      "raw_text": "Brain rot' named Oxford Word of the Year 2024. 2024 Oxford University Press"
+    },
+    {
+      "index": 24,
+      "title": "Teach llms to phish",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ashwinee Panda",
+        "Christopher A Choquette-Choo",
+        "Zhengming Zhang",
+        "Yaoqing Yang",
+        "Prateek Mittal"
+      ],
+      "raw_text": "Teach llms to phish Ashwinee Panda Christopher A Choquette-Choo Zhengming Zhang Yaoqing Yang Prateek Mittal arXiv:2403.00871 Stealing private information from language models 2024 arXiv preprint"
+    },
+    {
+      "index": 25,
+      "title": "Fine-tuning aligned language models compromises safety, even when users do not intend to! arXiv preprint",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Xiangyu Qi",
+        "Yi Zeng",
+        "Tinghao Xie",
+        "Pin-Yu Chen",
+        "Ruoxi Jia",
+        "Prateek Mittal",
+        "Peter Henderson"
+      ],
+      "raw_text": "Xiangyu Qi Yi Zeng Tinghao Xie Pin-Yu Chen Ruoxi Jia Prateek Mittal Peter Henderson arXiv:2310.03693 Fine-tuning aligned language models compromises safety, even when users do not intend to! arXiv preprint 2023"
+    },
+    {
+      "index": 26,
+      "title": "",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        ": Qwen",
+        "An Yang",
+        "Baosong Yang",
+        "Beichen Zhang",
+        "Binyuan Hui",
+        "Bo Zheng",
+        "Bowen Yu",
+        "Chengyuan Li"
+      ],
+      "raw_text": ": Qwen An Yang Baosong Yang Beichen Zhang Binyuan Hui Bo Zheng Bowen Yu Chengyuan Li Dayiheng Liu Fei Huang Haoran Wei Huan Lin Jian Yang Jianhong Tu Jianwei Zhang Jianxin Yang Jiaxi Yang Jingren Zhou Junyang Lin Kai Dang Keming Lu Keqin Bao Kexin Yang Le Yu Mei Li Mingfeng Xue Pei Zhang Qin Zhu Rui Men Runji Lin Tianhao Li Tianyi Tang Tingyu Xia Xingzhang Ren Xuancheng Ren Yang Fan Yang Su Yichang Zhang Yu Wan Yuqiong Liu Zeyu Cui Zhenru Zhang arXiv:2412.15115 2025 arXiv preprint and Zihan Qiu. Qwen2.5 technical report"
+    },
+    {
+      "index": 27,
+      "title": "Association of digital media use with subsequent symptoms of attention-deficit/hyperactivity disorder among adolescents",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Junhan Chaelin K Ra",
+        "Matthew D Cho",
+        "Julianne Stone",
+        "La De",
+        "Cerda",
+        "Elizabeth Nicholas I Goldenson",
+        "Irene Moroney",
+        "Steve S Tung"
+      ],
+      "raw_text": "Association of digital media use with subsequent symptoms of attention-deficit/hyperactivity disorder among adolescents Junhan Chaelin K Ra Matthew D Cho Julianne Stone La De Cerda Elizabeth Nicholas I Goldenson Irene Moroney Steve S Tung Adam M Lee Leventhal Jama 320 3 2018"
+    },
+    {
+      "index": 28,
+      "title": "Revisiting the superficial alignment hypothesis",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mohit Raghavendra",
+        "Vaskar Nath",
+        "Sean Hendryx"
+      ],
+      "raw_text": "Revisiting the superficial alignment hypothesis Mohit Raghavendra Vaskar Nath Sean Hendryx arXiv:2410.03717 2024 arXiv preprint"
+    },
+    {
+      "index": 29,
+      "title": "Verbosity bias in preference labeling by large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Keita Saito",
+        "Akifumi Wachi",
+        "Koki Wataoka",
+        "Youhei Akimoto"
+      ],
+      "raw_text": "Verbosity bias in preference labeling by large language models Keita Saito Akifumi Wachi Koki Wataoka Youhei Akimoto arXiv:2310.10076 2023 arXiv preprint"
+    },
+    {
+      "index": 30,
+      "title": "The anatomy of tweet overload: How number of tweets received, number of friends, and egocentric network density affect perceived information overload",
+      "doi": "",
+      "year": "2015",
+      "authors": [
+        "Yuichi Sasaki",
+        "Daisuke Kawai",
+        "Satoshi Kitamura"
+      ],
+      "raw_text": "The anatomy of tweet overload: How number of tweets received, number of friends, and egocentric network density affect perceived information overload Yuichi Sasaki Daisuke Kawai Satoshi Kitamura Telematics and Informatics 32 4 2015"
+    },
+    {
+      "index": 31,
+      "title": "Doomscrolling scale: Its association with personality traits, psychological distress, social media use, and wellbeing",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ahmet Seydi",
+        "Emine Satici",
+        "M Gocet Tekin",
+        "Begum Engin Deniz",
+        "Satici"
+      ],
+      "raw_text": "Doomscrolling scale: Its association with personality traits, psychological distress, social media use, and wellbeing Ahmet Seydi Emine Satici M Gocet Tekin Begum Engin Deniz Satici Applied Research in Quality of Life 18 2 2023"
+    },
+    {
+      "index": 32,
+      "title": "How bad is training on synthetic data? a statistical analysis of language model collapse",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mohamed El",
+        "Amine Seddik",
+        "Suei-Wen Chen",
+        "Soufiane Hayou",
+        "Pierre Youssef",
+        "Merouane Debbah"
+      ],
+      "raw_text": "How bad is training on synthetic data? a statistical analysis of language model collapse Mohamed El Amine Seddik Suei-Wen Chen Soufiane Hayou Pierre Youssef Merouane Debbah arXiv:2404.05090 2024 arXiv preprint"
+    },
+    {
+      "index": 33,
+      "title": "Reflexion: Language agents with verbal reinforcement learning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Noah Shinn",
+        "Federico Cassano",
+        "Ashwin Gopinath",
+        "Karthik Narasimhan",
+        "Shunyu Yao"
+      ],
+      "raw_text": "Reflexion: Language agents with verbal reinforcement learning Noah Shinn Federico Cassano Ashwin Gopinath Karthik Narasimhan Shunyu Yao Advances in Neural Information Processing Systems 36 2023"
+    },
+    {
+      "index": 34,
+      "title": "The curse of recursion: Training on generated data makes models forget",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Yarin Gal",
+        "Nicolas Papernot",
+        "Ross Anderson"
+      ],
+      "raw_text": "The curse of recursion: Training on generated data makes models forget Ilia Shumailov Zakhar Shumaylov Yiren Zhao Yarin Gal Nicolas Papernot Ross Anderson arXiv:2305.17493 2023 arXiv preprint"
+    },
+    {
+      "index": 35,
+      "title": "Ai models collapse when trained on recursively generated data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Nicolas Papernot",
+        "Ross Anderson",
+        "Yarin Gal"
+      ],
+      "raw_text": "Ai models collapse when trained on recursively generated data Ilia Shumailov Zakhar Shumaylov Yiren Zhao Nicolas Papernot Ross Anderson Yarin Gal Nature 631 8022 2024"
+    },
+    {
+      "index": 36,
+      "title": "Want to be retweeted? large scale analytics on factors impacting retweet in twitter network",
+      "doi": "",
+      "year": "2010",
+      "authors": [
+        "Bongwon Suh",
+        "Lichan Hong",
+        "Peter Pirolli",
+        "Ed H Chi"
+      ],
+      "raw_text": "Want to be retweeted? large scale analytics on factors impacting retweet in twitter network Bongwon Suh Lichan Hong Peter Pirolli Ed H Chi 2010 IEEE second international conference on social computing IEEE 2010"
+    },
+    {
+      "index": 37,
+      "title": "Stanford alpaca: An instruction-following llama model",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Rohan Taori",
+        "Ishaan Gulrajani",
+        "Tianyi Zhang",
+        "Yann Dubois",
+        "Xuechen Li",
+        "Carlos Guestrin",
+        "Percy Liang",
+        "Tatsunori B Hashimoto"
+      ],
+      "raw_text": "Rohan Taori Ishaan Gulrajani Tianyi Zhang Yann Dubois Xuechen Li Carlos Guestrin Percy Liang Tatsunori B Hashimoto Stanford alpaca: An instruction-following llama model 2023"
+    },
+    {
+      "index": 38,
+      "title": "A review of evidence on the role of digital technology in shaping attention and cognitive control in children",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Maria Vedechkina",
+        "Francesca Borgonovi"
+      ],
+      "raw_text": "A review of evidence on the role of digital technology in shaping attention and cognitive control in children Maria Vedechkina Francesca Borgonovi Frontiers in psychology 12 611155 2021"
+    },
+    {
+      "index": 39,
+      "title": "More is less: The pitfalls of multi-model synthetic preference data in dpo safety alignment",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yifan Wang",
+        "Runjin Chen",
+        "Bolian Li",
+        "David Cho",
+        "Yihe Deng",
+        "Ruqi Zhang",
+        "Tianlong Chen",
+        "Zhangyang Wang"
+      ],
+      "raw_text": "Yifan Wang Runjin Chen Bolian Li David Cho Yihe Deng Ruqi Zhang Tianlong Chen Zhangyang Wang Ananth Grama Junyuan Hong arXiv:2504.02193 More is less: The pitfalls of multi-model synthetic preference data in dpo safety alignment 2025 arXiv preprint"
+    },
+    {
+      "index": 40,
+      "title": "Chain-of-thought prompting elicits reasoning in large language models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jason Wei",
+        "Xuezhi Wang",
+        "Dale Schuurmans",
+        "Maarten Bosma",
+        "Fei Xia",
+        "Ed Chi",
+        "V Quoc",
+        "Denny Le"
+      ],
+      "raw_text": "Chain-of-thought prompting elicits reasoning in large language models Jason Wei Xuezhi Wang Dale Schuurmans Maarten Bosma Fei Xia Ed Chi V Quoc Denny Le Zhou Advances in neural information processing systems 2022 35"
+    },
+    {
+      "index": 41,
+      "title": "Qurating: Selecting high-quality data for training language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Wettig",
+        "Aatmik Gupta",
+        "Saumya Malik",
+        "Danqi Chen"
+      ],
+      "raw_text": "Qurating: Selecting high-quality data for training language models Alexander Wettig Aatmik Gupta Saumya Malik Danqi Chen Forty-first International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 42,
+      "title": "Twitter's recommendation algorithm",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Corp"
+      ],
+      "raw_text": "Twitter's recommendation algorithm Corp March 2023"
+    },
+    {
+      "index": 43,
+      "title": "Qwen3 technical report",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "An Yang",
+        "Anfeng Li",
+        "Baosong Yang",
+        "Beichen Zhang",
+        "Binyuan Hui",
+        "Bo Zheng",
+        "Bowen Yu",
+        "Chang Gao"
+      ],
+      "raw_text": "An Yang Anfeng Li Baosong Yang Beichen Zhang Binyuan Hui Bo Zheng Bowen Yu Chang Gao Chengen Huang Chenxu Lv Chujie Zheng Dayiheng Liu Fan Zhou Fei Huang Feng Hu Hao Ge Haoran Wei Huan Lin Jialong Tang Jian Yang Jianhong Tu Jianwei Zhang Jianxin Yang Jiaxi Yang Jing Zhou Jingren Zhou Junyang Lin Kai Dang Keqin Bao Kexin Yang Le Yu Lianghao Deng Mei Li Mingfeng Xue Mingze Li Pei Zhang Peng Wang Qin Zhu Rui Men Ruize Gao Shixuan Liu Shuang Luo Tianhao Li Tianyi Tang Wenbiao Yin Xingzhang Ren Xinyu Wang Xinyu Zhang Xuancheng Ren Yang Fan Yang Su Yichang Zhang Yinger Zhang Yu Wan Yuqiong Liu Zekun Wang Zeyu Cui Zhenru Zhang Zhipeng Zhou Zihan Qiu arXiv:2505.09388 Qwen3 technical report 2025 arXiv preprint"
+    },
+    {
+      "index": 44,
+      "title": "Auditing political exposure bias: Algorithmic amplification on twitter/x during the 2024 us presidential election",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jinyi Ye",
+        "Luca Luceri",
+        "Emilio Ferrara"
+      ],
+      "raw_text": "Auditing political exposure bias: Algorithmic amplification on twitter/x during the 2024 us presidential election Jinyi Ye Luca Luceri Emilio Ferrara Proceedings of the 2025 ACM Conference on Fairness, Accountability, and Transparency the 2025 ACM Conference on Fairness, Accountability, and Transparency 2025"
+    },
+    {
+      "index": 45,
+      "title": "Demystifying the new dilemma of brain rot in the digital era: A review",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Ahmed Mohamed",
+        "Fahmy Yousef",
+        "Alsaeed Alshamy",
+        "Ahmed Tlili",
+        "Ahmed Hosny",
+        "Saleh Metwally"
+      ],
+      "raw_text": "Demystifying the new dilemma of brain rot in the digital era: A review Ahmed Mohamed Fahmy Yousef Alsaeed Alshamy Ahmed Tlili Ahmed Hosny Saleh Metwally Brain Sciences 15 3 283 2025"
+    },
+    {
+      "index": 46,
+      "title": "Persistent pre-training poisoning of llms",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yiming Zhang",
+        "Javier Rando",
+        "Ivan Evtimov",
+        "Jianfeng Chi",
+        "Eric Michael Smith",
+        "Nicholas Carlini",
+        "Florian Tramèr",
+        "Daphne Ippolito"
+      ],
+      "raw_text": "Yiming Zhang Javier Rando Ivan Evtimov Jianfeng Chi Eric Michael Smith Nicholas Carlini Florian Tramèr Daphne Ippolito arXiv:2410.13722 Persistent pre-training poisoning of llms 2024 arXiv preprint"
+    },
+    {
+      "index": 47,
+      "title": "Judging llm-as-a-judge with mt-bench and chatbot arena",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Lianmin Zheng",
+        "Wei-Lin Chiang",
+        "Ying Sheng",
+        "Siyuan Zhuang",
+        "Zhanghao Wu",
+        "Yonghao Zhuang",
+        "Zi Lin",
+        "Zhuohan Li"
+      ],
+      "raw_text": "Judging llm-as-a-judge with mt-bench and chatbot arena Lianmin Zheng Wei-Lin Chiang Ying Sheng Siyuan Zhuang Zhanghao Wu Yonghao Zhuang Zi Lin Zhuohan Li Dacheng Li Eric Xing Advances in neural information processing systems 36 2023"
+    },
+    {
+      "index": 48,
+      "title": "Less is more for alignment",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Chunting Zhou",
+        "Pengfei Liu",
+        "Puxin Xu",
+        "Srinivasan Iyer",
+        "Jiao Sun",
+        "Yuning Mao",
+        "Xuezhe Ma",
+        "Avia Efrat"
+      ],
+      "raw_text": "Less is more for alignment Chunting Zhou Pengfei Liu Puxin Xu Srinivasan Iyer Jiao Sun Yuning Mao Xuezhe Ma Avia Efrat Ping Yu Lili Yu Advances in Neural Information Processing Systems 36 2023"
+    },
+    {
+      "index": 49,
+      "title": "Universal and transferable adversarial attacks on aligned language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Andy Zou",
+        "Zifan Wang",
+        "Nicholas Carlini",
+        "Milad Nasr",
+        "J Zico Kolter",
+        "Matt Fredrikson"
+      ],
+      "raw_text": "Universal and transferable adversarial attacks on aligned language models Andy Zou Zifan Wang Nicholas Carlini Milad Nasr J Zico Kolter Matt Fredrikson arXiv:2307.15043 2023 arXiv preprint"
+    }
+  ],
+  "section_count": 26,
+  "reference_count": 49,
+  "error": "",
+  "updated_at": "2026-04-12T01:34:02.200897+00:00"
+}

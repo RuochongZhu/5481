@@ -1,0 +1,2412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">QuaDMix: Quality-Diversity Balanced Data Selection for Efficient LLM Pretraining</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-04-26">26 Apr 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Fengze</forename><surname>Liu</surname></persName>
+							<email>fengze.liu@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Weidong</forename><surname>Zhou</surname></persName>
+							<email>zhouweidong.66@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Binbin</forename><surname>Liu</surname></persName>
+							<email>liubinbin.22@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Zhimiao</forename><surname>Yu</surname></persName>
+							<email>yuzhimiao@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yifan</forename><surname>Zhang</surname></persName>
+							<email>zzhangyifan@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Haobin</forename><surname>Lin</surname></persName>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yifeng</forename><surname>Yu</surname></persName>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Bingni</forename><surname>Zhang</surname></persName>
+							<email>bingni.zhang@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Xiaohuan</forename><surname>Zhou</surname></persName>
+							<email>zhouxiaohuan@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Taifeng</forename><surname>Wang</surname></persName>
+							<email>wangtaifeng@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yong</forename><surname>Cao</surname></persName>
+							<email>yongc@bytedance.com</email>
+							<affiliation key="aff0">
+							</affiliation>
+						</author>
+						<title level="a" type="main">QuaDMix: Quality-Diversity Balanced Data Selection for Efficient LLM Pretraining</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-04-26">26 Apr 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">B074E81CA2A7B4F1DB5F047E297E087E</idno>
+					<idno type="arXiv">arXiv:2504.16511v2[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:13+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Quality and diversity are two critical metrics for the training data of large language models (LLMs), positively impacting performance. Existing studies often optimize these metrics separately, typically by first applying quality filtering and then adjusting data proportions. However, these approaches overlook the inherent trade-off between quality and diversity, necessitating their joint consideration. Given a fixed training quota, it's essential to evaluate both the quality of each data point and its complementary effect on the overall dataset. In this paper, we introduce a unified data selection framework called QuaDMix, which automatically optimizes the data distribution for LLM pretraining while balancing both quality and diversity. Specifically, we first propose multiple criteria to measure data quality and employ domain classification to distinguish data points, thereby measuring overall diversity. QuaDMix then employs a unified parameterized data sampling function that determines the sampling probability of each data point based on these quality and diversity related labels. To accelerate the search for the optimal parameters involved in the QuaDMix framework, we conduct simulated experiments on smaller models and use LightGBM for parameters searching, inspired by the RegMix method. Our experiments across diverse models and datasets demonstrate that QuaDMix achieves an average performance improvement of 7.2% across multiple benchmarks. These results outperform the independent strategies for quality and diversity, highlighting the necessity and the framework's ability to balance data quality and diversity.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>The efficiency and preference of pretraining large language models are significantly influenced by the characteristics of the training corpus <ref type="bibr" target="#b3">(Brown et al., 2020;</ref><ref type="bibr" target="#b5">Chowdhery et al., 2023;</ref><ref type="bibr" target="#b29">Longpre et al., 2024)</ref>. There is evidence from existing research suggesting that the model performance can be improved through the curation of high-quality data <ref type="bibr" target="#b51">(Wettig et al., 2024;</ref><ref type="bibr">Xie et al., 2023b;</ref><ref type="bibr" target="#b39">Sachdeva et al., 2024)</ref>, the application of data deduplication and diversification strategies <ref type="bibr" target="#b0">(Abbas et al., 2023;</ref><ref type="bibr" target="#b46">Tirumala et al., 2023)</ref>, and the careful balancing of data distribution across various domains and topics <ref type="bibr" target="#b28">(Liu et al., 2024;</ref><ref type="bibr">Xie et al., 2023a)</ref>. Nevertheless, identifying optimal configuration of combining those factors remains an open challenge, due to complex interplay between data quality and diversity, which has yet to be fully understood.</p><p>There remains two major challenges to identify the optimal data selection strategy. Firstly, the definition of quality and diversity is ambiguous. Previous research has proposed various definitions of quality criteria, including factors such as regular expression <ref type="bibr" target="#b35">(Penedo et al., 2023;</ref><ref type="bibr" target="#b50">Wenzek et al., 2020)</ref>, educational value <ref type="bibr" target="#b34">(Penedo et al., 2024)</ref>, similarity to instruction tuning data <ref type="bibr" target="#b26">(Li et al., 2024)</ref>, etc, each emphasizing only a specific aspect of the data. On the other hand, approaches like <ref type="bibr" target="#b28">(Liu et al., 2024;</ref><ref type="bibr" target="#b0">Abbas et al., 2023)</ref> optimize the data mixtures for more effective training, indicating that a better diversity is not necessarily uniform distribution. Secondly, there exists interplay between data quality and diversity. The choice of quality criteria affects the distribution of selected data as illustrated in Figure <ref type="figure" target="#fig_0">1</ref>, due to inherent biases in different criteria. Meanwhile, changing of data mixtures influences the data quality, as the quality level differs across different domains. Also, since the high quality data is limited, the trade-off between better quality or diversity is inevitable, which is not feasible by optimizing only for data quality or diversity. How to jointly optimize the data distribution together with the selection of quality criteria remains another unsolved issue.</p><p>To address these challenges, we propose a unified data selection framework, QuaDMix, which simultaneously manages data quality and diversity. Firstly, we apply several quality scorers and domain classification on each document in the training corpus, to measure the data quality and diversity. Then a parameterized function is designed to determine the sampling frequency for each document based on those quality and domain labels. Specifically, an aggregated quality score is first computed by weighted averaging the quality scores, where the weights are controlled by adjustable parameters. Then a parameterized sampling function takes the aggregated quality score as input and calculate the sampling frequency, where data with higher quality is assigned with more frequency and the parameters affect how the frequency decreases as the quality diminishes. Here we take the assumption that training samples with higher quality worth sampled for more times. We assign independent parameters for data across different domains to control the diversity via parameters. To find the optimal parameters among the numerous parameter space, we employ a two-step approach inspired by <ref type="bibr" target="#b28">(Liu et al., 2024)</ref>. First, we train a set of small models on datasets sampled using QuaDMix with various parameter configurations, as an approximation for the performance of larger models. Next, we train a regression model to fit the performance results from this limited set of small models. This regression model is then used to predict the performance for unseen parameter configurations, providing an efficient way to explore the parameter space without exhaustive large-scale training.</p><p>To validate the effectiveness of QuaDMix, we train 3000 models with 1M parameters for 1B tokens, each using data sampled from RefinedWeb <ref type="bibr" target="#b35">(Penedo et al., 2023)</ref> with various QuaDMix pa-rameters. The optimal parameter configuration is then determined by searching the input space of a trained LightGBM regressor <ref type="bibr" target="#b23">(Ke et al., 2017)</ref>. We then evaluate different pretraining data selection methods on models with 530M parameters. The optimal configuration identified by QuaDMix achieves superior performance on an aggregated benchmark. Our results also reveal the following insights: (1) Different quality criteria exhibit tradeoffs across downstream tasks, but appropriately merging these criteria yields consistent improvements across tasks by leveraging complementary information.</p><p>(2) The optimal data mixture varies under different quality criteria, indicating the importance of jointly optimizing both the quality and diversity. (3) The target of regression model can guide the preference for specific downstream tasks, enabling task-focused data selection.</p><p>2 Related Work</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1">Pretraining Data Selection</head><p>Data quality, diversity, and coverage are critical factors for ensuring the efficiency and generalizability of large language models <ref type="bibr" target="#b4">(Cheng et al., 2024;</ref><ref type="bibr" target="#b47">Touvron et al., 2023;</ref><ref type="bibr" target="#b5">Chowdhery et al., 2023)</ref>.</p><p>To improve data quality, rule-based filtering techniques are commonly employed <ref type="bibr" target="#b24">(Laurençon et al., 2022;</ref><ref type="bibr" target="#b49">Weber et al., 2024;</ref><ref type="bibr" target="#b35">Penedo et al., 2023;</ref><ref type="bibr" target="#b38">Raffel et al., 2020)</ref>. These methods use handcrafted heuristics, such as removing terminal marks, detecting sentence repetitions, and enforcing length constraints, to exclude low-quality data. While these rules effectively filter out noisy data from the training corpus, they fail to capture semanticlevel information, which is crucial for more refined data selection. Alternative approaches aim to address this limitation. For instance, <ref type="bibr" target="#b50">(Wenzek et al., 2020;</ref><ref type="bibr" target="#b30">Marion et al., 2023;</ref><ref type="bibr" target="#b45">Thrush et al., 2024)</ref> use model perplexity as a measure of data quality, while <ref type="bibr" target="#b27">(Lin et al., 2025)</ref> apply token-level selection by reweighting the loss across tokens. <ref type="bibr">(Xie et al., 2023b)</ref> utilize n-gram features to quantify data importance and sample accordingly. Discriminator-based methods <ref type="bibr" target="#b3">(Brown et al., 2020;</ref><ref type="bibr" target="#b8">Du et al., 2022;</ref><ref type="bibr" target="#b10">Gao et al., 2020;</ref><ref type="bibr" target="#b42">Soldaini et al., 2024;</ref><ref type="bibr" target="#b26">Li et al., 2024)</ref> select data by comparing it to predefined high-quality datasets, such as Wikipedia or instruction-tuning datasets. However, how much these predefined datasets represent for high-quality relies on empirical judgement. More recently, approaches like <ref type="bibr" target="#b14">(Gunasekar et al., 2023;</ref><ref type="bibr" target="#b39">Sachdeva et al., 2024</ref>; Wet-… Domain 1 Domain 2 Domain 3 Domain M Quality Scorer 1 Quality Scorer N … Web Data Domain Classification Domain 1 Quality Merger Domain 2 Quality Merger Domain 3 Quality Merger Domain M Quality Merger … Domain 1 Data Sampler Domain 2 Data Sampler Domain 3 Data Sampler Domain M Data Sampler … … … New Distribution Feature Extraction Quality Ranking Data Sampling</p><p>Figure <ref type="figure">2</ref>: The overall design of QuaDMix. First we extract the data features using classifier and quality scores (QS). Then we calculate quality rank for each domain with the merging parameters. Finally the sampling functions controlled by sampling parameters are applied to generate the final output data.</p><p>tig <ref type="bibr">et al., 2024;</ref><ref type="bibr" target="#b34">Penedo et al., 2024)</ref> leverage large language models (e.g., GPT-4) to evaluate and filter data based on designed prompts that emphasize various dimensions of value, offering a more nuanced way to define and curate high-quality data.</p><p>To optimize data distribution, various methods leverage clustering and representativeness to achieve deduplication and diversification. For example, <ref type="bibr" target="#b0">(Abbas et al., 2023;</ref><ref type="bibr" target="#b40">Shao et al., 2024;</ref><ref type="bibr" target="#b46">Tirumala et al., 2023)</ref> employ data clustering techniques to identify and select representative data points, ensuring both diversity and efficiency in the training corpus. Other approaches estimate optimal data mixtures through iterative modeling. <ref type="bibr">(Xie et al., 2023a)</ref> first train a small reference model and subsequently optimize the worst-case loss across domains by training a proxy model to identify the optimal data mixture. Similarly, <ref type="bibr" target="#b1">(Bai et al., 2024;</ref><ref type="bibr" target="#b55">Yu et al., 2024;</ref><ref type="bibr" target="#b9">Fan et al., 2024;</ref><ref type="bibr" target="#b13">Gu et al., 2024)</ref> calculate influence scores by tracking first-order gradients on an evaluation set, thereby identifying the most valuable data for training. Additionally, <ref type="bibr" target="#b28">(Liu et al., 2024;</ref><ref type="bibr" target="#b54">Ye et al., 2024)</ref> simulate the performance of different data mixtures by training a series of proxy models, enabling the prediction of large-model performance with low compute cost.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2">Scaling Laws</head><p>Neural Scaling Laws have been shown to effectively predict performance across varying training budgets, model sizes, and dataset scales in LLM pretraining <ref type="bibr" target="#b22">(Kaplan et al., 2020;</ref><ref type="bibr" target="#b37">Rae et al., 2022)</ref>. However, in practical scenarios where dataset size is limited, or data mixtures vary, scaling laws exhibit significant variations <ref type="bibr" target="#b18">(Hoffmann et al., 2022)</ref>. Several studies have extended scaling laws to account for these complexities. <ref type="bibr" target="#b32">(Muennighoff et al., 2023;</ref><ref type="bibr" target="#b17">Hernandez et al., 2022)</ref> explore the impact of data repetition levels on scaling behaviors, while <ref type="bibr" target="#b12">(Ge et al., 2024)</ref> investigate scaling dynamics under different domain proportions and dataset sizes. To optimize data compositions, <ref type="bibr" target="#b28">(Liu et al., 2024)</ref> propose a regression model for predicting optimal mixtures, and <ref type="bibr" target="#b21">(Kang et al., 2024)</ref> further analyze optimal compositions across varying scales. Additionally, <ref type="bibr" target="#b36">(Que et al., 2024)</ref> focus on identifying the best data mixtures for the continued pretraining stage, providing insights into refining pretraining strategies under diverse constraints.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Methodology</head><p>Our approach can be illustrated in 4 parts: 1) We propose the QuaDMix framework, which utilizes a unified parameterized function to govern the data sampling process. 2) We conduct small-scale experiments to explore how different parameter settings within QuaDMix affect the performance of LLM.</p><p>3) We train a regression model to capture these effects, using it to identify the optimal parameters. 4) With the optimal parameter settings, we sample large-scale data and train a large language model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Design of QuaDMix</head><p>We design QuaDMix as a sampling algorithm that simultaneously accounts for data quality and diversity, as shown in Figure <ref type="figure">2</ref>. Given a pretraining dataset X, we define a sampling function S(x, q x , d x ; θ), which determines the expected sampling times of each data point x based on its data feature q x and d x . Here q x represents the quality score vector, which includes multiple quality criteria, and d x denotes the domain to which x belongs. θ are the parameters to be optimized. The output of this function is fractional value, e.g. a.b, meaning the document will be sampled for a times plus another random sampling with probability b. Feature Extraction To measure a sample's contribution to diversity and its quality, we propose using domain classification and N quality scorers to label the pretraining data. Specifically, we use a domain classifier to divide the dataset into M domains, where x will be assigned a domain label d x . Then we use N quality scorers to compute the quality vector q x = (q 1,x , ..., q N,x ), and for each q n,x , a smaller value indicates a better quality on that dimension. For the sake of simplicity, we omit x in the subscript in the following discussion. Quality Ranking We first define a merging function that integrates the scores from various quality filters, aiming to incorporate complementary information provided by different criteria. Assuming there are N criteria, for any individual example x belonging to domain m, the merged quality score is calculated by</p><formula xml:id="formula_0">q = N n=1 σ(q n )α n,m ,<label>(1)</label></formula><p>where α m are the merging parameters for domain m. We utilize separate merging parameters to balance the quality criteria across different domains, as the criteria exhibit varying preferences depending on the domain. σ is a normalization function to align the scales of quality criteria.</p><p>We then sort the data based on the merged quality score. The sorting is operated separately in each domain. The merged quality rank r is calculated by computing the percentile of the data within that domain. That is</p><formula xml:id="formula_1">r = |{x|d x = m, qx &lt;= q}| |{x|d x = m}| .<label>(2)</label></formula><p>Here we calculate the size of the set by adding up the number of tokens for all sample within the set. For a given example in domain m with r = 0.05, this means that 95% of the tokens in that domain have a worse quality compared to this example. (Note that we use smaller quality scores to represent higher quality.)</p><p>Quality Sampling Next, we define the sampling function. We take the assumption that higherquality data should be sampled more frequently in the final dataset. This assumption is supported by evidence <ref type="bibr" target="#b34">(Penedo et al., 2024)</ref>, which demonstrates that applying a higher quality threshold improves downstream performance. For any example in domain m with merged quality rank r, the value of the sampling function is determined by</p><formula xml:id="formula_2">S(r) = ( 2 1+e -λm(ωm-r) ) ηm + ϵ m , r &lt;= ω m ϵ m , r &gt; ω m<label>(</label></formula><p>3) We denote β m = (λ m , ω m , η m , ϵ m ) as the sampling parameters for domain m. We use a format of sigmoid to ensure the sampling value is monotonically decreasing as the quality rank goes up (worse quality) and λ m is used to adjust how fast it decreases. ω m controls the quality percentile threshold, determining the minimum quality level we aim to retain. η m is a scaling parameter that adjusts the sampling values, while ϵ m introduces randomness to incorporate data from all quality ranges. By applying different sampling parameters across domains, we achieve flexible control over domain proportions.</p><p>In summary, by integrating (1),(2), and (3), we define the sampling function for individual domain m, with the parameters structured as θ m = (α m , β m ). The total number of parameters is (N + 4) × M , where N represents the number of used quality criteria and M denotes the total number of distinct domains.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Proxy Model Experiments</head><p>We first sample a set of values for each parameter defined above, subsequently generating corresponding datasets using the QuaDMix sampling function. Following this, a series of small proxy models are trained on each dataset and evaluated on the validation set to compute the validation loss. Parameter Sampling The parameter space requires careful design to encompass valuable regions, while avoiding extreme conditions. We sample from the parameter space as following:</p><p>Algorithm 1 Parameter Sampling for QuaDMix Ensure: θ Require: N, M Sample (a 1 , ..., a N ) ∼ U (0, 1) ãn = an</p><formula xml:id="formula_3">i a i for m = 1 to M do Sample (b 1,m , ..., b N,m ) ∼ U (0, 1) bn,m = ãnbn,m i ãi b i,m α m = ( bn,m ), n = 1, ..., N Sample (λ m , ω m , η m , ϵ m ) ∼ U (0, 1) λm = 10 3λm , ωm = 0.1ω m ηm = η m , εm = ϵ m /1000 β m = ( λm , ωm , ηm , εm ) θ m = (α m , β m ) end for θ = (θ 1 , ..., θ M )</formula><p>In the algorithm above, we introduce a global weight for each quality criteria, with the final weight computed by multiplying the global weight by the domain-specific weight. Without this global weight, the expected average weight across domains for each quality criterion would always be 1/N , which fails to account for the scenario where one quality criterion may suppress another overall. For β m , we rescale them accordingly to ensure domain proportions and quality thresholds remain within a reasonable range. Using this process, we generate 3,000 sets of parameters θ i and then sample with QuaDMix from our training data, producing 3,000 proxy datasets, denoting as D i . Proxy Model Training Next we train the proxy models on each proxy datasets from scratch.</p><formula xml:id="formula_4">f * i = arg min f L(f, D i )</formula><p>After training, we evaluate the proxy models by calculating the loss on the target evaluation datasets.</p><formula xml:id="formula_5">L i = L(f * i , D eval )</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Parameter Optimizing</head><p>Regression Model Fitting The next step is to determine the correlation between the sampled QuaD-Mix parameters and model performance. We formulate this as a regression problem, as proposed in <ref type="bibr" target="#b28">(Liu et al., 2024)</ref>, with the goal of learning a function that predicts the target value based on the input features. Specifically, we optimize a regressor R with</p><formula xml:id="formula_6">R * = arg min R i ||R(θ i ) -L i || 2</formula><p>We evaluate different types of regressors and select LightGBM <ref type="bibr" target="#b23">(Ke et al., 2017)</ref>, which ensembles multiple decision trees, to predict the target value. Optimal Parameter Estimation Once the regressor is trained, we search the input space to find the optimal parameters that minimize the predicted loss. Rather than performing a random search across the entire space, we sample 100,000 data points using the algorithm outlined in Section 3.2 to mitigate the influence of outliers on the regressor. To further reduce the variance in the regression predictions, we sort the data points based on their predicted target values and calculate the average of the top 10 data points to determine the final output.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">Large-scale Model Experiments</head><p>We then use the optimal parameters to generate large-scale datasets for training large-scale models. In practice, since sorting the quality scores across the entire dataset is computationally expensive, we estimate the quality percentile by randomly selecting a subset of 10,000 documents. Within this subset, we calculate the mapping between the quality percentile and quality score, and then apply this mapping to the entire dataset.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Experiments on Regression Model</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Experiment Setup</head><p>Datasets We conduct our experiment on Refined-Web <ref type="bibr" target="#b35">(Penedo et al., 2023)</ref>. It is an English largescale dataset for the pretraining of large language models and consists of over 570B(billion) tokens. For the small proxy datasets, we sample it from a subset of RefinedWeb, each containing 1B tokens. Feature Extraction We generate the necessary data features including data quality and domain index with 3 individual quality filters, AskLLM <ref type="bibr" target="#b39">(Sachdeva et al., 2024)</ref>, Fineweb-Edu <ref type="bibr" target="#b34">(Penedo et al., 2024)</ref>, DCLM <ref type="bibr" target="#b26">(Li et al., 2024)</ref> and 1 domain classifier <ref type="bibr">(Jennings et al.)</ref>, which classify the data into 26 different domains with a Deberta V3 <ref type="bibr" target="#b15">(He et al., 2023)</ref> architecture.</p><p>Training and evaluation For the proxy models, we train them on the proxy datasets for 1B tokens, taking 1 NVIDIA H100 GPU hour and calculate the loss on the validation datasets.  (Teknium, 2023). As demonstrated in <ref type="bibr" target="#b26">(Li et al., 2024)</ref>, this dataset is used to train a robust quality filter. To improve efficiency, we sampled 10k samples from it to form a validation subset, named openhermes-10k. Additionally, we test on the training data from the downstream tasks including Hel-laSwag, ARC-E, ARC-C, MMLU, and TriviaQA to demonstrate the model's ability to optimize for specific downstream tasks by altering the target evaluation datasets.</p><p>For the regression model, we split the data into 2800/200 for training and validation. We use Mean Absolute Error (MAE) as the evaluation metric, which calculates the average absolute differences between predicted and actual values.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Results</head><p>We show the results of regression models in Figure <ref type="figure" target="#fig_1">3</ref>. The left figure shows strong correlation between the predicted loss and the real model loss (evaluated on OpenHermes) on the validation set, providing the evidence that there exists statistical pattern between the QuaDMix parameters and the model per-formance. We compare three regression models in the right figure. We can see LightGBM yields better accuracy in predicting the model performance than SVR <ref type="bibr" target="#b7">(Drucker et al., 1996)</ref> with Linear kernel and RBF kernel. Also, with larger training size, the accuracy keeps increasing. Considering the training budget, we conduct 3000 proxy experiments in total to get a better results.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Experiments on Language Model</head><p>In this section we compare different methods of data selection and mixture with QuaDMix by training language models from scratch and evaluating on various downstream tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">Experiment Setup</head><p>Training and evaluation We train the language model with 530M parameters from scratch for 500B tokens, taking 32 NVIDIA GPU for 3 days. We use transformer architecture <ref type="bibr" target="#b48">(Vaswani et al., 2017)</ref>, SwiGLU <ref type="bibr" target="#b41">(Shazeer, 2020)</ref> as the activation function and RoPE embeddings <ref type="bibr" target="#b43">(Su et al., 2024)</ref>. Then we evaluate the model performance using lm-eval-harness <ref type="bibr" target="#b15">(Gao et al., 2023)</ref>. We choose 9 downstream tasks, including 3 commonsense reasoning tasks (PIQA <ref type="bibr" target="#b2">(Bisk et al., 2019)</ref>, HellaSwag <ref type="bibr" target="#b56">(Zellers et al., 2019)</ref>, OpenBookQA <ref type="bibr" target="#b31">(Mihaylov et al., 2018)</ref>), 3 reading comprehension tasks (ARC-E/C <ref type="bibr" target="#b6">(Clark et al., 2018)</ref>, Triviaqa <ref type="bibr" target="#b20">(Joshi et al., 2017)</ref>), 1 math problem solving task (SVAMP <ref type="bibr" target="#b33">(Patel et al., 2021)</ref>) and 2 knowledge intensive tasks (MMLU <ref type="bibr" target="#b16">(Hendrycks et al., 2021)</ref>, <ref type="bibr">NQ-open (Kwiatkowski et al., 2019;</ref><ref type="bibr" target="#b25">Lee et al., 2019)</ref>). For each benchmark, we used normalized accuracy as the evaluation metric. Some modifications on the testing logic are applied for numerical stability.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Data Selection Methods</head><p>We generate the training data from the RefinedWeb dataset using following data selection methods.</p><p>• Random Selection: Documents are randomly selected from the whole dataset.</p><p>• Fineweb-edu Classifier: Documents are scored with Fineweb-edu Classifier <ref type="bibr" target="#b34">(Penedo et al., 2024)</ref> with top-k selection • AskLLM: Documents are scored with the probability of generating "Yes" from a prompted large language model <ref type="bibr" target="#b39">(Sachdeva et al., 2024)</ref>. The top-k documents are selected.</p><p>• DCLM: Documents are scored with fasttext based classifier <ref type="bibr" target="#b26">(Li et al., 2024)</ref> with top-k selection.</p><p>• Criteria Mix: Following <ref type="bibr" target="#b51">(Wettig et al., 2024)</ref>, the selected data from the above three filters are merged, with duplicated documents removed.</p><p>• DSIR: Documents are sampled based on the importance calculated with the N-gram features (Xie et al., 2023b).</p><p>• RegMix: Following <ref type="bibr" target="#b28">(Liu et al., 2024)</ref>, we conduct 512 1M porxy experiments and randomly select data using the optimized data mixtures.</p><p>• QuaDMix-OH: Documents are sampled with the proposed QuaDMix, where Openhermes is used as the validation set for the proxy experiments • QuaDMix-BMK: Documents are sampled with the proposed QuaDMix, where the training set of 5 downstream tasks (HellaSwag, ARC-E, ARC-C, MMLU, TriviaQA) are used as the validation set to generate the optimal QuaDMix parameters.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">Results</head><p>The results are summerized in Table <ref type="table" target="#tab_0">1</ref>. We can see that QuaDMix outperforms the methods focusing only on data quality or data mixture on all the benchmarks, proving the necessity of jointly considering quality and diversity. It also shows that the proxy model experiments can well indicate the performance on large scale model. With loss of the benchmark training set as the target when training the regression model, the results further boost. This prove the ability of QuaDMix of optimizing for specific downstream tasks by choosing evaluation datasets in proxy experiments which are more related to the downstream tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Analysis of optimal QuaDMix parameters</head><p>We show the optimal data mixtures and merging parameters of quality filters from QuaDMix-BMK in   </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Ablations</head><p>Quality Merging Benefits Selection To prove the necessity of quality score merging, we select different combinations of quality filters by manually setting the weight of certain filters to 0 when finding the optimal QuaDMix parameters. As shown in Table <ref type="table" target="#tab_1">2</ref>, merging with all three quality filters shows the best performance. Although using one quality filter can be optimal for one specific task, for example DCLM-only for MATH, the merging process reduces intrinsic bias within the quality filters and outperforms in general ability, which is essential for language model pretraining.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>More Tokens not always good</head><p>We also experiment with selecting more tokens by loosing the sampling parameter ω in QuaDMix. In that way we introduce more diversed tokens but lower quality into the training. The results in Table <ref type="table" target="#tab_1">2</ref> show that selecting 30B tokens, i.e. documents with top5% quality yields the best result, meaning that curing data quality contributes more than increasing the number of unique tokens within this range. Proxy Ability of Small Models How well the prediction loss on proxy models forecasts the performance on large-scale models is the key factor of QuaDMix. To study this, we train 5 separate regression models, each using the loss on training set of one benchmark as the target. The results on the validation set are shown as blue points in Figure <ref type="figure" target="#fig_3">5</ref>. We notice that HellaSwag has larger variance than others, which indicates there may be more influencing factors related with HellaSwag, making the loss on it harder to predict. Then we predict the loss for optimal parameters from QuaDMix-OH and QuaDMix-BMK using each regression model as shown in Figure <ref type="figure" target="#fig_3">5</ref>. It is reasonable to see the loss of QuaDMix-BMK surpasses QuaDMix-OH on all tasks since QuaDMix-BMK utilizes benchmark training set as optimizing target. Finally we report the performance of large model in Table <ref type="table" target="#tab_2">3</ref>. Except for HellaSwag, QuaDMix-BMK outperforms QuaDMix-OH on other tasks, which agrees with the trend on prediction loss. The inconsistent conclusion on HellaSwag is because the predict loss has larger variance as mentioned above, making the proxy ability lower than other tasks. How to further increase the proxy ability is one of the future direction to explore.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7">Conclusion</head><p>In this paper, we propose a novel data selection method QuaDMix that jointly optimizes the data quality and diversity for language model pretraining. We design a parameterized space that controls both the data quality and diversity, and conduct proxy experiments to find the correlation between the parameter and model performance. The training data generated with optimal parameters are proved to outperform others on various downstream tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8">Limitations</head><p>We note several limitations of our work. There exist improvement space for the design of parameter space of QuaDMix. For example the parameters of sampling function may generate similar functions under different parameters, which will cause redundancy and introduce uncertainty into the regression model. Secondly, the searching in the parameter space for optimal parameters is inefficient. We use random guessing in a space with 200 more dimensions, for certain the current optimal parameter is a local minimum and how to effectively search in the parameter space remains unclear. Finally, the proxy ability of small models is crucial, what is the systematic way to improve it is an important yet less explored topic. However, QuaDMix provides a useful solution for jointly optimize for data quality and diversity, and it worth continually exploring on the limitations mentioned above.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: The distribution change of data selected with Fineweb-edu Classifier. With the top5% documents selected, the ratio of certain domains including Health, Jobs and Education, increases for a large margin compared with original data</figDesc><graphic coords="2,77.95,70.87,204.08,132.45" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 3 :</head><label>3</label><figDesc>Figure 3: Left: The prediction model loss vs real model loss. Right: The regression model performance (MAE) vs training size.</figDesc><graphic coords="6,51.78,269.49,268.27,134.14" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 4 :</head><label>4</label><figDesc>Figure 4: The visualization of optimal parameters from QuaDMix-BMK</figDesc><graphic coords="7,92.18,273.71,204.08,122.45" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 5 :</head><label>5</label><figDesc>Figure 5: The prediction loss of QuaDMix-BMK surpasses QuaDMix-OH on all 5 downstream tasks.</figDesc><graphic coords="8,70.87,70.86,453.50,107.19" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 4 .</head><label>4</label><figDesc>Figure4. We see that the Health and Science domain are upsampled for large margin, while Sports and Computers downsampled, indicating that the downstream tasks we choose have preference for specific domains. The right figure shows that the DCLM quality filter contributes most to the merged quality score, while AskLLM only occupies a small weight among the three filters.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>To construct the validation datasets, we sample from the instruction-formatted dataset OpenHermes 2.5 QuaDMix outperforms the methods focusing only on data quality or data mixture. With benchmark training set as the target, the results further boost.</figDesc><table><row><cell></cell><cell>Selected</cell><cell>Reading</cell><cell>Commonsense</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Methods</cell><cell>Token</cell><cell>Comprehension</cell><cell>Reasoning</cell><cell cols="3">Knowledge Math Average</cell></row><row><cell>Random Selection</cell><cell>500B</cell><cell>32.9</cell><cell>51.6</cell><cell>17.4</cell><cell>2.8</cell><cell>32.3</cell></row><row><cell>DSIR</cell><cell>72B</cell><cell>34.9</cell><cell>49.2</cell><cell>17.5</cell><cell>6.9</cell><cell>32.7</cell></row><row><cell>RegMix</cell><cell>500B</cell><cell>35.5</cell><cell>52.4</cell><cell>17.7</cell><cell>3.5</cell><cell>33.6</cell></row><row><cell>Fineweb-edu</cell><cell>30B</cell><cell>41.4</cell><cell>55.5</cell><cell>20.1</cell><cell>6.0</cell><cell>37.4</cell></row><row><cell>AskLLM</cell><cell>30B</cell><cell>38.9</cell><cell>54.2</cell><cell>19.0</cell><cell>2.3</cell><cell>35.5</cell></row><row><cell>DCLM</cell><cell>30B</cell><cell>41.2</cell><cell>53.1</cell><cell>19.8</cell><cell>8.2</cell><cell>36.7</cell></row><row><cell>Criteria Mix</cell><cell>74B</cell><cell>40.1</cell><cell>53.7</cell><cell>20.0</cell><cell>3.1</cell><cell>36.0</cell></row><row><cell>QuaDMix-OH</cell><cell>30B</cell><cell>44.0</cell><cell>55.7</cell><cell>21.0</cell><cell>10.2</cell><cell>39.0</cell></row><row><cell>QuaDMix-BMK</cell><cell>30B</cell><cell>44.8</cell><cell>55.7</cell><cell>21.3</cell><cell>11.5</cell><cell>39.5</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 :</head><label>2</label><figDesc>QuaDMix-OH with different settings on quality filters (AskLLM (A), Fineweb-edu (F), DCLM (D)) and selected tokens.</figDesc><table><row><cell></cell><cell></cell><cell>Selected</cell><cell>Reading</cell><cell>Commonsense</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">A F D</cell><cell>Token</cell><cell>Comprehension</cell><cell>Reasoning</cell><cell cols="3">Knowledge Math Average</cell></row><row><cell>✓</cell><cell></cell><cell>30B</cell><cell>38.9</cell><cell>53.5</cell><cell>18.6</cell><cell>2.9</cell><cell>35.2</cell></row><row><cell>✓</cell><cell></cell><cell>30B</cell><cell>41.4</cell><cell>55.5</cell><cell>20.1</cell><cell>6.0</cell><cell>37.4</cell></row><row><cell></cell><cell>✓</cell><cell>30B</cell><cell>41.3</cell><cell>53.4</cell><cell>19.7</cell><cell>12.2</cell><cell>37.3</cell></row><row><cell>✓ ✓</cell><cell></cell><cell>30B</cell><cell>41.9</cell><cell>55.6</cell><cell>20.0</cell><cell>5.1</cell><cell>37.5</cell></row><row><cell>✓</cell><cell>✓</cell><cell>30B</cell><cell>41.8</cell><cell>54.6</cell><cell>19.8</cell><cell>9.1</cell><cell>37.5</cell></row><row><cell cols="2">✓ ✓</cell><cell>30B</cell><cell>43.5</cell><cell>55.6</cell><cell>20.8</cell><cell>9.6</cell><cell>38.7</cell></row><row><cell cols="2">✓ ✓ ✓</cell><cell>90B</cell><cell>40.7</cell><cell>55.2</cell><cell>19.5</cell><cell>4.6</cell><cell>36.8</cell></row><row><cell cols="2">✓ ✓ ✓</cell><cell>180B</cell><cell>37.8</cell><cell>53.9</cell><cell>18.9</cell><cell>2.8</cell><cell>35.1</cell></row><row><cell cols="2">✓ ✓ ✓</cell><cell>30B</cell><cell>44.0</cell><cell>55.7</cell><cell>21.0</cell><cell>10.2</cell><cell>39.0</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 :</head><label>3</label><figDesc>QuaDMix-OH vs QuaDMix-BMK on 5 downstream tasks. The trend mostly agree with the prediction loss on proxy model except for HellaSwag.</figDesc><table><row><cell>Method</cell><cell cols="5">HellaSwag ARC-C ARC-E MMLU TriviaQA</cell></row><row><cell>QuaDMix-OH</cell><cell>56.5</cell><cell>39.2</cell><cell>71.1</cell><cell>34.1</cell><cell>21.6</cell></row><row><cell>QuaDMix-BMK</cell><cell>56.1</cell><cell>40.2</cell><cell>71.3</cell><cell>34.4</cell><cell>22.8</cell></row></table></figure>
+		</body>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title level="m" type="main">Semdedup: Dataefficient learning at web-scale through semantic deduplication</title>
+		<author>
+			<persName><forename type="first">Amro</forename><surname>Abbas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kushal</forename><surname>Tirumala</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dániel</forename><surname>Simig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Surya</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ari</forename><forename type="middle">S</forename><surname>Morcos</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.09540</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title level="m" type="main">Multi-agent collaborative data selection for efficient llm pretraining</title>
+		<author>
+			<persName><forename type="first">Tianyi</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ling</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhen</forename><surname>Hao Wong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiahui</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinlin</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lijun</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiantao</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wentao</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Binhang</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Conghui</forename><surname>He</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.08102</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Piqa: Reasoning about physical commonsense in natural language</title>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Bisk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rowan</forename><surname>Zellers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Ronan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Choi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">AAAI Conference on Artificial Intelligence</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Language models are fewshot learners</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melanie</forename><surname>Subbiah</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="1877" to="1901" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Instruction pretraining: Language models are supervised multitask learners</title>
+		<author>
+			<persName><forename type="first">Daixuan</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxian</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shaohan</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junyu</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minlie</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Furu</forename><surname>Wei</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2024.emnlp-main.148</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2024 Conference on Empirical Methods in Natural Language Processing<address><addrLine>Miami, Florida, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="2529" to="2550" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Palm: Scaling language modeling with pathways</title>
+		<author>
+			<persName><forename type="first">Aakanksha</forename><surname>Chowdhery</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaurav</forename><surname>Mishra</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Machine Learning Research</title>
+		<imprint>
+			<biblScope unit="volume">24</biblScope>
+			<biblScope unit="issue">240</biblScope>
+			<biblScope unit="page" from="1" to="113" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">Think you have solved question answering? try arc, the ai2 reasoning challenge</title>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Isaac</forename><surname>Cowhey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oren</forename><surname>Etzioni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tushar</forename><surname>Khot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Sabharwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carissa</forename><surname>Schoenick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1803.05457</idno>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Support vector regression machines</title>
+		<author>
+			<persName><forename type="first">Harris</forename><surname>Drucker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">C</forename><surname>Christopher</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Linda</forename><surname>Burges</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Kaufman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Smola</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Vapnik</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<publisher>MIT Press</publisher>
+			<date type="published" when="1996">1996</date>
+			<biblScope unit="volume">9</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">GLaM: Efficient scaling of language models with mixtureof-experts</title>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanping</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><forename type="middle">M</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dmitry</forename><surname>Lepikhin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhong</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxim</forename><surname>Krikun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adams</forename><forename type="middle">Wei</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Orhan</forename><surname>Firat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Barret</forename><surname>Zoph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liam</forename><surname>Fedus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Maarten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zongwei</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tao</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emma</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kellie</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie</forename><surname>Webster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Pellat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kathleen</forename><surname>Robinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Toju</forename><surname>Meier-Hellstern</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucas</forename><surname>Duke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kun</forename><surname>Dixon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quoc</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonghui</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhifeng</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Claire</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Cui</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 39th International Conference on Machine Learning</title>
+		<meeting>the 39th International Conference on Machine Learning</meeting>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">162</biblScope>
+			<biblScope unit="page" from="5547" to="5569" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Doge: Domain reweighting with generalization estimation</title>
+		<author>
+			<persName><forename type="first">Simin</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matteo</forename><surname>Pagliardini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Jaggi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.15393</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sid</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurence</forename><surname>Golding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Travis</forename><surname>Hoppe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Foster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Phang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Horace</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anish</forename><surname>Thite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noa</forename><surname>Nabeshima</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shawn</forename><surname>Presser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Connor</forename><surname>Leahy</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2101.00027</idno>
+		<title level="m">The pile: An 800gb dataset of diverse text for language modeling</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Tow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Baber Abbasi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sid</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anthony</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Dipofi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurence</forename><surname>Foster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Golding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alain</forename><surname>Hsu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haonan</forename><surname>Le Noac'h</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Mcdonell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Ociepa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laria</forename><surname>Phang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hailey</forename><surname>Reynolds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aviya</forename><surname>Schoelkopf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lintang</forename><surname>Skowron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Sutawika</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Tang</surname></persName>
+		</author>
+		<idno type="DOI">10.5281/zenodo.10256836</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Anish Thite</title>
+		<imprint/>
+	</monogr>
+	<note>and Andy Zou. 2023. A framework for few-shot language model evaluation</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Bimix: Bivariate data mixing law for language model pretraining</title>
+		<author>
+			<persName><forename type="first">Ce</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhijian</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daoyuan</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yaliang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Ding</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.14908</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Data selection via optimal control for language models</title>
+		<author>
+			<persName><forename type="first">Yuxian</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongning</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yaru</forename><surname>Hao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qingxiu</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Furu</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minlie</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.07064</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">Textbooks are all you need</title>
+		<author>
+			<persName><forename type="first">Suriya</forename><surname>Gunasekar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jyoti</forename><surname>Aneja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caio</forename><surname>César</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teodoro</forename><surname>Mendes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allie</forename><surname>Del Giorno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sivakanth</forename><surname>Gopi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mojan</forename><surname>Javaheripi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piero</forename><surname>Kauffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gustavo</forename><surname>De Rosa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Olli</forename><surname>Saarikivi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.11644</idno>
+		<editor>Adil Salim, Shital Shah, Harkirat Singh Behl, Xin Wang, Sébastien Bubeck, Ronen Eldan, Adam Tauman Kalai, Yin Tat Lee, and Yuanzhi Li</editor>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m" type="main">Debertav3: Improving deberta using electra-style pretraining with gradient-disentangled embedding sharing</title>
+		<author>
+			<persName><forename type="first">Pengcheng</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weizhu</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2111.09543</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<title level="m" type="main">Measuring massive multitask language understanding</title>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Hendrycks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Collin</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Steven</forename><surname>Basart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Zou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mantas</forename><surname>Mazeika</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note>In ICLR. OpenReview.net</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<title level="m" type="main">Scaling laws and interpretability of learning from repeated data</title>
+		<author>
+			<persName><forename type="first">Danny</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Conerly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nova</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sheer</forename><surname>El-Showk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nelson</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zac</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tristan</forename><surname>Hume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Johnston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Catherine</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2205.10487</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">An empirical analysis of compute-optimal large language model training</title>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hennigan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Noland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">George</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bogdan</forename><surname>Van Den Driessche</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelia</forename><surname>Damoc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Guy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karén</forename><surname>Osindero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erich</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oriol</forename><surname>Elsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Rae</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sifre</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="30016" to="30030" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Joseph</forename><surname>Jennings</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mostofa</forename><surname>Patwary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandeep</forename><surname>Subramanian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shrimai</forename><surname>Prabhumoye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ayush</forename><surname>Dattagupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vibhu</forename><surname>Jawa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiwei</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sarah</forename><surname>Yurick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Varun</forename><surname>Singh</surname></persName>
+		</author>
+		<imprint>
+			<pubPlace>NeMo-Curator</pubPlace>
+		</imprint>
+	</monogr>
+	<note>a toolkit for data curation</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title level="a" type="main">TriviaQA: A large scale distantly supervised challenge dataset for reading comprehension</title>
+		<author>
+			<persName><forename type="first">Mandar</forename><surname>Joshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eunsol</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Weld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P17-1147</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 55th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Vancouver, Canada. Association for Computational Linguistics</publisher>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="1601" to="1611" />
+		</imprint>
+	</monogr>
+	<note>Long Papers)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Autoscale: Automatic prediction of compute-optimal data composition for training llms</title>
+		<author>
+			<persName><forename type="first">Feiyang</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifan</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bingbing</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Si</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafid</forename><surname>Mahmood</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruoxi</forename><surname>Jia</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.20177</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Scaling laws for neural language models</title>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Chess</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2001.08361</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Natural questions: A benchmark for question answering research</title>
+		<author>
+			<persName><forename type="first">Guolin</forename><surname>Ke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qi</forename><surname>Meng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Finley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Taifeng</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weidong</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qiwei</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tie-Yan</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="DOI">10.1162/tacl_a_00276</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<editor>
+			<persName><forename type="first">Tom</forename><surname>Kwiatkowski</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Jennimaria</forename><surname>Palomaki</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Olivia</forename><surname>Redfield</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Michael</forename><surname>Collins</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ankur</forename><surname>Parikh</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Chris</forename><surname>Alberti</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Danielle</forename><surname>Epstein</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Kenton</forename><surname>Lee</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Kristina</forename><surname>Toutanova</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Matthew</forename><surname>Kelcey</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ming-Wei</forename><surname>Chang</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Andrew</forename><forename type="middle">M</forename><surname>Dai</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Quoc</forename><surname>Le</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Slav</forename><surname>Petrov</surname></persName>
+		</editor>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<date type="published" when="2017">2017. 2019</date>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="page" from="452" to="466" />
+		</imprint>
+	</monogr>
+	<note>Lightgbm: A highly efficient gradient boosting decision tree</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">The bigscience roots corpus: A 1.6tb composite multilingual dataset</title>
+		<author>
+			<persName><forename type="first">Lucile</forename><surname>Hugo Laurençon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Saulnier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Albert</forename><surname>Akiki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teven</forename><surname>Villanova Del Moral</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenghao</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eduardo</forename><forename type="middle">González</forename><surname>Mou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huu</forename><surname>Ponferrada</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jörg</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mario</forename><surname>Frohberg</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Šaško</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="31809" to="31826" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">Latent retrieval for weakly supervised open domain question answering</title>
+		<author>
+			<persName><forename type="first">Kenton</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming-Wei</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kristina</forename><surname>Toutanova</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P19-1612</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 57th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Florence, Italy</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="6086" to="6096" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title level="m" type="main">Datacomp-lm: In search of the next generation of training sets for language models</title>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Georgios</forename><surname>Smyrnis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maor</forename><surname>Ivgi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matt</forename><surname>Jordan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Samir</forename><surname>Gadre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hritik</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Etash</forename><surname>Guha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sedrick</forename><surname>Keh</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.11794</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<title level="m" type="main">Rho-1: Not all tokens are what you need</title>
+		<author>
+			<persName><forename type="first">Zhenghao</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhibin</forename><surname>Gou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yeyun</forename><surname>Gong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yelong</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruochen</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chen</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yujiu</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jian</forename><surname>Jiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weizhu</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.07965</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<author>
+			<persName><forename type="first">Qian</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaosen</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guangtao</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Longxu</forename><surname>Dou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyu</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jing</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Min</forename><surname>Lin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.01492</idno>
+		<title level="m">Regmix: Data mixture as regression for language model pre-training</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">A pretrainer&apos;s guide to training data: Measuring the effects of data age, domain coverage, quality, &amp; toxicity</title>
+		<author>
+			<persName><forename type="first">Shayne</forename><surname>Longpre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gregory</forename><surname>Yauney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emily</forename><surname>Reif</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Barret</forename><surname>Zoph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Denny</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Robinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Mimno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Ippolito</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2024.naacl-long.179</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<meeting>the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies<address><addrLine>Mexico City, Mexico</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="3245" to="3276" />
+		</imprint>
+	</monogr>
+	<note>Long Papers) Association for Computational Linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">When less is more: Investigating data pruning for pretraining llms at scale</title>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Marion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmet</forename><surname>Üstün</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luiza</forename><surname>Pozzobon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marzieh</forename><surname>Fadaee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sara</forename><surname>Hooker</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.04564</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Can a suit of armor conduct elec-tricity? a new dataset for open book question answering</title>
+		<author>
+			<persName><forename type="first">Todor</forename><surname>Mihaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tushar</forename><surname>Khot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Sabharwal</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D18-1260</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2018 Conference on Empirical Methods in Natural Language Processing<address><addrLine>Brussels, Belgium</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="2381" to="2391" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Scaling data-constrained language models</title>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Rush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Boaz</forename><surname>Barak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teven</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nouamane</forename><surname>Tazi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aleksandra</forename><surname>Piktus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sampo</forename><surname>Pyysalo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><forename type="middle">A</forename><surname>Raffel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="50358" to="50376" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Are NLP models really able to solve simple math word problems?</title>
+		<author>
+			<persName><forename type="first">Arkil</forename><surname>Patel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Satwik</forename><surname>Bhattamishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Navin</forename><surname>Goyal</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.naacl-main.168</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<meeting>the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="2080" to="2094" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<title level="m" type="main">The fineweb datasets: Decanting the web for the finest text data at scale</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hynek</forename><surname>Kydlíček</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Loubna</forename><surname>Ben Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.17557</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">The refinedweb dataset for falcon llm: Outperforming curated corpora with web data only</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Malartic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Hesslow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruxandra</forename><surname>Cojocaru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamza</forename><surname>Alobeidli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Pannier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ebtesam</forename><surname>Almazrouei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Launay</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="79155" to="79172" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<title level="m" type="main">D-cpt law: Domain-specific continual pre-training scaling law for large language models</title>
+		<author>
+			<persName><forename type="first">Haoran</forename><surname>Que</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaheng</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ge</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenchen</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xingwei</forename><surname>Qu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yinghao</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Feiyu</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhiqi</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiakai</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanxing</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenbo</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiamang</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lin</forename><surname>Qu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bo</forename><surname>Zheng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.01375</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jack</forename><forename type="middle">W</forename><surname>Rae</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katie</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francis</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Aslanides</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sarah</forename><surname>Henderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roman</forename><surname>Ring</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Susannah</forename><surname>Young</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Hennigan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Menick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Albin</forename><surname>Cassirer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Powell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">George</forename><surname>Van Den Driessche</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maribeth</forename><surname>Rauh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amelia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumanth</forename><surname>Dathathri</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2112.11446</idno>
+		<title level="m">Scaling language models: Methods, analysis &amp; insights from training gopher</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title level="a" type="main">Exploring the limits of transfer learning with a unified text-to-text transformer</title>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Matena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><forename type="middle">J</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Machine Learning Research</title>
+		<imprint>
+			<biblScope unit="volume">21</biblScope>
+			<biblScope unit="issue">140</biblScope>
+			<biblScope unit="page" from="1" to="67" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<title level="m" type="main">How to train data-efficient llms</title>
+		<author>
+			<persName><forename type="first">Noveen</forename><surname>Sachdeva</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Coleman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wang-Cheng</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianmo</forename><surname>Ni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lichan</forename><surname>Hong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ed</forename><forename type="middle">H</forename><surname>Chi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Caverlee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julian</forename><surname>Mcauley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Derek</forename><forename type="middle">Zhiyuan</forename><surname>Cheng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.09668</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Balanced data sampling for language model training with clustering</title>
+		<author>
+			<persName><forename type="first">Yunfan</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Linyang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhaoye</forename><surname>Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hang</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dahua</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xipeng</forename><surname>Qiu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.14526</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<monogr>
+		<title level="m" type="main">Glu variants improve transformer</title>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2002.05202</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Dolma: an open corpus of three trillion tokens for language model pretraining research</title>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rodney</forename><surname>Kinney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akshita</forename><surname>Bhagia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Schwenk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Atkinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Russell</forename><surname>Authur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Bogin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Khyathi</forename><surname>Chandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jennifer</forename><surname>Dumas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentin</forename><surname>Hofmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ananya</forename><surname>Jha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sachin</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Lucy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinxi</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathan</forename><surname>Lambert</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2024.acl-long.840</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 62nd Annual Meeting of the Association for Computational Linguistics<address><addrLine>Bangkok, Thailand</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="15725" to="15788" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<analytic>
+		<title level="a" type="main">Roformer: Enhanced transformer with rotary position embedding</title>
+		<author>
+			<persName><forename type="first">Jianlin</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Murtadha</forename><surname>Ahmed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shengfeng</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wen</forename><surname>Bo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunfeng</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="DOI">10.1016/j.neucom.2023.127063</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Neurocomputing</title>
+		<imprint>
+			<biblScope unit="volume">568</biblScope>
+			<biblScope unit="page">127063</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<title level="m" type="main">Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants</title>
+		<author>
+			<persName><surname>Teknium</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note>In huggingface</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<monogr>
+		<title level="m" type="main">Improving pretraining data using perplexity correlations</title>
+		<author>
+			<persName><forename type="first">Tristan</forename><surname>Thrush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Potts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.05816</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<monogr>
+		<title level="m" type="main">Improving llm pretraining via document de-duplication and diversification</title>
+		<author>
+			<persName><forename type="first">Kushal</forename><surname>Tirumala</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Simig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Armen</forename><surname>Aghajanyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ari</forename><forename type="middle">S</forename><surname>Morcos</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2308.12284</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">4</biblScope>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<monogr>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibaut</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gautier</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hambro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Faisal</forename><surname>Azhar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelien</forename><surname>Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Lample</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.13971</idno>
+		<title level="m">Llama: Open and efficient foundation language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niki</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ł Ukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="volume">30</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<monogr>
+		<author>
+			<persName><forename type="first">Maurice</forename><surname>Weber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Anthony</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Oren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Alexandrov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhong</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huu</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhe</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Virginia</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Athiwaratkun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rahul</forename><surname>Chalamala</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kezhen</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Ryabinin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tri</forename><surname>Dao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Ré</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Irina</forename><surname>Rish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ce</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2411.12372</idno>
+		<title level="m">Redpajama: an open dataset for training large language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<analytic>
+		<title level="a" type="main">CCNet: Extracting high quality monolingual datasets from web crawl data</title>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Wenzek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexis</forename><surname>Conneau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vishrav</forename><surname>Chaudhary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francisco</forename><surname>Guzmán</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Twelfth Language Resources and Evaluation Conference</title>
+		<meeting>the Twelfth Language Resources and Evaluation Conference<address><addrLine>Marseille, France</addrLine></address></meeting>
+		<imprint>
+			<publisher>European Language Resources Association</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="4003" to="4012" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<monogr>
+		<title level="m" type="main">Qurating: Selecting highquality data for training language models</title>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Wettig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aatmik</forename><surname>Gupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saumya</forename><surname>Malik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danqi</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.09739</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<analytic>
+		<title level="a" type="main">Doremi: Optimizing data mixtures speeds up language model pretraining</title>
+		<author>
+			<persName><forename type="first">Sang</forename><surname>Michael Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hieu</forename><surname>Pham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuanyi</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanxiao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifeng</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><forename type="middle">S</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Quoc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tengyu</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adams</forename><forename type="middle">Wei</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Yu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">2023</biblScope>
+			<biblScope unit="page" from="69798" to="69818" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<analytic>
+		<title level="a" type="main">2023b. Data selection for language models via importance resampling</title>
+		<author>
+			<persName><forename type="first">Sang</forename><surname>Michael Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shibani</forename><surname>Santurkar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tengyu</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><forename type="middle">S</forename><surname>Liang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="34201" to="34227" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b54">
+	<monogr>
+		<title level="m" type="main">Data mixing laws: Optimizing data mixtures by predicting language modeling performance</title>
+		<author>
+			<persName><forename type="first">Jiasheng</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peiju</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianxiang</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunhua</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Zhan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xipeng</forename><surname>Qiu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.16952</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b55">
+	<monogr>
+		<title level="m" type="main">Mates: Model-aware data selection for efficient pretraining with data influence models</title>
+		<author>
+			<persName><forename type="first">Zichun</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Spandan</forename><surname>Das</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenyan</forename><surname>Xiong</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.06046</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b56">
+	<analytic>
+		<title level="a" type="main">HellaSwag: Can a machine really finish your sentence?</title>
+		<author>
+			<persName><forename type="first">Rowan</forename><surname>Zellers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ari</forename><surname>Holtzman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Bisk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Farhadi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P19-1472</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 57th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Florence, Italy</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="4791" to="4800" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

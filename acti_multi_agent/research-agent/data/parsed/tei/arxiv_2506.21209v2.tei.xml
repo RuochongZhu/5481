@@ -1,0 +1,1679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">BitMark: Watermarking Bitwise Autoregressive Image Generative Models</title>
+				<funder ref="#_dQ9aTBT">
+					<orgName type="full">German Research Foundation (DFG)</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Louis</forename><surname>Kerner</surname></persName>
+							<email>louis.kerner@cispa.de</email>
+							<affiliation key="aff0">
+								<orgName type="institution">CISPA Helmholtz Center for Information Security</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Michel</forename><surname>Meintz</surname></persName>
+							<email>michel.meintz@cispa.de</email>
+							<affiliation key="aff0">
+								<orgName type="institution">CISPA Helmholtz Center for Information Security</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Bihe</forename><surname>Zhao</surname></persName>
+							<email>bihe.zhao@cispa.de</email>
+							<affiliation key="aff0">
+								<orgName type="institution">CISPA Helmholtz Center for Information Security</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Franziska</forename><surname>Boenisch</surname></persName>
+							<email>boenisch@cispa.de</email>
+							<affiliation key="aff0">
+								<orgName type="institution">CISPA Helmholtz Center for Information Security</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Adam</forename><surname>Dziedzic</surname></persName>
+							<email>adam.dziedzic@cispa.de</email>
+							<affiliation key="aff0">
+								<orgName type="institution">CISPA Helmholtz Center for Information Security</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">BitMark: Watermarking Bitwise Autoregressive Image Generative Models</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">061A85A81AAFC64D23ECD8B7F5A7C0C5</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>State-of-the-art text-to-image models generate photorealistic images at an unprecedented speed. This work focuses on models that operate in a bitwise autoregressive manner over a discrete set of tokens that is practically infinite in size. However, their impressive generative power comes with a growing risk: as their outputs increasingly populate the Internet, they are likely to be scraped and reused as training data-potentially by the very same models. This phenomenon has been shown to lead to model collapse, where repeated training on generated content, especially from the models' own previous versions, causes a gradual degradation in performance. A promising mitigation strategy is watermarking, which embeds human-imperceptible yet detectable signals into generated images-enabling the identification of generated content. In this work, we introduce BitMark, a robust bitwise watermarking framework. Our method embeds a watermark directly at the bit level of the token stream during the image generation process. Our bitwise watermark subtly influences the bits to preserve visual fidelity and generation speed while remaining robust against a spectrum of removal techniques. Furthermore, it exhibits high radioactivity, i.e., when watermarked generated images are used to train another image generative model, this second model's outputs will also carry the watermark. The radioactive traces remain detectable even when only fine-tuning diffusion or image autoregressive models on images watermarked with our BitMark. Overall, our approach provides a principled step toward preventing model collapse in image generative models by enabling reliable detection of generated outputs.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>The image generation capabilities of large scale models <ref type="bibr" target="#b7">[8,</ref><ref type="bibr" target="#b10">11,</ref><ref type="bibr" target="#b36">37,</ref><ref type="bibr" target="#b11">12,</ref><ref type="bibr" target="#b22">23,</ref><ref type="bibr" target="#b25">26]</ref> have improved tremendously. These models can now generate at an unprecedented speed high-quality photorealistic outputs, which are often indistinguishable from real images <ref type="bibr" target="#b10">[11,</ref><ref type="bibr" target="#b36">37]</ref>. Several models <ref type="bibr" target="#b10">[11,</ref><ref type="bibr" target="#b36">37]</ref> now achieve state-of-the-art performance by operating in a bitwise autoregressive manner <ref type="bibr" target="#b34">[35,</ref><ref type="bibr" target="#b40">41]</ref>. This provides them with a near infinite number of possible tokens, yielding high-resolution images. This performance, however, comes at the expense of a training process that is highly time-, cost-and most of all data-intensive <ref type="bibr" target="#b24">[25,</ref><ref type="bibr" target="#b28">29]</ref>. The required training data are often scraped from the Internet <ref type="bibr" target="#b12">[13,</ref><ref type="bibr" target="#b23">24,</ref><ref type="bibr" target="#b31">32]</ref>. This practice carries risks: with the ever-growing amount of generated data on the internet, the models get increasingly trained on generated data rather than natural data. The iterative training of models on their own generated data has been shown to degrade performance <ref type="bibr" target="#b0">[1,</ref><ref type="bibr" target="#b32">33]</ref>, which is referred to as model collapse. The process also leads to encoding the current models' mistakes, biases, and unfairnesses into its future versions <ref type="bibr" target="#b39">[40]</ref>. From the perspective of model owners, especially big companies such as OpenAI, Google, or ByteDance, who invest in large scale proprietary models that are exposed via public APIs, this poses a significant threat. To prevent the possible degradation of model quality, it is crucial for them to identify their own generated content.</p><p>A promising way to address the above problems is watermarking <ref type="bibr" target="#b3">[4,</ref><ref type="bibr" target="#b8">9,</ref><ref type="bibr" target="#b9">10,</ref><ref type="bibr" target="#b13">14,</ref><ref type="bibr" target="#b21">22,</ref><ref type="bibr" target="#b37">38,</ref><ref type="bibr" target="#b47">48]</ref>. By embedding human-imperceptible, yet detectable signals into generated images, a model owner can automatically identify and filter out their model's previously generated content when collecting training data for future versions. To prevent model collapse, watermarks should be radioactive <ref type="bibr" target="#b6">[7,</ref><ref type="bibr" target="#b27">28,</ref><ref type="bibr" target="#b30">31]</ref>-that is, they should persist across model lineages, so that models trained on watermarked outputs also reproduce the watermark. This is crucial when third parties fine-tune models on such outputs and use them to generate new content, which may later be scraped and reused by the original model-causing it to (unknowingly) train on data derived from its own outputs. While watermarks have been extensively studied in diffusion models (DMs) <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b9">10,</ref><ref type="bibr" target="#b37">38,</ref><ref type="bibr" target="#b47">48]</ref>, no watermarking methods have been proposed for image autoregressive models such as Infinity, so far. Additionally, existing DM watermarks have been shown to lack radioactiveness <ref type="bibr" target="#b6">[7]</ref>, motivating the need for a new approach.</p><p>To close this gap and provide a robust way of detecting images generated by state-of-the-art autoregressive models operating on bits like Infinity <ref type="bibr" target="#b10">[11]</ref> and Instella <ref type="bibr" target="#b36">[37]</ref>we propose the BitMark watermark that aligns with bitwise image generation process and operates directly on a bit-level. We show that this bit-level design is crucial in image autoregressive models, as watermarks at the token level-a common practice in autoregressive language models <ref type="bibr" target="#b15">[16,</ref><ref type="bibr" target="#b45">46]</ref>-are suboptimal. This is because unlike language models, which operate on discrete tokens and yield stable token representations, image models must decode to and re-encode from a continuous image space, introducing discrepancies between the original and recovered tokens. These discrepancies can decrease the watermark signal. Yet, we find that the discrepancies are substantially smaller at the bit level (Figure <ref type="figure" target="#fig_0">1</ref>), motivating our bitwise approach to obtain a robust watermark. To embed the watermark, BitMark first divides all possible n-bit sequences into green and red lists, where the green list is supposed to contain sequences indicating the presence of the watermark. The embedding process of the watermark aims at completing one of the green-list bit sequences for every next bit by slightly increasing each logit of the preferred bit that would complete the sequence. This eventually causes the generated image to contain more sequences from the green list than natural images, which can be used for detection. Concretely, the detection of the watermark is performed on re-encoded images and based on the count of bit sequences from the green list.</p><p>Our watermark exhibits many desirable properties. Most importantly, the generated images are of similar quality as images generated without the embedded watermark. Moreover, the watermark embedding has a negligible impact on the speed of the image generation. Also, the corresponding watermark detection method is fast and reliable. As in natural images all bit sequences are equally likely to occur while our watermarked images have the bias towards sequences from the green list, natural images are extremely unlikely to be detected as watermarked. Furthermore, working on the bit-level makes BitMark robust against a wide range of attacks, such as adding Gaussian noise or blur to the image, applying color jitter, random crop, or JPEG compression. Our watermark is also highly resilient against dedicated watermark-removal techniques, for example, the watermark in the sand attack <ref type="bibr" target="#b41">[42]</ref> or CtrlRegen <ref type="bibr" target="#b19">[20]</ref>. Finally, we show that BitMark is radioactive. This means that when we use the watermarked images to train or fine-tune other image generative models, our watermark is still present in the outputs from these other models. We demonstrate all these properties through our extensive experimental evaluation.</p><p>In summary we make the following contributions:</p><p>• We propose BitMark-the first watermarking scheme for bitwise image generative models. BitMark leverages the bitwise image generation process of these models to embed the watermark on the level of bits, which preserves the high quality of the models' outputs and its inference speed. We show the success of our method on Infinity and Instella.</p><p>• We thoroughly evaluate BitMark against a wide variety of standard and dedicated watermark removal attacks and show its robustness to all of them. Specifically, BitMark is also resilient to the watermark in the sand attack <ref type="bibr" target="#b41">[42]</ref>, which is targeted at removing the watermarks from the generated content. Finally, BitMark is also robust against a Bit-Flipper attack carefully crafted against it.</p><p>• We also assess BitMark's radioactivity and show that when other image-generative models are trained or fine-tuned on images watermarked with our method, these new models' outputs will also contain our watermark. This makes BitMark highly suitable to identify generated content and contributes to preventing model collapse due to iterative training a model on its generated images.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Background</head><p>We first introduce image autoregressive models, with a focus on the state-of-the-art text-to-image models that operate on bits, namely Infinity and Instellaoperating in an autoregressive manner. We then provide an overview on techniques used to robustly watermark image generative models.</p><p>Visual AutoRegressive Modeling (VAR) <ref type="bibr" target="#b34">[35]</ref>. VAR leverages discrete quantization to predict tokens as residual maps, scaling from an initial low scale (coarse-grain) to a final scale (fine-grain) resolution. VAR further leverages the transformer architecture <ref type="bibr" target="#b35">[36]</ref> across all tokens to significantly improve generation quality. VAR was extended from class-to-image to the Infinity model <ref type="bibr" target="#b10">[11]</ref>, which is a text-to-image autoregressive model for high-resolution image synthesis, using nextscale prediction similar to VAR <ref type="bibr" target="#b34">[35]</ref>. Instead of leveraging index-wise tokens for quantization like VAR <ref type="bibr" target="#b34">[35]</ref>, Infinity uses bitwise token prediction with an implicit codebook and applies binary spherical quantization <ref type="bibr" target="#b46">[47]</ref> to select an entry from the codebook. This results in more efficient computation and further enables the usage of large codebook sizes, e.g., 2 64 . Random bit flipping further empowers the model to self-correct on each scale, leveling out errors stemming from earlier tokens. The visual autoregressive paradigm instantiated by Infinity achieves the state-of-the-art (SOTA) in image generation. Instella <ref type="bibr" target="#b36">[37]</ref> is a token-lightweight next-patch prediction autoregressive model. It efficiently leverages bits to minimize the number of tokens required for generating highresolution images, reducing it to as few as 128 tokens. This bitwise paradigm allows Instella to achieve competitive results in image generation with significantly lower computational resources.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Watermarking Images.</head><p>Watermarking entails embedding a message, pattern, or information into an image, that can be detected. The embedded information should be hard to remove and can be also used to verify the provenance of the image. In general, the watermarking methods can be either static or learning-based. In static watermark embedding, a transform is directly applied to an image <ref type="bibr" target="#b21">[22]</ref>. Learning-based methods are generally based on three key components: a watermark (w), an encoder (E) and a decoder (D). The encoder is trained to embed the watermark into the image, while not impacting its quality and the decoder is trained to reconstruct the watermark given a watermarked image to perform detection. An important aspect of watermarks is the trade-off between their detectability and their impact on the quality of the data, which was thoroughly analyzed in <ref type="bibr" target="#b38">[39]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Watermarking Diffusion Models.</head><p>Learning-based watermarks represent the SOTA for Diffusion Models <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b9">10,</ref><ref type="bibr" target="#b37">38,</ref><ref type="bibr" target="#b47">48]</ref>. They target different points of the image generation process, such as the initial data used to train the model <ref type="bibr" target="#b47">[48]</ref>, noise prediction <ref type="bibr" target="#b9">[10,</ref><ref type="bibr" target="#b37">38]</ref>, or the decoding process <ref type="bibr" target="#b8">[9]</ref>. The Recipe method <ref type="bibr" target="#b47">[48]</ref> embeds a binary signature into training data using a pretrained encoder-decoder and trains an explicit decoder to extract this watermark from outputs. In contrast, Tree-Ring <ref type="bibr" target="#b37">[38]</ref> embeds a structured pattern in the initial noise vector, designed in the Fourier space, achieving robustness to transformations by enabling detection through inversion of the diffusion process. On the other hand, the PRC Watermarking <ref type="bibr" target="#b9">[10]</ref> generates the initial noise vector from a pseudorandom error-correcting code, allowing deterministic reconstruction of the noise for watermark retrieval. Finally, Stable Signature <ref type="bibr" target="#b8">[9]</ref> fine-tunes the latent decoder of latent diffusion models (LDMs) to insert a recoverable watermark using a pretrained extractor, modifying the generation process at the decoding stage. However, the watermarking techniques for diffusion models are not radioactive <ref type="bibr" target="#b6">[7]</ref>, hence, do not prevent the model collapse.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Watermarking Autoregressive Models.</head><p>As of now, all the efforts on watermarking autoregressive models have been directed towards creating watermarks for Large Language Models (LLMs) <ref type="bibr" target="#b15">[16]</ref>. The KGW watermark <ref type="bibr" target="#b15">[16]</ref> uses the concept of a green and red token lists, where generation is softly nudged to predict tokens from the green list rather than from the red list. The lists are generated dynamically, based on the hash value of the previously predicted token(s). For detection, the LLM used to generate the text is not needed. Instead, a suspect text is assessed based on how often tokens from the green list appear, compared to tokens from the red list. At the end of detection a statistical test is performed. KGW was extended to the Unigram-Watermark <ref type="bibr" target="#b45">[46]</ref>, which simplifies the design by introducing a fixed global green and red lists. The simplified approached allowed for guaranteed generation quality, provable correctness in watermark detection, and robustness against both text editing and paraphrasing. In this work, we build on these watermarking schemes originally developed for large language models to address the lack of watermarking techniques for bitwise generative models.</p><p>Private Watermarking. In our watermark, we follow the Private Watermarking from KGW <ref type="bibr" target="#b15">[16]</ref>. For this end, the generative model is kept behind a secure API with a secret key K. This secret key K is used as input to a pseudorandom function (PRF) F , with the h previously generated tokens, to compute the red-green list split for the next predicted token. Here the context window h is a hyperparameter, which trades robustness with privacy. For small context windows h (e.g., 1 or 2) the watermark is robust against removal attacks but an attacker could tabulate the frequency of token pairs and brute-force knowledge about the green list, reducing the privacy of the method. For larger values of h (e.g., 5), changing a single token has an impact on the next h downstream tokens, potentially flipping them to the red set. The privacy of this approach can also be boosted by using k different private keys and choosing one randomly during generation.</p><p>Watermark Robustness. To reliably perform image provenance, a watermark must be robust to removal attacks. There is a wide range of these kinds of attacks that have been proposed in the literature <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b19">20,</ref><ref type="bibr" target="#b26">27]</ref>. For example, the scrubbing attacks aim at removing the watermarks from the outputs of a generative model, which can be done by producing a valid paraphrase that is detected as non-watermarked text <ref type="bibr" target="#b14">[15]</ref> or image <ref type="bibr" target="#b2">[3]</ref>. Zhang et al. <ref type="bibr" target="#b41">[42]</ref> claim that under the assumption that both a quality oracle (that can evaluate whether a candidate output is a high-quality response to a prompt) and a perturbation oracle (which can modify an output with a nontrivial probability of maintaining quality) exist, it is feasible to remove existing watermarks in generative models without quality degradation of the watermarked content. We evaluate our BitMark against a wide spectrum of attacks and show that our method is robust against them.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">BitMark Method</head><p>The autoregressive image generative models that we consider, namely Infinity <ref type="bibr" target="#b10">[11]</ref> and Instella <ref type="bibr" target="#b36">[37]</ref>, predict bits instead of tokens, distinguishing them from other image autoregressive models such as VAR <ref type="bibr" target="#b34">[35]</ref> or RAR <ref type="bibr" target="#b40">[41]</ref>. We leverage this prediction scheme to design a dedicated watermark. Our BitMark watermark is embedded during the generation process, subtly shifting the bitwise representation towards a higher frequency of detectable patterns to resist manipulation.</p><p>Problem Formulation and Desiderata. Our goal is to embed a watermark during the image generation process and subsequently detect it by analyzing the generated image. BitMark targets the prevention of model collapse. In this setup, only the model owner is concerned of detecting the watermark and wants to ensure that their own data are not used to train their next models. Thus, we aim at four essential properties for our watermarking scheme to prevent model collapse: (1) Negligible Impact on the Generation. To maintain the utility of the generative model, the watermark should not degrade the quality of the generated images, while also maintaining a fast inference speed.</p><p>(2) Reliable Verification. The model owner should be able to detect the watermarked images and verify the confidence of the extracted watermark. The model owner encodes the image to their own space and it is only relevant to the model owner if the watermark is present there or not. The encoder part of the model is also kept private so only the model owner can verify the watermark. The natural images should not be detected as containing the watermark. At the scale of the large models trained on trillions of samples, a small number of false positives is acceptable as long as it does not exceeds a certain threshold (e.g., 1%), which can also prevent model poisoning <ref type="bibr" target="#b44">[45]</ref>. (3) Robustness. The watermark should be robust not only against conventional attacks, such as Gaussian noise or JPEG compression, but also against strong dedicated watermark removal attacks such as CtrlRegen <ref type="bibr" target="#b19">[20]</ref> or watermarks in the sand <ref type="bibr" target="#b41">[42]</ref>. (4) Radioactivity. If other generative models are trained on watermarked images, images generated by these new models should also contain our watermarks <ref type="bibr" target="#b6">[7,</ref><ref type="bibr" target="#b27">28,</ref><ref type="bibr" target="#b30">31]</ref>.</p><p>Threat Model. We assume two parties: a model owner providing an image generation API where our BitMark is deployed, and an attacker who aims to fool the model owner to train on their own generated images and to prevent the use of large-scale natural image datasets for model training. We assume that the model owner follows the Private Watermarking from <ref type="bibr" target="#b15">[16]</ref> and keeps the generative model behind a secure API. The model owner wants to watermark their own images in order not to train on them. The watermark should also be radioactive so that if any other party fine-tunes their own models on the watermarked data, the fine-tuned model's outputs are watermarked, as well. Further, we assume that the watermarking technique is private and verifiable by the model owner.</p><p>On the other hand, the attacker might attempt to remove the embedded watermark. For instance, competitors might still want to remove the watermark to harm the model owner. We assume that the attacker has black-box access to the model, i.e., they can provide inputs and observe the corresponding outputs. The attacker is allowed to make arbitrary modifications to the generated image, including but not limited to: applying image transformations (e.g., noising, blurring, cropping, etc.) or specific watermark removal techniques <ref type="bibr" target="#b19">[20,</ref><ref type="bibr" target="#b41">42]</ref>. We define adversarial behavior as any attempt to remove the watermark in the generated image while preserving high perceptual quality and semantic content. Attacks that destroy the usefulness or visual coherence of the image (e.g., replacing it with noise) are not considered meaningful threats.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Motivation for the Bitwise Watermark</head><p>We identify an inherent challenge in watermarking the images generated by autoregressive models stemming from imperfections in image encoding and decoding. Specifically, the model first generates a sequence of tokens, which are decoded into an image. However, when the exact same image is re-encoded and tokenized, it produces a different set of tokens.</p><p>0 2 4 6 8 10 12 Scale Index 0% 20% 40% 60% 80% 100% Overlap (%) Mean ± Std Dev for bits Mean ± Std Dev for tokens This also holds partly true for bits that underlie the tokens. The observed behavior does not occur in the autoregressive LLMs, where the tokens produced by decoding and then re-encoding a generated text match exactly. We quantify the bit and token discrepancies in Figure <ref type="figure" target="#fig_0">1</ref> for Infinity. In both cases, bits and tokens are generated by the model and then reconstructed by its auto-encoder. Here, the highest bit overlap occurs at the initial and final resolutions (scales). This is likely because the early stages capture coarse structural features, while the final resolution refines the image, leading to fewer changes in the bit sequence. We observe a consistent average token overlap of approximately 2.385% and bit overlap of 77.432%. Given the significantly large codebook size of 2 32 in Infinity, we observe that the bitwise information loss is much smaller than the token-wise loss. This motivates our work to design a watermark that biases the generated sequences of tokens on the bit-level instead of on the token-level.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Embedding our BitMark Watermark</head><p>Next, we detail how BitMark is embedded. The embedding protocol is directly applied on the bit-level in the autoregressive generation process of the model. We present the full procedure for multi-scale models like Infinity in Algorithm 1 and for single-scale models like Instella IAR in Algorithm 3. First, we separate the list of all bit sequences of length n: S = {0, 1} n into a red list R and a green list G. Intuitively, we softly nudge the model to generate bit sequences of length n that are part of the green list G. For each next bit prediction b j , if the bit can complete one of the bit sequences from G, we add a small bias δ to the logit l (bj ) j of the bit b j :</p><formula xml:id="formula_0">p j =        exp(l (b j ) j +δ) exp(l (¬b j ) j</formula><p>)+exp(l</p><formula xml:id="formula_1">(b j ) j +δ) , pre + b j ∈ G exp(l (¬b j ) j ) exp(l (¬b j ) j</formula><p>)+exp(l</p><formula xml:id="formula_2">(b j ) j +δ) , pre + ¬b j ∈ R,<label>(1)</label></formula><p>where pre = (b j-(n-1) , . . . , b j-1 ) is the prefix bit sequence of length (n -1), i.e., the sequence of bits preceding b j , + is the bit concatenation operation, and l j is the vector of logits for the bit b j .</p><p>We apply this procedure to all bits that are generated by the model. Thus, as many bit sequences as possible are biased towards G and the final green fraction, i.e., the number of sequences part of the green set, of the generated bits is significantly above the threshold of 50%, the standard fraction for clean images (see Section F.6). By biasing the logit for the preferred bit, BitMark has negligible impact on image quality, as mostly high entropy bits are flipped (see Table <ref type="table" target="#tab_0">1</ref>). Since high entropy bits have sufficiently small difference in the probability of assigning them to value 0 or 1, the relatively small added bias influences the final value. Additionally, biasing only the logits makes the watermarking process difficult to revert, as it is difficult to know for an attacker which bits are of high entropy and can be flipped to the red list R without degrading the final image quality (see Figure <ref type="figure" target="#fig_8">9</ref>).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Watermark Detection</head><p>Watermark detection is performed directly on the bits of encoded images. All that is required is knowledge about the green and red lists, as well as access to the tokenizer. Intuitively, we count how often each sequence of bits in the encoded image follows the green list and compare how the frequency differs from non-watermarked images.</p><p>Detecting the Watermark. The detection protocol follows the standard encoding of the model and is detailed for multi-scale models in Algorithm 2 and for single-scale models in Algorithm 4. First we obtain the bit representations for each resolution. We then use our knowledge of G and R to test how often the bit sequences from the red and green lists appear and count them. This results in the knowledge of how many green sequences appear in the encoded image, which is random for every non-watermarked image, i.e., 50% (see Section F.6).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Robust Statistical Testing.</head><p>Given the final number of green and red sequences detected in the encoded image, we perform a statistical test based on the null hypothesis H 0 : The sequence of bits is generated with no knowledge about the green and red lists. Intuitively, this assumes that a given image is not watermarked. A watermarked image consists of γT green and (1 -γ)T red bit sequences, where γ determines the size of the green list and T is the total number of bits in the encoded image that our watermark can influence. Per a given token t with m bits, BitMark influences k = m -(n -1) bits, since we start watermarking from the first n bit pattern. Thus, overall we have T = K i=1 r i • k, where r i is number of tokens per resolution i. A natural image is expected to violate the red list rule with the half of its bits, while a watermarked image violates this rule less frequently. If the null hypothesis is true, then the number of green list bit sequences denoted C has the expected value of γT and variance γ(1 -γ)T . To ensure statistical validity, we follow <ref type="bibr" target="#b15">[16]</ref> and use a z-test:</p><formula xml:id="formula_3">z = (C -γT )/ T γ(1 -γ)<label>(2)</label></formula><p>We reject the null hypothesis and detect the watermark if z is above a chosen threshold.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 1 Watermark Embedding</head><p>Inputs: autoregressive model f θ with parameters θ, green list G, red list R, image decoder D. Hyperparameters: steps K (number of resolutions), resolutions (hi, wi) K i=1 , the number of tokens for resolution i is ri, constant δ added to the logits of the green list bits, n -the length of the bit sequences in the lists (G and R), m the number of bits per token.</p><formula xml:id="formula_4">for i = 1, . . . , K do (l1, . . . , lr i •m) = f θ (e, hi, wi) for t = 1, . . . , ri do for j = n, . . . , m do c = (t -1) • m + j //counter pc = Bias(G, lc, δ) sc = Softmax(pc) bc = Sample(sc) ui = (b1, . . . , br i •m) zi = Lookup(ui) zi = Interpolate(zi, hK , wK ) e = e + ϕi(zi) im = D(e) Return: watermarked image im</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 2 Watermark Detection</head><p>Inputs: raw image im, green list G, red list R, image encoder E, quantizer Q Hyperparameters: steps K (number of resolutions), resolutions (hi, wi) K i=1 , the number of tokens for resolution i is ri, n -the length of the bit vector. e = E(im)</p><formula xml:id="formula_5">C = 0 for i = 1, . . . , K do ui = Q(Interpolate(e, hi, wi)) ui = (b1, . . . , br i •m) C = Count((b1, . . . , br i •m), G) zi = Lookup(ui) zi = Interpolate(zi, hK , wK ) e = e -ϕi(zi) Return: StatisticalTest(H0, (C))</formula><p>4 Empirical Evaluation Experimental Setup. In the following, we employ the Infinity-2B checkpoint <ref type="bibr" target="#b10">[11]</ref> as the default model to evaluate BitMark across different watermarking strengths and against a wide variety of attacks. Additionally we show the generalizability of BitMark to other models, namely the Infinity-8B checkpoint as well as the Instella-T2I <ref type="bibr" target="#b36">[37]</ref> IAR model. We further show generalizability of our method to bitwise diffusion models in Section G. The Infinity models natively generate 1024 × 1024 pixel RGB-images, we choose the visual-tokenizer with a vocabulary size of 2 32 and 2 56 per token for the Infinity-2B and the Infinity-8B checkpoint, respectively. We follow Han et al. <ref type="bibr" target="#b10">[11]</ref> in the choice of hyper-parameters and use a classifier-free-guidance of 4, with a generation over 13 scales, following the scale schedule for an aspect ratio of 1:1. Hence, we utilize the best performing model, tokenizer and hyperparameters reported by Han et al. <ref type="bibr" target="#b10">[11]</ref>. We ablate the choice of the green and red list split for our experiments in Section D. For Instella IAR we follow Wang et al. <ref type="bibr" target="#b36">[37]</ref>, leveraging a vocabulary of size 2 32 and a cfg of 7.5 at a 1024 × 1024 resolution. We evaluate our experiments based on images and prompts of the MS-COCO 2014 <ref type="bibr" target="#b17">[18]</ref> validation dataset. Unless stated otherwise, we use a subset of 10,000 images.</p><p>Baselines. To the best our knowledge no prior work developed an in generation-time watermarking scheme for autoregressive image models. Therefore we compare the robustness of BitMark against three postprocessing watermarks in Table <ref type="table" target="#tab_1">2</ref>. Namely we analyze RivaGAN <ref type="bibr" target="#b42">[43]</ref> (with message length = 32), StegaStamp <ref type="bibr" target="#b33">[34]</ref> (with message length = 100) and TrustMark <ref type="bibr" target="#b4">[5]</ref> (with message length = 100). We applied the postprocessing watermarks on 1,000 images generated by Infinity-2B.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">BitMark Introduces Detectable Watermarks while Maintaining Generation Performance</head><p>We demonstrate that our BitMark preserves the utility of the model with negligible impact on the image quality and the inference speed.</p><p>High Image Quality. Table <ref type="table" target="#tab_0">1</ref> presents a quantitative evaluation of image generation quality for different watermarking strengths dependent on the logit bias parameter δ. We report the FID, KID, measuring the similarity of generated images and natural images in feature space, and the CLIP Score, which measures the alignment between prompt and image, for the varying watermark strengths δ. The results show that, for δ ≤ 3, BitMark has a negligible impact on image quality (as measured by FID and KID) and minimally affects the prompt-following capabilities of the underlying model, as indicated by the CLIP Score.</p><p>We also present a qualitative analysis of image quality in Section F.3, which shows images generated for different δ. While there is an inherent trade-off in terms of watermark strength an image quality, we choose a small δ = 2 for the Infinity-2B checkpoint to obtain minimal impact on the generation while having a significantly strong watermark. We further show that δ = 1.5 does not negatively impact image quality for Infintiy-8B and Instella in Table <ref type="table" target="#tab_11">15</ref>.</p><p>Fast Watermark Generation and Verification. For a watermark to be reasonably applicable in a real world setting, the watermark should also have negligible impact on image generation speed <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b37">38,</ref><ref type="bibr" target="#b47">48]</ref>.</p><p>We thus analyze the practicality of applying BitMark in a standard setting and its impact on generation speed of the Infinity model. Next to the generation performance, the speed of watermark detection has a strong impact on the possible applications, especially in a setting where we want to quickly detect generated data. The quantitative analysis of BitMark in Section F.4 shows that generating a watermarked image requires at most one-tenth the time longer than the standard image generation. Verification, i.e., encoding an image into its bit representation and computing the z-score, takes less than 0.5 seconds per image, usually around 5× faster than the image generation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">BitMark is Robust Against a Wide Range of Attacks</head><p>Our results demonstrate that BitMark is robust against a wide range of attacks, including conventional attacks, reconstruction attacks, watermarks in the sand attack, and our own adaptive bit-flipping attack, with the aim of exploiting knowledge of our watermark method to remove BitMark.</p><p>Robustness against Conventional Attacks. We perform a wide range of conventional attacks, namely: 1) Noise: Adds Gaussian noise with a std of 0.1 to the image, 2) Blur Noise attack + application of a Gaussian blur with a kernel size of 7, 3) Color: Color jitter, a random hue of 0.3, saturation scaling of 3.0 and contrast of 3.0, 4) Crop: Random crop to 70%, 5) Rotation: Random rotation between 0°and 180°, 6) JPEG: 25% JPEG compression, 7) Horizontal Flipping, 8) Vertical Flipping. Table <ref type="table" target="#tab_1">2</ref> shows that our approach achieves a high TPR@1%FPR for most conventional attacks compared to the baselines. Each baseline is weak against at least one conventional attacks.</p><p>RivaGAN is not robustness against flipping (0%TPR@1%FPR), StegaStamp is not robustness against cropping (1%TPR@1%FPR) and TrustMark is vulnerable to color jitter (2.2%TPR@1%FPR), rotation (2.7%TPR@1%FPR) and cropping (1.6%TPR@1%FPR). Although Bit-Mark for Infinity-2B has slightly lower performance towards arbitrary rotation angles, the watermark is still highly detectable and it obtains high TPR@1%FPR within a given rotation threshold. We report TPR@1%FPR and mean (std) of z for different degrees of rotations for 1,000 images in Section F.2. Notably, it achieves as high as 99.9% TPR@1%FPR when the rotation range is between -20°and 20°a s shown in Table <ref type="table" target="#tab_2">3</ref>. Given the strength of off-the-shelf tools for rotation estimation <ref type="bibr" target="#b20">[21]</ref>, it is highly achievable to rotate the image back into a tolerable range of rotations during the pre-processing stage of the detection, resulting in a TPR@1%FPR of 98.3% for randomly rotated images as shown in Table <ref type="table" target="#tab_9">13</ref>. Table <ref type="table" target="#tab_8">12</ref> provides an ablation of the robustness of BitMark given different values of δ, showing that BitMark for Infinity-2B is highly robust against most attacks even with δ = 1. Infinity-8B is more robust against rotation compared to the smaller 2B checkpoint. The effectiveness of BitMark on Instella IAR is by design very limited, given its total number of 128 tokens, corresponding to 4,096 bits, per image.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Robustness against Reconstruction Attacks.</head><p>We also evaluate our proposed method against two state-of-the-art reconstruction attacks (shown as the last two columns in Table <ref type="table" target="#tab_1">2</ref>): 1) SD2.1-VAE: Encoding and decoding with the Stable Diffusion 2.1 autoencoder <ref type="bibr" target="#b25">[26]</ref>, 2) CtrlRegen+: Application of controllable regeneration from noise in the latent space following <ref type="bibr" target="#b19">[20]</ref>. Regarding reconstruction attacks, our results indicate that BitMark for Infinity-2B is robust against the CtrlRegen+ reconstruction attack, achieving 91.6%TPR@1%FPR. Also Instella IAR achieves strong robustness of 93.6%TPR@1%FPR. In contrast, RivaGAN and TrustMark demonstrate a lack of robustness with 1.6%TPR@1%FPR and 1.1%TPR@1%FPR, respectively. StegaStamp exhibits partial robustness of 44.2%TPR@1%FPR. The Infinity-8B shows only partial robustness, which is further discussed in Section A. Table <ref type="table">4</ref>: BitMark is robust against the watermarks in the sand attack <ref type="bibr" target="#b41">[42]</ref>. We present the detection results of our watermarking scheme (δ = 2) before and after the attack. We use 200 iterations, and generate 100 candidates during each iteration.</p><p>Setting Accuracy AUC TPR@1%FPR Green Fraction z z Threshold (%) (%) (%) (%) @1%FPR Original Image ---49.7 0.2 -Watermarked Image (before attack) 100.0 100.0 100.0 57.6 87.8 59.6 Watermarked Image (after attack) 98.5 99.8 89.0 50.9 10.8 6.8</p><p>Robustness against Watermarks in the Sand Attack. We also evaluate the robustness of our watermarking scheme against the attack proposed in <ref type="bibr" target="#b41">[42]</ref>, namely, the watermarks in the sand attack. The attack leverages the CLIP Score as a quality oracle, the stable-diffusion-2-base <ref type="bibr" target="#b22">[23]</ref> as a perturbation oracle, and iteratively modifies the watermarked image to remove the watermark. During each iteration, the attack produces potential candidates by inpainting randomly masked regions in the image. The attack successfully replaces most visual details in the original watermarked image while selecting the candidate with the best CLIP Score. As a result, many watermarks for diffusion models (e.g., <ref type="bibr" target="#b8">[9]</ref>) can be removed through this attack. However, results in Table <ref type="table">4</ref> show that our proposed method achieves a significant detection rate with TPR@1%FPR of 89.0%. Although a large percentage of the green-list patterns are removed, the average z-score in the attacked images is still as high as 10.8, which remains significant when compared with a mean z-score of 0.2 for non-watermarked images. Moreover, the attack causes a quality loss of the image when compared to the original image generated by Infinity. With 200 iterations and 100 candidates during each iteration, the method further requires a high computational cost, where more than 12 minutes are needed to attack a single image in the environment specified in Section E.2. We note that the results do not conclude the failure of the theoretical framework in watermarks in the sand, but rather that there are currently no successful instantiations of the perturbation oracles and quality oracle for Infinity that can remove our proposed watermark. A more detailed analysis can be found in Section H.2. Robustness Against our Novel Bit-Flipper Attack. We further demonstrate that, even giving the attacker much stronger knowledge than our threat model formulated in Section 3, BitMark cannot be erased even with severe image degradation. Concretely, we assume the attacker is given the knowledge of the auto-encoder of the generative model, the watermark embedding and detection algorithms, and even our red and green lists. We propose a novel Bit-Flipper attack tailored for this broader attack surface, aiming at removing our watermarks. During this attack, the attacker first computes the total number of bit sequences |s| and calculate the green fraction C/|s|. Then, the attacker randomly flips bits to convert green bit sequences to red ones. The goal of the bit flipping is to reduce the green fraction to the level of non-watermarked images, which is 50%, as shown in Section F.6. Specifically, the attacker computes the probability of flipping a bit via a flip factor ϕ, such that p = (C/|s|) -0.5) * ϕ, whereas ϕ determines the bit sequence removal severity. A detailed algorithm of our attack is described in Algorithm 5. As shown in Section H.1, ϕ = 2.2 has the most impact on detectability. However, randomly flipping bits comes with very high degradation in image quality, as shown in Figure <ref type="figure" target="#fig_9">10</ref>. Due to the symmetric detection threshold |z|, if we destroy too many bit sequences in G, this further leads to the detectability of the watermark (see Section H.1).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Our BitMark Watermark Exhibits High Radioactivity</head><p>We demonstrate that our BitMark exhibits high radioactivity, i.e., other generative models fine-tuned on our watermarked images also produce our bit patterns that are reliably detectable.</p><p>Formalizing Radioactivity. We denote by model M 1 our original model that generates watermarked outputs with a watermarking method, e.g., our BitMark. These watermarked outputs might be used as a training set for a second model M 2 . In the context of language models it has been shown, that there are watermarks that persist this process and remain detectable in the outputs of M 2 , a property referred to as radioactivity <ref type="bibr" target="#b30">[31]</ref>. This property enables the detection of generated content, even when it has been used to train subsequent models. However, recent findings indicate that this property does not hold for watermarks in image generative models, such as diffusion models <ref type="bibr" target="#b6">[7]</ref>.</p><p>Training Setup. Given the extensive compute costs of training high-performant image-autoregressive models from scratch, we simulate full training by full fine-tuning the models. Therefore, we first generate 1,000 images with prompts of the MS-COCO2014 <ref type="bibr" target="#b17">[18]</ref> validation dataset with our BitMark embedded under a watermarking strength of δ = 2. The watermarked outputs of M 1 are then used to (2) the cross-modality setting, transfer to the Latent Diffusion Model (LDM) Stable Diffusion 2.1 <ref type="bibr" target="#b25">[26]</ref>. To test the radioactivity, we compute the TPR@1%FPR of output images of M 2 and report them in Table <ref type="table" target="#tab_3">5</ref>.</p><p>BitMark is Highly Radioactive. Table <ref type="table" target="#tab_3">5</ref> highlights the strong radioactivity of our BitMark.</p><p>When fine-tuning a model M 2 of the same architecture, the watermark is still detectable with a 99.7%TPR@1%FPR. Even in the cross-modality setting, BitMark is still detectable with a 98.9%TPR@1%FPR. Dubiński et al. <ref type="bibr" target="#b6">[7]</ref> attribute the lack of radioactivity of watermarks in LDMs to the encoding from the pixel space into the latent space and the noising-denoising process while training M 2 .</p><p>However, our BitMark remains detectable despite the encoding and the noising-denoising process. The robustness of our watermark arises from slightly changing all parts of a given generated image, including low-level and high-level features, which are then also partly adapted by M 2 . The observed results are in line with our robustness against CtrlRegen+ (see Table <ref type="table" target="#tab_1">2</ref>), an attack which simulates noising and denoising in the latent space. BitMark's radioactivity is a very useful property that allows model owners to track provenance of their data and data generated based on it, even when this new data does not originate directly from their original model.</p><p>We additionally ablate the ratio of watermarked to clean data needed for our BitMark to become radioactive to the Inifinity-2B model in Table <ref type="table" target="#tab_4">6</ref>. Even when model M 2 is trained on only 10% of our watermarked data, it generates images with a clear bias towards our watermark distribution, resulting in a high TPR of 22.7% at 1% FPR. We note that even a slight bias is significant at the distribution level. To validate this claim, we apply a one-tailed Mann-Whitney U test to determine if the z-score distribution of M 2 -generated data is significantly larger than on M 1 clean generated data. The test is significant with a p-value of 5.6e-62 when M 2 is trained on only 5% watermarked data, showing that our BitMark provides a traceable signal across training cycles in settings where only small fractions of the training data are watermarked. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Limitations and Broader Impact</head><p>Limitations. While BitMark for Infinity-2B is robust against moderate rotations (99.9% TPR@1%FPR within rotation angles -20°to 20°), the detection accuracy degrades with larger rotation angles, dropping to 56.8% TPR@1%FPR for ±50°rotations. Although open-source methods have a strong capability for rotation correction, this can be a limitation for real-world scenarios. This rotation sensitivity, however, is an inherent issue in Infinity's data augmentation pipeline, which makes the autoencoder less robust to large rotations. Moreover, the soft biasing parameter δ requires tuning, as values exceeding δ = 3 lead to noticeable quality degradation (FID increases from 29.61 to 127.44 when δ increases from 3 to 5), constraining the maximum achievable watermark strength.</p><p>Although we evaluate the detection BitMark with a commonly adopted metric, i.e., true positive rate at very low false positive rates (1%), it could potentially become problematic in extreme-scale applications involving trillions of samples, where even small false positive rates might impact training data quality. It is observed that the Infinity-8B checkpoint shows increased sensitivity to larger values of δ. We hypothesize that the lower δ chosen may account for its comparatively lower robustness relative to the Infinity-2B checkpoint, as illustrated in Table <ref type="table" target="#tab_1">2</ref>.</p><p>Broader Impact. Image generative models have the capabilities of generating photorealistic images, which are near imperceptible to human generated content. BitMark provides a method to watermark the content, without harming image generation capabilities of the model and allows for provenance tracking of generated images for models hosted under a private API. It supports the defense against model collapse, when training a model on data generated by itself.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Additional Related Work</head><p>LLM Watermarking. Here, we review more related work regarding the LLM watermarking, which we build upon in our method. Beyond the soft biasing approach proposed by KGW <ref type="bibr" target="#b15">[16]</ref>, SynthID-Text <ref type="bibr" target="#b5">[6]</ref> introduces tournament sampling during the model inference to enhance watermark detectability. This sampling strategy modifies the token sampling process to embed watermark signals. However, tournament sampling is only applicable to autoregressive models with large vocabulary sizes, making it incompatible with the binary bit sampling process used in Infinity. There are also works that incorporate watermarks by training or finetuning the models. For example, REMARK-LLM trains a learning-based encoder for watermark insertion and a decoder for watermark extraction, while using a reparameterization module to bridge the gap between the token distribution and the watermark message <ref type="bibr" target="#b43">[44]</ref>. Moreover, potential malicious transformations are incorporated into the training phase to enhance the robustness of the watermarking. Although effective, these training-based methods require substantial computational resources and time. Therefore, we focus on inference-time watermarking methods that can be applied to Infinity without any retraining.</p><p>Sander et al. <ref type="bibr" target="#b29">[30]</ref> investigate the radioactivity of LLM watermarking, which is the ability of watermarks to transfer across different model architectures. They design a specific protocol for amplifying the watermark signals after transferring across models. The radioactivity of watermarks also falls into the scope of our work, as our proposed watermark exhibits significant radioactivity across various model architectures. Regarding the undetectability of the watermark, recent studies show that the biases between watermarked and non-watermarked outputs from the LLM are identifiable with carefully designed prompts <ref type="bibr" target="#b18">[19]</ref>. As a specialized application of LLM watermarking, Li et al. <ref type="bibr" target="#b16">[17]</ref> design a watermarking scheme tailored for quantized LLMs. The proposed watermarks are only detectable on quantized models while remaining invisible for full-precision models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Model Collapse.</head><p>With the fraction of artificial generated content within the World Wide Web increasing, Shumailov et al. <ref type="bibr" target="#b32">[33]</ref> investigate the phenomenon of model collapsing, which is defined as the decrease of generation quality when models are recursively trained on (partly) generated data. This decrease in generation quality is mainly characterized in overestimating probable events and underestimating low-probability events, as well as recursively adding noise (i.e., errors) which is generated during earlier model generations. Hence, this generated data is polluting future datasets, decreasing the potential quality of successor models and therefore highlighting the necessity to distinguish human-from artificial-generated data. BitMark mitigates model collapsing by robustly watermarking generated images to exclude said marked images from future datasets.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Application of BitMark on Single-Scale models</head><p>We report the application of BitMark for single scale models in Algorithm 3 and the detection in Algorithm 4.</p><p>We report the functions used in Algorithm 1, Algorithm 2, Algorithm 3 and Algorithm 4 here:</p><p>• Bias: Addition of the bias δ to the current logit l c based on the green list G.</p><p>• Sample: Use the probabilities in p c to sample the returned bit, either 0 or 1.</p><p>• Lookup: Perform the BSQ lookup <ref type="bibr" target="#b46">[47]</ref> to return the quantized states.</p><p>• Interpolate: Scaling to target resolution.</p><p>• Count: Counts the number of bits which are part of the green list.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 3 Watermark Embedding</head><p>Inputs: autoregressive model f θ with parameters θ, green list G, red list R, image decoder D.</p><p>Hyperparameters: the number of tokens r, constant δ added to the logits of the green list bits, n -the length of the bit sequences in the lists (G and R), m the number of bits per token. for t = 1, . . . , r do for j = n, . . . , m do c = (t -1) </p><formula xml:id="formula_6">• m + j //counter pc = Bias(G, lc, δ) sc = Softmax(pc) bc =</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Green and Red List Selection</head><p>Consistency in Longer Sequences. We analyze the overlap of bit sequences with growing size in Figure <ref type="figure">3</ref> which shows that with increased length of the sequence, the consistency of the pattern decreases. This has a direct impact on the choice of n, as it shows that larger n lead to less overlap, reducing the impact of BitMark which is already noticeable for n = 3 (see Table <ref type="table">7</ref>).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Selection of Red and Green Lists.</head><p>The re-encoding loss presented in Section 3.1 also motivates the choice of a small length of the green list n, as larger consecutive bit sequences are more likely to be interrupted. Additionally, this auto-encoder has the property of re-encoding images towards an equal frequency of 0's and 1's, so it is not efficiently possible to bias each bit towards either 0 or 1, making the choice of n = 1 unpractical (see Table <ref type="table">7</ref>). Thus we leverage the second smallest possible choice, n = 2, resulting in 6 possible choices to separate G and R by keeping |G| = |R|.</p><p>As we have the constraint to not bias towards 0 or 1, as this type of pattern is more likely removed by the auto-encoder, and given the constraint shown that the same prefix must not be in the same list twice as discussed in Section 3.2, the most effective G for BitMark are G = {01, 10} and G = {00, 11}. We choose G = {01, 10} throughout all experiments.</p><p>Figure <ref type="figure">3</ref>: Longer sequences are less consistent after re-encoding. We analyze the consistency of sequences of length n after re-encoding over the whole image, following the setup of Figure <ref type="figure" target="#fig_0">1</ref>.</p><p>Changing the Length of the Bit Sequence. We additionally ablate the size of the bit sequence in Table <ref type="table">7</ref>. For each sequence size n, if both lists should have the same size, we choose 2 n 2 out of 2 n possibilities without replacement, so there are 2 n 2 n-1 possibilities of constructing the G and R. For the 2-bit sequences, flipping the green and red list has only limited impact on the final z-score, thus for the 3-bit sequences we only analyze all unique choices, i.e., we do not interchange green and red list, leaving us with 35 distinct possible green and red lists. For n = 3, two G have a similar z compared to the best 2-bit sequences. These choices have the same properties as discussed above, namely (1) they equally often bias towards 0 and 1 and (2) none of the sequences share the same prefix, i.e., the biasing is always effective.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Experimental Setup</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E.1 Hyperparameters</head><p>For the experiments on radioactivity, we chose 1,000 prompts from the MS-COCO 2014 validation dataset, generated the respective number of images with the M 1 Infinity model and then fine-tuned the second model M 2 for 5 epochs with a learning rate of 10 -4 and a batch-size of 4 (batch-size of 1 for Infinity-2B). Since VAR <ref type="bibr" target="#b34">[35]</ref> and RAR <ref type="bibr" target="#b40">[41]</ref> are class-conditional models for the ImageNet1k dataset, we first generated ImageNet fakes using Infinity-2B with the ImagenNet class name and "A photo of {class name}" as prompt. We used the same hyperparameters such as batch-size, number of epochs and learning rate consistent with the experiments on Infinity-2B and Stable Diffusion 2.1.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E.2 Environment</head><p>Our experiments are performed on Ubuntu 22.04, with Intel(R) Xeon(R) Gold 6330 CPU and NVIDIA A40 Graphics Card with 40 GB of memory. Table <ref type="table">7</ref>: Green and Red list selection. We analyze all possible green and red lists for n = 1, n = 2 and n = 3 with δ = 2 and 1,000 images. We also report the fraction of 1's that are in the bit representation during generation of the image (1s Gen) and after re-encoding the image using the image encoder (1s Enc).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Green List G</head><p>Red List R Average Z-Score 1s Gen 1s Enc {0} {1} 6.18 31.50% 49.47% {1} {0} 2.39 64.52% 50.21% {11, 00} {01, 10} 91.35 49.74% 49.98% {01, 10} {00, 11} 90.33 49.97% 49.99% {00, 10} {01, 11} 6.52 31.85% 49.44% {11, 01} {00, 10} 2.56 63.70% 50.22% {00, 01} {10, 11} 0.25 49.92% 49.98% {11, 10} {00, 01} -0.25 49.92% 49.98%</p><p>{000, 011, 100, 111} {001, 010, 101, 110} 88.00 49.75% 49.98% {000, 011, 110, 111} {001, 010, 100, 101} 87.91 49.75% 49.98% {000, 011, 101, 111} {001, 010, 100, 110} 67.90 49.75% 49.98% {000, 100, 110, 111} {001, 010, 011, 101} 44.95 40.92% 49.52% {000, 001, 011, 111} {010, 100, 101, 110} 32.91 58.19% 50.24% {000, 001, 010, 101} {011, 100, 110, 111} 32.85 44.09% 49.68% {000, 010, 011, 111} {001, 100, 101, 110} 29.04 40.92% 49.52% {000, 100, 101, 111} {001, 010, 011, 110} 29.04 40.92% 49.52% {000, 101, 110, 111} {001, 010, 011, 100} 26.43 40.92% 49.52% {000, 011, 100, 110} {001, 010, 101, 111} 20.11 49.75% 49.98% {000, 001, 011, 110} {010, 100, 101, 111} 10.03 58.19% 50.24% {000, 001, 011, 100} {010, 101, 110, 111} 8.72 58.19% 50.24% {000, 001, 010, 100} {011, 101, 110, 111} 6.48 44.09% 49.68% {000, 010, 100, 101} {001, 011, 110, 111} 6.20 33.07% 49.48% {000, 010, 100, 110} {001, 011, 101, 111} 5.99 33.07% 49.48% {000, 010, 011, 100} {001, 101, 110, 111} 5.55 40.92% 49.52% {000, 001, 010, 110} {011, 100, 101, 111} 3.74 44.09% 49.68% {000, 010, 101, 110} {001, 011, 100, 111} 3.21 33.07% 49.48% {000, 010, 011, 110} {001, 100, 101, 111} 2.93 40.92% 49.52% {000, 100, 101, 110} {001, 010, 011, 111} 2.93 40.92% 49.52% {000, 010, 100, 111} {001, 011, 101, 110} 2.14 33.07% 49.48% {000, 001, 100, 101} {010, 011, 110, 111} 0.25 49.92% 49.98% {000, 001, 010, 011} {100, 101, 110, 111} 0.25 49.92% 49.98% {000, 011, 100, 101} {001, 010, 110, 111} 0.11 49.75% 49.98% {000, 001, 101, 110} {010, 011, 100, 111} 0.07 49.92% 49.98% {000, 011, 101, 110} {001, 010, 100, 111} 0.02 49.75% 49.98% {000, 001, 100, 110} {010, 011, 101, 111} -0.05 49.92% 49.98% {000, 001, 101, 111} {010, 011, 100, 110} -0.26 49.92% 49.98% {000, 001, 100, 111} {010, 011, 101, 110} -0.37 49.92% 49.98% {000, 001, 110, 111} {010, 011, 100, 101} -0.55 49.92% 49.98% {000, 010, 101, 111} {001, 011, 100, 110} -0.65 33.07% 49.48% {000, 010, 110, 111} {001, 011, 100, 101} -0.85 33.07% 49.48% {000, 001, 011, 101} {010, 100, 110, 111} -1.45 58.19% 50.24% {000, 010, 011, 101} {001, 100, 110, 111} -12.98 40.92% 49.52% {000, 001, 010, 111} {011, 100, 101, 110} -13.39 44.09% 49.68%</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F Additional Experiments</head><p>In this Section we ablate the behavior of BitMark on the Infinity-2B model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.1 Scalewise Analysis of BitMark</head><p>Next, we analyze the scalewise impact of BitMark during image generation. Table <ref type="table" target="#tab_5">8</ref> depicts information about the generation of images with Infinity-2B, averaged over 10,000 images. It shows that the entropy is low in earlier scales, meaning the bits are chosen with high certainty as these depend more on the input prompt, but large on later scales, which means sampling either of the possible values for the bit can lead to different, but both high-quality content.  <ref type="table" target="#tab_6">9</ref>, depicts using BitMark with δ = 2. Applying BitMark changes up to 37% of bits per scale, yet the re-encoding loss only increases by 5% compared to the non watermarked images. Table <ref type="table" target="#tab_7">10</ref> further shows the correlation between different analyzed factors. As expected, there is a high correlation between changed bits and entropy, as due to the soft-biasing we mostly change bits of low entropy. We further observe that the model produces high-level information in the image during the initial scales, forming a coarse shape of the main visual components, such as the object and the background (see Figure <ref type="figure" target="#fig_4">5</ref>. In larger scales, the model predicts the details of the image (see Figure <ref type="figure" target="#fig_5">6</ref>). As shown in Table <ref type="table" target="#tab_0">11</ref>, earlier and late scales contribute differently to the robustness of BitMark. Earlier scales are more robust against like CtrlRegen+, as CtrlRegen+ does not change the content of the image itself, but mostly high level features.</p><p>Table <ref type="table" target="#tab_0">11</ref>: Robustness of BitMark applied to different scales with δ = 2. We report the TPR@1%FPR (%) for the different attacks on 5,000 watermarked images.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Scales Conventional Attacks Reconstruction Attacks</head><p>None Noise Blur Color Crop Rotation JPEG SD2.1-VAE CtrlRegen+ 1-10 100.0 97.9 98.7 97.6 61.6 15.0 100.0 100.0 82.1 11-13 100.0 96.7 98.6 99.5 20.0 9.8 100.0 100.0 15.5 1-13 100.0 99.6 99.9 99.8 98.8 20.1 100.0 100.0 91.6</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.2 Robustness</head><p>Table <ref type="table" target="#tab_8">12</ref> shows an ablation of the robustness of BitMark given different values of δ. BitMark achieves a high TPR@1%FPR against most attacks even for a low watermarking strength δ = 1. While stronger robustness can be achieved with higher δ values, there is a direct tradeoff with the image quality, which we show qualitatively in Figure <ref type="figure" target="#fig_6">7</ref>. 100.0 99.6 99.9 99.8 98.8 20.1 100.0 100.0 91.6 3 100.0 99.7 99.9 99.9 99.8 23.8 100.0 100.0 97.0 4 100.0 99.9 99.9 100.0 99.9 29.2 100.0 100.0 99.0 5 100.0 100.0 100.0 99.9 100.0 34.3 100.0 100.0 99.8</p><p>Rotation. We ablate the robustness of BitMark against different degrees of rotation and different watermarking strengths δ. We find that with δ = 2 BitMark is robust for rotation degrees ±30.</p><p>Additionally we find an increase in TPR@1%FPR for a rotation of 180°.</p><p>We further show the improved detection performance leveraging a rotation estimation tool <ref type="bibr" target="#b20">[21]</ref> in Table <ref type="table" target="#tab_9">13</ref>. After re-rotating the image, the detection performance increases from TPR@1%FPR=0.184 to TPR@1%FPR=0.983. In addition, we consider an even harder case: after the random rotation, we apply a central crop to the image with 50% cropping ratio, such that all the black corners during rotation are completely removed. We show the results in Table <ref type="table" target="#tab_10">14</ref>.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.3 Image Quality</head><p>Table <ref type="table" target="#tab_11">15</ref> shows that our chosen biases δ does not negatively impact the image quality for Infinity-2B (δ = 2), Infinity-8B (δ = 1.5) and Instella IAR (δ = 1.5)</p><p>Additionally, we qualitatively analyze the impact of applying BitMark with different δ values. Figure <ref type="figure" target="#fig_6">7</ref> shows that applying BitMark with δ ≤ 3 keeps the semantic structure and quality of the image the same, while changing small features, e.g., the color of the train in the first row. For larger watermarking strengths, the image quality starts to deteriorate, where artifacts become visible in the final image.  Table <ref type="table" target="#tab_13">17</ref> reports the radioactivity of BitMark for the class-conditional autoregressive models, namely, VAR <ref type="bibr" target="#b34">[35]</ref>, which operates in the multi-scale manner similarly to Infinity, and RAR <ref type="bibr" target="#b40">[41]</ref>, which generates tokens only on a single scale in an autoregressive fashion. We find that BitMark exhibits detectable traces of radioactivity for the class-to-image autoregressive models models with TPR&gt;&gt;1%@FPR=1%, with slightly lower traces for RAR (probably due to its single scale generation) than VAR. A potential cause of the overall relatively lower radioactivity for VAR and RAR is stemming from the class-conditional setting, instead of the text-to-image setting as in Infinity. +</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.6 Natural Images</head><p>To ensure the validity of our hypothesis we compute the average number of members of the green list and z for natural images from different datasets, as well as images generated for the non-watermarked Infinity model. Table <ref type="table" target="#tab_14">18</ref> shows that indeed, the green fraction for non-watermarked images is 50%.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G Generalization to Diffusion</head><p>Additionally to the bitwise autoregressive image modeling that we explore in Section 4 we extend our BitMark to bitwise diffusion models, namely BiGR <ref type="bibr" target="#b11">[12]</ref>. We employ two variations of BiGR, the L-256x256 with 24 bits per token and L-512x512 which leverages 32 bits per token. We set the Gumbel temperature to 0.01, the cfg to 2.5, the number of iterations as well as the diffusion timesteps to 10 each. We further notice that the detection performance for BiGR increases greatly if, before encoding, a slight amount of noise is added to the image.</p><p>In Table <ref type="table" target="#tab_16">20</ref> we show that BitMark has negligible impact on the quality of the generated images for both BiGR model sizes. We use 5,000 MS-COCO prompts to generate both BiGR clean and watermarked data. On these images we then compute image quality metrics FID, KID and CLIP. The difference in FID and KID score shows that the watermarked images have lower FID and KID, a sign of more similarity to the MS-COCO baseline images. The CLIP score only increases slightly, showing only minor impact of BitMark to the prompt following capabilities of the model.</p><p>Additionally we show the robustness of BitMark in</p><p>Table 21, it achieves significant TPR@1%FPR for all attacks. Especially against the advanced reconstruction attack BitMark achieves 75.2 and 69.2%TPR@1%FPR at resolution of 256 × 256 and 512 × 512, respectively. We note that, BiGR generates smaller images with only 256 or 1024 tokens, leading to a lower robustness compared to the Infinity-2B and 8B model. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>H Analysis of the Advanced Attacks</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>H.1 Analysis for the Bit-Flipper Attack</head><p>We present the pseudo code of the novel Bit-Flipper attack for multi-scale models in Algorithm 5. To apply the attack, we first encode the image into bits (line 1). During deconstructing the watermarked image, we construct a new attacked image. We recursively iterate through all scales K, retrieve the bit representations of the respective scale (line 4) and count how many bits are part of the green list and the red list (line 5). Then we define the probability of flipping a bit based on the green fraction and the flip factor ϕ. Next, we change the bits which are part of the green list based on the random probability p (line 8, 9). We follow the standard encoding and decoding process, to iterate through all resolutions of the image (line 10-13). Finally, we return the decoded version of the attacked image.</p><p>Figure <ref type="figure" target="#fig_8">9</ref> shows different flipping strengths ϕ for δ = 2 on 1,000 watermarked samples. The most effective ϕ is ϕ = 2.2 with a TPR@1%FPR below 50% (see Table <ref type="table" target="#tab_1">22</ref>). The decrease in image quality for Bit-Flipper for different ϕ is shown in Figure <ref type="figure" target="#fig_8">9</ref>, as well a more detailed analysis of ϕ = 2.2 on BitMark with a δ = 2 is displayed in Figure <ref type="figure" target="#fig_9">10</ref>. We visualize five sets of images: 1) Original images without watermarking, 2) Watermarked (last 3), where the watermarks are generated on scale 11 to 13, 3) Differences (last 3), which is the difference between the original and watermarked images (last 3), 4) Watermarked (all), where the watermarks are generated on all scales, 5) Differences (all), which is the difference between the original and watermarked images (all). We visualize scales 1-7. We visualize five sets of images: 1) Original images without watermarking, 2) Watermarked (last 3), where the watermarks are generated on scale 11 to 13, 3) Differences (last 3), which is the difference between the original and watermarked images (last 3), 4) Watermarked (all), where the watermarks are generated on all scales, 5) Differences (all), which is the difference between the original and watermarked images (all). We visualize scales 8-13.    • Researchers should communicate the details of the dataset/code/model as part of their submissions via structured templates. This includes details about training, license, limitations, etc.</p><p>• The paper should discuss whether and how consent was obtained from people whose asset is used.</p><p>• At submission time, remember to anonymize your assets (if applicable). You can either create an anonymized URL or include an anonymized zip file. 14. Crowdsourcing and research with human subjects Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants and screenshots, if applicable, as well as details about compensation (if any)? Answer: [NA] Justification: Guidelines:</p><p>• The answer NA means that the paper does not involve crowdsourcing nor research with human subjects.</p><p>• Including this information in the supplemental material is fine, but if the main contribution of the paper involves human subjects, then as much detail as possible should be included in the main paper.</p><p>• According to the NeurIPS Code of Ethics, workers involved in data collection, curation, or other labor should be paid at least the minimum wage in the country of the data collector. 15. Institutional review board (IRB) approvals or equivalent for research with human subjects Question: Does the paper describe potential risks incurred by study participants, whether such risks were disclosed to the subjects, and whether Institutional Review Board (IRB) approvals (or an equivalent approval/review based on the requirements of your country or institution) were obtained? Answer: [NA] Justification: Guidelines: • The answer NA means that the paper does not involve crowdsourcing nor research with human subjects. • Depending on the country in which research is conducted, IRB approval (or equivalent) may be required for any human subjects research. If you obtained IRB approval, you should clearly state this in the paper. • We recognize that the procedures for this may vary significantly between institutions and locations, and we expect authors to adhere to the NeurIPS Code of Ethics and the guidelines for their institution. • For initial submissions, do not include any information that would break anonymity (if applicable), such as the institution conducting the review. 16. Declaration of LLM usage Question: Does the paper describe the usage of LLMs if it is an important, original, or nonstandard component of the core methods in this research? Note that if the LLM is used only for writing, editing, or formatting purposes and does not impact the core methodology, scientific rigorousness, or originality of the research, declaration is not required. Answer: [NA] Justification: Guidelines: • The answer NA means that the core method development in this research does not involve LLMs as any important, original, or non-standard components. • Please refer to our LLM policy (<ref type="url" target="https://neurips.cc/Conferences/2025/LLM">https://neurips.cc/Conferences/2025/LLM</ref>) for what should or should not be described.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Bit and token overlaps in Infinity.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 :</head><label>2</label><figDesc>Figure 2: Bit-Flipper attack for δ = 2</figDesc><graphic coords="9,286.20,246.79,217.80,161.14" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>Sample(sc) u = (b1, . . . , br•m) e = Lookup(ui) im = D(e) Return: watermarked image im Algorithm 4 Watermark Detection Inputs: raw image im, green list G, red list R, image encoder E, quantizer Q Hyperparameters: the number of tokens r, n -the length of the bit vector. e = E(im) C = 0 ui = Q(e) ui = (b1, . . . , br•m) C = Count((b1, . . . , br•m), G) Return: StatisticalTest(H0, (C))</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4 :</head><label>4</label><figDesc>Figure 4: BitMark is robust against rotation within ±30 degrees. The TPR@1%FPR for different δ and rotation degrees.</figDesc><graphic coords="20,207.00,72.00,198.00,146.68" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Visualization of different images on different scales. The image on scale i refers to the cumulative image obtained by adding up 1 to i scales. We visualize five sets of images: 1) Original images without watermarking, 2) Watermarked (last 3), where the watermarks are generated on scale 11 to 13, 3) Differences (last 3), which is the difference between the original and watermarked images (last 3), 4) Watermarked (all), where the watermarks are generated on all scales, 5) Differences (all), which is the difference between the original and watermarked images (all). We visualize scales 1-7.</figDesc><graphic coords="24,108.00,97.27,396.00,525.03" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 6 :</head><label>6</label><figDesc>Figure6: Visualization of different images on different scales. The image on scale i refers to the cumulative image obtained by adding up 1 to i scales. We visualize five sets of images: 1) Original images without watermarking, 2) Watermarked (last 3), where the watermarks are generated on scale 11 to 13, 3) Differences (last 3), which is the difference between the original and watermarked images (last 3), 4) Watermarked (all), where the watermarks are generated on all scales, 5) Differences (all), which is the difference between the original and watermarked images (all). We visualize scales 8-13.</figDesc><graphic coords="25,108.00,134.58,396.00,450.41" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 7 :</head><label>7</label><figDesc>Figure 7: Artifacts start to form in high detailed images already with δ = 3. Qualitative analysis of the impact of the choice of watermarking strength (δ) on the perceived image quality.</figDesc><graphic coords="26,108.00,221.12,395.99,330.93" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 8 :</head><label>8</label><figDesc>Figure8: Watermarks in the Sand has non-negligible impact on image quality. Qualitative analysis of the impact of the watermarks in the sand. Here, we zoom in on some regions in the image to demonstrate the quality loss in details.</figDesc><graphic coords="27,108.00,216.48,395.99,319.33" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 9 :</head><label>9</label><figDesc>Figure 9: A higher flip factor leads to worse image quality but better watermark removal. Qualitative analysis of the impact of the Bit-Flipper with different ϕ.</figDesc><graphic coords="28,108.00,125.64,396.00,511.92" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 10 :</head><label>10</label><figDesc>Figure10: The Bit-Flipper has strong impact on the image quality. Here, we zoom in on some regions in the image to demonstrate the quality loss in details. ϕ = 2.2, δ = 2.</figDesc><graphic coords="29,108.00,223.78,395.98,315.65" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Image quality mean (std) vs δ.</figDesc><table><row><cell>δ</cell><cell>FID↓</cell><cell cols="2">KID (×10 -2 )↓ CLIP Score↑</cell></row><row><cell>0</cell><cell>33.36</cell><cell>1.42 (0.12)</cell><cell>31.16 (0.28)</cell></row><row><cell>1</cell><cell>32.61</cell><cell>1.38 (0.13)</cell><cell>31.16 (0.28)</cell></row><row><cell>2</cell><cell>31.05</cell><cell>1.26 (0.12)</cell><cell>31.15 (0.28)</cell></row><row><cell>3</cell><cell>29.61</cell><cell>1.03 (0.08)</cell><cell>31.03 (0.27)</cell></row><row><cell>4</cell><cell>42.98</cell><cell>1.78 (0.08)</cell><cell>29.78 (0.32)</cell></row><row><cell cols="2">5 127.44</cell><cell>11.16 (0.34)</cell><cell>26.13 (0.40)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 :</head><label>2</label><figDesc>BitMark is robust against watermark removal attacks. We report the TPR@1%FPR (%) for the different conventional and reconstruction attacks.</figDesc><table><row><cell>Watermark</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell cols="2">Conventional Attacks</cell><cell></cell><cell></cell><cell></cell><cell cols="2">Reconstruction Attacks</cell></row><row><cell></cell><cell>None</cell><cell>Noise</cell><cell>Blur</cell><cell>Color</cell><cell>Rotate</cell><cell>Crop</cell><cell>JPEG</cell><cell>Vertical</cell><cell>Horizontal</cell><cell>SD2.1-VAE</cell><cell>CtrlRegen+</cell></row><row><cell>RivaGAN [43]</cell><cell>99.7</cell><cell>98.3</cell><cell>99.7</cell><cell>99.4</cell><cell>96.7</cell><cell>99.4</cell><cell>99.7</cell><cell>0.0</cell><cell>0.0</cell><cell>98.5</cell><cell>1.6</cell></row><row><cell>StegaStamp [34]</cell><cell>100.0</cell><cell>100.0</cell><cell>100.0</cell><cell>98.7</cell><cell>32.1</cell><cell>1.0</cell><cell>100.0</cell><cell>1.0</cell><cell>33.8</cell><cell>100.0</cell><cell>44.2</cell></row><row><cell>TrustMark [5]</cell><cell>99.9</cell><cell>99.5</cell><cell>99.9</cell><cell>2.2</cell><cell>2.7</cell><cell>1.6</cell><cell>99.9</cell><cell>0.7</cell><cell>99.8</cell><cell>99.7</cell><cell>1.1</cell></row><row><cell>Infinity-2B (δ = 2)</cell><cell>100.0</cell><cell>99.6</cell><cell>99.9</cell><cell>99.8</cell><cell>20.1</cell><cell>98.8</cell><cell>100.0</cell><cell>78.8</cell><cell>100.0</cell><cell>100.0</cell><cell>91.6</cell></row><row><cell>Infinity-8B (δ = 1.5)</cell><cell>100.0</cell><cell>99.7</cell><cell>100.0</cell><cell>75.5</cell><cell>57.6</cell><cell>99.4</cell><cell>99.9</cell><cell>93.8</cell><cell>99.7</cell><cell>100.0</cell><cell>30.4</cell></row><row><cell>Instella IAR (δ = 1.5)</cell><cell>100.0</cell><cell>96.0</cell><cell>100.0</cell><cell>75.3</cell><cell>2.7</cell><cell>7.5</cell><cell>100.0</cell><cell>9.3</cell><cell>12.1</cell><cell>100.0</cell><cell>93.6</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 :</head><label>3</label><figDesc>Rotation attack.</figDesc><table><row><cell>Degrees</cell><cell>TPR@1%FPR</cell><cell>z (std)</cell></row><row><cell>-20, 20</cell><cell>99.9</cell><cell>14.87 (9.77)</cell></row><row><cell>-30, 30</cell><cell>87.4</cell><cell>11.78 (9.55)</cell></row><row><cell>-40, 40</cell><cell>70.0</cell><cell>9.66 (9.38)</cell></row><row><cell>-50, 50</cell><cell>56.8</cell><cell>8.21 (8.99)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 5 :</head><label>5</label><figDesc>BitMark exhibits strong radioactivity. We report the TPR@1%FPR (%).</figDesc><table><row><cell>Type of M1</cell><cell>Type of M2</cell><cell cols="2">Output of M1 Output of M2</cell></row><row><cell>Infinity-2B</cell><cell>Infinity-2B</cell><cell>100.0</cell><cell>100.0</cell></row><row><cell cols="2">Infinity-2B Stable Diffusion 2.1</cell><cell>100.0</cell><cell>98.9</cell></row><row><cell cols="4">train (i.e., in our approximative setup full fine-tune) the M 2 model. We analyze two different settings,</cell></row><row><cell cols="4">with the same M 1 of Infinity-2B, namely: (1) the same modality setting, transfer to Infinity-2B</cell></row><row><cell>and</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 6 :</head><label>6</label><figDesc>Detection performance and statistical significance across fractions of watermarked data.</figDesc><table><row><cell>Metric \ p% of watermarked data</cell><cell>Clean model</cell><cell>0</cell><cell>1</cell><cell>5</cell><cell>10</cell><cell>25</cell><cell>50</cell><cell>100</cell></row><row><cell>TPR@1%FPR</cell><cell>1.0%</cell><cell>0.3%</cell><cell>1.0%</cell><cell>2.9%</cell><cell>22.7%</cell><cell>98.3%</cell><cell>100.0%</cell><cell>100.0%</cell></row><row><cell>Mann-Whitney U Test (p-value)</cell><cell>0.999</cell><cell>0.999</cell><cell>0.999</cell><cell>5.6e-62</cell><cell>6.8e-209</cell><cell>≈ 0</cell><cell>≈ 0</cell><cell>≈ 0</cell></row></table><note><p>TPR@1%FPR (top row) and Mann-Whitney U-test p-values (bottom row) for different fractions of watermarked data used for fine-tuning.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 8 :</head><label>8</label><figDesc>Statistics regarding the infinity generation process for 10,000 images. Entropy, Green Fraction&amp; Re-Encoding Loss are relative values. The Re-Encoding Loss displays the number of bits changed during re-encoding. We report the mean (std) for all values.</figDesc><table><row><cell cols="2">Scale Entropy</cell><cell>z</cell><cell cols="2">Green Fraction Re-Encoding Loss</cell><cell>Number of Tokens (Bits)</cell></row><row><cell>1</cell><cell cols="2">0.051 (0.037) 0.01 (0.876)</cell><cell>0.501 (0.079)</cell><cell>0.068 (0.063)</cell><cell>1 (32)</cell></row><row><cell>2</cell><cell cols="3">0.108 (0.044) -0.195 (1.114) 0.491 (0.049)</cell><cell>0.132 (0.063)</cell><cell>4 (128)</cell></row><row><cell>3</cell><cell cols="3">0.133 (0.034) -0.463 (1.226) 0.49 (0.027)</cell><cell>0.145 (0.041)</cell><cell>16 (512)</cell></row><row><cell>4</cell><cell cols="3">0.178 (0.029) -0.522 (1.217) 0.492 (0.018)</cell><cell>0.2 (0.031)</cell><cell>36 (1,152)</cell></row><row><cell>5</cell><cell cols="3">0.202 (0.024) -0.558 (1.199) 0.494 (0.013)</cell><cell>0.226 (0.024)</cell><cell>64 (2,048)</cell></row><row><cell>6</cell><cell cols="3">0.215 (0.021) -0.663 (1.229) 0.495 (0.009)</cell><cell>0.247 (0.02)</cell><cell>144 (4,608)</cell></row><row><cell>7</cell><cell cols="2">0.223 (0.019) -0.5 (1.266)</cell><cell>0.497 (0.007)</cell><cell>0.239 (0.017)</cell><cell>256 (8,192)</cell></row><row><cell>8</cell><cell cols="3">0.223 (0.015) -0.349 (1.187) 0.498 (0.005)</cell><cell>0.277 (0.016)</cell><cell>400 (12,800)</cell></row><row><cell>9</cell><cell cols="3">0.226 (0.014) -0.122 (1.173) 0.5 (0.004)</cell><cell>0.279 (0.014)</cell><cell>576 (18,432)</cell></row><row><cell>10</cell><cell cols="2">0.243 (0.014) 0.157 (1.165)</cell><cell>0.5 (0.003)</cell><cell>0.264 (0.012)</cell><cell>1,024 (32,768)</cell></row><row><cell>11</cell><cell cols="2">0.237 (0.012) 0.227 (1.161)</cell><cell>0.501 (0.003)</cell><cell>0.319 (0.011)</cell><cell>1,600 (51,200)</cell></row><row><cell>12</cell><cell cols="2">0.233 (0.012) 0.329 (1.198)</cell><cell>0.501 (0.002)</cell><cell>0.328 (0.01)</cell><cell>2,304 (73,728)</cell></row><row><cell>13</cell><cell cols="2">0.234 (0.014) 0.462 (1.173)</cell><cell>0.501 (0.002)</cell><cell>0.212 (0.012)</cell><cell>4,096 (131,072)</cell></row><row><cell>1-13</cell><cell cols="2">0.193 (0.012) 0.232 (1.644)</cell><cell>0.497 (0.008)</cell><cell>0.266 (0.009)</cell><cell>10,521 (336,372)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 9 :</head><label>9</label><figDesc>Statistics regarding the infinity generation process with BitMark applied on all scales for 10,000 images, δ = 2. Entropy, Green Fraction, Re-Encoding Loss &amp; Changed Bits are relative values. The Re-Encoding Loss displays the number of bits changed during re-encoding, whereas Changed Bits display the number of bits changed during the generation process. We report the mean (std) for all values.</figDesc><table><row><cell cols="2">Scale Entropy</cell><cell>z</cell><cell cols="3">Green Fraction Re-Encoding Loss Changed Bits</cell></row><row><cell>1</cell><cell cols="2">0.051 (0.037) 0.218 (0.897)</cell><cell>0.52 (0.081)</cell><cell>0.088 (0.076)</cell><cell>0.09 (0.077)</cell></row><row><cell>2</cell><cell cols="2">0.108 (0.043) 0.854 (1.105)</cell><cell>0.538 (0.049)</cell><cell>0.181 (0.079)</cell><cell>0.179 (0.075)</cell></row><row><cell>3</cell><cell cols="2">0.132 (0.032) 2.37 (1.452)</cell><cell>0.552 (0.032)</cell><cell>0.2 (0.053)</cell><cell>0.208 (0.05)</cell></row><row><cell>4</cell><cell cols="2">0.175 (0.028) 3.965 (1.613)</cell><cell>0.558 (0.024)</cell><cell>0.26 (0.037)</cell><cell>0.279 (0.042)</cell></row><row><cell>5</cell><cell>0.2 (0.024)</cell><cell>6.252 (1.812)</cell><cell>0.569 (0.02)</cell><cell>0.286 (0.029)</cell><cell>0.313 (0.035)</cell></row><row><cell>6</cell><cell cols="2">0.213 (0.021) 10.118 (2.304)</cell><cell>0.575 (0.017)</cell><cell>0.305 (0.022)</cell><cell>0.329 (0.029)</cell></row><row><cell>7</cell><cell cols="2">0.224 (0.019) 15.701 (2.832)</cell><cell>0.587 (0.016)</cell><cell>0.3 (0.02)</cell><cell>0.346 (0.027)</cell></row><row><cell>8</cell><cell cols="2">0.224 (0.016) 16.247 (2.788)</cell><cell>0.572 (0.012)</cell><cell>0.329 (0.016)</cell><cell>0.345 (0.022)</cell></row><row><cell>9</cell><cell cols="2">0.228 (0.015) 20.876 (3.341)</cell><cell>0.577 (0.012)</cell><cell>0.333 (0.013)</cell><cell>0.351 (0.02)</cell></row><row><cell>10</cell><cell cols="2">0.244 (0.015) 32.837 (5.104)</cell><cell>0.591 (0.014)</cell><cell>0.319 (0.011)</cell><cell>0.373 (0.019)</cell></row><row><cell>11</cell><cell cols="2">0.237 (0.013) 29.535 (5.06)</cell><cell>0.565 (0.011)</cell><cell>0.361 (0.009)</cell><cell>0.363 (0.017)</cell></row><row><cell>12</cell><cell cols="2">0.242 (0.013) 34.973 (6.681)</cell><cell>0.564 (0.012)</cell><cell>0.37 (0.008)</cell><cell>0.368 (0.017)</cell></row><row><cell>13</cell><cell cols="3">0.247 (0.014) 64.333 (11.823) 0.589 (0.016)</cell><cell>0.256 (0.015)</cell><cell>0.374 (0.019)</cell></row><row><cell>1-13</cell><cell cols="3">0.194 (0.012) 90.784 (14.852) 0.566 (0.013)</cell><cell>0.312 (0.009)</cell><cell>0.366 (0.017)</cell></row><row><cell>Table</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_7"><head>Table 10 :</head><label>10</label><figDesc>Correlations of different factors when applying BitMark on all scales within the Infinity generation process. Entropy, Green Fraction, Changed Bits &amp; Re-Encoding Loss are relative values. The Re-Encoding Loss displays the number of bits changed during re-encoding, whereas Changed Bits display the number of bits changed during the generation process. 10,000 images, δ = 2.</figDesc><table><row><cell></cell><cell cols="3">Entropy Changed Bits z</cell><cell>Green Fraction</cell></row><row><cell>Changed Bits</cell><cell>0.999</cell><cell>-</cell><cell>-</cell><cell>-</cell></row><row><cell>z</cell><cell>0.706</cell><cell>0.689</cell><cell>-</cell><cell>-</cell></row><row><cell>Green Fraction</cell><cell>0.918</cell><cell>0.917</cell><cell cols="2">0.642 -</cell></row><row><cell cols="2">Re-Encoding Loss 0.926</cell><cell>0.931</cell><cell cols="2">0.475 0.751</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_8"><head>Table 12 :</head><label>12</label><figDesc>BitMark is robust against watermark removal attacks. We report the TPR@1%FPR (%) for the different attacks and baselines.</figDesc><table><row><cell>δ</cell><cell></cell><cell></cell><cell cols="3">Conventional Attacks</cell><cell></cell><cell></cell><cell cols="2">Reconstruction Attacks</cell></row><row><cell></cell><cell>None</cell><cell>Noise</cell><cell>Blur</cell><cell>Color</cell><cell>Crop</cell><cell>Rotation</cell><cell>JPEG</cell><cell>SD2.1-VAE</cell><cell>CtrlRegen+</cell></row><row><cell>1</cell><cell>100.0</cell><cell>97.8</cell><cell>99.2</cell><cell>99.3</cell><cell>68.5</cell><cell>14.5</cell><cell>100.0</cell><cell>100.0</cell><cell>61.9</cell></row><row><cell>2</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_9"><head>Table 13 :</head><label>13</label><figDesc>Impact of rotation correction on detection performance.Images are randomly rotated between 0°and 360°.</figDesc><table><row><cell>Setting</cell><cell cols="4">AUC (%) Accuracy (%) TPR@1%FPR (%) Green Fraction (%)</cell></row><row><cell>No rotation correction</cell><cell>60.4</cell><cell>60.8</cell><cell>18.4</cell><cell>50.2</cell></row><row><cell>After rotation correction</cell><cell>99.5</cell><cell>99.2</cell><cell>98.3</cell><cell>52.0</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_10"><head>Table 14 :</head><label>14</label><figDesc>Impact of rotation correction and cropping on detection performance.</figDesc><table><row><cell>Images are</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_11"><head>Table 15 :</head><label>15</label><figDesc>BitMark does not decrease the image quality.Changes in FID, KID and CLIP relative to non-watermarked images.</figDesc><table><row><cell>Model</cell><cell>∆FID</cell><cell>∆KID ∆CLIP</cell></row><row><cell>Infinity 2B, δ = 2</cell><cell cols="2">-2.1169 -0.0016 0.1086</cell></row><row><cell>Infinity 8B, δ = 1.5</cell><cell cols="2">0.5299 -0.0018 0.2792</cell></row><row><cell cols="2">Instella IAR, δ = 1.5 1.1471</cell><cell>0.0004 -0.8361</cell></row><row><cell>F.4 Timing</cell><cell></cell><cell></cell></row></table><note><p>We present the average elapsed time (in seconds) for the generation of an image with Infinity, when the watermark is applied to all scales (resolutions) and when using the standard generation process (without a watermark). For hardware information refer to Section E.2. Table16</p><p>shows that BitMark results in negligible overhead to image generation and allows for a fast detection in under 0.5 seconds.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_12"><head>Table 16 :</head><label>16</label><figDesc>Timing results for image processing and detection per image. We report the mean (std) for 1,000 images.</figDesc><table><row><cell>BitMark</cell><cell>No watermark</cell><cell>Detection</cell></row><row><cell cols="3">Seconds/Image 2.5817 (0.0063) 2.3196 (0.0043) 0.4491 (0.0046)</cell></row><row><cell>F.5 Radioactivity to IARs</cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_13"><head>Table 17 :</head><label>17</label><figDesc>We analyze the radioactivity of BitMark for class-conditional autoregressive models. We report the TPR@1%FPR (%).</figDesc><table><row><cell cols="4">Type of M1 Type of M2 Output of M1 Output of M2</cell></row><row><cell>Infinity-2B</cell><cell>VAR-16</cell><cell>100.0</cell><cell>24.2</cell></row><row><cell>Infinity-2B</cell><cell>VAR-20</cell><cell>100.0</cell><cell>25.8</cell></row><row><cell>Infinity-2B</cell><cell>VAR-24</cell><cell>100.0</cell><cell>25.7</cell></row><row><cell>Infinity-2B</cell><cell>VAR-30</cell><cell>100.0</cell><cell>25.6</cell></row><row><cell>Infinity-2B</cell><cell>RAR-B</cell><cell>100.0</cell><cell>4.3</cell></row><row><cell>Infinity-2B</cell><cell>RAR-L</cell><cell>100.0</cell><cell>3.3</cell></row><row><cell>Infinity-2B</cell><cell>RAR-XL</cell><cell>100.0</cell><cell>3.9</cell></row><row><cell>Infinity-2B</cell><cell>RAR-XXL</cell><cell>100.0</cell><cell>4.1</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_14"><head>Table 18 :</head><label>18</label><figDesc>Detection on non-watermarked samples. Mean (std) of z and green fractions for 1,000 non-watermarked samples.We additionally show the FPR for different natural datasets (ImageNet-1k, LAION POP) and Infinity-2B generated images, given the 1%FPR threshold that we used for MS-COCO in Table19.</figDesc><table><row><cell>Dataset</cell><cell>z</cell><cell>Green Fraction</cell></row><row><cell>Imagenet1k</cell><cell cols="2">0.6311 (1.966) 0.5005 (0.0017)</cell></row><row><cell>MS-COCO2014</cell><cell cols="2">0.6773 (1.735) 0.5006 (0.0015)</cell></row><row><cell cols="3">Infinity-2B generated 0.3620 (1.641) 0.5003 (0.0014)</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_15"><head>Table 19 :</head><label>19</label><figDesc>False Positive Rate of choosing the MS-COCO 1%FPR threshold on different datasets. FPR measured on N=1000 non-watermarked samples.</figDesc><table><row><cell>Dataset</cell><cell>FPR@1%MS-COCO</cell></row><row><cell>MS-COCO</cell><cell>0.01</cell></row><row><cell>ImageNet-1k</cell><cell>0.011</cell></row><row><cell>LAION POP</cell><cell>0.021</cell></row><row><cell>Infinity-2B Generated</cell><cell>0.0</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_16"><head>Table 20 :</head><label>20</label><figDesc>BitMark does not decrease the image quality.Changes in FID, KID and CLIP relative to non-watermarked images.</figDesc><table><row><cell>Model</cell><cell>∆FID</cell><cell>∆KID ∆CLIP</cell></row><row><cell cols="3">BiGR 256x256, δ = 3 -3.0304 -0.0020 0.0017</cell></row><row><cell cols="3">BiGR 512x512, δ = 3 -3.6660 -0.0024 0.1329</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_17"><head>Table 21 :</head><label>21</label><figDesc>Watermark robustness against removal attacks. We report the robustness (%TPR@1%FPR) for the different attacks. For BiGR, we added a slight amount of noise to all images before encoding.</figDesc><table><row><cell>Watermark</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell cols="2">Conventional Attacks</cell><cell></cell><cell></cell><cell></cell><cell cols="2">Reconstruction Attacks</cell></row><row><cell></cell><cell>None</cell><cell>Noise</cell><cell>Blur</cell><cell>Color</cell><cell>Rotate</cell><cell>Crop</cell><cell>JPEG</cell><cell>Vertical</cell><cell>Horizontal</cell><cell>VAE</cell><cell>CtrlRegen+</cell></row><row><cell>BiGR 256 × 256 (δ = 3)</cell><cell>97.0</cell><cell>54.3</cell><cell>94.2</cell><cell>16.1</cell><cell>55.3</cell><cell>49.7</cell><cell>95.1</cell><cell>61.3</cell><cell>47.8</cell><cell>95.5</cell><cell>75.2</cell></row><row><cell>BiGR 512 × 512 (δ = 3)</cell><cell>99.3</cell><cell>57.4</cell><cell>96.4</cell><cell>34.2</cell><cell>65.1</cell><cell>69.4</cell><cell>97.6</cell><cell>75.4</cell><cell>77.2</cell><cell>98.2</cell><cell>69.2</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" xml:id="foot_0"><p>39th Conference on Neural Information Processing Systems (NeurIPS 2025).</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_1"><p>ConclusionsWe present BitMark, the first watermarking framework for bitwise image autoregressive models. We show that our watermark can be efficiently embedded and detected, imposes negligible overhead on image quality and generation speed, while exhibiting a strong robustness against a wide range of watermark removal attacks, including the strong watermarks in the sand and our own adaptive Bit-Flipper attack. Moreover, BitMark exhibits strong radioactivity, i.e., downstream models finetuned on our watermarked outputs consistently inherit and reproduce our bit patterns, which makes our watermark reliably detectable requiring only 5% watermarked data to achieve a significant distributional shift. This is important for model owners to identify images derived from their own generated images, and exclude them from training of future model versions. Overall, BitMark not only sets a new standard for watermarking in autoregressive image generation, but also provides a critical defense against model collapse, contributing to further advancements in image generative models.</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgments and Disclosure of Funding</head><p>This work was supported by the <rs type="funder">German Research Foundation (DFG)</rs> within the framework of the <rs type="programName">Weave Programme</rs> under the project titled "<rs type="projectName">Protecting Creativity: On the Way to Safe Generative Models</rs>" with number <rs type="grantNumber">545047250</rs>. Responsibility for the content of this publication lies with the authors. We would like to also acknowledge our sponsors, who support our research with financial and in-kind contributions, especially the <rs type="grantName">OpenAI Cybersecurity Grant</rs>.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funded-project" xml:id="_dQ9aTBT">
+					<idno type="grant-number">545047250</idno>
+					<orgName type="grant-name">OpenAI Cybersecurity Grant</orgName>
+					<orgName type="project" subtype="full">Protecting Creativity: On the Way to Safe Generative Models</orgName>
+					<orgName type="program" subtype="full">Weave Programme</orgName>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 5 Bit-Flipper Attack</head><p>Inputs: Image im, green list G, red list R, image decoder D. Hyperparameters: Flip factor ϕ, steps K (number of resolutions), resolutions (hi, wi) K  i=1 , the number of bits for resolution i is ti, n -the length of the bit vector, |s| the total number of bit sequences. e = E(im) img = init() for i = 1, . . . , K do ui = Q(Interpolate(e, hi, wi)) Ci = Count((b1, . . . , bt i ), G) p = ( C i |s i | -0.5) * ϕ for j = n, . . . , ti do if (bj-n, . . . , bj) ∈ G ∧ random() &lt; p then bj = ¬bj {Flip bit with probability p if sequence is in green list} zi = Lookup(ui) zi = Interpolate(zi, hK , wK ) e = e -ϕi(zi) img = img + ϕi(zi) Return: attacked image D(img)</p><p>Table <ref type="table">22</ref>: Applying Bit-Flipper with different factors ϕ on watermarked images with δ = 2. We report the TPR@1%FPR for 1,000 Images.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>ϕ</head><p>TPR@1%FPR (%) z 1.8 0.878 10.06 (4.24) 2.0 0.845 9.17 (4.16) 2.2 0.472 5.52 (5.07) 2.4 0.595 8.06 (7.28) 2.6 0.52 6.97 (6.96)</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>H.2 Watermarks in the Sand Attack</head><p>As shown by the qualitative analysis in Figure <ref type="figure">8</ref>, the watermarks in the sand attack causes a significant loss of details and produces many perceptible artifacts, limiting the applicability of this attack.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>NeurIPS Paper Checklist</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Claims</head><p>Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?</p><p>Answer: <ref type="bibr">[Yes]</ref> Justification: We claimed to developed a watermark which is robust towards most state of the art attacks. It sets a new benchline for well established attacks, as well as outperforms current benchmarks regarding more advanced attacks like Watermark in the Sand or CtrlRegen. We showed exhaustive empirical results as well as ablations in the appendix to support those claims.</p><p>Guidelines:</p><p>• The answer NA means that the abstract and introduction do not include the claims made in the paper.</p><p>• The abstract and/or introduction should clearly state the claims made, including the contributions made in the paper and important assumptions and limitations. A No or NA answer to this question will not be perceived well by the reviewers.</p><p>• The claims made should match theoretical and experimental results, and reflect how much the results can be expected to generalize to other settings.</p><p>• It is fine to include aspirational goals as motivation as long as it is clear that these goals are not attained by the paper.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Limitations</head><p>Question: Does the paper discuss the limitations of the work performed by the authors?</p><p>Answer: [Yes] Justification: Yes, we pointed towards the limitation to bitwise domains as well as limitaitons towards robustness regarding rotation. Further, limitations have been stated in Section A.</p><p>Guidelines:</p><p>• The answer NA means that the paper has no limitation while the answer No means that the paper has limitations, but those are not discussed in the paper.</p><p>• The authors are encouraged to create a separate "Limitations" section in their paper.</p><p>• The paper should point out any strong assumptions and how robust the results are to violations of these assumptions (e.g., independence assumptions, noiseless settings, model well-specification, asymptotic approximations only holding locally). The authors should reflect on how these assumptions might be violated in practice and what the implications would be.</p><p>• The authors should reflect on the scope of the claims made, e.g., if the approach was only tested on a few datasets or with a few runs. In general, empirical results often depend on implicit assumptions, which should be articulated.</p><p>• The authors should reflect on the factors that influence the performance of the approach. For example, a facial recognition algorithm may perform poorly when image resolution is low or images are taken in low lighting. Or a speech-to-text system might not be used reliably to provide closed captions for online lectures because it fails to handle technical jargon.</p><p>• The authors should discuss the computational efficiency of the proposed algorithms and how they scale with dataset size.</p><p>• If applicable, the authors should discuss possible limitations of their approach to address problems of privacy and fairness.</p><p>• While the authors might fear that complete honesty about limitations might be used by reviewers as grounds for rejection, a worse outcome might be that reviewers discover limitations that aren't acknowledged in the paper. The authors should use their best judgment and recognize that individual actions in favor of transparency play an important role in developing norms that preserve the integrity of the community. Reviewers will be specifically instructed to not penalize honesty concerning limitations.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Theory assumptions and proofs</head><p>Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof?</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Answer: [NA]</head><p>Justification: There are no theoretical results.</p><p>Guidelines:</p><p>• The answer NA means that the paper does not include theoretical results.</p><p>• All the theorems, formulas, and proofs in the paper should be numbered and cross-referenced.</p><p>• All assumptions should be clearly stated or referenced in the statement of any theorems.</p><p>• The proofs can either appear in the main paper or the supplemental material, but if they appear in the supplemental material, the authors are encouraged to provide a short proof sketch to provide intuition.</p><p>• Inversely, any informal proof provided in the core of the paper should be complemented by formal proofs provided in appendix or supplemental material.</p><p>• Theorems and Lemmas that the proof relies upon should be properly referenced.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Experimental result reproducibility</head><p>Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?</p><p>Answer: [Yes] Justification: We stated our method in Section 3.2 and Section 3.3 and displayed all core algorithms (see Algorithm 1, Algorithm 2, Algorithm 5) as well as settings and hyperparameters in Section E.1 to reproduce these results.</p><p>Guidelines:</p><p>• The answer NA means that the paper does not include experiments.</p><p>• If the paper includes experiments, a No answer to this question will not be perceived well by the reviewers: Making the paper reproducible is important, regardless of whether the code and data are provided or not.</p><p>• If the contribution is a dataset and/or model, the authors should describe the steps taken to make their results reproducible or verifiable.</p><p>• Depending on the contribution, reproducibility can be accomplished in various ways. For example, if the contribution is a novel architecture, describing the architecture fully might suffice, or if the contribution is a specific model and empirical evaluation, it may be necessary to either make it possible for others to replicate the model with the same dataset, or provide access to the model. In general. releasing code and data is often one good way to accomplish this, but reproducibility can also be provided via detailed instructions for how to replicate the results, access to a hosted model (e.g., in the case of a large language model), releasing of a model checkpoint, or other means that are appropriate to the research performed.</p><p>• While NeurIPS does not require releasing code, the conference does require all submissions to provide some reasonable avenue for reproducibility, which may depend on the nature of the contribution. For example (a) If the contribution is primarily a new algorithm, the paper should make it clear how to reproduce that algorithm. (b) If the contribution is primarily a new model architecture, the paper should describe the architecture clearly and fully. (c) If the contribution is a new model (e.g., a large language model), then there should either be a way to access this model for reproducing the results or a way to reproduce the model (e.g., with an open-source dataset or instructions for how to construct the dataset). (d) We recognize that reproducibility may be tricky in some cases, in which case authors are welcome to describe the particular way they provide for reproducibility. In the case of closed-source models, it may be that access to the model is limited in some way (e.g., to registered users), but it should be possible for other researchers to have some path to reproducing or verifying the results.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Open access to data and code</head><p>Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results, as described in supplemental material? Answer: [Yes] Justification: We provide access to the code in the supplementary material.</p><p>Guidelines:</p><p>• The answer NA means that paper does not include experiments requiring code.</p><p>• Please see the NeurIPS code and data submission guidelines (<ref type="url" target="https://nips.cc/public/guides/CodeSubmissionPolicy">https://nips.cc/public/  guides/CodeSubmissionPolicy</ref>) for more details.</p><p>• While we encourage the release of code and data, we understand that this might not be possible, so "No" is an acceptable answer. Papers cannot be rejected simply for not including code, unless this is central to the contribution (e.g., for a new open-source benchmark).</p><p>• The instructions should contain the exact command and environment needed to run to reproduce the results. See the NeurIPS code and data submission guidelines (<ref type="url" target="https://nips.cc/public/guides/CodeSubmissionPolicy">https://nips.cc/public/  guides/CodeSubmissionPolicy</ref>) for more details.</p><p>• The authors should provide instructions on data access and preparation, including how to access the raw data, preprocessed data, intermediate data, and generated data, etc.</p><p>• The authors should provide scripts to reproduce all experimental results for the new proposed method and baselines. If only a subset of experiments are reproducible, they should state which ones are omitted from the script and why.</p><p>• At submission time, to preserve anonymity, the authors should release anonymized versions (if applicable).</p><p>• Providing as much information as possible in supplemental material (appended to the paper) is recommended, but including URLs to data and code is permitted. 6.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Experimental setting/details</head><p>Question: Does the paper specify all the training and test details (e.g., data splits, hyperparameters, how they were chosen, type of optimizer, etc.) necessary to understand the results? Answer: [Yes] Justification: See Section E.1, Section 4 and the provided supplementary material.</p><p>Guidelines:</p><p>• The answer NA means that the paper does not include experiments.</p><p>• The experimental setting should be presented in the core of the paper to a level of detail that is necessary to appreciate the results and make sense of them.</p><p>• The full details can be provided either with the code, in appendix, or as supplemental material. 7. Experiment statistical significance Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments? Answer: [Yes] Justification: All plots and tables contain the mean over the specified number of samples. Guidelines:</p><p>• The answer NA means that the paper does not include experiments.</p><p>• The authors should answer "Yes" if the results are accompanied by error bars, confidence intervals, or statistical significance tests, at least for the experiments that support the main claims of the paper.</p><p>• The factors of variability that the error bars are capturing should be clearly stated (for example, train/test split, initialization, random drawing of some parameter, or overall run with given experimental conditions).</p><p>• The method for calculating the error bars should be explained (closed form formula, call to a library function, bootstrap, etc.) • The assumptions made should be given (e.g., Normally distributed errors).</p><p>• It should be clear whether the error bar is the standard deviation or the standard error of the mean.</p><p>• It is OK to report 1-sigma error bars, but one should state it. The authors should preferably report a 2-sigma error bar than state that they have a 96% CI, if the hypothesis of Normality of errors is not verified.</p><p>• For asymmetric distributions, the authors should be careful not to show in tables or figures symmetric error bars that would yield results that are out of range (e.g. negative error rates).</p><p>• If error bars are reported in tables or plots, The authors should explain in the text how they were calculated and reference the corresponding figures or tables in the text.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8.">Experiments compute resources</head><p>Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?</p><p>Answer: [Yes] Justification: See Section E.2 for specification of the compute resources and environment.</p><p>Guidelines:</p><p>• The answer NA means that the paper does not include experiments.</p><p>• The paper should indicate the type of compute workers CPU or GPU, internal cluster, or cloud provider, including relevant memory and storage.</p><p>• The paper should provide the amount of compute required for each of the individual experimental runs as well as estimate the total compute.</p><p>• The paper should disclose whether the full research project required more compute than the experiments reported in the paper (e.g., preliminary or failed experiments that didn't make it into the paper).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="9.">Code of ethics</head><p>Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics <ref type="url" target="https://neurips.cc/public/EthicsGuidelines">https://neurips.cc/public/EthicsGuidelines</ref>?</p><p>Answer: [Yes]</p><p>Justification: The research is conform with the NeurIPS Code of Ethics.</p><p>Guidelines:</p><p>• The answer NA means that the authors have not reviewed the NeurIPS Code of Ethics.</p><p>• If the authors answer No, they should explain the special circumstances that require a deviation from the Code of Ethics.</p><p>• The authors should make sure to preserve anonymity (e.g., if there is a special consideration due to laws or regulations in their jurisdiction).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="10.">Broader impacts</head><p>Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?</p><p>Answer: [Yes] Justification: See Section A for a broader impact of the work.</p><p>Guidelines:</p><p>• The answer NA means that there is no societal impact of the work performed.</p><p>• If the authors answer NA or No, they should explain why their work has no societal impact or why the paper does not address societal impact.</p><p>• Examples of negative societal impacts include potential malicious or unintended uses (e.g., disinformation, generating fake profiles, surveillance), fairness considerations (e.g., deployment of technologies that could make decisions that unfairly impact specific groups), privacy considerations, and security considerations.</p><p>• The conference expects that many papers will be foundational research and not tied to particular applications, let alone deployments. However, if there is a direct path to any negative applications, the authors should point it out. For example, it is legitimate to point out that an improvement in the quality of generative models could be used to generate deepfakes for disinformation. On the other hand, it is not needed to point out that a generic algorithm for optimizing neural networks could enable people to train models that generate Deepfakes faster.</p><p>• The authors should consider possible harms that could arise when the technology is being used as intended and functioning correctly, harms that could arise when the technology is being used as intended but gives incorrect results, and harms following from (intentional or unintentional) misuse of the technology.</p><p>• If there are negative societal impacts, the authors could also discuss possible mitigation strategies (e.g., gated release of models, providing defenses in addition to attacks, mechanisms for monitoring misuse, mechanisms to monitor how a system learns from feedback over time, improving the efficiency and accessibility of ML). 11.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Safeguards</head><p>Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pretrained language models, image generators, or scraped datasets)? Answer: [NA] Justification: The paper does not provide new models or datasets.</p><p>Guidelines:</p><p>• The answer NA means that the paper poses no such risks.</p><p>• Released models that have a high risk for misuse or dual-use should be released with necessary safeguards to allow for controlled use of the model, for example by requiring that users adhere to usage guidelines or restrictions to access the model or implementing safety filters.</p><p>• Datasets that have been scraped from the Internet could pose safety risks. The authors should describe how they avoided releasing unsafe images.</p><p>• We recognize that providing effective safeguards is challenging, and many papers do not require this, but we encourage authors to take this into account and make a best faith effort. 12. Licenses for existing assets Question: Are the creators or original owners of assets (e.g., code, data, models), used in the paper, properly credited and are the license and terms of use explicitly mentioned and properly respected? Answer: [Yes] Justification: Model owners and used code are clear and properly cited.</p><p>Guidelines:</p><p>• The answer NA means that the paper does not use existing assets.</p><p>• The authors should cite the original paper that produced the code package or dataset.</p><p>• The authors should state which version of the asset is used and, if possible, include a URL.</p><p>• The name of the license (e.g., CC-BY 4.0) should be included for each asset.</p><p>• For scraped data from a particular source (e.g., website), the copyright and terms of service of that source should be provided.</p><p>• If assets are released, the license, copyright information, and terms of use in the package should be provided. For popular datasets, <ref type="url" target="file://localhost/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/grobid/grobid-home/tmp/paperswithcode.com/datasets">paperswithcode.com/datasets</ref> has curated licenses for some datasets. Their licensing guide can help determine the license of a dataset.</p><p>• For existing datasets that are re-packaged, both the original license and the license of the derived asset (if it has changed) should be provided.</p><p>• If this information is not available online, the authors are encouraged to reach out to the asset's creators. 13. New assets Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets? Answer: [Yes] Justification: The code for our method will be submitted as supplementary material and published upon acceptance of the paper. Guidelines:</p><p>• The answer NA means that the paper does not release new assets.</p></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Self-consuming generative models go MAD</title>
+		<author>
+			<persName><forename type="first">Sina</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josue</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorenzo</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmed</forename><surname>Imtiaz Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hossein</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Baraniuk</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=ShjMHfmPs0" />
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Waves: Benchmarking the robustness of image watermarks</title>
+		<author>
+			<persName><forename type="first">Bang</forename><surname>An</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mucong</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tahseen</forename><surname>Rabbani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aakriti</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuancheng</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenghao</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sicheng</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abdirisak</forename><surname>Mohamed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxin</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Goldstein</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<publisher>PMLR</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="1456" to="1492" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">The brittleness of aigenerated image watermarking techniques: Examining their robustness against visual paraphrasing attacks</title>
+		<author>
+			<persName><forename type="first">Krish</forename><surname>Niyar R Barman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashhar</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shashwat</forename><surname>Aziz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shwetangshu</forename><surname>Bajpai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vasu</forename><surname>Biswas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vinija</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aman</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amit</forename><surname>Chadha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amitava</forename><surname>Sheth</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Das</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2408.10446</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">A systematic review on model watermarking for neural networks</title>
+		<author>
+			<persName><forename type="first">Franziska</forename><surname>Boenisch</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Frontiers in big Data</title>
+		<imprint>
+			<biblScope unit="volume">4</biblScope>
+			<date type="published" when="2021">729663, 2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Trustmark: Robust watermarking and watermark removal for arbitrary resolution images</title>
+		<author>
+			<persName><forename type="first">Tu</forename><surname>Bui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shruti</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Collomosse</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">IEEE International Conference on Computer Vision (ICCV)</title>
+		<imprint>
+			<date type="published" when="2025-10">October 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Scalable watermarking for identifying large language model outputs</title>
+		<author>
+			<persName><forename type="first">Sumanth</forename><surname>Dathathri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abigail</forename><surname>See</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumedh</forename><surname>Ghaisas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rob</forename><surname>Mcadam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vandana</forename><surname>Bachani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Kaskasoli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>Stanforth</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatiana</forename><surname>Matejovicova</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">634</biblScope>
+			<biblScope unit="issue">8035</biblScope>
+			<biblScope unit="page" from="818" to="823" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Are watermarks for diffusion models radioactive?</title>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Dubiński</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michel</forename><surname>Meintz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Franziska</forename><surname>Boenisch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Dziedzic</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=gtXbVRMwQh" />
+	</analytic>
+	<monogr>
+		<title level="m">The 1st Workshop on GenAI Watermarking</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Scaling rectified flow transformers for high-resolution image synthesis</title>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Esser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumith</forename><surname>Kulal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andreas</forename><surname>Blattmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rahim</forename><surname>Entezari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonas</forename><surname>Müller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Harry</forename><surname>Saini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yam</forename><surname>Levi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Lorenz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Axel</forename><surname>Sauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Frederic</forename><surname>Boesel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-first international conference on machine learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">The stable signature: Rooting watermarks in latent diffusion models</title>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Fernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Couairon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hervé</forename><surname>Jégou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthijs</forename><surname>Douze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teddy</forename><surname>Furon</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)</title>
+		<meeting>the IEEE/CVF International Conference on Computer Vision (ICCV)</meeting>
+		<imprint>
+			<date type="published" when="2023-10">October 2023</date>
+			<biblScope unit="page" from="22466" to="22477" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">An undetectable watermark for generative image models</title>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Gunn</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuandong</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Song</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=jlhBFm7T2J" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Infinity: Scaling bitwise autoregressive modeling for high-resolution image synthesis</title>
+		<author>
+			<persName><forename type="first">Jian</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinlai</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bin</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuqi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zehuan</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bingyue</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaobing</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</meeting>
+		<imprint>
+			<biblScope unit="page">2025</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">BiGR: Harnessing binary latent codes for image generation and improved visual representation capabilities</title>
+		<author>
+			<persName><forename type="first">Shaozhe</forename><surname>Hao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liu</forename><surname>Xuantong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xianbiao</forename><surname>Qi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shihao</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bojia</forename><surname>Zi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rong</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kai</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Kwan-Yee</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Wong</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=1Z6PSw7OL8" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Scaling up visual and vision-language representation learning with noisy text supervision</title>
+		<author>
+			<persName><forename type="first">Chao</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yinfei</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ye</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi-Ting</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zarana</forename><surname>Parekh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hieu</forename><surname>Pham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quoc</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yun-Hsuan</forename><surname>Sung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhen</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Duerig</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International conference on machine learning</title>
+		<imprint>
+			<publisher>PMLR</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="4904" to="4916" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Entangled watermarks as a defense against model extraction</title>
+		<author>
+			<persName><forename type="first">Hengrui</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Christopher A Choquette-Choo</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Papernot</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2002.12200</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Watermark stealing in large language models</title>
+		<author>
+			<persName><forename type="first">Nikola</forename><surname>Jovanović</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robin</forename><surname>Staab</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Vechev</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="22570" to="22593" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">A watermark for large language models</title>
+		<author>
+			<persName><forename type="first">John</forename><surname>Kirchenbauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonas</forename><surname>Geiping</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxin</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Katz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Miers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Goldstein</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="17061" to="17084" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Watermarking llms with weight quantization</title>
+		<author>
+			<persName><forename type="first">Linyang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Botian</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pengyu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ke</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hang</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xipeng</forename><surname>Qiu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2023</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="3368" to="3378" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Microsoft coco: Common objects in context</title>
+		<author>
+			<persName><forename type="first">Tsung-Yi</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Maire</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Serge</forename><surname>Belongie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Hays</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pietro</forename><surname>Perona</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deva</forename><surname>Ramanan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Dollár</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Lawrence</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zitnick</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Computer vision-ECCV 2014: 13th European conference</title>
+		<meeting><address><addrLine>zurich, Switzerland</addrLine></address></meeting>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2014">September 6-12, 2014. 2014</date>
+			<biblScope unit="volume">13</biblScope>
+			<biblScope unit="page" from="740" to="755" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Can watermarked LLMs be identified by users via crafted prompts?</title>
+		<author>
+			<persName><forename type="first">Aiwei</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sheng</forename><surname>Guan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leyi</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifei</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liancheng</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lijie</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philip</forename><forename type="middle">S</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuming</forename><surname>Hu</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=ujpAYpFDEA" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Image watermarks are removable using controllable regeneration from clean noise</title>
+		<author>
+			<persName><forename type="first">Yepeng</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hai</forename><surname>Ci</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haofan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mike</forename><forename type="middle">Zheng</forename><surname>Shou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuheng</forename><surname>Bu</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=mDKxlfraAn" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">Subhadip</forename><surname>Maji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Smarajit</forename><surname>Bose</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2007.06709</idno>
+		<title level="m">Deep image orientation angle detection</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Dwt-dct-svd based watermarking</title>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">A</forename><surname>Navas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mathews Ajay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tampy</forename><surname>Lekshmi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Archana</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sasikumar</surname></persName>
+		</author>
+		<idno type="DOI">10.1109/COMSWA.2008.4554423</idno>
+		<imprint>
+			<date type="published" when="2008-02">02 2008</date>
+			<biblScope unit="page" from="271" to="274" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Sdxl: Improving latent diffusion models for high-resolution image synthesis</title>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Podell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zion</forename><surname>English</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Lacey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andreas</forename><surname>Blattmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tim</forename><surname>Dockhorn</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonas</forename><surname>Müller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joe</forename><surname>Penna</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robin</forename><surname>Rombach</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.01952</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Zero-shot text-to-image generation</title>
+		<author>
+			<persName><forename type="first">Aditya</forename><surname>Ramesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mikhail</forename><surname>Pavlov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gabriel</forename><surname>Goh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chelsea</forename><surname>Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Sutskever</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International conference on machine learning</title>
+		<imprint>
+			<publisher>Pmlr</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="8821" to="8831" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">Hierarchical text-conditional image generation with clip latents</title>
+		<author>
+			<persName><forename type="first">Aditya</forename><surname>Ramesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Nichol</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Casey</forename><surname>Chu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2204.06125</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">Highresolution image synthesis with latent diffusion models</title>
+		<author>
+			<persName><forename type="first">Robin</forename><surname>Rombach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andreas</forename><surname>Blattmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Lorenz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Esser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Björn</forename><surname>Ommer</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Robustness of AI-image detectors: Fundamental limits and practical attacks</title>
+		<author>
+			<persName><forename type="first">Mehrdad</forename><surname>Saberi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vinu</forename><surname>Sankar Sadasivan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Keivan</forename><surname>Rezaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aounon</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Atoosa</forename><surname>Chegini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenxiao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Soheil</forename><surname>Feizi</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=dLoAdIKENc" />
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Radioactive data: tracing through training</title>
+		<author>
+			<persName><forename type="first">Alexandre</forename><surname>Sablayrolles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthijs</forename><surname>Douze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cordelia</forename><surname>Schmid</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hervé</forename><surname>Jégou</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="8326" to="8335" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Photorealistic text-to-image diffusion models with deep language understanding</title>
+		<author>
+			<persName><forename type="first">Chitwan</forename><surname>Saharia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Chan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saurabh</forename><surname>Saxena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lala</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jay</forename><surname>Whang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emily</forename><forename type="middle">L</forename><surname>Denton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamyar</forename><surname>Ghasemipour</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Raphael</forename><forename type="middle">Gontijo</forename><surname>Lopes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Burcu</forename><surname>Karagol Ayan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tim</forename><surname>Salimans</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="36479" to="36494" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Watermarking makes language models radioactive</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Sander</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Fernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alain</forename><surname>Durmus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthijs</forename><surname>Douze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teddy</forename><surname>Furon</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="21079" to="21113" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Alain Oliviero Durmus, Matthijs Douze, and Teddy Furon</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Sander</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Fernandez</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=qGiZQb1Khm" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirty-eighth Annual Conference on Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>Watermarking makes language models radioactive</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Laion-5b: An open large-scale dataset for training next generation image-text models</title>
+		<author>
+			<persName><forename type="first">Christoph</forename><surname>Schuhmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Romain</forename><surname>Beaumont</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Vencu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cade</forename><surname>Gordon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Wightman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mehdi</forename><surname>Cherti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Theo</forename><surname>Coombes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aarush</forename><surname>Katta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clayton</forename><surname>Mullis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mitchell</forename><surname>Wortsman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="25278" to="25294" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Ai models collapse when trained on recursively generated data</title>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zakhar</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yarin</forename><surname>Gal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">631</biblScope>
+			<biblScope unit="issue">8022</biblScope>
+			<biblScope unit="page" from="755" to="759" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Stegastamp: Invisible hyperlinks in physical photographs</title>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Tancik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Mildenhall</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ren</forename><surname>Ng</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF conference on computer vision and pattern recognition</title>
+		<meeting>the IEEE/CVF conference on computer vision and pattern recognition</meeting>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="2117" to="2126" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Visual autoregressive modeling: Scalable image generation via next-scale prediction</title>
+		<author>
+			<persName><forename type="first">Keyu</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zehuan</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bingyue</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liwei</forename><surname>Wang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="84839" to="84865" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niki</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Łukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<title level="m" type="main">Instella-t2i: Pushing the limits of 1d discrete latent space image generation</title>
+		<author>
+			<persName><forename type="first">Ze</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benran</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiang</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ximeng</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jialian</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yusheng</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaodong</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emad</forename><surname>Barsoum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zicheng</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.21022</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">Tree-rings watermarks: Invisible fingerprints for diffusion images</title>
+		<author>
+			<persName><forename type="first">Yuxin</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Kirchenbauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonas</forename><surname>Geiping</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Goldstein</surname></persName>
+		</author>
+		<ptr target="https://proceedings.neurips.cc/paper_files/paper/2023/file/b54" />
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<editor>
+			<persName><forename type="first">A</forename><surname>Oh</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">T</forename><surname>Naumann</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">A</forename><surname>Globerson</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">K</forename><surname>Saenko</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">M</forename><surname>Hardt</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">S</forename><surname>Levine</surname></persName>
+		</editor>
+		<imprint>
+			<publisher>Curran Associates, Inc</publisher>
+			<date type="published" when="1757">2023. 1757</date>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="58047" to="58063" />
+		</imprint>
+	</monogr>
+	<note>c190ba20dbc4f9e4a2f54149-Paper-Conference.pdf</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title level="a" type="main">Optimizing watermarks for large language models</title>
+		<author>
+			<persName><forename type="first">Bram</forename><surname>Wouters</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-first International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<analytic>
+		<title level="a" type="main">Fairness feedback loops: training on synthetic data amplifies bias</title>
+		<author>
+			<persName><forename type="first">Sierra</forename><surname>Wyllie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 ACM Conference on Fairness, Accountability, and Transparency</title>
+		<meeting>the 2024 ACM Conference on Fairness, Accountability, and Transparency</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="2113" to="2147" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Randomized autoregressive visual generation</title>
+		<author>
+			<persName><forename type="first">Qihang</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ju</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xueqing</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaohui</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang-Chieh</forename><surname>Chen</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2411.00776" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Watermarks in the sand: impossibility of strong watermarking for language models</title>
+		<author>
+			<persName><forename type="first">Hanlin</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danilo</forename><surname>Benjamin L Edelman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniele</forename><surname>Francati</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Giuseppe</forename><surname>Venturi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Boaz</forename><surname>Ateniese</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Barak</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-first International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<title level="m" type="main">Robust invisible video watermarking with attention</title>
+		<author>
+			<persName><forename type="first">Kevin Alex</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lei</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alfredo</forename><surname>Cuesta-Infante</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kalyan</forename><surname>Veeramachaneni</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<analytic>
+		<title level="a" type="main">Remarkllm: A robust and efficient watermarking framework for generative large language models</title>
+		<author>
+			<persName><forename type="first">Ruisi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shehzeen</forename><surname>Samarah Hussain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paarth</forename><surname>Neekhara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Farinaz</forename><surname>Koushanfar</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">33rd USENIX Security Symposium (USENIX Security 24)</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="1813" to="1830" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<analytic>
+		<title level="a" type="main">Persistent pre-training poisoning of LLMs</title>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Javier</forename><surname>Rando</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ivan</forename><surname>Evtimov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Chi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><forename type="middle">Michael</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Carlini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Florian</forename><surname>Tramèr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Ippolito</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=eiqrnVaeIw" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<analytic>
+		<title level="a" type="main">Provable robust watermarking for AI-generated text</title>
+		<author>
+			<persName><forename type="first">Xuandong</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prabhanjan</forename><surname>Vijendra Ananth</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu-Xiang</forename><surname>Wang</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=SsmT8aO45L" />
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<analytic>
+		<title level="a" type="main">Image and video tokenization with binary spherical quantization</title>
+		<author>
+			<persName><forename type="first">Yue</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanjun</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Kraehenbuehl</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=yGnsH3gQ6U" />
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yunqing</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyu</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chao</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ngai-Man</forename><surname>Cheung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Min</forename><surname>Lin</surname></persName>
+		</author>
+		<title level="m">A recipe for watermarking diffusion models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

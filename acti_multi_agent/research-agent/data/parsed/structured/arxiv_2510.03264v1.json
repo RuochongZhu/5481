@@ -1,0 +1,888 @@
+{
+  "paperId": "arxiv:2510.03264v1",
+  "title": "Front-Loading Reasoning: The Synergy between Pretraining and Post-Training Data",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2510.03264v1.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2510.03264v1.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2510.03264v1.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "The prevailing paradigm for enhancing the reasoning abilities of Large Language Models (LLMs) revolves around post-training on high-quality, reasoning-intensive data. While emerging literature suggests that reasoning data is increasingly incorporated also during the mid-training stage-a practice that is relatively more proprietary and less openly characterized-the role of such data in pretraining remains unclear. In particular, due to the opaqueness of pretraining corpora in most frontier models, the effect of reasoning data introduced at different phases of pre-and/or post-training is relatively less reported in the scientific literature. This raises several important but unsettled questions: Is adding reasoning data earlier during pre-training any better than introducing it during post-training, when the token counts are controlled? Could earlier inclusion risk overfitting and harm generalization, or instead establish durable foundations that later fine-tuning cannot recover? To address these questions, we conduct the first systematic study of how reasoning data-varying in scale, diversity, and quality-affects LLM performance when introduced at different stages of training. Our findings reveal that front-loading reasoning data into pretraining is critical (19% average gain), establishing foundational capabilities that cannot be fully replicated by later-stage SFT, even with more data. We uncover an asymmetric principle for optimal data allocation: pretraining benefits most from broad diversity in reasoning patterns (11% average gain), while SFT is more sensitive to data quality (15% average gain with high quality data). Furthermore, we show that high-quality pretraining data has latent effects, activated only after SFT, and that naively scaling SFT data can be detrimental, washing away the benefits of early reasoning injection. Collectively, our results challenge the conventional separation of language modeling and reasoning, providing a principled guide for strategically allocating data across the entire training pipeline to build more capable models.",
+      "word_count": 285
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "The reasoning abilities of Large Language Models (LLMs) have advanced considerably, with post-training on reasoning data driving significant breakthroughs in reasoning tasks, such as math competitions (Hendrycks et al., 2021b) , PhD-level scientific QA (Rein et al., 2024; Phan et al., 2025) , and software engineering (Jimenez et al., 2024) . This progress has been largely driven by mid-or post-training LLMs on high-quality, reasoning-intensive datasets-often featuring long chain-of-thought (CoT) examples (Guha et al., 2025; Moshkov et al., 2025; Zhou et al., 2025; Gandhi et al., 2025; Wang et al., 2025) . While this approach has proven effective, it treats reasoning as a specialized skill to be layered onto a generalist base. In addition, the impact of incorporating reasoning data during pretraining-and the potential synergistic effects on subsequent post-training-remains a critical yet less explored frontier. This research gap persists due to the prohibitive computational cost of end-to-end pretraining experiments and the opacity surrounding proprietary training recipes, which has concentrated community efforts on the more accessible post-training phase.\n\nFigure 1 : We systematically inject reasoning-style data (𝒟 res ) at different phases of training-pretraining versus SFT-while varying its diversity, quantity, and quality. Our results show an asymmetric principle: diversity and scale matter most during pretraining, whereas quality dominates in SFT. This allocation strategy compounds through reinforcement learning (RL), yielding sustained gains across complex reasoning benchmarks. Chu et al., 2025) , yet conclusions vary with training data and scale, and their applicability to pretraining remains vague in the current literature. In this work, we investigate not just which reasoning data, but when to train with such reasoning data by studying the synergy between pretraining and post-training. Our central goal is to determine the ideal balance of such reasoning data across the two phases in order to maximize downstream accuracies after reinforcement learning. This motivates the following research questions:\n\n• Is a reasoning-rich pretraining essential, or can a model \"catch up\"? We investigate whether a model pretrained without reasoning data can match the performance of its reasoning-aware counterparts by simply undergoing a more intensive SFT phase.\n\n• Does inclusion of reasoning data make the base llm overfitted and less generalizable to sustain gains in subsequent training phases? While recent literature highlights overspecialization of reasoning during post-training can be detrimental (Gupta et al., 2025; Luo et al., 2025b) , investigations of this effect in pretraining remain limited.\n\n• Does data diversity in pretraining impact stability and specialization during SFT? Specifically, does using the same reasoning data in both pretraining and SFT lead to robust skill mastery, or does a narrow pretraining focus risk catastrophic forgetting when the model is later fine-tuned on different tasks? • Does the complexity and quality of reasoning data matter when incorporated during pretraining of the base model? Current literature explores this mostly from SFT stage (Zhou et al., 2023; Guha et al., 2025) , making it obscure whether difficulty or noisiness in the early phase of training directly impacts reasoning development or not.\n\nThis work provides a systematic analysis of the interplay between reasoning data and the distinct phases of LLM training. Our primary findings are summarized as:\n\n• Front-loading reasoning data into pretraining creates a durable, compounding advantage. Injecting reasoning data during pretraining establishes a superior foundation that widens at every stage of posttraining, culminating in a +19% lead on expert-level benchmarks. This refutes the catch-up and overfitting hypotheses, proving that SFT cannot compensate for a weak foundation and that pretraining choices dictate the final performance ceiling.\n\n• The optimal data strategy is asymmetric: prioritize diversity in pretraining and quality in SFT. Our results reveal a clear, phase-dependent principle. Pretraining benefits most from diversity and scale (a +11% gain with diverse corpus), while SFT is dominated by data quality (a +15% gain with high-quality reasoning data). This provides an actionable heuristic for data allocation that is more nuanced than simplistic \"more is better\" approaches.\n\n• Naive scaling of SFT data is ineffective and harmful. Blindly scaling SFT with mixed-quality data yields no average improvement and actively harmed mathematical reasoning by -5% on average, while a marginal (0.4%) addition of high-quality data consistently improved performance.\n\n• High-quality pretraining data can have a latent effect unlocked by SFT. We found that high-quality data added to a diverse pretraining mix showed minimal immediate benefit but \"unlocked\" an additional +4% gain over model pretrained with diverse, mixed quality data after SFT-revealing a deeper synergy where pretraining can instill a latent potential in the model that is only activated during the alignment phase.",
+      "word_count": 749
+    },
+    {
+      "index": 3,
+      "title": "Methodology",
+      "kind": "methods",
+      "text": "Our methodology is designed to systematically determine the optimal strategy for allocating reasoning data between the pretraining and supervised fine-tuning stages of llm development. We frame this as an optimization problem where the goal is to maximize the final model's downstream accuracies, 𝒫. This is a function of the reasoning data introduced during pretraining, 𝒟 PT res , and the data used for supervised fine-tuning, 𝒟 SFT res . Our objective is to find the optimal data configurations, (𝒟 PT* res , 𝒟 SFT* res ), that solves the following:\n\n(𝒟 PT* res , 𝒟 SFT* res ) = arg max 𝒟 PT res ,𝒟 SFT res 𝒫(𝜃 final )\n\nwhere 𝜃 final represents the parameters of the final model trained on data recipes defined by the choice of reasoning data at both stages.\n\nLet 𝒟 base denote the general pretraining corpus and we define a model ℳ(𝜃) with parameters 𝜃 trained in two stages:\n\nPretraining: 𝜃 PT = arg min 𝜃 E (𝑥,𝑦)∼𝒟 base ∪𝒟 PT res ℒ LM (𝑓 𝜃 (𝑥), 𝑦), SFT: 𝜃 SFT = arg min 𝜃 E (𝑥,𝑦)∼𝒟 SFT res ℒ SFT (𝑓 𝜃 (𝑥), 𝑦),",
+      "word_count": 191
+    },
+    {
+      "index": 4,
+      "title": "Evaluation Objective.",
+      "kind": "results",
+      "text": "The central research question can be expressed as analyzing the function:\n\n𝒫(𝒟 PT res , 𝒟 SFT res ) = E 𝑡∼𝒯 [︁ Acc (︀ 𝑓 𝜃SFT (𝑡) )︀ ]︁ , (1)\n\nwhere 𝒯 is a set of downstream reasoning tasks (math, science, code, general reasoning).\n\nOur study can be summarized as optimizing the allocation of 𝒟 res between pretraining and SFT:\n\nmax 𝒟 PT res , 𝒟 SFT res 𝒫(𝒟 PT res , 𝒟 SFT res ) s.t. ℬ = |𝒟 PT res | + |𝒟 SFT res |, (2)\n\nwhere ℬ is the total budget of reasoning data available.\n\nThis captures the trade-off of early, scale/diversity vs late, quality/complexity: 𝒟 PT res ←→ 𝒟 SFT res",
+      "word_count": 118
+    },
+    {
+      "index": 5,
+      "title": "Model Architecture and Baseline",
+      "kind": "body",
+      "text": "We select a hybrid transformer with a mixture of Mamba 2 (Dao & Gu, 2024) , self-attention and FFN layers (NVIDIA, 2025a) with an 8B parameter for our base model, ℳ and pretrain from scratch for 1 trillion tokens. This size strikes a balance between computational feasibility and the capacity to learn complex reasoning patterns.",
+      "word_count": 55
+    },
+    {
+      "index": 6,
+      "title": "Data Pipeline",
+      "kind": "body",
+      "text": "Our experimental design relies on a careful distinction between two categories of data: (1) a large-scale, general-purpose pretraining corpus, and (2) a reasoning-focused, instruction-tuning (SFT-style) datasets of varying quality and scale. This separation allows us to precisely control the injection of reasoning data at different stages of training.",
+      "word_count": 48
+    },
+    {
+      "index": 7,
+      "title": "General Pretraining Corpus (𝒟 base ).",
+      "kind": "body",
+      "text": "For the base training corpus, we adopt the dataset introduced in NVIDIA (2025b), which contains 6.2T tokens drawn from high-quality Common Crawl, mathematics, and code sources. This corpus provides broad coverage of languages and technical domains, serving as the backbone of all pretraining experiments.",
+      "word_count": 44
+    },
+    {
+      "index": 8,
+      "title": "Reasoning Datasets (𝒟 res ).",
+      "kind": "body",
+      "text": "To investigate the impact of data quality, diversity, and complexity, we curate four distinct reasoning-focused datasets in the question-answer format:\n\n• Large-Scale, Diverse Data (𝒟 LDQ ). To simulate a \"quantity-over-quality\" strategy, we employ the Nemotron-Pretraining-SFT-v1 dataset (NVIDIA, 2025b) . This massive 336 billion token dataset offers extensive domain coverage, with a composition of approximately 56% math, 17% code, and 27% science and general-purpose reasoning. The dataset covers tasks ranging from simple Q&A to multi-turn dialogues, but with heterogeneous quality and reasoning depth, reflecting large-scale real-world availability.\n\n• Small-Scale, High-Quality Data (𝒟 SHQ ). To capture the effect of long chain-of-thought traces from strong teacher models, we include the dataset of Guha et al. (2025) , comprising 1.2M carefully curated examples (71% math, 21% code, 8% science). Compared to 𝒟 LMQ , this corpus is smaller, less diverse, but significantly higher quality, emphasizing detailed reasoning paths.\n\n• Large-Scale, Mixed-Quality Data (𝒟 LMQ ). To balance diversity with quality, we construct a combined dataset that is a straightforward union of the two datasets above: 𝒟 LMQ = 𝒟 LDQ ∪ 𝒟 SHQ . This mix preserves large-scale coverage while injecting a fraction of curated, high-quality reasoning traces.\n\n• Answer-Length Filtered Data (𝒟 ALF ). To investigate the feature of data quality, we create a subset of 𝒟 LLQ by retaining examples where the answer length exceeds 4096 tokens, based on the principle that longer responses often correspond to more complex CoT reasoning. This dataset allows us to isolate the impact of reasoning complexity in different training phases.",
+      "word_count": 256
+    },
+    {
+      "index": 9,
+      "title": "Synergy between Pretraining and SFT",
+      "kind": "body",
+      "text": "In this work, we aim to disentangle the contribution of reasoning data when incorporated at different points in the training pipeline. We structure the study into three stages: (i) large-scale Pretraining, where reasoning data may or may not be injected alongside the base corpus, (ii) Supervised Finetuning (SFT), where pretrained models are further adapted on reasoning data of varying quality and diversity, and (iii) Reinforcement Learning (RLVR) to determine the sustainability of early reasoning gain in the final model. This subsection details the pretraining design; the SFT stage is described in the following section.",
+      "word_count": 94
+    },
+    {
+      "index": 10,
+      "title": "Phase 1: Pretraining.",
+      "kind": "body",
+      "text": "Prior work has primarily explored reasoning supervision either on top of fully pretrained llms (Wang et al., 2025) or by introducing small amounts of long chain-of-thought (CoT) data into intermediate checkpoints (AI et al., 2025) . These approaches leave open two questions: how to inject reasoning data at scale during end-to-end pretraining, and whether the benefits persist when combined with high-quality base corpora. To address these questions, we pretrain all models from scratch for 1T tokens using a mix of 80% of 𝒟 base and different types of 𝒟 res for 20%.\n\nBased on the reasoning data introduced, we train four distinct models:\n\n• ℳ base : This model serves as our baseline and is pretrained without any reasoning data.\n\n• ℳ LDQ : Pre-trained with large-scale, diverse 𝒟 LDQ reasoning dataset along with 𝒟 base .\n\n• ℳ SHQ : Pre-trained with 𝒟 SHQ and 𝒟 base allowing us to isolate the effect of data quality versus the quantity and diversity of ℳ LDQ .\n\n• ℳ LMQ : Finally, this model is exposed to our combined reasoning 𝒟 LMQ dataset.\n\nIn the subsequent analysis, we use ℳ res to denote the aggregate performance of the models pretrained with reasoning data, representing the average score across ℳ SHQ , ℳ LDQ , and ℳ LMQ .",
+      "word_count": 217
+    },
+    {
+      "index": 11,
+      "title": "Phase 2: Supervised Finetuning.",
+      "kind": "body",
+      "text": "Following pretraining, each of the four model variants (ℳ base , ℳ LDQ , ℳ SHQ , ℳ LMQ ) is adapted through supervised finetuning (SFT). This second phase is crucial for understanding the synergies, redundancies, and trade-offs between the data introduced during pretraining versus the SFT stage. To this end, we design a controlled set of SFT experiments, where each pretrained model is finetuned on different reasoning corpora introduced in Section 2.2 to address the following rearch questions:\n\n• The \"Catch-Up\" Hypothesis: Can intensive SFT on high-quality reasoning data allow the baseline model, ℳ base , to match or exceed the accuracy of models that were exposed to reasoning data during pretraining? This directly tests the criticality of early data injection versus late-stage specialization.\n\n• Impact of Pretraining Data Scale and Diversity: We investigate how the scale and diversity of reasoning data used during pretraining influence the final model's capacity to absorb high-quality instruction data. Specifically, we ask: Does scaling up diverse reasoning data in pretraining provide lasting benefits even after all models are finetuned on the same high-quality SFT corpus? By fine-tuning both the model pretrained on large, diverse data (ℳ LDQ ) and on smaller, less diverse data (ℳ SHQ ) on the same high-quality SFT set, we can determine whether a broad or a deep initial exposure to reasoning yields a better foundation for downstream specialization.\n\n• Impact of SFT Data Quality and Complexity: By fine-tuning all four base models on datasets of varying quality (𝒟 LDQ vs. 𝒟 SHQ ) and complexity (𝒟 ALF ), we can measure the marginal utility of data quality at the SFT stage as a function of the model's initial pretraining condition.\n\nThis design enables us to address three critical dimensions: (1) the synergy between pretraining and SFT data, (2) the marginal gains of increasing SFT data scale when reasoning was already introduced in pretraining, and (3) the role of data complexity and diversity in determining whether reasoning supervision should be injected early, late, or across both stages. Together with the pretraining experiments, these SFT studies form a fully crossed setup, providing the first systematic assessment of how reasoning-style SFT data interacts with pretraining to shape the reasoning abilities of large language models.",
+      "word_count": 373
+    },
+    {
+      "index": 12,
+      "title": "Phase 3: Reinforcement Learning.",
+      "kind": "body",
+      "text": "To further observe the impact of reasoning centric pretraining and heavy supervised finetuning, we deploy RL using Group Relative Policy Optimization (grpo) (Shao et al., 2024) with verifiable rewards on top of the base models. Here we use nemotron-crossthink Akter et al. (2025) which has shown to be effective to enhance reasoning across diverse domains.",
+      "word_count": 55
+    },
+    {
+      "index": 13,
+      "title": "Training Pretraining.",
+      "kind": "body",
+      "text": "To prepare base models, we pretrain a 8B llm on our pretraining data blend till 1T tokens using 512 H100 80GB SXM5 GPUs. During training, we use the AdamW optimizer (Loshchilov & Hutter, 2019) with 𝛽 1 = 0.9, 𝛽 2 = 0.95 and weight decay of 0.1. We use a 8-way tensor and pipeline parallelism to train the model. We set the maximum value of learning rate to 3𝑒 -4 , minimum to 3𝑒 -6 , and use a batch size of 6M tokens with a 8192 context length.",
+      "word_count": 90
+    },
+    {
+      "index": 14,
+      "title": "Post-Training.",
+      "kind": "body",
+      "text": "After pretraining, each 8B llm is finetuned on 4.8M reasoning samples from 𝒟 𝑟𝑒𝑠 . SFT uses AdamW with (𝛽 1 , 𝛽 2 ) = (0.9, 0.95), weight decay 0.01, warmup ratio 0.05, learning rate 5×10 -6 , batch size 512, and context length 32k. We then apply grpo via the veRL framework foot_0 for one epoch on nemotron-crossthink data with constant LR 1×10 -6 , batch size 128, PPO mini-batch 128, and context length 8192. Each step samples 128 prompts with 8 rollouts (temperature= 1.0, top-𝑝 = 1.0), and a KL penalty coefficient of 0.001.",
+      "word_count": 97
+    },
+    {
+      "index": 15,
+      "title": "Evaluation Metrics",
+      "kind": "results",
+      "text": "We report average accuracies of all tasks under each of the following categories.",
+      "word_count": 13
+    },
+    {
+      "index": 16,
+      "title": "Base Model Evaluations.",
+      "kind": "results",
+      "text": "We conduct a thorough benchmark assessment to evaluate the generalizability of the base models, using a series of datasets using LM Eval Harness (Gao et al., 2024) .\n\n• General Purpose Reasoning (gpr PT avg). We consider four standard commonsense and logical reasoning tasks in 0-shot: ARC challenge (Clark et al., 2018) , HellaSwag (Zellers et al., 2019) , WinoGrande (Sakaguchi et al., 2021) , and reading comprehension task: RACE (Lai et al., 2017) .\n\n• Math Reasoning (math PT avg). We evaluate the math reasoning ability with two benchmarks-they encompass math challenges from elementary to college level complexity demanding qualitative reasoning (8-shot GSM8K (Cobbe et al., 2021) , 4-shot MATH-500 (Hendrycks et al., 2021b) ).\n\n• Science Reasoning (science PT avg). We evaluate on 5-shot MMLU (Hendrycks et al., 2021a) and MMLU-Pro (Wang et al., 2024 ) that spans multiple domains, from professional to academic, testing the model on specialized subjects.\n\n• Code Reasoning (code PT avg). For code tasks (HumanEval (Chen et al., 2021) , MBPP (Odena et al., 2021) ) we evaluate the EvalPlus variants along with the sanitization of generations (Liu et al., 2023) , in a 0-shot setup. We estimate avg@32, pass@1 from 32 generations per prompt.",
+      "word_count": 202
+    },
+    {
+      "index": 17,
+      "title": "SFT Model Evaluations.",
+      "kind": "results",
+      "text": "To evaluate the reasoning ability of different SFT models, we focus on reasoning centric benchmarks unlike in base model evaluations, where mostly focus on the generalizability of the llm. We conduct evaluations using NeMo-Skills foot_1 .\n\n• Math Reasoning (math SFT avg). In addition to the GSM8K and MATH-500, we evaluate the models on two more complex math tasks-AIME24 and AIME25 (Veeraboina, 2023) .\n\n• Science Reasoning (science SFT avg). On top of MMLU and MMLU-Pro, we evaluate on graduate level QA task: GPQA-Diamond (Rein et al., 2024) .\n\n• Code Reasoning (code SFT avg). We choose LiveCodeBench (Jain et al., 2025) to test complex code reasoning ability.\n\n• Instruction Following (ins SFT avg). For broader evaluation on diverse capabilities, we use IFEval (Zeng et al., 2024) .\n\nWe report Pass@1 average of 16 runs for AIME-2024, AIME-2025 and average of 4 runs for MATH-500, GSM8K, MMLU, MMLU-Pro, GPQA-Diamond, LiveCodeBench and IFEval.",
+      "word_count": 152
+    },
+    {
+      "index": 18,
+      "title": "RL Model Evaluations.",
+      "kind": "results",
+      "text": "In this phase, we evaluate the models on complex reasoning tasks such as AIME24,25, MATH-500, GSM8K, MMLU, MMLU-Pro, GPQA-Diamond, LiveCodeBench following the evaluation metric in sft phase.",
+      "word_count": 27
+    },
+    {
+      "index": 19,
+      "title": "Immediate Foundational Gains from Reasoning Data in Pretraining.",
+      "kind": "body",
+      "text": "Table 1 shows the average accuracies of our four model variants immediately after the 1T token pretraining phase. The results provide clear evidence that integrating reasoning-style corpora from the start builds a significantly more capable foundation. Every model exposed to reasoning data surpasses baseline ℳ base . The largest improvements come from models trained on large-scale, diverse data; ℳ LDQ achieves highest average, driven by a +28.4% gain in mathematics and a +9% gain in code over the baseline. Interestingly, the smaller, less diverse, high-quality dataset (ℳ SHQ ) provides a modest lift, suggesting that at this early stage, the scale and diversity of the reasoning data are more critical than its curated quality for establishing a broad and robust reasoning foundation.",
+      "word_count": 122
+    },
+    {
+      "index": 20,
+      "title": "Pretraining Advantage is Maintained and Amplified Post-SFT.",
+      "kind": "body",
+      "text": "We evaluate whether a strong SFT phase can close the accuracy gap established during pretraining with diverse reasoning data 𝒟 res . At the same time, we examine whether the inclusion of such data causes the model to overfit and reduce generalization, thereby diminishing subsequent post-training gains. The results in Table 2 indicate that the advantage gained during the pre-training phase not only persists but is amplified. The group of models pretrained with reasoning data (ℳ res + SFT) outperforms the baseline group (ℳ base + SFT) by a significant 9.3% on average. This result strongly refutes the \"catch-up\" hypothesis, showing that SFT is not a substitute for a strong reasoning foundation built during pretraining. While recent works have found reasoning-centric post-training to be most effective on math domains, the improvement on science is minimal (Prabhakar et al., 2025; Luo et al., 2025a; Huan et al., 2025) . However, the accuracy disparity in our findings is most prominent in science domains, an area often overlooked in reasoning-focused post-training work. This suggests that pretraining with reasoning data does more than teach facts; it helps the model develop effective internal representations for abstract and logical structures to enhance problem solving ability across domains. It does not overfit the model rather infuses the critical thinking ability that comes into full potential after post-training (Appendix C). Consequently, the model's capacity to absorb and leverage the SFT data is fundamentally enhanced, leading to greater learning efficiency and a higher performance ceiling. SFT acts as a powerful enhancer, but its ultimate effectiveness is constrained by the quality of the foundation established during pretraining.",
+      "word_count": 267
+    },
+    {
+      "index": 21,
+      "title": "Model Average math",
+      "kind": "body",
+      "text": "SFT avg science SFT avg code SFT avg ins SFT avg ℳ base + SFT 26.62 34.48 20.92 7.09 43.98 ℳ res + SFT 35.92 40.61 34.77 16.75 51.52\n\nTable 2: Average Accuracies of SFT models pretrained with varying 𝒟 res . SFT amplifies the pretraining advantage-models with reasoning-rich pretraining significantly outperform baseline. Model Avg. Math Reasoning Science & Code Reasoning math-500 gsm8k aime24 aime25 gpqa mmlu mmlu-pro LCB ℳ base + SFT + RL 37.92 72.05 83.83 12.29 16.04 28.16 41.10 36.69 13.16 ℳ LMQ + SFT + RL 56.66 87.13 93.07 45.21 33.96 31.69 72.91 56.91 32.43 Table 3: Average accuracies of RL models pretrained and fine-tuned with varying 𝒟 res . Introducing reasoning data early provides significant reasoning boost after post-training.",
+      "word_count": 124
+    },
+    {
+      "index": 22,
+      "title": "Pretraining Strategy Dictates Final Accuracy on Expert-Level Tasks.",
+      "kind": "body",
+      "text": "The final RL phase reveals the definitive impact of our pretraining interventions, particularly on expert-level reasoning benchmarks. We select ℳ LMQ + SFT and ℳ base + SFT using 𝒟 SHQ as our two extreme pretraining backbones. As shown in appear on the highly challenging AIME competition math problems, where the reasoning-pretrained models deliver a 39.32% improvement over the baseline. This provides conclusive evidence that early investment in reasoning data yields compounding returns, becoming the decisive factor in achieving frontier accuracies on the most demanding tasks.",
+      "word_count": 86
+    },
+    {
+      "index": 23,
+      "title": "Does the scale and diversity of the reasoning data matter in Pretraining?",
+      "kind": "body",
+      "text": "As detailed in Table 1 , plainly increasing size and diversity of 𝒟 res in pretraining has significant improvement on the base model. The model pretrained on large, diverse data (ℳ LDQ ) achieves an absolute +9.09% average gain over the model trained on the smaller, less diverse corpus (ℳ SHQ ), with the largest gains observed in math, science, and code-domains that explicitly demand structured reasoning. gpr PT avg shows limited sensitivity to diversity due to the nature of tasks that require commonsense and general knowledge. In contrast, scaling 𝒟 LDQ with 𝒟 SHQ (high-quality but less diverse) as in ℳ LMQ provides minimal further benefit on the reasoning tasks-underscoring that broad exposure to diverse reasoning patterns during pretraining is impactful for building a strong foundation.",
+      "word_count": 127
+    },
+    {
+      "index": 24,
+      "title": "The Pretraining Advantage Persists and Resists \"Catch-Up\" Attempts via SFT.",
+      "kind": "body",
+      "text": "A central question is whether a model without a reasoning-rich pretraining (ℳ base ) can compensate for this deficit by undergoing a more intensive SFT phase. We test this \"catch-up\" hypothesis by fine-tuning ℳ base with twice the amount of SFT data. The results in Table 4 prove this hypothesis false. While doubling the SFT data improves the baseline's average score by 7.39%, this enhanced baseline still fails to match the performance of even our weakest reasoning-pretrained model, ℳ SHQ +SFT (+3.32%). This provides strong evidence that pretraining instills a foundational reasoning capability that cannot be fully replicated by simply scaling the SFT phase.",
+      "word_count": 104
+    },
+    {
+      "index": 25,
+      "title": "Post-SFT, high-quality data reveals latent value.",
+      "kind": "body",
+      "text": "The downstream consequences of these pretraining choices become more nuanced after SFT. To isolate and test whether these effects persist into post-training, we finetune all base models with the same high-quality SFT recipe (𝒟 SHQ ). Results in Table 4 confirm that models pretrained on diverse corpora continue to substantially outperform less diverse counterparts even after SFT, confirming that a diverse pretraining foundation enhances a model's capacity to benefit from SFT. More surprisingly, while the immediate gains of scaling with high-quality but narrow data (ℳ LMQ ) were muted at the pretraining stage, SFT reveals a latent advantage: ℳ LMQ achieves an additional +4.25% improvement over ℳ LDQ post-SFT. This reveals a critical finding that high-quality but less diverse data may act as a complementary amplifier, whose benefits emerge after alignment-underlining the latent impact of quality of data during the pretraining.",
+      "word_count": 141
+    },
+    {
+      "index": 26,
+      "title": "SFT is dominated by data quality, not diversity.",
+      "kind": "body",
+      "text": "We finetune all reasoning-pretrained models (ℳ res ) on each of our distinct reasoning datasets, and report the averaged results in Table 5 . The findings reveal a striking contrast: while diversity is beneficial in pretraining, Table 6 : Impact of scaling reasoning data in SFT phase. Naively doubling mixed-quality data is detrimental to math reasoning, whereas targeted scaling of high-quality data yields consistent gains.\n\nblindly scaling diverse reasoning data during SFT degrades performance. Models trained with 𝒟 LDQ or 𝒟 LMQ during SFT underperform relative to those finetuned on the smaller, high-quality, long-CoT dataset, 𝒟 SHQ , despite having been exposed to reasoning data during pretraining. In fact, the use of large-scale, mixed-quality data at the SFT stage not only erodes the benefits of reasoning-rich pretraining but can even lead to worse outcomes than the baseline ℳ base finetuned with 𝒟 SHQ in math, code, and science tasks which benefit from reasoning. This result confirms the widely held view that data quality and long reasoning data is critical for effective SFT (Zhou et al., 2023; Zhao et al., 2024; Prabhakar et al., 2025) . Our findings, however, extend this understanding by showing that simply applying high-quality data at every stage is not optimal. Instead, the most effective strategy is asymmetric: pretraining benefits most from broad and diverse reasoning data to establish generalizable priors, whereas sft requires high-quality, reasoning-heavy data for targeted refinement.",
+      "word_count": 233
+    },
+    {
+      "index": 27,
+      "title": "How should we expand reasoning data during SFT?",
+      "kind": "body",
+      "text": "We next ablate the effect of scaling reasoning data during the SFT phase by contrasting two strategies: (i) scaling with data of similar quality and diversity, and (ii) scaling with data of higher quality and reasoning depth.\n\nAs shown in Table 6 , simply doubling the amount of diverse but mixed-quality data yields negligible improvement in average accuracy with a 4.92% drop in math accuracy-suggesting that increasing the volume of noisy or shallow reasoning data may dilute the useful signal and actively harm reasoning-specific domains. The small gains in science and code do not offset this regression, highlighting the limits of quantity-driven scaling in SFT.\n\nIn contrast, when scaling 𝒟 ALF with high-quality 𝒟 SHQ (𝒟 ′ ALF ), the average accuracy improves further, with math and instruction-following tasks benefiting most. Importantly, this qualitative expansion is achieved with only a marginal increase in dataset size (0.4% more samples). These contrasting outcomes provide clear evidence that SFT is a phase of targeted refinement, not broad data absorption; the most effective scaling strategy is to strategically enhance the training corpus with high-quality, reasoning-intensive examples.",
+      "word_count": 182
+    },
+    {
+      "index": 28,
+      "title": "Related Work",
+      "kind": "related_work",
+      "text": "Reasoning in Pretraining and Midtraining. Cheng et al. (2024) study instruction pretraining by converting raw text into short QA pairs and report gains on general-purpose reasoning tasks that require minimal reasoning. While effective for broad linguistic alignment, their setup does not explicitly target reasoning-intensive domains such as mathematics, graduate level science, or code. Moreover, their pipeline of self-distilled instruction generation demonstrates that Instruct-PT outperforms vanilla PT after instruction tuning, but it does not assess whether these marginal pretraining gains persist once models undergo reasoning-heavy SFT and reinforcement learning. In contrast, our work systematically varies the complexity, quantity, and diversity of reasoning-style SFT data-containing intermediate thoughts and answers-across both pretraining and SFT, allowing us to probe whether early exposure yields durable downstream advantages.\n\nMore recent efforts have begun to explore the interplay between pretraining and instruction tuning. Liang et al. (2025) augment the instruction-tuning pool to better align with the distribution of pretraining data, reinforcing consistency between the two stages. While complementary in spirit, their method is applied only during SFT and does not address whether reasoning-specific supervision at the pretraining stage provides sustained benefits. Similarly, Wang et al. (2025) ; AI et al. (2025) introduce a mid-training phase, continuing pretraining on a small but high-quality reasoning dataset before SFT and RLVR. They report substantial downstream gains, particularly in mathematics benchmarks, highlighting the promise of mid-training interventions. However, because their corpus is heavily math-centric, it is difficult to disentangle whether the improvements stem from scale, complexity, or domain diversity, and the generalizability to science or code remains unclear.\n\nA complementary direction is pursued by Gandhi et al. (2025) , who inject algorithmically generated \"cognitive behavioral\" reasoning traces during mid-training, demonstrating improvements after reinforcement learning. This underscores the potential of early reasoning supervision but remains limited in scope: the interventions are restricted to small datasets and narrow tasks, leaving open questions about scalability, diversity, and phase-specific allocation of reasoning data. Our work builds on these insights by conducting the first systematic, large-scale analysis of reasoning data across both pretraining and SFT, providing a principled framework for understanding when and how reasoning supervision should be applied.",
+      "word_count": 353
+    },
+    {
+      "index": 29,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "Our study provides the first systematic investigation of how reasoning data, varying in scale, diversity, and quality, influences llms across the entire training pipeline. We show that reasoning must be introduced early: front-loading into pretraining creates durable foundations that post-training alone cannot recover. Crucially, we uncover an asymmetric allocation principle-diversity drives pretraining effectiveness, while quality governs SFT-providing a clear, actionable blueprint for data strategy. Further, we demonstrate that high-quality pretraining data can yield latent benefits activated only during SFT, and that naive SFT scaling with noisy data can be actively harmful. Collectively, these findings challenge the conventional division between pretraining and reasoning, positioning reasoning-aware pretraining as a critical ingredient in building more capable, generalizable, and compute-efficient language models. Figure 2 : The model that saw the same high-quality data in both pretraining and SFT (ℳ SHQ ) handily beats the baseline (ℳ 𝑏𝑎𝑠𝑒 ) that only saw the data once.",
+      "word_count": 150
+    },
+    {
+      "index": 30,
+      "title": "Data Redundancy Reinforces Foundational Skills, Not Overfitting.",
+      "kind": "body",
+      "text": "A critical consideration in our two-phase approach is whether using the same reasoning data in both pretraining and SFT leads to catastrophic forgetting or brittle overfitting, a known concern in sequential fine-tuning (Luo et al., 2025b; Chen et al., 2025a) . Our results, shown in Figure 2 , suggest this concern is unfounded and that the opposite is true: for reasoning, strategic redundancy is highly beneficial. The baseline model, ℳ 𝑏𝑎𝑠𝑒 , exposed to the high-quality 𝒟 SHQ data only during SFT, is the lowest performer across all categories. In contrast, ℳ SHQ , which sees this same data in both phases, demonstrates a significant performance uplift, indicating that the second exposure reinforces rather than overwrites learning. We hypothesize this occurs because the two training phases serve different learning functions. During pretraining, the reasoning data is integrated slowly into the model's core representations alongside vast, diverse knowledge, forcing an internalization of abstract logical patterns. The SFT phase then acts not as a new learning task, but as a powerful reinforcement signal on an already-prepared foundation. This benefit is amplified by a diverse pretraining context: the top-performing ℳ LMQ model leverages its broad exposure to various reasoning styles to most effectively capitalize on the repeated, high-quality signal from 𝒟 SHQ . This suggests that data redundancy between pretraining and SFT should be viewed as a powerful mechanism for skill consolidation, where a diverse pretraining builds the capacity for reasoning and redundant SFT sharpens it.",
+      "word_count": 243
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Rethinking reflection in pre-training",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "A I Essential",
+        ": Darsh",
+        "J Shah",
+        "Peter Rushton",
+        "Somanshu Singla",
+        "Mohit Parmar",
+        "Kurt Smith",
+        "Yash Vanjani"
+      ],
+      "raw_text": "A I Essential : Darsh J Shah Peter Rushton Somanshu Singla Mohit Parmar Kurt Smith Yash Vanjani Ashish Vaswani Adarsh Chaluvaraju Andrew Hojel Andrew Ma Anil Thomas Anthony Polloreno Ashish Tanwer Rethinking reflection in pre-training Drak Burhan Sibai S Divya Divya Mansingka Ishaan Shivaprasad Karl Shah Khoi Stratos Michael Nguyen Michael Callahan Mrinal Pust Philip Iyer Platon Monk Ritvik Mazarakis Saurabh Kapila Tim Srivastava Romanski 2025 4 10"
+    },
+    {
+      "index": 2,
+      "title": "Nemotron-crossthink: Scaling self-learning beyond math reasoning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Shrimai Syeda Nahida Akter",
+        "Matvei Prabhumoye",
+        "Seungju Novikov",
+        "Ying Han",
+        "Evelina Lin",
+        "Eric Bakhturina",
+        "Yejin Nyberg",
+        "Mostofa Choi"
+      ],
+      "raw_text": "Nemotron-crossthink: Scaling self-learning beyond math reasoning Shrimai Syeda Nahida Akter Matvei Prabhumoye Seungju Novikov Ying Han Evelina Lin Eric Bakhturina Yejin Nyberg Mostofa Choi Mohammad Patwary Bryan Shoeybi Catanzaro 2025"
+    },
+    {
+      "index": 3,
+      "title": "Sft or rl? an early investigation into training r1-like reasoning large vision-language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Haoqin Hardy Chen",
+        "Fali Tu",
+        "Hui Wang",
+        "Xianfeng Liu",
+        "Xinya Tang",
+        "Yuyin Du",
+        "Cihang Zhou",
+        "Xie"
+      ],
+      "raw_text": "Sft or rl? an early investigation into training r1-like reasoning large vision-language models Haoqin Hardy Chen Fali Tu Hui Wang Xianfeng Liu Xinya Tang Yuyin Du Cihang Zhou Xie 2025"
+    },
+    {
+      "index": 4,
+      "title": "The synergy dilemma of long-cot sft and rl: Investigating post-training techniques for reasoning vlms, 2025b",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jierun Chen",
+        "Tiezheng Yu",
+        "Haoli Bai",
+        "Lewei Yao",
+        "Jiannan Wu",
+        "Kaican Li",
+        "Fei Mi",
+        "Chaofan Tao"
+      ],
+      "raw_text": "Jierun Chen Tiezheng Yu Haoli Bai Lewei Yao Jiannan Wu Kaican Li Fei Mi Chaofan Tao Lei Zhu Manyi Zhang Xiaohui Li Lu Hou Lifeng Shang Qun Liu The synergy dilemma of long-cot sft and rl: Investigating post-training techniques for reasoning vlms, 2025b"
+    },
+    {
+      "index": 5,
+      "title": "Evaluating large language models trained on code",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Mark Chen",
+        "Jerry Tworek",
+        "Heewoo Jun",
+        "Qiming Yuan",
+        "Henrique Ponde De Oliveira Pinto",
+        "Jared Kaplan",
+        "Harri Edwards",
+        "Yuri Burda"
+      ],
+      "raw_text": "Mark Chen Jerry Tworek Heewoo Jun Qiming Yuan Henrique Ponde De Oliveira Pinto Jared Kaplan Harri Edwards Yuri Burda Nicholas Joseph Greg Brockman Alex Ray Raul Puri Gretchen Krueger Michael Petrov Heidy Khlaaf Girish Sastry Pamela Mishkin Brooke Chan Scott Gray Nick Ryder Mikhail Pavlov Alethea Power Lukasz Kaiser Mohammad Bavarian Clemens Winter Philippe Tillet Felipe Petroski Such Dave Cummings Matthias Plappert Fotios Chantzis Elizabeth Barnes Ariel Herbert-Voss William Hebgen Guss Alex Nichol Alex Paino Nikolas Tezak Jie Tang Igor Babuschkin Suchir Balaji Shantanu Jain William Saunders Christopher Hesse Andrew N Carr Jan Leike Josh Achiam Vedant Misra Evan Morikawa Alec Radford Matthew Knight Miles Brundage Mira Murati Katie Mayer Peter Welinder Bob Mcgrew Dario Amodei Sam Mccandlish Ilya Sutskever Wojciech Zaremba Evaluating large language models trained on code 2021"
+    },
+    {
+      "index": 6,
+      "title": "Instruction pre-training: Language models are supervised multitask learners",
+      "doi": "10.18653/v1/2024.emnlp-main.148",
+      "year": "2024",
+      "authors": [
+        "Daixuan Cheng",
+        "Yuxian Gu",
+        "Shaohan Huang",
+        "Junyu Bi",
+        "Minlie Huang",
+        "Furu Wei"
+      ],
+      "raw_text": "Instruction pre-training: Language models are supervised multitask learners Daixuan Cheng Yuxian Gu Shaohan Huang Junyu Bi Minlie Huang Furu Wei 10.18653/v1/2024.emnlp-main.148 Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing Yaser Al-Onaizan Mohit Bansal Yun-Nung Chen the 2024 Conference on Empirical Methods in Natural Language Processing Miami, Florida, USA Association for Computational Linguistics November 2024"
+    },
+    {
+      "index": 7,
+      "title": "Sft memorizes, rl generalizes: A comparative study of foundation model post-training",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Tianzhe Chu",
+        "Yuexiang Zhai",
+        "Jihan Yang",
+        "Shengbang Tong",
+        "Saining Xie",
+        "Dale Schuurmans",
+        "Quoc V Le",
+        "Sergey Levine"
+      ],
+      "raw_text": "Tianzhe Chu Yuexiang Zhai Jihan Yang Shengbang Tong Saining Xie Dale Schuurmans Quoc V Le Sergey Levine Yi Ma Sft memorizes, rl generalizes: A comparative study of foundation model post-training 2025"
+    },
+    {
+      "index": 8,
+      "title": "Think you have solved question answering? try arc, the ai2 reasoning challenge",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Peter Clark",
+        "Isaac Cowhey",
+        "Oren Etzioni",
+        "Tushar Khot",
+        "Ashish Sabharwal",
+        "Carissa Schoenick",
+        "Oyvind Tafjord"
+      ],
+      "raw_text": "Think you have solved question answering? try arc, the ai2 reasoning challenge Peter Clark Isaac Cowhey Oren Etzioni Tushar Khot Ashish Sabharwal Carissa Schoenick Oyvind Tafjord 2018"
+    },
+    {
+      "index": 9,
+      "title": "Training verifiers to solve math word problems",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Karl Cobbe",
+        "Vineet Kosaraju",
+        "Mohammad Bavarian",
+        "Mark Chen",
+        "Heewoo Jun",
+        "Lukasz Kaiser",
+        "Matthias Plappert",
+        "Jerry Tworek"
+      ],
+      "raw_text": "Training verifiers to solve math word problems Karl Cobbe Vineet Kosaraju Mohammad Bavarian Mark Chen Heewoo Jun Lukasz Kaiser Matthias Plappert Jerry Tworek Jacob Hilton Reiichiro Nakano Christopher Hesse John Schulman 2021"
+    },
+    {
+      "index": 10,
+      "title": "Transformers are SSMs: Generalized models and efficient algorithms through structured state space duality",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tri Dao",
+        "Albert Gu ; Ruslan",
+        "Zico Salakhutdinov",
+        "Katherine Kolter",
+        "Adrian Heller",
+        "Weller"
+      ],
+      "raw_text": "Transformers are SSMs: Generalized models and efficient algorithms through structured state space duality Tri Dao Albert Gu ; Ruslan Zico Salakhutdinov Katherine Kolter Adrian Heller Weller PMLR Proceedings of the 41st International Conference on Machine Learning Nuria Oliver Jonathan Scarlett Felix Berkenkamp the 41st International Conference on Machine Learning Jul 2024 235"
+    },
+    {
+      "index": 11,
+      "title": "Cognitive behaviors that enable self-improving reasoners, or, four habits of highly effective STars",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Kanishk Gandhi",
+        "K Ayush",
+        "Anikait Chakravarthy",
+        "Nathan Singh",
+        "Noah Lile",
+        "Goodman"
+      ],
+      "raw_text": "Cognitive behaviors that enable self-improving reasoners, or, four habits of highly effective STars Kanishk Gandhi K Ayush Anikait Chakravarthy Nathan Singh Noah Lile Goodman Second Conference on Language Modeling 2025 1 10"
+    },
+    {
+      "index": 12,
+      "title": "A framework for few-shot language model evaluation",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Leo Gao",
+        "Jonathan Tow",
+        "Stella Baber Abbasi",
+        "Sid Biderman",
+        "Anthony Black",
+        "Charles Dipofi",
+        "Laurence Foster",
+        "Jeffrey Golding"
+      ],
+      "raw_text": "A framework for few-shot language model evaluation Leo Gao Jonathan Tow Stella Baber Abbasi Sid Biderman Anthony Black Charles Dipofi Laurence Foster Jeffrey Golding Alain Hsu Haonan Le Noac'h Kyle Li Niklas Mcdonell Chris Muennighoff Jason Ociepa Laria Phang Hailey Reynolds Aviya Schoelkopf Lintang Skowron Eric Sutawika Anish Tang Ben Thite Kevin Wang Andy Wang Zou"
+    },
+    {
+      "index": 13,
+      "title": "Openthoughts: Data recipes for reasoning models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Etash Guha",
+        "Ryan Marten",
+        "Sedrick Keh",
+        "Negin Raoof",
+        "Georgios Smyrnis",
+        "Hritik Bansal",
+        "Marianna Nezhurina",
+        "Jean Mercat"
+      ],
+      "raw_text": "Openthoughts: Data recipes for reasoning models Etash Guha Ryan Marten Sedrick Keh Negin Raoof Georgios Smyrnis Hritik Bansal Marianna Nezhurina Jean Mercat Trung Vu Zayne Sprague Ashima Suvarna Benjamin Feuer Liangyu Chen Zaid Khan Eric Frankel Sachin Grover Caroline Choi Niklas Muennighoff Shiye Su Wanjia Zhao John Yang Shreyas Pimpalgaonkar Kartik Sharma Charlie Cheng-Jie Yichuan Ji Sarah Deng Vivek Pratt Jon Ramanujan Jeffrey Saad-Falcon Achal Li Alon Dave Kushal Albalak Blake Arora Chinmay Wulfe Greg Hegde Sewoong Durrett Mohit Oh Saadia Bansal Aditya Gabriel Kai-Wei Grover Vaishaal Chang Aaron Shankar Mike A Gokaslan Tatsunori Merrill Yejin Hashimoto Jenia Choi Reinhard Jitsev Maheswaran Heckel Alexandros G Sathiamoorthy Ludwig Dimakis Schmidt 2025 2 4"
+    },
+    {
+      "index": 14,
+      "title": "Selective self-to-supervised fine-tuning for generalization in large language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Sonam Gupta",
+        "Yatin Nandwani",
+        "Asaf Yehudai",
+        "Dinesh Khandelwal",
+        "Dinesh Raghu",
+        "Sachindra Joshi"
+      ],
+      "raw_text": "Selective self-to-supervised fine-tuning for generalization in large language models Sonam Gupta Yatin Nandwani Asaf Yehudai Dinesh Khandelwal Dinesh Raghu Sachindra Joshi 2025"
+    },
+    {
+      "index": 15,
+      "title": "Measuring massive multitask language understanding",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Dan Hendrycks",
+        "Collin Burns",
+        "Steven Basart",
+        "Andy Zou",
+        "Mantas Mazeika",
+        "Dawn Song",
+        "Jacob Steinhardt"
+      ],
+      "raw_text": "Measuring massive multitask language understanding Dan Hendrycks Collin Burns Steven Basart Andy Zou Mantas Mazeika Dawn Song Jacob Steinhardt Proceedings of the International Conference on Learning Representations (ICLR) the International Conference on Learning Representations (ICLR)"
+    },
+    {
+      "index": 16,
+      "title": "Measuring mathematical problem solving with the math dataset",
+      "doi": "",
+      "year": "2006",
+      "authors": [
+        "Dan Hendrycks",
+        "Collin Burns",
+        "Saurav Kadavath",
+        "Akul Arora",
+        "Steven Basart",
+        "Eric Tang",
+        "Dawn Song",
+        "Jacob Steinhardt"
+      ],
+      "raw_text": "Measuring mathematical problem solving with the math dataset Dan Hendrycks Collin Burns Saurav Kadavath Akul Arora Steven Basart Eric Tang Dawn Song Jacob Steinhardt NeurIPS 2021b. 1, 6"
+    },
+    {
+      "index": 17,
+      "title": "Does math reasoning improve general llm capabilities? understanding transferability of llm reasoning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Maggie Huan",
+        "Yuetai Li",
+        "Tuney Zheng",
+        "Xiaoyu Xu",
+        "Seungone Kim",
+        "Minxin Du",
+        "Radha Poovendran",
+        "Graham Neubig"
+      ],
+      "raw_text": "Does math reasoning improve general llm capabilities? understanding transferability of llm reasoning Maggie Huan Yuetai Li Tuney Zheng Xiaoyu Xu Seungone Kim Minxin Du Radha Poovendran Graham Neubig Xiang Yue 2025"
+    },
+    {
+      "index": 18,
+      "title": "Armando Solar-Lezama, Koushik Sen, and Ion Stoica. Livecodebench: Holistic and contamination free evaluation of large language models for code",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Naman Jain",
+        "King Han",
+        "Alex Gu",
+        "Wen-Ding Li",
+        "Fanjia Yan",
+        "Tianjun Zhang",
+        "Sida Wang"
+      ],
+      "raw_text": "Armando Solar-Lezama, Koushik Sen, and Ion Stoica. Livecodebench: Holistic and contamination free evaluation of large language models for code Naman Jain King Han Alex Gu Wen-Ding Li Fanjia Yan Tianjun Zhang Sida Wang The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 19,
+      "title": "SWE-bench: Can language models resolve real-world github issues?",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Carlos E Jimenez",
+        "John Yang",
+        "Alexander Wettig",
+        "Shunyu Yao",
+        "Kexin Pei",
+        "Ofir Press",
+        "Karthik R Narasimhan"
+      ],
+      "raw_text": "SWE-bench: Can language models resolve real-world github issues? Carlos E Jimenez John Yang Alexander Wettig Shunyu Yao Kexin Pei Ofir Press Karthik R Narasimhan The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 20,
+      "title": "RACE: Large-scale ReAding comprehension dataset from examinations",
+      "doi": "10.18653/v1/D17-1082",
+      "year": "2017",
+      "authors": [
+        "Guokun Lai",
+        "Qizhe Xie",
+        "Hanxiao Liu",
+        "Yiming Yang",
+        "Eduard Hovy"
+      ],
+      "raw_text": "RACE: Large-scale ReAding comprehension dataset from examinations Guokun Lai Qizhe Xie Hanxiao Liu Yiming Yang Eduard Hovy 10.18653/v1/D17-1082 Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing Martha Palmer Rebecca Hwa Sebastian Riedel the 2017 Conference on Empirical Methods in Natural Language Processing Copenhagen, Denmark Association for Computational Linguistics September 2017"
+    },
+    {
+      "index": 21,
+      "title": "Aligning instruction tuning with pre-training",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yiming Liang",
+        "Tianyu Zheng",
+        "Xinrun Du",
+        "Ge Zhang",
+        "Jiaheng Liu",
+        "Xingwei Qu",
+        "Wenqiang Zu",
+        "Xingrun Xing"
+      ],
+      "raw_text": "Aligning instruction tuning with pre-training Yiming Liang Tianyu Zheng Xinrun Du Ge Zhang Jiaheng Liu Xingwei Qu Wenqiang Zu Xingrun Xing Chujie Zheng Lei Ma Guoyin Wang Zhaoxiang Zhang Wenhao Huang Xiang Yue Jiajun Zhang 2025"
+    },
+    {
+      "index": 22,
+      "title": "Is your code generated by chatgpt really correct? rigorous evaluation of large language models for code generation",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Jiawei Liu",
+        "Chunqiu Steven Xia",
+        "Yuyao Wang",
+        "Lingming Zhang"
+      ],
+      "raw_text": "Is your code generated by chatgpt really correct? rigorous evaluation of large language models for code generation Jiawei Liu Chunqiu Steven Xia Yuyao Wang Lingming Zhang Advances in Neural Information Processing Systems A Oh T Naumann A Globerson K Saenko M Hardt S Levine Curran Associates, Inc 2023 36 e9d647ccd3e4b7b5baab53f0368686-Paper-Conference.pdf. 6"
+    },
+    {
+      "index": 23,
+      "title": "Acereason-nemotron 1.1: Advancing math and code reasoning through sft and rl synergy",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zihan Liu",
+        "Zhuolin Yang",
+        "Yang Chen",
+        "Chankyu Lee",
+        "Mohammad Shoeybi",
+        "Bryan Catanzaro",
+        "Wei Ping"
+      ],
+      "raw_text": "Acereason-nemotron 1.1: Advancing math and code reasoning through sft and rl synergy Zihan Liu Zhuolin Yang Yang Chen Chankyu Lee Mohammad Shoeybi Bryan Catanzaro Wei Ping 2025"
+    },
+    {
+      "index": 24,
+      "title": "Decoupled weight decay regularization",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Ilya Loshchilov",
+        "Frank Hutter"
+      ],
+      "raw_text": "Decoupled weight decay regularization Ilya Loshchilov Frank Hutter International Conference on Learning Representations 2019"
+    },
+    {
+      "index": 25,
+      "title": "Deepscaler: Surpassing o1-preview with a 1.5b model by scaling rl",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Michael Luo",
+        "Sijun Tan",
+        "Justin Wong",
+        "Xiaoxiang Shi",
+        "William Y Tang",
+        "Manan Roongta",
+        "Colin Cai",
+        "Jeffrey Luo"
+      ],
+      "raw_text": "Deepscaler: Surpassing o1-preview with a 1.5b model by scaling rl Michael Luo Sijun Tan Justin Wong Xiaoxiang Shi William Y Tang Manan Roongta Colin Cai Jeffrey Luo Li Erran Li DeepScaleR-Surpassing-O1-Preview-with-a-1-5B-Model-by-Scaling-RL-19681902c1468005 Raluca Ada Popa, and Ion Stoica bed8ca303013a4e2, 2025a. Notion Blog. 7"
+    },
+    {
+      "index": 26,
+      "title": "An empirical study of catastrophic forgetting in large language models during continual fine-tuning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yun Luo",
+        "Zhen Yang",
+        "Fandong Meng",
+        "Yafu Li",
+        "Jie Zhou",
+        "Yue Zhang"
+      ],
+      "raw_text": "An empirical study of catastrophic forgetting in large language models during continual fine-tuning Yun Luo Zhen Yang Fandong Meng Yafu Li Jie Zhou Yue Zhang 2025 15"
+    },
+    {
+      "index": 27,
+      "title": "Aimo-2 winning solution: Building state-of-the-art mathematical reasoning models with openmathreasoning dataset",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Ivan Moshkov",
+        "Darragh Hanley",
+        "Ivan Sorokin",
+        "Shubham Toshniwal",
+        "Christof Henkel",
+        "Benedikt Schifferer",
+        "Wei Du",
+        "Igor Gitman"
+      ],
+      "raw_text": "Aimo-2 winning solution: Building state-of-the-art mathematical reasoning models with openmathreasoning dataset Ivan Moshkov Darragh Hanley Ivan Sorokin Shubham Toshniwal Christof Henkel Benedikt Schifferer Wei Du Igor Gitman 2025"
+    },
+    {
+      "index": 28,
+      "title": "Nemotron-h: A family of accurate and efficient hybrid mamba-transformer models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Nvidia"
+      ],
+      "raw_text": "Nemotron-h: A family of accurate and efficient hybrid mamba-transformer models Nvidia 2025"
+    },
+    {
+      "index": 29,
+      "title": "Nvidia nemotron nano 2: An accurate and efficient hybrid mamba-transformer reasoning model",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Nvidia"
+      ],
+      "raw_text": "Nvidia nemotron nano 2: An accurate and efficient hybrid mamba-transformer reasoning model Nvidia 2025 4"
+    },
+    {
+      "index": 30,
+      "title": "Program synthesis with large language models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Augustus Odena",
+        "Charles Sutton",
+        "David Martin Dohan",
+        "Ellen Jiang",
+        "Henryk Michalewski",
+        "Jacob Austin",
+        "Maarten Paul Bosma",
+        "Maxwell Nye"
+      ],
+      "raw_text": "Program synthesis with large language models Augustus Odena Charles Sutton David Martin Dohan Ellen Jiang Henryk Michalewski Jacob Austin Maarten Paul Bosma Maxwell Nye Michael Terry V Quoc Le"
+    },
+    {
+      "index": 31,
+      "title": "Humanity's last exam",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Long Phan"
+      ],
+      "raw_text": "Humanity's last exam Long Phan 2025"
+    },
+    {
+      "index": 32,
+      "title": "Omniscience: A domain-specialized llm for scientific reasoning and discovery",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Vignesh Prabhakar",
+        "Amirul Md",
+        "Adam Islam",
+        "Yao-Ting Atanas",
+        "Joah Wang",
+        "Aastha Han",
+        "Rucha Jhunjhunwala",
+        "Robert Apte"
+      ],
+      "raw_text": "Omniscience: A domain-specialized llm for scientific reasoning and discovery Vignesh Prabhakar Amirul Md Adam Islam Yao-Ting Atanas Joah Wang Aastha Han Rucha Jhunjhunwala Robert Apte Kang Clark Zihan Xu Kai Wang Liu 2025 7 9"
+    },
+    {
+      "index": 33,
+      "title": "GPQA: A graduate-level google-proof q&a benchmark",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "David Rein",
+        "Betty Li Hou",
+        "Asa Cooper Stickland",
+        "Jackson Petty",
+        "Richard Yuanzhe Pang",
+        "Julien Dirani",
+        "Julian Michael",
+        "Samuel R Bowman"
+      ],
+      "raw_text": "GPQA: A graduate-level google-proof q&a benchmark David Rein Betty Li Hou Asa Cooper Stickland Jackson Petty Richard Yuanzhe Pang Julien Dirani Julian Michael Samuel R Bowman First Conference on Language Modeling 2024 1 6"
+    },
+    {
+      "index": 34,
+      "title": "Winogrande: An adversarial winograd schema challenge at scale",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Keisuke Sakaguchi",
+        "Le Ronan",
+        "Chandra Bras",
+        "Yejin Bhagavatula",
+        "Choi"
+      ],
+      "raw_text": "Winogrande: An adversarial winograd schema challenge at scale Keisuke Sakaguchi Le Ronan Chandra Bras Yejin Bhagavatula Choi Communications of the ACM 64 9 2021"
+    },
+    {
+      "index": 35,
+      "title": "Deepseekmath: Pushing the limits of mathematical reasoning in open language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zhihong Shao",
+        "Peiyi Wang",
+        "Qihao Zhu",
+        "Runxin Xu",
+        "Junxiao Song",
+        "Xiao Bi",
+        "Haowei Zhang",
+        "Mingchuan Zhang"
+      ],
+      "raw_text": "Deepseekmath: Pushing the limits of mathematical reasoning in open language models Zhihong Shao Peiyi Wang Qihao Zhu Runxin Xu Junxiao Song Xiao Bi Haowei Zhang Mingchuan Zhang Y K Li Y Wu Daya Guo 2024"
+    },
+    {
+      "index": 36,
+      "title": "Aime problem set",
+      "doi": "",
+      "year": "1983",
+      "authors": [
+        "Hemish Veeraboina"
+      ],
+      "raw_text": "Aime problem set Hemish Veeraboina 1983-2024, 2023"
+    },
+    {
+      "index": 37,
+      "title": "Mmlu-pro: A more robust and challenging multi-task language understanding benchmark",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yubo Wang",
+        "Xueguang Ma",
+        "Ge Zhang",
+        "Yuansheng Ni",
+        "Abhranil Chandra",
+        "Shiguang Guo",
+        "Weiming Ren",
+        "Aaran Arulraj"
+      ],
+      "raw_text": "Mmlu-pro: A more robust and challenging multi-task language understanding benchmark Yubo Wang Xueguang Ma Ge Zhang Yuansheng Ni Abhranil Chandra Shiguang Guo Weiming Ren Aaran Arulraj Xuan He Ziyan Jiang Tianle Li Max Ku Kai Wang Alex Zhuang Rongqi Fan Xiang Yue Wenhu Chen Advances in Neural Information Processing Systems A Globerson L Mackey D Belgrave A Fan U Paquet J Tomczak C Zhang Curran Associates, Inc 2024 37 ad236edc564f3e3156e1b2feafb99a24-Paper-Datasets_and_Benchmarks_Track.pdf. 6"
+    },
+    {
+      "index": 38,
+      "title": "Octothinker: Mid-training incentivizes reinforcement learning scaling",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zengzhi Wang",
+        "Fan Zhou",
+        "Xuefeng Li",
+        "Pengfei Liu"
+      ],
+      "raw_text": "Octothinker: Mid-training incentivizes reinforcement learning scaling Zengzhi Wang Fan Zhou Xuefeng Li Pengfei Liu arXiv:2506.20512 2025 4 10 arXiv preprint"
+    },
+    {
+      "index": 39,
+      "title": "Hellaswag: Can a machine really finish your sentence?",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Rowan Zellers",
+        "Ari Holtzman",
+        "Yonatan Bisk",
+        "Ali Farhadi",
+        "Yejin Choi"
+      ],
+      "raw_text": "Hellaswag: Can a machine really finish your sentence? Rowan Zellers Ari Holtzman Yonatan Bisk Ali Farhadi Yejin Choi Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics the 57th Annual Meeting of the Association for Computational Linguistics 2019"
+    },
+    {
+      "index": 40,
+      "title": "Evaluating large language models at evaluating instruction following",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zhiyuan Zeng",
+        "Jiatong Yu",
+        "Tianyu Gao",
+        "Yu Meng",
+        "Tanya Goyal",
+        "Danqi Chen"
+      ],
+      "raw_text": "Evaluating large language models at evaluating instruction following Zhiyuan Zeng Jiatong Yu Tianyu Gao Yu Meng Tanya Goyal Danqi Chen International Conference on Learning Representations (ICLR) 2024"
+    },
+    {
+      "index": 41,
+      "title": "Francesco Croce, and Nicolas Flammarion. Long is more for alignment: A simple but tough-to-beat baseline for instruction fine-tuning",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Hao Zhao",
+        "Maksym Andriushchenko"
+      ],
+      "raw_text": "Hao Zhao Maksym Andriushchenko arXiv:2402.04833 Francesco Croce, and Nicolas Flammarion. Long is more for alignment: A simple but tough-to-beat baseline for instruction fine-tuning 2024 arXiv preprint"
+    },
+    {
+      "index": 42,
+      "title": "Less is more for alignment",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Chunting Zhou",
+        "Pengfei Liu",
+        "Puxin Xu",
+        "Srinivasan Iyer",
+        "Jiao Sun",
+        "Yuning Mao",
+        "Xuezhe Ma",
+        "Avia Efrat"
+      ],
+      "raw_text": "Less is more for alignment Chunting Zhou Pengfei Liu Puxin Xu Srinivasan Iyer Jiao Sun Yuning Mao Xuezhe Ma Avia Efrat Ping Yu Lili Yu Advances in Neural Information Processing Systems 36 9 2023"
+    },
+    {
+      "index": 43,
+      "title": "Megamath: Pushing the limits of open math corpora",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Fan Zhou",
+        "Zengzhi Wang",
+        "Nikhil Ranjan",
+        "Zhoujun Cheng",
+        "Liping Tang",
+        "Guowei He",
+        "Zhengzhong Liu",
+        "Eric P Xing"
+      ],
+      "raw_text": "Fan Zhou Zengzhi Wang Nikhil Ranjan Zhoujun Cheng Liping Tang Guowei He Zhengzhong Liu Eric P Xing Megamath: Pushing the limits of open math corpora 2025"
+    }
+  ],
+  "section_count": 30,
+  "reference_count": 43,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:49.233429+00:00"
+}

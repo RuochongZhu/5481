@@ -1,0 +1,1147 @@
+{
+  "paperId": "doi:10.48550/arxiv.2510.03597",
+  "title": "Neon: Negative Extrapolation From Self-Training Improves Image Generation",
+  "year": 2025,
+  "source": "s2+arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2510.03597.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2510.03597.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2510.03597.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "ABSTRACT",
+      "kind": "abstract",
+      "text": "Scaling generative AI models is bottlenecked by the scarcity of high-quality training data. The ease of synthesizing from a generative model suggests using (unverified) synthetic data to augment a limited corpus of real data for the purpose of fine-tuning in the hope of improving performance. Unfortunately, however, the resulting positive feedback loop leads to model autophagy disorder (MAD, aka model collapse) that results in a rapid degradation in sample quality and/or diversity. In this paper, we introduce Neon (for Negative Extrapolation frOm self-traiNing), a new learning method that turns the degradation from self-training into a powerful signal for self-improvement. Given a base model, Neon first fine-tunes it on its own self-synthesized data but then, counterintuitively, reverses its gradient updates to extrapolate away from the degraded weights. We prove that Neon works because typical inference samplers that favor high-probability regions create a predictable anti-alignment between the synthetic and real data population gradients, which negative extrapolation corrects to better align the model with the true data distribution. Neon is remarkably easy to implement via a simple post-hoc merge that requires no new real data, works effectively with as few as 1k synthetic samples, and typically uses less than 1% additional training compute. We demonstrate Neon's universality across a range of architectures (diffusion, flow matching, autoregressive, and inductive moment matching models) and datasets (ImageNet, CIFAR-10, and FFHQ).",
+      "word_count": 224
+    },
+    {
+      "index": 2,
+      "title": "INTRODUCTION",
+      "kind": "introduction",
+      "text": "Modern generative models for images have achieved remarkable photorealism through continuous advances in architectures, training methods, and scale. Diffusion models (Ho et al., 2020; Song et al., 2021) , flow matching approaches (Lipman et al., 2023; Liu et al., 2023) , autoregressive architectures (Ding et al., 2021; Yu et al., 2022) , and few-step generators (Song et al., 2023; Zhou et al., 2025a) now form the backbone of large-scale image generation systems. Despite these advances, the most reliable path to state-of-the-art performance remains scaling: ever more parameters, ever larger datasets, and ever increasing compute (Kaplan et al., 2020; Henighan et al., 2020) .\n\nImportant energy sustainability issues aside, this scaling paradigm faces a fundamental bottleneck: high-quality training data. Curating diverse, rights-cleared image datasets is expensive and timeconsuming, with diminishing returns as existing sources are exhausted (Villalobos et al., 2022; Muennighoff et al., 2023) . As the gap between model capacity and available training data widens, the field must explore alternative paths to model improvement that do not rely on ever-larger real datasets.\n\nThe ease of synthesizing data from generative models has inspired a range of model improvement approaches to augment a limited real data set. At the simplistic end, one can fine-tune a model on its own generated outputs. However, such naïve self-training has been shown to lead to \"model autophagy disorder\" (MAD) (Alemohammad et al., 2024a) or model collapse (Shumailov et al., 2024) , where diversity and/or quality degrades. At the complicated end, researchers have avoided collapse through sophisticated workarounds like external verifiers for synthetic data quality (Feng et al., 2024) , auxiliary discriminator networks (Kim et al., 2023a) , negative guidance during inference (Alemohammad et al., 2024b) , and likelihood-based discrimination between distributions (Zheng et al., 2025) . While effective, these approaches add significant computational overhead, are restricted to specific architectures, or require complex iterative training.\n\nNeon. In this paper, we show that there is hidden promise in directly fine-tuning a model on its own generated data. Our key insight is that the degradation due to self-training is not random noise but rather a powerful signal that is anti-aligned with the real-data population gradient. Neon (Negative Extrapolation from self-traiNing) exploits this anti-alignment through a simple parameter merge. Given a base model with parameters θ r trained on real data, we first apply the naïve self-training approach: we generate synthetic samples and briefly fine-tune to obtain the parameters θ s that exhibit degraded performance. Then, rather than using θ s directly, we perform negative extrapolation:\n\nθ Neon = θ r -w(θ s -θ r ) = (1 + w)θ r -wθ s , w > 0, (1)\n\nwhere w controls the extrapolation strength. The vector θ s -θ r corresponds to the synthetic gradient direction; because this direction is anti-aligned with the (infinite real data) population gradient, reversing it reduces the true data risk and redistributes probability mass to under-represented modes.",
+      "word_count": 482
+    },
+    {
+      "index": 3,
+      "title": "Contributions.",
+      "kind": "body",
+      "text": "[C1] We introduce Neon, a deceptively simple post-processing method that improves generative models by reversing their degradation on self-generated data (Section 3). In contrast to existing methods for synthetic data augmentation, Neon requires no additional real training data, no access to the original training data, no auxiliary models, no likelihood computation, and no inference modifications. [C2] We prove rigorously that mode-seeking inference samplers create a predictable anti-alignment between the synthetic and population gradients that guarantees the effectiveness of negative extrapolation (Section 3.1). [C3] We demonstrate Neon's universality across diffusion, flow matching (Section 4.1), autoregressive (Section 4.2), and few-step (Section 4.3) models on CIFAR-10, FFHQ, and ImageNet with < 1% additional compute and as few as 1k synthetic samples. For example, on ImageNet-256, Neon elevates xAR-L from an FID of 1.28 to the state-of-the-art 1.02 using only 0.36% additional compute. [C4] We show that Neon's improvement mechanism operates through a precision-recall trade-off that redistributes probability mass from over-to under-represented modes (Section 4.1). [C5] We demonstrate that the Neon degradation signal is transferable, which enables synthetic data from one model architecture to improve another (Section 4.4).",
+      "word_count": 184
+    },
+    {
+      "index": 4,
+      "title": "BACKGROUND",
+      "kind": "introduction",
+      "text": "Notation and definitions. Let D be a training data set drawn from p data . A training algorithm produces the generative model G θ , whose output is a score, velocity, or logit depending on the model family. The training budget B is the cumulative number of images seen (in millions): B = (global steps) × (global batch size). An inference routine I with hyperparameters κ induces a sampling distribution q θ,κ . Denote the idealized distribution without inference-time modifications (e.g., guidance) by p θ := q θ,∅ . We use dist(•, •) for a generic divergence, | • | for set cardinality, and the shorthand ∥x∥ M := ∥M 1/2 x∥ 2 , ⟨x, y⟩ M := x ⊤ M y, ∥A∥ op,M := ∥M 1/2 AM -1/2 ∥ op , for any positive-definite matrix M , where ∥ • ∥ 2 , ⟨•, •⟩, and ∥ • ∥ op are the standard Euclidean norm, inner product, and operator norm. Let k denote 10 3 .",
+      "word_count": 167
+    },
+    {
+      "index": 5,
+      "title": "Visual generative models.",
+      "kind": "body",
+      "text": "Many image generators trace a path from noise to data via an affine interpolation x t = α(t)x 0 + σ(t)ϵ for t ∈ [0, 1], with x 0 ∼ p data , ϵ ∼ N (0, I), and boundary conditions α(0) = 1, σ(0) = 0, α(1) = 0, σ(1) = 1, inducing p 0 = p data and p 1 = N (0, I) (Song et al., 2021; Lipman et al., 2023) .\n\nDiffusion models (Ho et al., 2020; Song et al., 2021) train G θ (x, t) to approximate the score ∇ x log p t (x) (or equivalently, predict noise). At inference, the learned score drives the reverse-time SDE or probability-flow ODE.\n\nFlow matching (Lipman et al., 2023; Tong et al., 2024)\n\nlearns the conditional velocity v ⋆ (x 0 , ϵ, t) = α ′ (t)x 0 + σ ′ (t)ϵ by regressing G θ (x t , t) with squared error; sampling integrates ẋt = G θ (x t , t) from t = 1 to t = 0.\n\nFew-step generators reduce sampling cost by collapsing many steps. Consistency models (Song et al., 2023) predict x 0 directly from (x t , t); IMM (Zhou et al., 2025a) learns direct transitions x s = G θ (x t , t → s) with moment-matching, enabling quality with T ≈1-8 steps.\n\nAutoregressive models (Tian et al., 2024; Ren et al., 2025) factorize images into tokens y 1:N = T (x) and model p(y 1:N ) = N i=1 p(y π(i) | y π(<i) ), where G θ (y <i ) outputs next-token logits trained via cross-entropy. The ordering π and decoding choices (temperature, top-k) form part of inference hyperparameters κ.\n\nSelf-training and collapse. When models iteratively train on their own synthetic outputs, they exhibit what has been termed MADness or model collapse: E[dist(p data , p θt )] grows over time (Alemohammad et al., 2024a; Shumailov et al., 2024; Dohmatob et al., 2024) . Pure self-training diverges, while mixing real and synthetic data converges to degraded equilibria (Bertrand et al., 2023; Gerstgrasser et al., 2024) . While external signals beyond the training data can prevent collapse (Feng et al., 2024; Alemohammad et al., 2024b) , these methods require additional resources such as verifiers or fresh data.\n\nRelated work on synthetic data training. Several recent methods successfully leverage synthetic data for model improvement, but require significant architectural constraints or computational overhead. Discriminator Guidance (Kim et al., 2023a) trains a post-hoc discriminator on real versus generated samples across diffusion timesteps, using its gradients to correct the score function during sampling. While effective, it adds inference overhead and remains diffusion-specific. SIMS (Alemohammad et al., 2024b) employs self-generated data as negative guidance to steer diffusion trajectories away from degraded manifolds, but similarly requires inference-time modifications and is limited to diffusion models. Direct Discriminative Optimization (DDO) (Zheng et al., 2025) reformulates likelihood-based models as implicit discriminators via log-likelihood ratios between target and reference models, enabling strong improvements for diffusion (via ELBO) and autoregressive models, but fundamentally cannot apply to likelihood-free architectures like flow matching (Lipman et al., 2023) or inductive moment matching (Zhou et al., 2025a) . Self-Play Fine-Tuning (Yuan et al., 2024) iteratively pits models against earlier checkpoints, surpassing RLHF methods on human preference benchmarks but requiring multiple training rounds and substantial computational overhead. In contrast to these methods, Neon requires no auxiliary models, no inference modifications, no likelihood computations, and works across all architectures with a simple post-hoc parameter merge.",
+      "word_count": 582
+    },
+    {
+      "index": 6,
+      "title": "NEON: NEGATIVE EXTRAPOLATION FROM SELF-TRAINING",
+      "kind": "body",
+      "text": "When models train on synthetic samples produced by their inference procedure I (what we call \"self-training\"), they predictably degrade. Neon exploits this: by reversing the degradation direction, we can improve a model without additional real data. Starting from a base generator G θr (typically Figure 2: Neon's key idea: synthetic degradation and realdata improvement point in opposite directions. This toy 2D Gaussian example plots as a heat map the log Wasserstein distance to the true data distribution pdata from the generative model G θ(ws,wo) . We see that updating the model's parameters in the reverse of the direction they would be updated by finetuning on self-synthesized data (increasing ws) achieves similar improvements to fine-tuning the base model with 4× more real data (increasing wo).\n\ntrained on real data), we: (i) generate the synthetic dataset S once using test-time inference I(G θr ; κ), (ii) briefly (e.g., using < 1% of the original training budget) fine-tune the generator on S to obtain the degraded G θs , and (iii) negatively extrapolate via the parameter merge:\n\nθ Neon := θ r -w(θ s -θ r ) = (1 + w)θ r -wθ s , ( 2\n\n)\n\nwhere w > 0 controls the extrapolation strength. Algorithm 1 provides the full details.\n\nAlgorithm 1 Neon: Negative Extrapolation from Self-Training Require: Base model G θr , inference routine I with hyperparameters κ Hyperparameters: Synthetic dataset size n s = |S|, extrapolation strength w, training budget B 1: S ← {x i } ns i=1 where x i ∼ q θr,κ induced by I(G θr ; κ) ▷ sample using test-time inference 2: G θs ← FineTune(G θr , S, B) ▷ briefly fine-tune on synthetic data 3: θ Neon ← (1 + w)θ r -wθ s ▷ reverse the degradation Output: Final generator G θNeon",
+      "word_count": 301
+    },
+    {
+      "index": 7,
+      "title": "Geometric intuition via a toy study.",
+      "kind": "body",
+      "text": "To visualize why negative extrapolation from degradation succeeds, consider a 2D Gaussian example where p data = N (µ true , Σ true ). We train a base model G θr on 1k real samples and then define two directions in parameter space: the degradation direction from fine-tuning the base model on 10 5 synthetic samples from G θr to obtain G θs , and an oracle improvement direction from fine-tuning on 5k real samples (the original 1k real data points plus 4k new ones) to obtain G θo . We evaluate models in the 2D span of these directions:\n\nθ(w s , w o ) = θ r + w s (θ r -θ s ) -degradation direction (Neon) + w o (θ o -θ r ) oracle improvement direction (3)\n\nwhere w s controls the amount of negative extrapolation (Neon) and w o adds real-data improvement (oracle baseline). Figure 2 visualizes our key finding: moving backwards along the Neon direction alone (w o = 0) yields substantial improvement, indicating that the opposite of degradation direction and additional real-data improvement direction both point towards a better approximation of the true data distribution.\n\nTheoretical analysis. We now formalize the intuition provided by the toy example. We prove that typical inference samplers cause the synthetic and real data gradients to point in opposite directions, enabling negative extrapolation to reduce the true data risk.\n\nSet-up. Let ℓ θ (x) be differentiable loss function and R data (θ) := E pdata [ℓ θ (X)] the corresponding risk. Let θ * ∈ arg min θ R data (θ) and write θ r = θ * + ε with ∥ε∥ 2\n\nH d = ε ⊤ H d ε. Let q θr,κ denote the fixed sampler constructed once at θ r . Define ϕ θ (x) := ∇ θ ℓ θ (x), H d := ∇ 2 R data (θ * ) = E pdata ∂ θ ϕ θ (X) θ=θ * , R syn (θ) := E x∼q θr ,κ [ℓ θ (x)], r d := ∇ θ R data (θ) θr , r s := ∇ θ R syn (θ) θr .\n\nLet P ≻ 0 be a preconditioner and set K := H 1/2\n\nd P H 1/2 d\n\nwith mI ⪯ K ⪯ M I.\n\nWe say the synthetic and real data gradients are anti-aligned at θ r if their preconditioned inner product is negative s := ⟨r d , P r s ⟩ < 0.\n\nNeon improves under anti-alignment. Short synthetic fine-tuning yields θ s = θ r -α P r s +O(α foot_1 ), which Neon reverses: θ Neon = θ r + wα P r s + O(wα 2 ). A Taylor expansion of the risk yields\n\nR data (θ Neon ) = R data (θ r ) + wα s + (wα) 2 2 r ⊤ s P ⊤ ∇ 2 R data (θ r ) P r s + O (wα) 3 . (4)\n\nWhen s < 0, the negative linear term dominates for small w > 0, ensuring that R data (θ Neon ) < R data (θ r ). When R data is locally convex at θ r (i.e., ∇ 2 R data (θ r ) ⪰ 0), the optimal w * = -s/(αz) > 0, where z := r ⊤ s P ⊤ ∇ 2 R data (θ r )P r s . foot_0 See Appendix B.2 for the proof.\n\nSampler-induced anti-alignment. Let b := E q θr ,κ ϕ θ * (X) , ∆ := E q θr ,κ J θ * (X) -E pdata J θ * (X) , J θ * (x) := ∂ θ ϕ θ (x) θ * , (5)\n\nand measure their sizes in the H d -geometry by\n\nη 0 := ∥b∥ H -1 d , η 1 := ∥∆∥ op, H -1 d .\n\nDefine the angle between the model error ε and the sampler bias b in the H d -geometry by\n\ncos φ := ⟨ε, H -1 d b⟩ H d ∥ε∥ H d ∥H -1 d b∥ H d ∈ [-1, 1]. (6)\n\nIntuitively, cos φ < 0 means that the sampler's bias points is in a direction opposing the current error, favoring anti-alignment.\n\nTheorem 1 (Anti-alignment under inference mismatch). Let K := H 1/2\n\nd P H 1/2 d\n\nwith spectral bounds mI ⪯ K ⪯ M I. Then the alignment s = ⟨r d , P r s ⟩ obeys\n\ns ≤ M (1 + η 1 ) ∥ε∥ 2 H d -m η 0 ∥ε∥ H d [-cos φ] + + O(∥ε∥ 3 H d ).\n\nConsequently, a sufficient condition for s < 0 is that the leading two terms on the right-hand side be negative. In particular, for cos φ < 0 and sufficiently small ∥ε∥ H d ,\n\n∥ε∥ H d < m η 0 M (1 + η 1 ) (-cos φ) =⇒ s < 0.\n\nSee Appendices B.2-B.3 for the proof.\n\nMode-seeking samplers induce s < 0.\n\nThe inference routines of many of today's generative models can be written as a monotone reweighting of the reference model q(x) ∝ f log p θr (x) p θr (x), with f nondecreasing and not a.e. constant. Such mode-seeking samplers emphasize high-density regions and (to first order near θ * ) produce an obtuse angle with b, i.e., cos φ < 0 in (6). Combining this with Theorem 1 yields a transparent sufficient condition for s < 0 near strong base models (i.e small ∥ε∥ H d ); hence, negative extrapolation (w > 0 in (2) reduces the real-data risk R data . Some concrete instances: (i) AR: temperature τ < 1 and top-p/k truncation yield nondecreasing reweighting of log p θr ; see Appendix B.4 for the proof for AR models. (ii) Diffusion/flow: finite-step ODE solvers (including classifier-free guidance (CFG) (Ho & Salimans, 2022)) induce monotone terminal reweighting to first order in step size; see Appendix B.5 for the proof for diffusion models. 2 When Neon fails. Neon's success requires s < 0 (negative gradient alignment). If the sampler is not mode-seeking but rather diversity-seeking -meaning that it upweights low-probability regions via q(x) ∝ f (log p θr (x))p θr (x) with f nonincreasing -then our theory shows that s > 0 near good models (small |ε| H d ) and assuming modest curvature tilt (i.e., small η 1 ). In this case, standard self-training (moving toward θ s , equivalent to negative w) would actually improve the model, while Neon's prescription (positive w) would harm it. Diversity-seeking samplers are rare in practice: they require temperature τ > 1 for AR models or specialized samplers that decrease contraction near 0 2 4 6 1.2 1.4 1.6 1.8 2 B (Mi) FID EDM-VP | CIFAR-10 0 1 2 3 0.5 1 1.5 2 2.5 B (Mi) FID EDM-VP | FFHQ 64 0 1 2 3 2 3 4 B (Mi) FID Flow Matching | CIFAR-10 |S| 1k 6k 25k 100k |S| 1k 5k 18k 75k |S| 1k 6k 25k 100k Figure 3: Neon consistently improves FID with minimal self-training overhead. Minimum FID (optimized over extrapolation strength w) vs. self-training budget B (millions of images seen during fine-tuning on S) for varying synthetic dataset sizes |S|, on EDM-VP (CIFAR-10/FFHQ-64) and flow matching (CIFAR-10). Optimal gains use B ≤ 3Mi (< 2% of base model training compute for EDM; < 3% for flow), confirming Neon's efficiency. At B = 0, FID reflects the base model (no Neon). 0 1 2 3 1 1.5 2 2.5 3 w FID 0 1 2 3 0.6 0.7 w Precision 0 1 2 3 0.6 0.65 0.7 0.75 w Recall |B| 3 Mi 4 Mi 5 Mi 6 Mi |B| 3 Mi 4 Mi 5 Mi 6 Mi |B| 3 Mi 4 Mi 5 Mi 6 Mi modes for diffusion models, both of which are rare design choices. See Appendix B.7 for more details.\n\nFinite |S| effects. Our analysis assumes that the population synthetic gradients r s (θ r ), but in practice we use finite S with brief fine-tuning from θ r . For checkpoint θ s after T steps with step size α, the displacement d T := (θ s -θ r )/(αT ) concentrates on -P r (S) s (θ r ) when T is sufficiently large while αT remains small, yielding stable, low-variance Neon directions despite limited |S|. This produces a U-shaped performance in |S|: very small sets are variance-limited, very large sets amplify curvature effects (inflating the quadratic term in our Taylor expansion), while moderate sizes optimally balance these competing factors. See Appendix B.8 for formal bounds and parameter selection guidance.",
+      "word_count": 1452
+    },
+    {
+      "index": 8,
+      "title": "EXPERIMENTS",
+      "kind": "results",
+      "text": "We evaluate Neon across four model families -diffusion (EDM (Karras et al., 2022) ), flow matching (Tong et al., 2024; 2023) , autoregressive (VAR (Tian et al., 2024 ), xAR (Ren et al., 2025) ), and few-step (IMM (Zhou et al., 2025a) ) -on ImageNet (Deng et al., 2009) , CIFAR-10 ( Krizhevsky & Hinton, 2009) , and FFHQ (Karras et al., 2019) .\n\nFor each model, starting from a public checkpoint G θr , we generate synthetic datasets S using the FID-optimal inference settings κ from each paper. We fine-tune on S with the original training recipe at reduced learning rate (see Appendix C for details). We report FID as our primary metric using 10k/50k samples for hyperparameter search/final evaluation (Heusel et al., 2017) , with Precision/Recall (Kynkäänniemi et al., 2019) at k = 5 nearest neighbors. For a comprehensive comparison of Neon against state-of-the-art generative models across all benchmarks, please see Table A .1.",
+      "word_count": 156
+    },
+    {
+      "index": 9,
+      "title": "DIFFUSION AND FLOW MATCHING MODELS",
+      "kind": "body",
+      "text": "We evaluate Neon with the EDM-VP (Karras et al., 2022) (CIFAR-10 conditional, FFHQ-64 unconditional) and flow matching (Tong et al., 2024; 2023) (CIFAR-10 unconditional) models using public checkpoints. The synthetic datasets S were generated with default inference settings. Results. 4.2 AUTOREGRESSIVE MODELS We evaluate Neon's impact on xAR-B and xAR-L (Ren et al., 2025) (ImageNet-256), VAR-d16 (Tian et al., 2024) (ImageNet-256), and VAR-d30 (ImageNet-512). Both model families use CFG, with VAR adding top-k/top-p sampling; these are mode-seeking samplers, and so our theory predicts Neon benefits. At evaluation, we jointly optimize both the merge weight w and CFG scale γ. Cooptimization is crucial to reaching the best FID: w increases recall at precision's expense, while γ does the opposite. Results. Figure 5 depicts the best FID after (γ, w) grid search versus fine-tuning budget B, testing up to |S| = 750k synthetic samples. The xAR family FID improves monotonically: xAR-B from 1.72 to 1.31 (750k synthetic samples, 0.41% additional compute); xAR-L from 1.28 to the state-of-the-art FID 1.02 (750k samples, 0.36% additional compute), surpassing UCGM's 1.06 (Sun et al., 2025) .\n\nEven with just 1k samples, the xAR models achieve near-optimal performance (xAR-L: 1.05, xAR-B: 1.36), indicating that the degradation direction stabilizes quickly and requires minimal synthetic data to identify. VAR-d16 improves from 3.30 to 2.01 (750k samples, 0.64% additional compute) but requires larger synthetic datasets-performance degrades with |S| < 90k. VAR-d30 achieves its best FID of 1.69 with just 90k samples; adding more synthetic data provides no further meaningful improvement, suggesting the model has reached its capacity for Neon-based enhancement at this checkpoint.\n\nFigure 6 visualizes the (w, γ) interaction for VAR-d16. The FID landscape's diagonal valley with optimum (w * ≈1.0, γ * ≈2.7) yields FID 2.01. Independent optimization (γ=1.25) yields FID 3.01far worse. Joint tuning enables precision-recall trade-offs unreachable by either parameter alone: at the optimum, precision drops to ∼0.87 while recall rises to ∼0.63. The rightmost panel reveals the asymptotic behavior: as γ increases, the models converge to high precision (> 0.95) but severely degraded recall (< 0.45), leading to mode collapse. Higher w values provide partial protection -at w = 2, the low-recall limit rises to ∼0.55 vs. ∼0.40 at w = 0, demonstrating how negative extrapolation counteracts CFG's mode-seeking tendency even at extreme guidance scales.",
+      "word_count": 380
+    },
+    {
+      "index": 10,
+      "title": "FEW-STEP GENERATORS",
+      "kind": "body",
+      "text": "We investigate Neon paired with Inductive Moment Matching (IMM) (Zhou et al., 2025a) on ImageNet-256. We generated S using T =8 steps with CFG scale γ=1.5. At evaluation, we tested the models across inference steps T ∈{1, 2, 4, 8} and jointly searched over (w, γ).\n\nResults.",
+      "word_count": 47
+    },
+    {
+      "index": 11,
+      "title": "Neon is transferable across different architectures.",
+      "kind": "body",
+      "text": "A key advantage of Neon is that the degradation signal is transferable across different model architectures. We confirm Neon: Negative Extrapolation From Self-Training Improves Image Generation this empirically in Figure 8 , by improving a baseline unconditional EDM-VP model (FID = 1.97) using synthetic data from different sources. While data from the model itself yields the strongest improvement (FID = 1.38), cross-architecture transfer is highly effective. Data from a flow matching model achieves an FID of 1.59, and from an IMM model reaches 1.80. The theory expounded in Appendix B.6 formalizes why Neon is transferable. Consider models A and B that minimize the same objective with Hessians H (A) d and H (B) d . If these Hessians are spectrally close (equivalent norms up to constants c, C) and the architectures induce similar sampler biases (small mismatch ζ in the terms b, ∆ defined in (5), then antialignment transfers from one model to the other. That is, when model (A) satisfies s (A) ≤ -µ < 0, any nearby model (B) inherits s (B) ≤ -µ/2 < 0. Intuitively, models learning similar representations exhibit similar overconfidence patterns, and so one model's degradation direction corrects another's biases. This makes Neon practical when generating samples from the target model is costly.\n\nTo test if any out-of-distribution dataset provides a useful signal, we replaced the synthetic data with CIFAR-10C (Hendrycks & Dietterich, 2019) , a dataset of corrupted real images. Neon resulted in no FID improvement. This null result confirms that Neon specifically leverages the anti-alignment from a model overemphasizing its own modes -a bias absent in structured corruptions like CIFAR-10C. How good must the base model be? A key question is whether Neon's benefits are limited to nearly optimal models, since our theory guarantees anti-alignment only when the model error ∥ε∥ F is small. To test this condition's robustness, we applied Neon to a spectrum of EDM-VP base models trained on CIFAR-10 subsets of varying sizes. Figure 9 shows that Neon offers substantial improvements across the entire quality spectrum. Strikingly, a model trained on only 30k real samples (FID 1.87) and improved with Neon nearly matches the baseline model trained on the full 50k dataset (FID 1.85). This demonstrates that Neon can compensate for a 40% reduction in real training data, confirming the anti-alignment condition (s < 0) is not fragile but holds across a wide range of model qualities. This bodes well for data-scarce applications. Sensitivity to synthetic data quality. Our main experiments generated synthetic datasets using optimal inference settings for FID (e.g., γ = 2.7 for xAR-B). To test the sensitivity to the quality of S, we trained Neon+xAR-B on ImageNet-256 with |S| = 90k and varied the CFG scale used during generation. We generated synthetic datasets with γ ∈ [0, 6.2], fine-tuned on each S, and then optimized the final Neon model. Figure 10 demonstrates Neon's remarkable robustness: despite training on synthetic data of varying quality, the final FID remains near-optimal (1.30-1.31) for any γ ∈ [1, 3]. Even suboptimal synthetic datasets yield performance within 3% of optimal. This suggests that Neon captures the fundamental mode-seeking bias rather than requiring precisely tuned synthetic data. Only at extreme values (e.g., γ ≥ 6) does performance degrade significantly, likely due to excessive mode collapse in S.",
+      "word_count": 545
+    },
+    {
+      "index": 12,
+      "title": "CONCLUSIONS",
+      "kind": "conclusion",
+      "text": "We have introduced Neon, a simple and efficient post-processing method that improves generative models by inverting the degradation caused by self-training. Neon is grounded in a key insight: common mode-seeking inference samplers induce a predictable anti-alignment between gradients from synthetic and population data, explaining both the failure of naïve self-training and Neon's success. By extrapolating away from this degradation direction, Neon corrects the sampler's inherent bias, redistributing probability mass from over-represented modes to under-represented ones, thereby enhancing recall and overall generation fidelity. Neon's effectiveness across diverse model architectures and training datasets suggests that we can reframe model degradation not as a failure, but as a structured, harnessable signal for improvement in an increasingly data-scarce field. Our work also positions inference samplers as valuable diagnostic tools for uncovering and remedying a model's distributional flaws.\n\nNeon opens several promising avenues for future work. First, can the degradation direction be estimated reliably without any self-training? Second, can we actively synthesize \"optimal bad\" datasets that elicit a stronger, more stable corrective signal? Third, in diversity-seeking regimes where self-training potentially aligns positively with the population gradient (assuming small η 1 ), the forward step should help; identifying diversity-promoting samplers that induce positive alignment would enable direct self-improvement without inversion. In the meantime, a bi-directional update that blends the forward diversity-seeking direction with the reversed mode-seeking degradation direction is a practical hybrid to explore.\n\nAs the demand for more capable generative models outpaces the availability of high-quality training data, progress will depend on new methods that extract more value from models and their training data. Neon demonstrates that even seemingly harmful procedures, when properly understood and corrected, can guide us toward better models, showing that sometimes, the path forward requires a deliberate step backward.",
+      "word_count": 288
+    },
+    {
+      "index": 13,
+      "title": "A STATE OF THE ART COMPARISON",
+      "kind": "body",
+      "text": "Table A.1: Comprehensive comparison of generative models across four standard benchmarks. Best results are highlighted in blue . (a) Results on CIFAR-10. Type Model NFE Uncond Cond GAN StyleGAN2-ADA (Karras et al., 2020) 1 2.92 2.42 StyleGAN-XL (Sauer et al., 2022) 1 -1.85 SAN (Takida et al., 2024) 1 1.85 1.36 CAF (Park et al., 2024) 1 1.48 1.39 Diff. & Flow DDPM (Ho et al., 2020) 1000 3.17 -iDDPM (Nichol & Dhariwal, 2021)\n\n4000 2.90 -NCSN++ (Song & Ermon, 2020) 2000 2.20 -DPM-Solver (Lu et al., 2022) 10 4.70 -LSGM (Vahdat et al., 2021) 138 2.10 -EDM-VP (Karras et al., 2024b) 35 1.97 1.79 GMem-XL (Tang et al., 2024) 35 -1.22 Flow Matching (Lipman et al., 2023) 100 3.50 -Rectified Flow (Liu et al., 2023) 127 2.58 -Few-step CTM (Kim et al., 2023b ) 2 1.87 -sCT (Song et al., 2023) 2 2.06 -IMM (Zhou et al., 2025a) 1 3.20 -Post-hoc EDM + DG (Kynkäänniemi et al., 2024) 53 1.77 1.64 EDM + DDO (Zheng et al., 2025) 35 1.38 1.30 EDM + SIMS (Alemohammad et al., 2024b) 70 1.33 -EDM + SiD\n\n2 A (Zhou et al., 2025b) 1 1.49 1.39 Ours EDM + Neon 35 1.38 1.38 Flow + Neon 100 2.32 -(b) Results on FFHQ-64×64. Type Model NFE FID GAN R3GAN (Wang et al., 2025) 1 1.95 Anycost GAN (Lee et al., 2021) 1 2.52 MSG-GAN (Karnewar & Wang, 2019) 1 2.70 StyleGAN2 (Karras et al., 2019) 1 3.32 Diffusion EDM-G++ (Karras et al., 2024b) 71 1.98 EDM-VE (Karras et al., 2024b) 79 2.53 EDM-VP (Karras et al., 2024b) 79 2.39 Post-hoc. SiD 2 A (Zhou et al., 2025b) 1 1.04 EDM + SIMS (Alemohammad et al., 2024b) 158 1.04 EDM + D2O (Zheng & Yang, 2025) 1 1.08 EDM + D2O-F (Zheng & Yang, 2025) 1 0.85 Ours EDM + Neon 79 1.12 (c) Results on ImageNet-256×256. Type Model NFE FID GAN GigaGAN (Kang et al., 2023) 1 3.45 StyleGAN-XL (Sauer et al., 2022) 1 2.30 Diffusion ADM (Dhariwal & Nichol, 2021) 250 10.94 LDM-4 (Rombach et al., 2022) 250 10.56 DiT-XL/2 (Peebles & Xie, 2023) 250 9.62 U-ViT (Bao et al., 2023) 50 2.29 MDT (Gao et al., 2023) 250 6.23 REPA-UCGM (Sun et al., 2025) 80 1.06 Masked MaskGIT (Chang et al., 2022) 8 6.18 MAR (Li et al., 2024) 100 1.98 MaskBit (Weber et al., 2024) 256 1.52 AR VQGAN (Yu et al., 2021) 256 15.78 VAR-d16 (Tian et al., 2024) 10 3.30 VAR-d30 (Tian et al., 2024) 10 1.92 xAR-B (Ren et al., 2025) 40 1.72 xAR-L (Ren et al., 2025) 50 1.28 Few-step Shortcut (Frans et al., 2024) 1 10.60 IMM (T=1) (Zhou et al., 2025a) 1 7.77 IMM (T=8) (Zhou et al., 2025a) 8 1.99 Post-hoc VAR-d16 + DDO (Zheng et al., 2025) 10 2.54 VAR-d30 + DDO (Zheng et al., 2025) 10 1.79 Ours VAR-d16 + Neon 10 2.01 xAR-B + Neon 40 1.31 xAR-L + Neon 50 1.02 IMM (T=8) + Neon 8 1.46 IMM (T=4) + Neon 4 1.68 IMM (T=2) + Neon 2 2.88 IMM (T=1) + Neon 1 6.67 (d) Results on ImageNet-512×512. Type Model NFE FID GAN BigGAN-deep (Brock et al., 2019) 1 8.43 StyleGAN-XL (Sauer et al., 2022) 1 2.41 SiD 2 A (Zhou et al., 2025b) 1 1.37 Diffusion ADM (Dhariwal & Nichol, 2021) 250 23.24 ADM-U (Dhariwal & Nichol, 2021) 500 9.96 DiT-XL/2 (Peebles & Xie, 2023) 250 12.03 SiT-XL (Ma et al., 2024) 250 8.30 RiN (Jabri et al., 2023) 1000 3.95 U-ViT-L (Bao et al., 2023) 512 3.54 VDM++ (Kingma & Gao, 2024) 512 2.99 EDM2-S (Karras et al., 2024b) 63 1.73 EDM2-XXL (Karras et al., 2024b) 63 1.91\n\nMasked MAGVIT-v2 (Yu et al., 2024) 64 3.07 MAR-L (Li et al., 2024) 1024 2.74 AR VAR-d36-s (Tian et al., 2024) 10 2.63 xAR-L (Ren et al., 2025) 50 1.70 Post-hoc EDM2-S + SIMS (Alemohammad et al., 2024b) 63 1.73 EDM2-L + DDO (Zheng et al., 2025) 63 1.21 EDM2 + AG (Karras et al., 2024a) 63 1.25 EDM2 + SiD 2 A (Zhou et al., 2025b) 1 1.37 Ours VAR-d30-s + Neon 10 1.70\n\nWe summarize our results and provide a comprehensive comparison with state-of-the-art generative models in Table A .1. The following section discusses Neon's performance on each benchmark in more detail, highlighting its standing relative to top-performing models and other post-hoc methods.\n\nCIFAR-10 On both conditional and unconditional CIFAR-10, Neon improves the EDM-VP baseline to a 1.38 FID while maintaining its 35 NFE (Karras et al., 2024b) . In the conditional setting, this is competitive with DDO, which achieves a 1.30 FID from the same base model but requires significantly more training compute ( 12% extra vs. Neon's 1.75%) (Zheng et al., 2025) . In the unconditional setting, Neon's 1.38 FID is identical to DDO's and close to the SOTA held by SIMS at 1.33 FID (Alemohammad et al., 2024b) . Notably, SIMS requires doubling the NFE to 70, making Neon a more sampling-efficient alternative. Neon also demonstrates versatility by improving a Flow Matching model to a 2.32 FID (Lipman et al., 2023) .",
+      "word_count": 848
+    },
+    {
+      "index": 14,
+      "title": "FFHQ-64x64",
+      "kind": "body",
+      "text": "On FFHQ, Neon significantly enhances the unconditional EDM-VP model, lowering its FID from 2.39 to 1.12 with 79 NFE. While the state-of-the-art is held by the one-step D2O-F at 0.85 FID (Zheng & Yang, 2025 ), Neon's performance is highly competitive. It stands against other post-hoc methods like SIMS (1.04 FID, 158 NFE) (Alemohammad et al., 2024b) and the one-step distilled SiD 2 A (1.04 FID, 1 NFE) (Zhou et al., 2025b) . Neon achieves its strong result with a simple parameter merge that preserves the base sampler's structure, offering a distinct trade-off between FID and NFE.\n\nImageNet-256x256 On ImageNet-256, Neon sets a new state-of-the-art, improving the xAR-L model from an already strong 1.28 FID to 1.02 FID (Ren et al., 2025) . This surpasses the previous best result of 1.06 FID from REPA-UCGM (Sun et al., 2025) . Neon also demonstrates its superiority over DDO on this benchmark; when applied to the same VAR-d16 base model (Tian et al., 2024) , Neon achieves a 2.01 FID, which is a significant improvement over DDO's 2.54 FID (Zheng et al., 2025) . Furthermore, Neon consistently improves other architectures, including xAR-B (1.31 FID) and IMM (1.46 FID).\n\nImageNet-512x512 On ImageNet-512, Neon improves the VAR-d30 model to a 1.70 FID with 10 NFE (Tian et al., 2024) . While the state-of-the-art belongs to EDM2-L+DDO at 1.21 FID (Zheng et al., 2025 ), Neon's result is competitive with other post-hoc methods applied to different base models, such as EDM2-S+SIMS (1.73 FID) (Alemohammad et al., 2024b) . It showcases Neon's ability to enhance autoregressive models at higher resolutions with its characteristic low compute overhead.\n\nSummary Across all benchmarks, Neon proves to be a simple, efficient, and broadly applicable post-hoc method for improving generative models. It achieves a new state-of-the-art on ImageNet-256 and delivers highly competitive results elsewhere, often with superior sampling efficiency compared to other post-hoc techniques. A key finding is that Neon's effectiveness corresponds directly to the quality of the base model it enhances; applying it to a stronger foundation like xAR-L yields a greater improvement and the best overall performance. This positions Neon as a reliable tool for adding a final layer of polish to strong, pre-existing generative models with minimal computational effort. Crucially, since Neon improves the base diffusion model itself, its benefits are potentially orthogonal to distillation methods; one could apply SiD 2 A or D2O-F to the Neon-enhanced model for further gains.",
+      "word_count": 402
+    },
+    {
+      "index": 15,
+      "title": "B PROOFS AND DETAILED EXPLANATIONS B.1 ASSUMPTIONS, NOTATION, AND IDENTITIES",
+      "kind": "body",
+      "text": "Assumptions. Let ℓ θ (x) be a differentiable per-example loss and R data (θ) := E pdata [ℓ θ (X)].\n\n(A1) Data risk minimizer. θ * ∈ arg min θ R data (θ), hence E pdata [ϕ θ * (X)] = 0, where ϕ θ (x) := ∇ θ ℓ θ (x). (A2) Regularity. Common support; dominated convergence/interchange of limits and expectations; local Lipschitz of ϕ θ and\n\nH θ (x) := ∂ θ ϕ θ (x) near θ * . (A3) Local neighborhood. θ r = θ * + ε with small ∥ε∥ H d ; all remainders are O(∥ε∥ 2 H d ). (A4) Rank. If H d := ∇ 2 R data (θ * ) is not full rank, interpret all statements on Im(H d ).\n\nMetric and basic objects. The data Hessian is\n\nH d = ∇ 2 R data (θ * ) = E pdata [H θ * (X)]. We use the M -induced geometry ⟨x, y⟩ M := x ⊤ M y, ∥x∥ M := ∥M 1/2 x∥ 2 , ∥A∥ op,M := ∥M 1/2 AM -1/2 ∥ op , and write ∥ • ∥ H d , ⟨•, •⟩ H d for M = H d . For a preconditioner P ≻ 0, set K := H 1/2 d P H 1/2 d with bounds mI ⪯ K ⪯ M I.",
+      "word_count": 228
+    },
+    {
+      "index": 16,
+      "title": "B.2 NEON IMPROVES UNDER ANTI-ALIGNMENT",
+      "kind": "body",
+      "text": "Alignment scalar and synthetic objective. Let\n\nr d := ∇ θ R data (θ) θr , R syn (θ) := E q θr ,κ [ℓ θ (X)], r s := ∇ θ R syn (θ) θr .\n\nDefine the alignment scalar s := ⟨r d , P r s ⟩. Let\n\nH d := ∇ 2 R data (θ r ). Then R data (θ Neon ) = R data (θ r ) + wα s + (wα) 2 2 r ⊤ s P ⊤ H d P r s + O (wα) 3 . (B.2)\n\nIn particular, if s < 0 then for all sufficiently small w > 0 we have R data (\n\nθ Neon ) < R data (θ r ). If moreover H d ⪰ 0, writing q := r ⊤ s P ⊤ H d P r s ≥ 0, any 0 < w < - 2s αq guarantees R data (θ Neon ) ≤ R data (θ r ) (up to O((wα) 3 )),\n\nand the quadratic proxy is minimized at w * = -s/(αq) > 0.\n\nProof. From the short synthetic fine-tune we have\n\nθ s = θ r -αP r s + O(α 2 ). Therefore θ Neon = (1 + w)θ r -wθ s = θ r + wα P r s + O(wα 2 ).\n\nDefine the univariate function ψ(τ ) := R data θ r + τ P r s , and set τ = wα.\n\nA Taylor expansion of ψ at τ = 0 gives\n\nψ(τ ) = ψ(0) + τ ψ ′ (0) + τ 2 2 ψ ′′ (0) + O(τ 3 ).\n\nBy the chain rule,\n\nψ ′ (0) = r d , P r s = s, ψ ′′ (0) = r ⊤ s P ⊤ H d P r s . Substituting τ = wα yields R data (θ Neon ) = R data (θ r ) + wα s + (wα) 2 2 r ⊤ s P ⊤ H d P r s + O (wα) 3 , which is equation B.2.\n\nIf s < 0, the linear term is negative and dominates for sufficiently small w > 0, giving R data (θ Neon ) < R data (θ r ).\n\nIf, in addition, H d ⪰ 0, then ψ ′′ (0) ≥ 0 and the quadratic proxy τ → ψ(0\n\n) + τ s + 1 2 τ 2 ψ ′′ (0) is minimized at τ * = - s ψ ′′ (0) > 0.\n\nSince τ = wα, this gives the safe window 0 < w < -2s α ψ ′′ (0) and the minimizer\n\nw * = - s α ψ ′′ (0) = - s α r ⊤ s P ⊤ H d P r s .\n\nRemark B.2 (No convexity needed: directional smoothness). The PSD requirement on H d can be replaced by an upper curvature bound along the step direction d := P r s . If there is\n\nL dir ≥ 0 with d ⊤ ∇ 2 R data (θ r + τ d)d ≤ L dir ∥d∥ 2 2 for τ near 0, then the same conclusion holds whenever 0 < w < - 2s α L dir ∥d∥ 2 2 .",
+      "word_count": 548
+    },
+    {
+      "index": 17,
+      "title": "B.3 AN UPPER BOUND ON s AND SUFFICIENT CONDITIONS FOR ANTI-ALIGNMENT",
+      "kind": "body",
+      "text": "Local expansion at θ r . Lemma B.3 (First-order expansions of real and synthetic gradients). Let θ r = θ * + ε with ∥ε∥ H d small and assume (A1)-(A4). Then\n\nr d := ∇ θ R data (θ) θr = H d ε + O(∥ε∥ 2 H d ), (B.3)\n\nand, with\n\nb := E q θr ,κ ϕ θ * (X) , ∆ := E q θr ,κ H θ * (X) -E pdata H θ * (X) , r s := ∇ θ R syn (θ) θr = H d ε + b + ∆ ε =:Rκ + O(∥ε∥ 2 H d ), (B.4)\n\nProof. First-order expansion of the per-example gradient. By (A2) (regularity) and a first-order Taylor expansion at θ * ,\n\nϕ θr (x) = ϕ θ * (x) + H θ * (x) ε + ρ(x), where the remainder satisfies E pdata ∥ρ(X)∥ = O(∥ε∥ 2 H d ) and similarly E q θr ,κ ∥ρ(X)∥ = O(∥ε∥ 2 H d ).\n\nReal-risk gradient. Taking expectation under p data and using (A1)-(A3),\n\nr d = E pdata ϕ θr (X) = E pdata ϕ θ * (X) = 0 +E pdata H θ * (X) ε + E pdata ρ(X) = H d ε + O(∥ε∥ 2 H d ). Synthetic-risk gradient. Taking expectation under q θr,κ , r s = E q θr ,κ ϕ θr (X) = E q θr ,κ ϕ θ * (X) =: b + E q θr ,κ H θ * (X) = H d +∆ ε + E q θr ,κ ρ(X) . Hence r s = b + (H d + ∆) ε + O(∥ε∥ 2 H d ).\n\nEquivalent residual form used later. It is convenient (and used in subsequent bounds) to rewrite this as r s = H d ε -R κ + O(∥ε∥ 2 H d ), where R κ := -b + ∆ ε . Both expressions are identical up to the first-order terms, and the latter isolates the \"useful\" H d ε part from the sampler-induced mismatch R κ .\n\nAngle and magnitudes. Define the H d -whitened magnitudes\n\nη 0 := ∥b∥ H -1 d , η 1 := ∥∆∥ op, H -1 d ,\n\nand the angle\n\ncos φ := ε, H -1 d b H d ∥ε∥ H d H -1 d b H d ∈ [-1, 1]. (B.5)\n\nEquivalently, φ is the Euclidean angle between H\n\n1/2 d ε and H -1/2 d b. Set K := H 1/2 d P H 1/2 d with spectral bounds mI ⪯ K ⪯ M I. Theorem B.4 (Directional upper bound for s). With θ r = θ * + ε and ∥ε∥ H d small, s ≤ M (1 + η 1 ) ∥ε∥ 2 H d -m η 0 ∥ε∥ H d -cos φ + + O(∥ε∥ 3 H d ). Consequently, a sufficient condition for s < 0 is ∥ε∥ H d < m η 0 M (1 + η 1 )\n\ncos φ with cos φ < 0.\n\nProof. Using Lemma B.3, write\n\ns = ε ⊤ H d P H d ε -ε ⊤ H d P b -ε ⊤ H d P ∆ε + O(∥ε∥ 3 H d ). Whiten with a := H 1/2 d ε, b := H -1/2 d b, ∆ := H -1/2 d ∆H -1/2 d\n\n, and\n\nK := H 1/2 d P H 1/2 d to get s = a ⊤ Ka -a ⊤ K b -a ⊤ K ∆ a + O(∥a∥ 3\n\n2 ). Now bound the three pieces:\n\na ⊤ Ka ≤ M ∥a∥ 2 2 = M ∥ε∥ 2 H d , -a ⊤ K ∆a ≤ M η 1 ∥ε∥ 2 H d . For the linear term, write a ⊤ K b = ∥K 1/2 a∥ 2 ∥K 1/2b ∥ 2 cos θ, with θ the angle between K 1/2 a and K 1/2b . Since ∥K 1/2 x∥ 2 ≥ √ m∥x∥ 2 , a ⊤ K b ≥ m ∥a∥ 2 ∥ b∥ 2 [cos θ] + = m ∥ε∥ H d η 0 [cos φ] + . Thus -a ⊤ K b ≤ -m η 0 ∥ε∥ H d [cos φ] + .\n\nSince [cos φ] + ≥ 0 and [ -cos φ ] + ≥ [cos φ] -, we can replace -[cos φ] + by the slightly looser but sign-robust term -[ -cos φ ] + , yielding the stated bound after collecting terms and absorbing O(∥a∥ 3 2 ). Corollary B.5 (Natural-gradient geometry). If P = H -1 d , then K = I (so m = M = 1) and\n\ns ≤ (1 + η 1 ) ∥ε∥ 2 H d -η 0 ∥ε∥ H d -cos φ + + O(∥ε∥ 3 H d ).\n\nThus it suffices that ∥ε∥ H d < η 0 1 + η 1 -cos φ with cos φ < 0 to guarantee s < 0.\n\nInterpretation. η 0 captures the sampler's linear bias (whitened by H d ); η 1 its curvature tilt. From Theorem B.4, the leading terms obey s ≲ M (1 + η 1 ) ∥ε∥ 2 H d -m η 0 ∥ε∥ H d (-cos φ), so whenever the angle is obtuse (cos φ < 0, i.e., H -1 d b points mostly against ε), the subtractive linear term eventually dominates as ∥ε∥ H d → 0. Equivalently: there exists a threshold ε 0 > 0 (depending on m, M, η 0 , η 1 andcos φ) such that if the model is sufficiently close to optimal, ∥ε∥ H d < ε 0 , then s < 0. In this small-error regime, Neon reduces the real-data risk by Theorem B.1.\n\nWhat remains. The next subsections show that under the common inference rules we study, the angle condition cos φ < 0 holds to first order: for autoregressive models (temperature τ < 1, top-k, top-p), and for diffusion/flow models under finite-step ODE sampling. We therefore avoid restating separate plug-in corollaries and simply point back to the bound above.",
+      "word_count": 1023
+    },
+    {
+      "index": 18,
+      "title": "B.4 ACUTE-ANGLE CONDITIONS THAT IMPLY s < 0 (AR MODELS)",
+      "kind": "body",
+      "text": "Loss and geometry (AR). For autoregressive (AR) models we use negative log-likelihood:\n\nℓ θ (x) = -log p θ (x), ϕ θ (x) = ∇ θ ℓ θ (x) = -u θ (x)\n\n, so the data Hessian is the Fisher,\n\nH d = F = E pdata [u θ * u ⊤ θ * ]. For a sampler q let b := E q ϕ θ * (X) = -E q u θ * (X) . Our global angle is cos φ := ⟨ε, F -1 b⟩ F ∥ε∥ F ∥F -1 b∥ F ∈ [-1, 1],\n\nso anti-alignment corresponds to cos φ < 0.\n\nDefinition (mode-seeking samplers). Fix θ r = θ * + ε. We call q mode-seeking if it is a monotone reweighting of the reference model:\n\nq(x) ∝ w(x) p θr (x), w(x) = f log p θr (x)\n\n, with f : R → R ≥0 nondecreasing and not a.e. constant. (For AR decoding applied tokenwise, the overall sequence law inherits a product of such nondecreasing reweights; we write it as f (log p θr (x)) for brevity.)\n\nCommon AR samplers are mode-seeking.\n\n• Temperature τ < 1. The sampler draws from q ∝ p 1/τ θr , so f (z) = exp{(1/τ -1) z} with 1/τ -1 > 0, hence f is strictly increasing (neutral only at τ = 1).\n\n• Top-k. Keep only the k largest probabilities: there exists a threshold z k such that f (z) = ⊮{z ≥ z k }, a nondecreasing step function (neutral only at k = vocabulary size).\n\n• Top-p (nucleus). Keep the smallest set whose cumulative mass exceeds p; this induces a (contextdependent) threshold z p and f (z) = ⊮{z ≥ z p }, again nondecreasing (neutral only at p = 1).\n\nLemma B.6 (Mode-seeking ⇒ cos φ < 0 (first order)). Assume q(x) ∝ f (log p θr (x)) p θr (x) with f nondecreasing. For θ r = θ * + ε and small ∥ε∥ F , cos φ < 0 + O(∥ε∥ F ).\n\nProof. Let B(x) := ε ⊤ u θ * (x). Then\n\nε, F -1 E q [u θ * ] F = ε ⊤ E q [u θ * (X)] = E q B(X) = E p θr [ w B ] E p θr [ w ] .\n\nA first-order expansion around θ * gives log p θr (x) = log p θ * (x) + B(x) + O(∥ε∥ 2 F ), hence w(x) = f (log p θr (x)) is (to first order) a nondecreasing function of the scalar B(x).\n\nReplacing p θr by p θ * in both numerator and denominator incurs only O(∥ε∥ F ) relative error, so\n\nE q [B] = E p θ * [ w B ] E p θ * [ w ] + O(∥ε∥ 2 F )\n\n.\n\nNow E p θ * [wB] = Cov p θ * (w, B) because E p θ * [B] = ε ⊤ E p θ * [u θ * ] = 0.\n\nSince w and B are nondecreasing (as functions of B), the monotone-covariance inequality yields Cov p θ * (w, B) ≥ 0, with strict > 0 unless w is a.e. constant or B is degenerate. Therefore E q [B] ≥ 0 to first order, i.e.\n\nε, F -1 E q [u θ * ] F ≥ 0 (up to O(∥ε∥ 2 F )). Finally, b = -E q [u θ * ] implies cos φ = ⟨ε, F -1 b⟩ F ∥ε∥ F ∥F -1 b∥ F = - ε, F -1 E q [u θ * ] F ∥ε∥ F ∥F -1 b∥ F ≤ 0 (strict < 0 generically), up to O(∥ε∥ F ).\n\nConsequence. Combining Lemma B.6 with Theorem B.4 yields s < 0 for sufficiently small ∥ε∥ F (and the explicit window follows by substituting H d = F ).",
+      "word_count": 656
+    },
+    {
+      "index": 19,
+      "title": "B.5 ACUTE-ANGLE CONDITIONS THAT IMPLY s < 0 (DIFFUSION & FLOW)",
+      "kind": "body",
+      "text": "Loss and geometry. We use standard pathwise quadratic losses. For diffusion score models,\n\nR diff (θ) = 1 0 ω(t) E pt 1 2 ∥s θ (X t , t) -s ⋆ (X t , t)∥ 2 2 dt,\n\nand for flow matching,\n\nR flow (θ) = 1 0 ω(t) E pt 1 2 ∥v θ (X t , t) -v ⋆ (X t , t)∥ 2 2 dt. Let ϕ θ,t (x) := ∇ θ ℓ (t) θ (x) and J t (x) := ∂ θ ϕ θ,t (x) θ * .\n\nDefine the pathwise Fisher\n\nF path := 1 0 ω(t) E pt J t (X t )J t (X t ) ⊤ dt,\n\nand the angle (mirroring the AR case)\n\ncos φ path := ε, F -1 path b path Fpath ∥ε∥ Fpath F -1 path b path Fpath , b path := E q 1 0 ω(t) ϕ θ * ,t (X t ) dt .\n\nAnti-alignment corresponds to cos φ path < 0.\n\nFinite-step ODE solvers are mode-seeking. Consider the probability-flow ODE with velocity\n\nf : R d × [0, 1] → R d ; for diffusion, f (x, t) = -σ(t) 2 ∇ x log p t (x\n\n). An explicit one-step scheme with step size h gives\n\nx k-1 = x k + h f (x k , t k ), J k := ∂x k-1 ∂x k = I + h ∇ x f (x k , t k ).\n\nUsing tr log(I + A) = tr(A) -1 2 tr(A 2 ) + O(∥A∥ 3 ) with A = h ∇ x f (and tr(A 2 ) = ∥A∥ 2 Fr when ∇ x f is symmetric; otherwise take its symmetric part),\n\nlog det J k = h tr(∇ x f ) - h 2 2 ∥∇ x f ∥ 2 Fr + O(h 3 ).\n\nChaining steps and comparing to the exact ODE yields a terminal reweight of the reference law:\n\nq(x 0 ) ∝ exp h 2 C(x 0 )+o(h) p θr (x 0 ), C(x 0 ) := 1 T E k ∥∇ x f (X t k , t k )∥ 2 Fr X 0 = x 0 , T ≍ 1/h. For diffusion, f (x, t) = -σ(t) 2 ∇ x log p t (x) so that ∇ x f (x, t) = -σ(t) 2 ∇ 2 x log p t (x), hence C(x 0 ) = 1 T E k σ(t k ) 4 ∥∇ 2 x log p t k (X t k )∥ 2 Fr X 0 = x 0 .\n\nAssumption (A-MONO: curvature-density coupling). The map\n\nx 0 → C(x 0 ) is weakly increasing in log p θr (x 0 ); i.e., if log p θr (x 0 ) ≤ log p θr (x ′ 0 ) then C(x 0 ) ≤ C(x ′ 0 ). Intuition. Finite-step integrators overweight trajectories with stronger contraction (large ∥∇ x f ∥).\n\nNear modes, log p t is more curved, contraction is larger, hence C(x 0 ) grows with local density. As h → 0, the bias vanishes and q → p θr (neutral).\n\nRemark B.7 (Step-size scaling). From log det J k = h tr(∇ x f ) -h 2 2 ∥∇ x f ∥ 2 Fr + O(h 3 ), the per- step excess contraction is δ k = h 2 2 ∥∇ x f ∥ 2 Fr + O(h 3 ). Summing over T ≍ 1/h steps yields the terminal reweight exponent k δ k = h 2 C(x 0 ) + o(h). Consequently, the pathwise linear bias b path = E q [ 1 0 ω(t) ϕ θ * ,t (X t ) dt] obeys ∥b path ∥ F -1 path = O(h), and the curvature tilt ∥∆ path ∥ op,F -1 path = O(h).\n\nBoth vanish linearly as h → 0, making the sampler neutral in the limit.",
+      "word_count": 658
+    },
+    {
+      "index": 20,
+      "title": "Flow matching. For updates x",
+      "kind": "body",
+      "text": "k-1 = x k + h v θ (x k , t k ), log det J k = h tr(∇ x v θ ) - h 2 2 tr (∇ x v θ ) 2 + O(h 3 ), so δ k = h 2 2 ∥∇ x v θ ∥ 2\n\nFr + O(h 3 ) ≥ 0 and the same reweight w. With the flow analogue of A-MONO (the conditional expectation of k ∥∇\n\nx v θ ∥ 2\n\nFr increasing in log p θr (x 0 )), finite-step flow solvers are likewise mode-seeking.\n\nClassifier-free guidance (CFG) is mode-seeking. CFG modifies the diffusion velocity via a guided score s γ (x, t) = s uncond (x, t) + γ s cond (x, t) -s uncond (x, t) , γ > 0, so the probability-flow velocity becomes f γ (x, t) = -σ(t) 2 s γ (x, t). Repeating the derivation above with f → f γ yields the same reweight form\n\nq γ (x 0 ) ∝ exp h 2 2 C γ (x 0 ) + o(h 2 ) p θr,γ (x 0 )\n\n, where p θr,γ is the guided reference law and\n\nC γ (x 0 ) = E k ∥∇ x f γ (X t k , t k )∥ 2 Fr X 0 = x 0 . Because ∇ x f γ = -σ 2 ∇ x s uncond + γ ∇ x (s cond -s uncond ) , ∥∇ x f γ ∥ 2 Fr = ∥∇ x f ∥ 2 Fr + 2γ ∇ x f, -σ 2 ∇ x (s cond -s uncond ) Fr + γ 2 -σ 2 ∇ x (s cond -s uncond ) 2\n\nFr . Near condition-relevant modes, the guidance term increases the magnitude (and contraction) of the flow, so C γ (x 0 ) is larger in higher-density regions of p θr,γ ; this is the same curvature-density coupling as A-MONO, now for the guided dynamics. Hence finite-step CFG is mode-seeking in the sense above, and becomes neutral as h → 0.",
+      "word_count": 349
+    },
+    {
+      "index": 21,
+      "title": "B.6 NEIGHBOR MODELS: STABILITY AND UNIFORM NEON IMPROVEMENT",
+      "kind": "body",
+      "text": "Setup. Fix the synthetic sampler q θr,κ generated once at the reference θ r = θ * + ε (so q is frozen). Consider any neighbor checkpoint\n\nθ n = θ r + δ = θ * + (ε + δ),\n\n∥δ∥ H d small. All quantities below (gradients, alignments) are evaluated at θ n , but the synthetic law remains q θr,κ .\n\nLocal expansions at a neighbor. By the same first-order argument as in Appendix B.2, with\n\nε n := ε + δ, r d (θ n ) = H d ε n + O(∥ε n ∥ 2 H d ), r s (θ n ) = H d ε n + b + ∆ ε n + O(∥ε n ∥ 2 H d ), (B.6) where R κ = b + ∆ ε with b := E q [ϕ θ * ] and ∆ := E q [J θ * ] -E pdata [J θ * ] (as in Appendix B.3). Define s(θ) := ⟨r d (θ), P r s (θ)⟩. Proposition B.8 (Alignment is locally Lipschitz in a neighborhood). Let K := H 1/2 d P H 1/2 d with mI ⪯ K ⪯ M I, and let η 0 := ∥b∥ H -1 d , η 1 := ∥∆∥ op, H -1 d .\n\nThere exist constants C 1 , C 2 (depending only on M, η 0 , η 1 and the local regularity from (A2)) such that, for all sufficiently small ∥δ∥ H d ,\n\ns(θ n ) -s(θ r ) ≤ C 1 ∥ε∥ H d + η 0 + 1 ∥δ∥ H d + C 2 ∥ε∥ H d + 1 ∥δ∥ 2 H d . In particular, s(•)\n\nis continuous at θ r and varies at most linearly with ∥δ∥ H d to first order. Sketch. Insert equation B.6 into s(θ) = ⟨r d , P r s ⟩ and whiten with a := H\n\n1/2 d ε, d := H 1/2 d δ, b := H -1/2 d b, ∆ := H -1/2 d ∆H -1/2 d , K := H 1/2 d P H 1/2 d to write (cf. Appendix B.3) s(θ) = a ⊤ Ka -a ⊤ K b -a ⊤ K ∆a + O(∥a∥ 3\n\n2 ), and likewise with a → a + d at θ n . Expanding s(a + d) -s(a) and bounding each term with\n\n∥K∥ op = M , ∥ ∆∥ op ≤ η 1 , ∥ b∥ 2 = η 0 yields the stated linear-plus-quadratic control in ∥d∥ 2 = ∥δ∥ H d . Corollary B.9 (Uniform anti-alignment in a ball). Assume s(θ r ) ≤ -µ for some margin µ > 0. Choose ρ > 0 such that C 1 ∥ε∥ H d + η 0 + 1 ρ + C 2 ∥ε∥ H d + 1 ρ 2 ≤ µ 2 . Then s(θ) ≤ -µ/2 < 0 for every neighbor θ with ∥θ -θ r ∥ H d ≤ ρ.\n\nUniform Neon improvement for a set of neighbors. Let N ⊆ {θ : ∥θ -θ r ∥ H d ≤ ρ} be any finite collection of neighbor checkpoints. Perform one short synthetic fine-tune at each θ ∈ N (same frozen q) to obtain θ s (θ) = θ-αP r s (θ)+O(α 2 ), and define the Neon merge θ Neon (θ) = (1+w)θ-w θ s (θ).\n\nTheorem B.10 (Single w that safely improves all neighbors). Suppose s(θ) < 0 for all θ ∈ N (e.g., by Cor. B.9). Assume either (i) H d (θ) := ∇ 2 R data (θ) ⪰ 0 for all θ ∈ N , or (ii) a uniform directional curvature bound holds:\n\nd(θ) ⊤ ∇ 2 R data θ + τ d(θ) d(θ) ≤ L dir ∥d(θ)∥ 2\n\n2 for all θ ∈ N , τ ∈ [0, τ 0 ], where d(θ) := P r s (θ). Let\n\ns min := min θ∈N s(θ) < 0, Q max := max θ∈N r s (θ) ⊤ P ⊤ H d (θ) P r s (θ) (or L dir ∥d(θ)∥ 2 2 under (ii)).\n\nThen any\n\n0 < w < - 2 s min α Q max guarantees R data θ Neon (θ) ≤ R data (θ) (up to O((wα) 3 )) for every θ ∈ N .\n\nProof. Apply the one-step expansion from Thm. B.1 at each θ ∈ N and take the worst-case (most conservative) quadratic coefficient and the most negative linear term.\n\nRemark B.11 (Practical takeaway). If a single base checkpoint θ r exhibits anti-alignment with margin (negative s(θ r )), then all sufficiently close neighbors inherit s(θ) < 0 and thus benefit from the same Neon recipe. In practice, one can either (a) choose a single conservative w that safely improves an entire validation-selected pool of nearby models, or (b) tune w per checkpoint using its local s(θ) and curvature proxy.\n\nRemark B.12 (Cross-architecture transfer). The same frozen sampler q θr,κ can safely improve a nearby checkpoint from a different architecture, provided the two models are close in the data-risk geometry.\n\nConcretely, let models (A) and (B) share the same per-example loss ℓ θ and data, with H If the Hessians are spectrally close and their norms are equivalent on the relevant subspace, i.e. there exist 0 < c ≤ C < ∞ and a small ζ > 0 such that\n\nc ∥v∥ H (A) d ≤ ∥v∥ H (B) d ≤ C ∥v∥ H (A) d and H (B) d -H (A) d op, H (A) d -1 ≤ ζ,\n\nand the sampler-induced terms are close,\n\n∥b (B) -b (A) ∥ (H (A) d ) -1 + ∥∆ (B) -∆ (A) ∥ op, H (A) d -1 ≤ ζ,\n\nthen the alignment scalar s transfers continuously:\n\ns (B) (θ (B) n ) -s (A) (θ (A) r ) ≤ O(ζ) cross-arch mismatch + O ∥θ (B) n -θ (A) r ∥ H (A) d neighbor shift . Hence, if s (A) (θ (A)\n\nr ) ≤ -µ < 0 with margin and the cross-architecture mismatch ζ and neighbor distance are small enough, then s (B) (θ (B) n ) remains negative. In turn, Thm. B.10 provides a single merge weight w that (to second order) reduces R data simultaneously for the (A) and (B) neighbors. Practically, using a common preconditioner P defined in a data-geometry (e.g., an empirical H d estimate) further stabilizes cross-architecture transfer.",
+      "word_count": 1076
+    },
+    {
+      "index": 22,
+      "title": "B.7 WHEN SELF-TRAINING HELPS",
+      "kind": "body",
+      "text": "First-order effect of self-training. A short synthetic fine-tune takes the step θ s = θ r -αP r s + O(α 2 ). The corresponding first-order change in real-data risk is\n\nR data (θ s ) -R data (θ r ) = -α ⟨r d , P r s ⟩ s + O(α 2 ) = -α s + O(α 2 ).\n\nThus self-training helps (decreases R data ) when s > 0.\n\nTheorem B.13 (Directional lower bound for s). For θ r = θ * + ε with ∥ε∥ H d small,\n\ns ≥ (m -M η 1 ) ∥ε∥ 2 H d -M η 0 ∥ε∥ H d -cos φ + + O(∥ε∥ 3 H d ). Proof. All O(•) are in ∥ • ∥ H d . From the local expansions, s = ε ⊤ H d P H d ε -ε ⊤ H d P b -ε ⊤ H d P ∆ε + O(∥ε∥ 3 H d ).\n\nWhiten with a := H\n\n1/2 d ε, b := H -1/2 d b, ∆ := H -1/2 d ∆H -1/2 d and K := H 1/2 d P H 1/2 d to obtain s = a ⊤ Ka -a ⊤ K b -a ⊤ K ∆ a + O(∥a∥ 3 2 ). Lower bound each term: (i) a ⊤ Ka ≥ m ∥a∥ 2 2 = m ∥ε∥ 2 H d . (ii) Write a ⊤ K b = ∥K 1/2 a∥ ∥K 1/2b ∥ cos θ, with θ the Euclidean angle between K 1/2 a and K 1/2b . Then -a ⊤ K b ≥ -∥K 1/2 a∥ ∥K 1/2 b∥ [-cos θ] + ≥ -M ∥a∥ 2 ∥ b∥ 2 -cos φ + ,\n\nwhere we used ∥K 1/2 x∥ ≤ √ M ∥x∥ and identify φ (the H d -angle between ε and H -1 d b) with θ up to whitening. This gives -a\n\n⊤ K b ≥ -M η 0 ∥ε∥ H d [-cos φ] + . (iii) -a ⊤ K ∆a ≥ -∥K∥ op ∥ ∆∥ op ∥a∥ 2 2 ≥ -M η 1 ∥ε∥ 2 H d . Combine (i)-(iii)\n\nand absorb O(∥a∥ 3 2 ).\n\nCorollary B.14 (Natural-gradient geometry). If P = H -1 d , then K = I (so m=M =1) and s ≥ (1 -η 1 ) ∥ε∥ 2\n\nH d -η 0 ∥ε∥ H d -cos φ + + O(∥ε∥ 3 H d ).\n\nDiversity-seeking samplers make s positive (locally). We say q is diversity-seeking if q(x) ∝ f (log p θr (x)) p θr (x) with f nonincreasing and not a.e. constant.\n\nLemma B.15 (Diversity-seeking ⇒ cos φ ≥ 0 (first order)). In the NLL specialization (ϕ θ = -u θ ,\n\nH d = F , b = -E q [u θ * ]), if f is nonincreasing then, for θ r = θ * + ε and small ∥ε∥ F , cos φ ≥ 0 + O(∥ε∥ F ). Proof. Let B(x) := ε ⊤ u θ * (x). As in Appendix B.4, log p θr (x) = log p θ * (x) + B(x) + O(∥ε∥ 2 F ), so w(x) = f (log p θr (x)) is (to first order) a nonincreasing function of B(x). Replacing p θr by p θ * in E q [B] = Ep θr [wB] Ep θr [w] incurs only O(∥ε∥ F ) relative error, hence E q [B] = Ep θ * [wB] Ep θ * [w] + O(∥ε∥ 2 F ). Monotone covariance with opposite monotonicities gives Cov p θ * (w, B) ≤ 0; since E p θ * [B] = 0, we have E p θ * [wB] ≤ 0, so E q [B] ≤ 0 to first order. Therefore ⟨ε, F -1 E q [u θ * ]⟩ F = E q [B] ≤ 0, and with b = -E q [u θ * ] we obtain cos φ = ⟨ε, F -1 b⟩ F ∥ε∥ F ∥F -1 b∥ F ≥ 0 up to O(∥ε∥ F ).\n\nProposition B.16 (Self-training helps near good models under diversity seeking). Suppose f is nonincreasing (diversity seeking) so that Lemma B.15 gives cos φ ≥ 0 to first order. Then, for sufficiently small ∥ε∥ H d and η 1 < m/M , s ≥ (m -M η 1 ) ∥ε∥ 2 H d + O(∥ε∥ 3 H d ) > 0, and the self-training step θ r → θ s = θ r -αP r s decreases R data to first order. In the natural-gradient case (P = H -1 d ), it suffices that η 1 < 1.\n\nInterpretation. The lower bound in Thm. B.13 is a \"quadratic minus linear\" form: the curvaturecontrolled term (m -M η 1 )∥ε∥ 2 H d pushes s positive, while the bias term subtracts only when cos φ < 0. Diversity-seeking samplers have cos φ ≥ 0 (Lemma B.15), so their leading behavior is s ≳ (m -M η 1 )∥ε∥ 2 H d . Hence, close to a good model (small ∥ε∥ H d ) and with modest curvature tilt (η 1 small), self-training helps whereas Neon's reversal would not.\n\nExamples.\n\n• High temperature in AR (τ > 1): q ∝ p 1/τ θr ( f (z) = e (1/τ -1)z is nonincreasing ) ⇒ diversityseeking, cos φ ≥ 0 to first order.\n\n• Anti-mode truncations: procedures that downweight peaks and upweight tails (e.g., sampling after complementary filtering of top-p mass) are nonincreasing transforms of log p θr ; the same conclusion applies.",
+      "word_count": 928
+    },
+    {
+      "index": 23,
+      "title": "B.8 NOTES ON FINITE SYNTHETIC SET AND EFFECT OF SHORT FINE-TUNING",
+      "kind": "body",
+      "text": "The main analysis assumes an infinite synthetic pool and uses the population synthetic gradient. In practice, we generate one fixed synthetic set S and perform a brief fine-tune before Neon. This subsection formalizes the effect of finite S and short fine-tuning on the direction used by Neon and on its dependence on |S|.\n\nSetup. Fix a synthetic dataset S = {x i } n i=1 drawn once from q θr,κ and then kept fixed. Let g(x, ζ; θ) ∈ R p be the per-example gradient of the synthetic loss (with internal randomness ζ, e.g., diffusion time/noise), and\n\nḡ(x; θ) := E ζ g(x, ζ; θ) , r s (θ) := E x∼q θr ,κ ḡ(x; θ) , r (S) s (θ) := 1 n n i=1 ḡ(x i ; θ).\n\nShort fine-tuning (FT) from θ r uses step size α > 0, T steps, and a positive-definite preconditioner P :\n\nθ k+1 = θ k -α P r k , r k := 1 n n i=1 g x i , ζ i,k ; θ k , k = 0, . . . , T -1, (B.7)\n\nwhere {ζ i,k } are fresh draws each time the fixed examples are reused. Let θ s := θ T and define the scaled displacement\n\nd T := θ s -θ r αT ∈ R p . Two finite-sample errors. Dataset error (finite |S|): at θ r , E r (S) s (θ r ) = r s (θ r ), Cov r (S) s (θ r ) = 1 n Σ data ,\n\nwith Σ data := Cov x∼q θr ,κ ḡ(x; θ r ) . This is O(n -1/2 ) and irreducible unless n grows.\n\nMonte Carlo (MC) error in time/noise: write\n\nr k = r (S) s (θ k ) + ξ k , E[ξ k | θ k ] = 0, Cov(ξ k | θ k ) = Σ mc (θ k ).\n\nLocal smoothness. Let H s (θ) := ∇ θ r (S) s (θ). Assume there exists L dir ≥ 0 such that for all v and τ ∈\n\n[0, 1], r (S) s (θ r + τ v) -r (S) s (θ r ) -τ H s (θ r )v 2 ≤ 1 2 L dir τ 2 ∥v∥ 2 2 . (B.8)\n\nLemma B.17 (Short-FT displacement). Under equation B.7 and equation B.8, if αT ≤ c/L dir for a small absolute constant c, then\n\nd T = -P r (S) s (θ r ) + 1 T T -1 k=0 ξ k + O αT ∥P H s (θ r )∥ op ∥r (S) s (θ r )∥ 2 .\n\nProposition B.18 (Direction concentration). Suppose λ max Σ mc (θ) ≤ σ 2 in a neighborhood of θ r . Then for any unit vector u,\n\nE u, d T + P r (S) s (θ r ) 2 ≤ ∥P ∥ 2 op σ 2 T + C 2 (αT ) 2 ,\n\nwhere C depends only on L dir , ∥P H s (θ r )∥ op and ∥r (S) s (θ r )∥ 2 . Hence, if T → ∞ and αT → 0,\n\nd T P --→ -P r (S) s (θ r ).\n\nLearning-rate note (why \"small\" helps).\n\nLemma B.17 and Proposition B.18 show the curvature bias of d T scales like O(αT ), while the MC variance shrinks like 1/T . Thus decreasing α reduces bias (keeps the trajectory in the local linear region) but does not change the 1/T variance term; increasing T averages MC noise but increases bias unless α is reduced so that αT stays small. A practical regime is αT ≤ c L dir and T large enough that ∥P ∥ op σ √ T ≪ ∥P r (S) s (θ r )∥ 2 . Quadratic proxy for Neon and finite |S|. Let r d (θ r ) := ∇ θ R data (θ) θr and\n\nH d := ∇ 2 θ R data (θ) θr . Define s S := r d (θ r ), P r (S) s (θ r ) , z S := r (S) s (θ r ) ⊤ P ⊤ H d P r (S) s (θ r ).\n\nFor the Neon merge θ Neon = (1 + w)θ r -wθ s and short FT, the real-risk change admits the local expansion ∆R(w) ≈ wα s S + 1 2 (wα) 2 z S , with minimizer and minimum\n\nw S = - s S αz S , ∆R S ≈ - s 2 S 2 z S .\n\nUsing d T as a plug-in estimate for -P r Takeaway. With a fixed, finite synthetic set generated once, short fine-tuning (small α, modest T so that αT is small) produces a variance-reduced and reliable estimate of the synthetic gradient direction P r (S) s (θ r ), stabilizing the empirical coefficients (s S , z S ) and the merge weight w. Very small |S| is variance-limited; very large |S| inflates z S via curvature, so a broad, moderate |S| is typically best. B.9 TOY EXPERIMENT Now we present a toy experiment to empirically validate and provide deeper intuition for the theoretical results presented in the paper. The goal is to create a controlled environment where we can directly observe the effects of sampler behavior on self-training and measure the key theoretical quantity: the directional alignment between gradients.\n\nSetup. The task is to learn a 2D Gaussian distribution, N (µ ref , Σ ref ), where the mean is µ ref = [0, 0] ⊤ and the covariance is Σ ref = [2, 1; 1, 2] ⊤ . We use a small Denoising Diffusion Probabilistic Model (DDPM) with an MLP backbone, trained over a short diffusion process of T = 20 steps with a cosine noise schedule. A base model, θ r , is trained for a long duration (10, 000 epochs) on a small dataset of N base = 10 3 real samples with a learning rate of 10 -4 to ensure it has converged.\n\nTo control the sampler's behavior during synthetic data generation, we introduce a scalar hyperparameter, ζ, which directly scales the model's score. The standard score is defined as s θ (x t , t) = -ϵ θ (x t , t)/ √ 1 -ᾱt , where ϵ θ is the model's noise prediction. During sampling, we use a modified score, sθ (x t , t) = ζ • s θ (x t , t), to generate samples. This allows us to precisely control the sampler's characteristics:\n\n• ζ > 1: The sampler becomes mode-seeking.\n\n• ζ < 1: The sampler becomes diversity-seeking.\n\n• ζ = 1: The sampler is neutral.\n\nExperiment 1: FID vs. Merge Weight. In our first experiment, we validate the main prediction of our paper. We generate synthetic datasets using a mode-seeking sampler (ζ = 1.1) and a diversityseeking sampler (ζ = 0.9). We then fine-tune θ r on each of these datasets to obtain a self-trained model θ s . We form a merged model via the one-parameter extrapolation formula:\n\nθ w = (1 + w)θ r -wθ s = θ r -w(θ s -θ r )\n\nA positive weight (w > 0) corresponds to Neon's negative extrapolation, moving away from the self-trained model. A negative weight (w < 0) corresponds to positive extrapolation (interpolation). Letting w = -α for α > 0, the formula becomes θ w = (1 -α)θ r + αθ s , which is standard interpolation and equivalent to a step of self-training.\n\nThe results, shown in Figure B .1, perfectly match our theory. For the mode-seeking sampler, the optimal FID is achieved at w * > 0, demonstrating that negative extrapolation (Neon) helps. Conversely, for the diversity-seeking sampler, the optimal FID is achieved at w * < 0, showing that positive extrapolation (self-training) is beneficial. Experiment 2: Gradient Alignment vs. Sampler Type. In our second experiment, we directly measure the directional alignment between the real and synthetic gradients by computing their cosine similarity, cos(ϑ) = ⟨r d ,PAdamrs⟩ ∥r d ∥ P Adam ∥rs∥ P Adam . We estimate the population real-data gradient r d and the Adam preconditioner P Adam from a large set of N pop = 10 5 real samples. We then sweep the score scale ζ across the range [0.8, 1.25] and compute the cosine similarity for each value.\n\nThe results in Figure B .2 provide a clear visualization of the alignment direction. The cosine similarity is positive for diversity-seeking samplers (ζ < 1), corresponding to an acute angle between the gradients. This confirms they are aligned, and self-training should help. The similarity becomes Neon: Negative Extrapolation From Self-Training Improves Image Generation negative for mode-seeking samplers (ζ > 1), corresponding to an obtuse angle. This confirms they are anti-aligned, and negative extrapolation (Neon) is the correct approach. Furthermore, we note that at the neutral point ζ = 1, the cosine similarity is still negative. This provides a powerful validation of our theoretical finding (Appendix B.5) that any practical, finite-step ODE solver-which our DDPM sampler is an instance of-introduces a small discretization error that is inherently mode-seeking, thus producing a negative alignment even without explicit score scaling.",
+      "word_count": 1545
+    },
+    {
+      "index": 24,
+      "title": "C EXPERIMENTS DETAILS",
+      "kind": "results",
+      "text": "A key advantage of Neon is its implementation simplicity. Given an existing training and generation script for a base model, Neon requires only a minimal add on script that takes two model checkpoints and a weight w to construct the final model parameters. To ensure reproducibility and build directly on prior work, all our experiments start from official public codebases and use publicly available pre trained checkpoints as our base models. The repositories we used for each model family are listed below: For the fine tuning stage, we adhere closely to the default training configurations proposed by the original authors for each model. Our primary modification involves adapting the learning rate policy for the fine tuning context. This typically means using a small target learning rate, which in some cases is reached via a linear warmup schedule. All other settings, such as the optimizer and batch size, remain unchanged. During this process, we save model checkpoints periodically (typically every 250k or 500k images seen) to evaluate performance over the course of training.\n\n•\n\nOur evaluation procedure is as follows. For each saved checkpoint, we perform a hyperparameter search to find the optimal merge weight w (and CFG scale γ, where applicable). This search is conducted by generating 10k samples per setting to calculate a preliminary FID score. Once the optimal hyperparameters are identified, we generate a final set of 50k samples to compute the final FID score reported in this paper.\n\nBelow, we detail the specific configurations for each experiment.",
+      "word_count": 250
+    },
+    {
+      "index": 25,
+      "title": "EDM-VP on CIFAR-10.",
+      "kind": "body",
+      "text": "• S Generation: Generated with -steps=18 -rho=7 -S_churn=0.\n\n• Fine tuning: Default script of -cond=1 -arch=ddpmpp with a modified -lr=1e-4. For the unconditional experiment, the script used -cond=0.\n\n• Neon Evaluation: Grid search over merge weight w ∈ [0, 3.0].",
+      "word_count": 40
+    },
+    {
+      "index": 26,
+      "title": "EDM-VP on FFHQ-64.",
+      "kind": "body",
+      "text": "• S Generation: Generated with -steps=40 -rho=7 -S_churn=0.\n\n• Fine tuning:\n\nDefault script of -cond=0 -arch=ddpmpp -batch=256 -cres=1,2,2,2 -dropout=0.05 -augment=0.15 with a modified -lr=4e-6.\n\n• Neon Evaluation: Grid search over merge weight w ∈ [0, 3.0].",
+      "word_count": 36
+    },
+    {
+      "index": 27,
+      "title": "Flow Matching on CIFAR-10.",
+      "kind": "body",
+      "text": "• S Generation: Generated using the dopri5 ODE solver with -integration-steps=100.\n\n• Fine tuning: Default script of -ema_decay=0.9999 with a modified learning rate of -lr=2e-4.\n\n• Neon Evaluation: Grid search over merge weight w ∈ [0, 3.0].",
+      "word_count": 37
+    },
+    {
+      "index": 28,
+      "title": "xAR-B on ImageNet-256.",
+      "kind": "body",
+      "text": "• S Generation: Generated with -cfg=2.7 -flow_steps=40 -num_iter=256.\n\n• Fine tuning:\n\nDefault script of -model=xar_base -vae_embed_dim=16 -vae_stride=16 with a modified -blr=1e-6, using a linear warmup schedule over the 7 Mi images seen.\n\n• Neon Evaluation: Joint grid search over merge weight w ∈ [0, 3.0] and CFG scale γ ∈ [2.7, 5.0]. F XAR-L ON IMAGENET-256 SYNTHESIZED IMAGES",
+      "word_count": 58
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Self-consuming generative models go MAD",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard Baraniuk"
+      ],
+      "raw_text": "Self-consuming generative models go MAD Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard Baraniuk International Conference on Learning Representations, 2024a"
+    },
+    {
+      "index": 2,
+      "title": "Self-improving diffusion models with synthetic data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sina Alemohammad",
+        "Ahmed Imtiaz Humayun",
+        "Shruti Agarwal",
+        "John Collomosse",
+        "Richard Baraniuk"
+      ],
+      "raw_text": "Self-improving diffusion models with synthetic data Sina Alemohammad Ahmed Imtiaz Humayun Shruti Agarwal John Collomosse Richard Baraniuk arXiv:2408.16333 2024 arXiv preprint"
+    },
+    {
+      "index": 3,
+      "title": "All are worth words: A vit backbone for diffusion models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Fan Bao"
+      ],
+      "raw_text": "All are worth words: A vit backbone for diffusion models Fan Bao arXiv:2209.12152 2023 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "On the stability of iterative retraining of generative models on their own data",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Quentin Bertrand",
+        "Joey Avishek",
+        "Alexandre Bose",
+        "Marco Duplessis",
+        "Gauthier Jiralerspong",
+        "Gidel"
+      ],
+      "raw_text": "On the stability of iterative retraining of generative models on their own data Quentin Bertrand Joey Avishek Alexandre Bose Marco Duplessis Gauthier Jiralerspong Gidel arXiv:2310.00429 2023 arXiv preprint"
+    },
+    {
+      "index": 5,
+      "title": "Algorithms for Minimization without Derivatives",
+      "doi": "",
+      "year": "1973",
+      "authors": [
+        "Richard P Brent"
+      ],
+      "raw_text": "Algorithms for Minimization without Derivatives Richard P Brent 1973 Prentice-Hall"
+    },
+    {
+      "index": 6,
+      "title": "Large scale gan training for high fidelity natural image synthesis",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Andrew Brock",
+        "Jeff Donahue",
+        "Karen Simonyan"
+      ],
+      "raw_text": "Large scale gan training for high fidelity natural image synthesis Andrew Brock Jeff Donahue Karen Simonyan International Conference on Learning Representations 2019"
+    },
+    {
+      "index": 7,
+      "title": "Maskgit: Masked generative image transformer",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Huiwen Chang"
+      ],
+      "raw_text": "Maskgit: Masked generative image transformer Huiwen Chang Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2022"
+    },
+    {
+      "index": 8,
+      "title": "Imagenet: A large-scale hierarchical image database",
+      "doi": "10.1109/CVPR.2009.5206848",
+      "year": "2009",
+      "authors": [
+        "Jia Deng",
+        "Wei Dong",
+        "Richard Socher",
+        "Li-Jia Li",
+        "Kai Li",
+        "Li Fei-Fei"
+      ],
+      "raw_text": "Imagenet: A large-scale hierarchical image database Jia Deng Wei Dong Richard Socher Li-Jia Li Kai Li Li Fei-Fei 10.1109/CVPR.2009.5206848 IEEE Conference on Computer Vision and Pattern Recognition 2009"
+    },
+    {
+      "index": 9,
+      "title": "Diffusion models beat GANs on image synthesis",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Prafulla Dhariwal",
+        "Alexander Quinn",
+        "Nichol"
+      ],
+      "raw_text": "Diffusion models beat GANs on image synthesis Prafulla Dhariwal Alexander Quinn Nichol Advances in Neural Information Processing Systems 2021"
+    },
+    {
+      "index": 10,
+      "title": "Cogview: Mastering text-to-image generation via transformers",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Ming Ding",
+        "Zhuoyi Yang",
+        "Wenyi Hong",
+        "Wendi Zheng",
+        "Chang Zhou",
+        "Da Yin",
+        "Junyang Lin",
+        "Xu Zou"
+      ],
+      "raw_text": "Cogview: Mastering text-to-image generation via transformers Ming Ding Zhuoyi Yang Wenyi Hong Wendi Zheng Chang Zhou Da Yin Junyang Lin Xu Zou Zhou Shao Hongxia Yang Advances in Neural Information Processing Systems 34 19822-19835, 2021"
+    },
+    {
+      "index": 11,
+      "title": "A tale of tails: Model collapse as a change of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "A tale of tails: Model collapse as a change of scaling laws Elvis Dohmatob Yunzhen Feng Pu Yang Francois Charton Julia Kempe International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 12,
+      "title": "Beyond model collapse: Scaling up with synthesized data requires reinforcement",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yunzhen Feng",
+        "Elvis Dohmatob",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "Beyond model collapse: Scaling up with synthesized data requires reinforcement Yunzhen Feng Elvis Dohmatob Pu Yang Francois Charton Julia Kempe arXiv:2406.07515 2024 arXiv preprint"
+    },
+    {
+      "index": 13,
+      "title": "One-step image synthesis via iterative refinement",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Kevin Frans"
+      ],
+      "raw_text": "One-step image synthesis via iterative refinement Kevin Frans 2024 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Masked diffusion transformer is a strong image synthesizer",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Shanghua Gao",
+        "Pan Zhou",
+        "Ming-Ming Cheng",
+        "Shuicheng Yan"
+      ],
+      "raw_text": "Masked diffusion transformer is a strong image synthesizer Shanghua Gao Pan Zhou Ming-Ming Cheng Shuicheng Yan arXiv:2303.14389 2023 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "Is model collapse inevitable? Breaking the curse of recursion by accumulating real and synthetic data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Matthias Gerstgrasser",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Rafael Rafailov",
+        "Henry Sleight",
+        "John Hughes",
+        "Tomasz Korbak",
+        "Rajashree Agrawal"
+      ],
+      "raw_text": "Is model collapse inevitable? Breaking the curse of recursion by accumulating real and synthetic data Matthias Gerstgrasser Rylan Schaeffer Apratim Dey Rafael Rafailov Henry Sleight John Hughes Tomasz Korbak Rajashree Agrawal Dhruv Pai Andrey Gromov arXiv:2404.01413 2024 arXiv preprint"
+    },
+    {
+      "index": 16,
+      "title": "Benchmarking neural network robustness to common corruptions and perturbations",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Dan Hendrycks",
+        "Thomas Dietterich"
+      ],
+      "raw_text": "Benchmarking neural network robustness to common corruptions and perturbations Dan Hendrycks Thomas Dietterich Proceedings of the International Conference on Learning Representations the International Conference on Learning Representations 2019"
+    },
+    {
+      "index": 17,
+      "title": "Scaling laws for autoregressive generative modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Henighan",
+        "Jared Kaplan",
+        "Mor Katz",
+        "Mark Chen",
+        "Christopher Hesse",
+        "Jacob Jackson",
+        "Heewoo Jun",
+        "Prafulla Tom B Brown"
+      ],
+      "raw_text": "Scaling laws for autoregressive generative modeling Tom Henighan Jared Kaplan Mor Katz Mark Chen Christopher Hesse Jacob Jackson Heewoo Jun Prafulla Tom B Brown Scott Dhariwal Gray arXiv:2010.14701 2020 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "Gans trained by a two time-scale update rule converge to a local nash equilibrium",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Martin Heusel",
+        "Hubert Ramsauer",
+        "Thomas Unterthiner",
+        "Bernhard Nessler",
+        "Sepp Hochreiter"
+      ],
+      "raw_text": "Gans trained by a two time-scale update rule converge to a local nash equilibrium Martin Heusel Hubert Ramsauer Thomas Unterthiner Bernhard Nessler Sepp Hochreiter Advances in Neural Information Processing Systems Neon 2017 Negative Extrapolation From Self-Training Improves Image Generation"
+    },
+    {
+      "index": 19,
+      "title": "Classifier-free diffusion guidance",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jonathan Ho",
+        "Tim Salimans"
+      ],
+      "raw_text": "Jonathan Ho Tim Salimans arXiv:2207.12598 Classifier-free diffusion guidance 2022 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "Denoising diffusion probabilistic models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jonathan Ho",
+        "Ajay Jain",
+        "Pieter Abbeel"
+      ],
+      "raw_text": "Denoising diffusion probabilistic models Jonathan Ho Ajay Jain Pieter Abbeel arXiv:2006.11239 2020 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Scalable adaptive computation for iterative generation",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Allan Jabri",
+        "David J Fleet",
+        "Ting Chen"
+      ],
+      "raw_text": "Scalable adaptive computation for iterative generation Allan Jabri David J Fleet Ting Chen International Conference on Machine Learning 2023 202"
+    },
+    {
+      "index": 22,
+      "title": "Scaling up gans for text-to-image synthesis",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Minguk Kang"
+      ],
+      "raw_text": "Scaling up gans for text-to-image synthesis Minguk Kang arXiv:2303.05511 2023 arXiv preprint"
+    },
+    {
+      "index": 23,
+      "title": "Scaling laws for neural language models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jared Kaplan",
+        "Sam Mccandlish",
+        "Tom Henighan",
+        "Tom B Brown",
+        "Benjamin Chess",
+        "Rewon Child",
+        "Scott Gray",
+        "Alec Radford"
+      ],
+      "raw_text": "Jared Kaplan Sam Mccandlish Tom Henighan Tom B Brown Benjamin Chess Rewon Child Scott Gray Alec Radford Jeffrey Wu Dario Amodei arXiv:2001.08361 Scaling laws for neural language models 2020 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "Msg-gan: Multi-scale gradients for generative adversarial networks",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Animesh Karnewar",
+        "Oliver Wang"
+      ],
+      "raw_text": "Msg-gan: Multi-scale gradients for generative adversarial networks Animesh Karnewar Oliver Wang arXiv:1903.06048 2019 arXiv preprint"
+    },
+    {
+      "index": 25,
+      "title": "A style-based generator architecture for generative adversarial networks",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Tero Karras",
+        "Samuli Laine",
+        "Timo Aila"
+      ],
+      "raw_text": "A style-based generator architecture for generative adversarial networks Tero Karras Samuli Laine Timo Aila Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2019"
+    },
+    {
+      "index": 26,
+      "title": "Training generative adversarial networks with limited data",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tero Karras",
+        "Miika Aittala",
+        "Janne Hellsten",
+        "Samuli Laine",
+        "Jaakko Lehtinen",
+        "Timo Aila"
+      ],
+      "raw_text": "Training generative adversarial networks with limited data Tero Karras Miika Aittala Janne Hellsten Samuli Laine Jaakko Lehtinen Timo Aila Advances in Neural Information Processing Systems 33 2020"
+    },
+    {
+      "index": 27,
+      "title": "Elucidating the design space of diffusionbased generative models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Tero Karras",
+        "Miika Aittala",
+        "Timo Aila",
+        "Samuli Laine"
+      ],
+      "raw_text": "Elucidating the design space of diffusionbased generative models Tero Karras Miika Aittala Timo Aila Samuli Laine Advances in Neural Information Processing Systems S Koyejo S Mohamed A Agarwal D Belgrave K Cho A Oh Curran Associates, Inc 2022 35"
+    },
+    {
+      "index": 28,
+      "title": "Guiding a diffusion model with a bad version of itself",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tero Karras",
+        "Miika Aittala",
+        "Tuomas Kynkäänniemi",
+        "Jaakko Lehtinen",
+        "Timo Aila",
+        "Samuli Laine"
+      ],
+      "raw_text": "Guiding a diffusion model with a bad version of itself Tero Karras Miika Aittala Tuomas Kynkäänniemi Jaakko Lehtinen Timo Aila Samuli Laine arXiv:2406.02507 2024 arXiv preprint"
+    },
+    {
+      "index": 29,
+      "title": "Analyzing and improving the training dynamics of diffusion models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tero Karras",
+        "Miika Aittala",
+        "Jaakko Lehtinen",
+        "Janne Hellsten",
+        "Timo Aila",
+        "Samuli Laine"
+      ],
+      "raw_text": "Analyzing and improving the training dynamics of diffusion models Tero Karras Miika Aittala Jaakko Lehtinen Janne Hellsten Timo Aila Samuli Laine Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2024"
+    },
+    {
+      "index": 30,
+      "title": "Refining generative process with discriminator guidance in score-based diffusion models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Dongjun Kim",
+        "Yeongmin Kim",
+        "Se Jung Kwon",
+        "Wanmo Kang",
+        "Il-Chul Moon"
+      ],
+      "raw_text": "Refining generative process with discriminator guidance in score-based diffusion models Dongjun Kim Yeongmin Kim Se Jung Kwon Wanmo Kang Il-Chul Moon PMLR International Conference on Machine Learning 2023 202"
+    },
+    {
+      "index": 31,
+      "title": "Consistency trajectory models: Learning probability flow ode trajectory of diffusion",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Dongjun Kim"
+      ],
+      "raw_text": "Consistency trajectory models: Learning probability flow ode trajectory of diffusion Dongjun Kim arXiv:2310.02279 2023 arXiv preprint"
+    },
+    {
+      "index": 32,
+      "title": "Understanding diffusion objectives as weighted elbo",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "P Diederik",
+        "Ruiqi Kingma",
+        "Gao"
+      ],
+      "raw_text": "P Diederik Ruiqi Kingma Gao arXiv:2303.18103 Understanding diffusion objectives as weighted elbo 2024 arXiv preprint"
+    },
+    {
+      "index": 33,
+      "title": "Learning multiple layers of features from tiny images",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "Alex Krizhevsky",
+        "Geoffrey Hinton"
+      ],
+      "raw_text": "Learning multiple layers of features from tiny images Alex Krizhevsky Geoffrey Hinton 2009 Toronto, Ontario University of Toronto Technical report"
+    },
+    {
+      "index": 34,
+      "title": "Improved precision and recall metric for assessing generative models",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Tuomas Kynkäänniemi",
+        "Tero Karras",
+        "Samuli Laine",
+        "Jaakko Lehtinen",
+        "Timo Aila"
+      ],
+      "raw_text": "Improved precision and recall metric for assessing generative models Tuomas Kynkäänniemi Tero Karras Samuli Laine Jaakko Lehtinen Timo Aila Advances in Neural Information Processing Systems 2019"
+    },
+    {
+      "index": 35,
+      "title": "Applying guidance in a limited interval improves sample and distribution quality in diffusion models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tuomas Kynkäänniemi",
+        "Miika Aittala",
+        "Tero Karras",
+        "Samuli Laine",
+        "Timo Aila",
+        "Jaakko Lehtinen"
+      ],
+      "raw_text": "Applying guidance in a limited interval improves sample and distribution quality in diffusion models Tuomas Kynkäänniemi Miika Aittala Tero Karras Samuli Laine Timo Aila Jaakko Lehtinen arXiv:2404.07724 2024 arXiv preprint"
+    },
+    {
+      "index": 36,
+      "title": "Anycost gans for interactive image synthesis and editing",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Seungkwan Lee",
+        "Kwanghee Ko",
+        "Hyunseung Lee",
+        "Hyunjun Cho"
+      ],
+      "raw_text": "Anycost gans for interactive image synthesis and editing Seungkwan Lee Kwanghee Ko Hyunseung Lee Hyunjun Cho Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2021"
+    },
+    {
+      "index": 37,
+      "title": "Autoregressive image generation without vector quantization",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tianhong Li"
+      ],
+      "raw_text": "Autoregressive image generation without vector quantization Tianhong Li arXiv:2406.11838 2024 arXiv preprint"
+    },
+    {
+      "index": 38,
+      "title": "Flow matching for generative modeling",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yaron Lipman",
+        "Ricky T Q Chen",
+        "Heli Ben-Hamu",
+        "Maximilian Nickel",
+        "Matthew Le"
+      ],
+      "raw_text": "Flow matching for generative modeling Yaron Lipman Ricky T Q Chen Heli Ben-Hamu Maximilian Nickel Matthew Le International Conference on Learning Representations 2023"
+    },
+    {
+      "index": 39,
+      "title": "Flow straight and fast: Learning to generate and transfer data with rectified flow",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Xingchao Liu",
+        "Chengyue Gong",
+        "Qiang Liu"
+      ],
+      "raw_text": "Flow straight and fast: Learning to generate and transfer data with rectified flow Xingchao Liu Chengyue Gong Qiang Liu arXiv:2209.03003 2023 arXiv preprint"
+    },
+    {
+      "index": 40,
+      "title": "Dpm-solver: A fast ode solver for diffusion probabilistic model sampling in around 10 steps",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Cheng Lu",
+        "Yuhao Zhou",
+        "Fan Bao",
+        "Jianfei Chen",
+        "Chongxuan Li",
+        "Jun Zhu"
+      ],
+      "raw_text": "Cheng Lu Yuhao Zhou Fan Bao Jianfei Chen Chongxuan Li Jun Zhu arXiv:2206.00927 Dpm-solver: A fast ode solver for diffusion probabilistic model sampling in around 10 steps 2022 arXiv preprint"
+    },
+    {
+      "index": 41,
+      "title": "Sit: Exploring flow and diffusion transformers",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Nanye Ma"
+      ],
+      "raw_text": "Nanye Ma arXiv:2401.08740 Sit: Exploring flow and diffusion transformers 2024 arXiv preprint"
+    },
+    {
+      "index": 42,
+      "title": "Scaling data-constrained language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Niklas Muennighoff",
+        "Alexander Rush",
+        "Boaz Barak",
+        "Teven Le Scao",
+        "Aleksandra Piktus",
+        "Nouamane Tazi",
+        "Sampo Pyysalo",
+        "Thomas Wolf"
+      ],
+      "raw_text": "Scaling data-constrained language models Niklas Muennighoff Alexander Rush Boaz Barak Teven Le Scao Aleksandra Piktus Nouamane Tazi Sampo Pyysalo Thomas Wolf Colin A Raffel Advances in Neural Information Processing Systems 36 2023"
+    },
+    {
+      "index": 43,
+      "title": "Improved denoising diffusion probabilistic models",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Alexander Quinn",
+        "Nichol",
+        "Prafulla Dhariwal"
+      ],
+      "raw_text": "Improved denoising diffusion probabilistic models Alexander Quinn Nichol Prafulla Dhariwal arXiv:2102.09672 2021 arXiv preprint"
+    },
+    {
+      "index": 44,
+      "title": "Constant acceleration flow matching",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Dogyun Park"
+      ],
+      "raw_text": "Dogyun Park Constant acceleration flow matching 2024 arXiv preprint"
+    },
+    {
+      "index": 45,
+      "title": "Scalable diffusion models with transformers",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "William Peebles",
+        "Saining Xie"
+      ],
+      "raw_text": "Scalable diffusion models with transformers William Peebles Saining Xie Proceedings of the IEEE/CVF International Conference on Computer Vision the IEEE/CVF International Conference on Computer Vision 2023"
+    },
+    {
+      "index": 46,
+      "title": "Beyond nexttoken: Next-x prediction for autoregressive visual generation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Qihang Sucheng Ren",
+        "Ju Yu",
+        "Xiaohui He",
+        "Alan Shen",
+        "Liang-Chieh Yuille",
+        "Chen"
+      ],
+      "raw_text": "Beyond nexttoken: Next-x prediction for autoregressive visual generation Qihang Sucheng Ren Ju Yu Xiaohui He Alan Shen Liang-Chieh Yuille Chen arXiv:2502.20388 2025 arXiv preprint"
+    },
+    {
+      "index": 47,
+      "title": "Highresolution image synthesis with latent diffusion models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Robin Rombach",
+        "Andreas Blattmann",
+        "Dominik Lorenz",
+        "Patrick Esser",
+        "Björn Ommer"
+      ],
+      "raw_text": "Highresolution image synthesis with latent diffusion models Robin Rombach Andreas Blattmann Dominik Lorenz Patrick Esser Björn Ommer Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2022"
+    },
+    {
+      "index": 48,
+      "title": "StyleGAN-XL: Scaling StyleGAN to large diverse datasets",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Axel Sauer",
+        "Katja Schwarz",
+        "Andreas Geiger"
+      ],
+      "raw_text": "StyleGAN-XL: Scaling StyleGAN to large diverse datasets Axel Sauer Katja Schwarz Andreas Geiger ACM SIGGRAPH 2022 Conference Proceedings, SIGGRAPH '22 New York, NY, USA 2022"
+    },
+    {
+      "index": 49,
+      "title": "AI models collapse when trained on recursively generated data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Nicolas Papernot",
+        "Ross Anderson",
+        "Yarin Gal"
+      ],
+      "raw_text": "AI models collapse when trained on recursively generated data Ilia Shumailov Zakhar Shumaylov Yiren Zhao Nicolas Papernot Ross Anderson Yarin Gal Nature 631 8022 2024"
+    },
+    {
+      "index": 50,
+      "title": "Improved techniques for training score-based generative models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Yang Song",
+        "Stefano Ermon"
+      ],
+      "raw_text": "Improved techniques for training score-based generative models Yang Song Stefano Ermon Advances in Neural Information Processing Systems 2020 33"
+    },
+    {
+      "index": 51,
+      "title": "Score-based generative modeling through stochastic differential equations",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Yang Song",
+        "Jascha Sohl-Dickstein",
+        "P Diederik",
+        "Abhishek Kingma",
+        "Stefano Kumar",
+        "Ben Ermon",
+        "Poole"
+      ],
+      "raw_text": "Yang Song Jascha Sohl-Dickstein P Diederik Abhishek Kingma Stefano Kumar Ben Ermon Poole arXiv:2011.13456 Score-based generative modeling through stochastic differential equations 2021 arXiv preprint"
+    },
+    {
+      "index": 52,
+      "title": "Consistency models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yang Song",
+        "Prafulla Dhariwal",
+        "Mark Chen",
+        "Ilya Sutskever"
+      ],
+      "raw_text": "Consistency models Yang Song Prafulla Dhariwal Mark Chen Ilya Sutskever International Conference on Machine Learning 2023"
+    },
+    {
+      "index": 53,
+      "title": "Unified continuous generative models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Peng Sun",
+        "Yi Jiang",
+        "Tao Lin"
+      ],
+      "raw_text": "Unified continuous generative models Peng Sun Yi Jiang Tao Lin arXiv:2505.07447 2025 arXiv preprint"
+    },
+    {
+      "index": 54,
+      "title": "SAN: Inducing metrizability of GAN with discriminative normalized linear layer",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yuhta Takida",
+        "Masaaki Imaizumi",
+        "Takashi Shibuya",
+        "Chieh-Hsin Lai",
+        "Toshimitsu Uesaka",
+        "Naoki Murata",
+        "Yuki Mitsufuji"
+      ],
+      "raw_text": "SAN: Inducing metrizability of GAN with discriminative normalized linear layer Yuhta Takida Masaaki Imaizumi Takashi Shibuya Chieh-Hsin Lai Toshimitsu Uesaka Naoki Murata Yuki Mitsufuji The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 55,
+      "title": "Gmem: A modular approach for ultra-efficient generative models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yi Tang",
+        "Peng Sun",
+        "Zhenglin Cheng",
+        "Tao Lin"
+      ],
+      "raw_text": "Gmem: A modular approach for ultra-efficient generative models Yi Tang Peng Sun Zhenglin Cheng Tao Lin arXiv:2412.08781 2024 arXiv preprint"
+    },
+    {
+      "index": 56,
+      "title": "Visual autoregressive modeling: Scalable image generation via next-scale prediction",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Keyu Tian",
+        "Yi Jiang",
+        "Zehuan Yuan",
+        "Bingyue Peng",
+        "Liwei Wang"
+      ],
+      "raw_text": "Visual autoregressive modeling: Scalable image generation via next-scale prediction Keyu Tian Yi Jiang Zehuan Yuan Bingyue Peng Liwei Wang Advances in Neural Information Processing Systems 2024"
+    },
+    {
+      "index": 57,
+      "title": "Simulation-free schrödinger bridges via score and flow matching",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Alexander Tong",
+        "Nikolay Malkin",
+        "Kilian Fatras",
+        "Lazar Atanackovic",
+        "Yanlei Zhang",
+        "Guillaume Huguet",
+        "Guy Wolf",
+        "Yoshua Bengio"
+      ],
+      "raw_text": "Alexander Tong Nikolay Malkin Kilian Fatras Lazar Atanackovic Yanlei Zhang Guillaume Huguet Guy Wolf Yoshua Bengio arXiv:2307.03672 Simulation-free schrödinger bridges via score and flow matching 2023 arXiv preprint"
+    },
+    {
+      "index": 58,
+      "title": "Improving and generalizing flow-based generative models with minibatch optimal transport",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Tong",
+        "Kilian Fatras",
+        "Nikolay Malkin",
+        "Guillaume Huguet",
+        "Yanlei Zhang",
+        "Jarrid Rector-Brooks",
+        "Guy Wolf",
+        "Yoshua Bengio"
+      ],
+      "raw_text": "Improving and generalizing flow-based generative models with minibatch optimal transport Alexander Tong Kilian Fatras Nikolay Malkin Guillaume Huguet Yanlei Zhang Jarrid Rector-Brooks Guy Wolf Yoshua Bengio Transactions on Machine Learning Research 2024"
+    },
+    {
+      "index": 59,
+      "title": "Score-based generative modeling in latent space",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Arash Vahdat",
+        "Karsten Kreis",
+        "Jan Kautz"
+      ],
+      "raw_text": "Score-based generative modeling in latent space Arash Vahdat Karsten Kreis Jan Kautz Advances in Neural Information Processing Systems 2021"
+    },
+    {
+      "index": 60,
+      "title": "Will we run out of data? an analysis of the limits of scaling datasets in machine learning",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Pablo Villalobos",
+        "Jaime Sevilla",
+        "Lennart Heim",
+        "Tamay Besiroglu",
+        "Marius Hobbhahn",
+        "Anson Ho"
+      ],
+      "raw_text": "Will we run out of data? an analysis of the limits of scaling datasets in machine learning Pablo Villalobos Jaime Sevilla Lennart Heim Tamay Besiroglu Marius Hobbhahn Anson Ho arXiv:2211.04325 2022 arXiv preprint"
+    },
+    {
+      "index": 61,
+      "title": "R3gan: Robust regularized recurrent gans for high-fidelity image generation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhendong Wang",
+        "Yi Gu",
+        "Huangjie Zheng",
+        "Mingyuan Zhou",
+        "Hai Huang"
+      ],
+      "raw_text": "R3gan: Robust regularized recurrent gans for high-fidelity image generation Zhendong Wang Yi Gu Huangjie Zheng Mingyuan Zhou Hai Huang arXiv:2501.09876 2025 arXiv preprint"
+    },
+    {
+      "index": 62,
+      "title": "Maskbit: Embedding-free image generation via bit tokens",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mark Weber",
+        "Lijun Yu",
+        "Qihang Yu",
+        "Xiang Deng",
+        "Xiaohui Shen",
+        "Daniel Cremers",
+        "Liang-Chieh Chen"
+      ],
+      "raw_text": "Mark Weber Lijun Yu Qihang Yu Xiang Deng Xiaohui Shen Daniel Cremers Liang-Chieh Chen arXiv:2409.16211 Maskbit: Embedding-free image generation via bit tokens 2024 arXiv preprint"
+    },
+    {
+      "index": 63,
+      "title": "Scaling autoregressive models for contentrich text-to-image generation",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jiahui Yu",
+        "Yuanzhong Xu",
+        "Jing Yu Koh",
+        "Thang Luong",
+        "Gunjan Baid",
+        "Zirui Wang",
+        "Vijay Vasudevan",
+        "Alexander Ku"
+      ],
+      "raw_text": "Scaling autoregressive models for contentrich text-to-image generation Jiahui Yu Yuanzhong Xu Jing Yu Koh Thang Luong Gunjan Baid Zirui Wang Vijay Vasudevan Alexander Ku Yinfei Yang Burcu Karagol Ayan arXiv:2206.10789 2022 arXiv preprint"
+    },
+    {
+      "index": 64,
+      "title": "Vector-quantized image modeling with improved vqgan",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Jiahui Yu"
+      ],
+      "raw_text": "Vector-quantized image modeling with improved vqgan Jiahui Yu arXiv:2110.04627 2021 arXiv preprint"
+    },
+    {
+      "index": 65,
+      "title": "Magvit-v2: Language model beats diffusion-tokenizer is key to visual generation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Lijun Yu"
+      ],
+      "raw_text": "Magvit-v2: Language model beats diffusion-tokenizer is key to visual generation Lijun Yu arXiv:2310.05737 2024 arXiv preprint"
+    },
+    {
+      "index": 66,
+      "title": "Self-play fine-tuning of diffusion models for text-to-image generation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Huizhuo Yuan",
+        "Zixiang Chen",
+        "Kaixuan Ji",
+        "Quanquan Gu"
+      ],
+      "raw_text": "Self-play fine-tuning of diffusion models for text-to-image generation Huizhuo Yuan Zixiang Chen Kaixuan Ji Quanquan Gu Advances in Neural Information Processing Systems 2024 37"
+    },
+    {
+      "index": 67,
+      "title": "Revisiting diffusion models: From generative pre-training to one-step generation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Bowen Zheng",
+        "Tianming Yang"
+      ],
+      "raw_text": "Revisiting diffusion models: From generative pre-training to one-step generation Bowen Zheng Tianming Yang arXiv:2506.09376 2025 arXiv preprint"
+    },
+    {
+      "index": 68,
+      "title": "Direct discriminative optimization: Your likelihood-based visual generative model is secretly a GAN discriminator",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Kaiwen Zheng",
+        "Yongxin Chen",
+        "Huayu Chen",
+        "Guande He",
+        "Ming-Yu Liu",
+        "Jun Zhu",
+        "Qinsheng Zhang"
+      ],
+      "raw_text": "Direct discriminative optimization: Your likelihood-based visual generative model is secretly a GAN discriminator Kaiwen Zheng Yongxin Chen Huayu Chen Guande He Ming-Yu Liu Jun Zhu Qinsheng Zhang International Conference on Machine Learning 2025 Spotlight"
+    },
+    {
+      "index": 69,
+      "title": "Inductive moment matching",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Linqi Zhou",
+        "Stefano Ermon",
+        "Jiaming Song"
+      ],
+      "raw_text": "Inductive moment matching Linqi Zhou Stefano Ermon Jiaming Song International Conference on Machine Learning, 2025a"
+    },
+    {
+      "index": 70,
+      "title": "Adversarial score identity distillation: Rapidly surpassing the teacher in one step",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Mingyuan Zhou",
+        "Huangjie Zheng",
+        "Yi Gu",
+        "Zhendong Wang",
+        "Hai Huang"
+      ],
+      "raw_text": "Adversarial score identity distillation: Rapidly surpassing the teacher in one step Mingyuan Zhou Huangjie Zheng Yi Gu Zhendong Wang Hai Huang International Conference on Learning Representations, 2025b"
+    }
+  ],
+  "section_count": 28,
+  "reference_count": 70,
+  "error": "",
+  "updated_at": "2026-04-12T03:11:10.879773+00:00"
+}

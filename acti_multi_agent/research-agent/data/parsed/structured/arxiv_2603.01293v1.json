@@ -1,0 +1,518 @@
+{
+  "paperId": "arxiv:2603.01293v1",
+  "title": "Theoretical Perspectives on Data Quality and Synergistic Effects in Pre- and Post-Training Reasoning Models",
+  "year": 2026,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2603.01293v1.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2603.01293v1.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2603.01293v1.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Large Language Models (LLMs) are pretrained on massive datasets and later instruction-tuned via supervised fine-tuning (SFT) or reinforcement learning (RL). Best practices emphasize large, diverse pretraining data, whereas post-training operates differently: SFT relies on smaller, high-quality datasets, while RL benefits more from scale, with larger amounts of feedback often outweighing label quality. Yet it remains unclear why pretraining and RL require large datasets, why SFT excels on smaller ones, and what defines high-quality SFT data. In this work, we theoretically analyze transformers trained on an in-context weight prediction task for linear regression. Our analysis reveals several key findings: (i) balanced pretraining data can induce latent capabilities later activated during post-training, and (ii) SFT learns best from a small set of examples challenging for the pretrained model, while excessively large SFT datasets may dilute informative pretraining signals. In contrast, RL is most effective on large-scale data that is not overly difficult for the pretrained model. We validate these theoretical insights with experiments on large nonlinear transformer architectures.",
+      "word_count": 166
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Pretraining on massive language datasets, followed by post-training, is essential for unlocking and shaping the capabilities of large language models (LLMs). While pretraining endows models with broad linguistic knowledge and general world understanding, post-training transforms these latent capabilities into usable skills that can be reliably elicited through instructions. This transformation is typically achieved through either supervised fine-tuning (SFT), which trains models to imitate high-quality demonstrations, or reinforcement learning (RL), which optimizes model behavior using scalar feedback to refine global properties such as reasoning quality and preference alignment. Despite their central role, the interaction between pretraining data and post-training data-and how this interaction determines the resulting model capabilities-remains poorly understood.\n\nIn practice, pretraining commonly relies on massive and diverse data mixtures, whereas post-training follows a variety of recipes. For example, OpenAI o1 (OpenAI, 2024) and DeepSeek R1 (Guo et al., 2025) achieve state-of-the-art reasoning performance through RL applied to large-scale datasets, while s1 (Muennighoff et al., 2025) demonstrates comparable math reasoning performance using SFT on a small, manually curated set of hard and diverse examples. More recently, Llama 4 (Meta, 2025) adopts iterative rounds of SFT and RL on progressively harder data. Yet, which characteristics of pretraining data unlock superior post-training performance, and what requirements on the quality and scale of post-training data are needed to bring a pretrained model to optimal performance, have remained unclear.\n\nIn this work, we answer the above questions by studying an in-context weight prediction task for linear regression, where the goal is to predict the linear weight vector from the sequence of input prompts. This framework has been used previously for analyzing the mechanism underlying training CoT (Huang et al., 2025b; Javanmard et al., 2025) . In this work, we propose a novel pipeline where during pretraining, the model performs direct in-context-learning and outputs its prediction of the weight vector. During post-training, the transformer performs CoT with SFT or RL and generates multiple intermediate steps before arriving at its final prediction of the weight vector. We test the model on a combination of pretraining and post-training tasks.\n\nWhile our theoretical setup captures the key distinction between outcome supervision (RL, rewarding final answers) and process supervision (SFT, supervising intermediate steps), it significantly abstracts from standard RL algorithms that involve sampling, advantage estimation, and policy gradients. Here, we model RL as outcome-supervised regression on the transformer's in-context prediction task. This simplification enables clean theoretical analysis but limits direct applicability to full RLHF implementations in LLMs.\n\nOur analysis shed light on several questions: (i) What characteristics of pretraining data enable models to develop latent capabilities that can be effectively unlocked during post-training?\n\n(ii) Given a pretrained model, what properties define effective SFT data that promote adaptation to new skills, while minimizing interference with capabilities acquired during pretraining?\n\n(iii) Given a pretrained model, what properties of RL data are most critical? How does the RL optimization landscape differ from that of SFT, and when can RL achieve outcomes comparable to SFT? Our analysis helps to rigorously understand several empirically observed phenomena reported in the literature. Specifically, for our in-context setting, it shows that (i) effective pretraining data contains a balanced mixture of data from all categories. Such data can induce latent capabilities that are activated during post-training. (ii) Post-training with SFT benefits the most from a small set of challenging examples for the pretrained model, and larger SFT data can harm the performance. (iii) RL requires large-scale data that is informative but not overly difficult for the pretrained model.\n\nWe confirm our findings with experiments on an in-context weight prediction task for linear regression on transformer with a single linear self-attention (LSA), as well as large, nonlinear transformer architectures, namely GPT2 (Radford et al., 2019) .",
+      "word_count": 617
+    },
+    {
+      "index": 3,
+      "title": "Related Work",
+      "kind": "related_work",
+      "text": "Recent work has highlighted several phenomena relevant to our study.\n\nPretraining. For pretraining LLMs, common practice is to use a large mixture of language data. Recent studies mostly focused on data filtering (Li et al., 2024) , data selection (Nguyen et al., 2024; Yang et al., 2024) , and mixture reweighting (Xie et al., 2023) . Empirically, high-quality pretraining data should be large and diverse. Such high-quality pretraining data can induce latent capabilities that are not necessarily observed after pretraining but are activated during post-training (Akter et al., 2025) .\n\nPost-training. For post-training, recent studies mostly focused on comparing post-training with SFT and RL (Aminian et al., 2025; Xiong et al.; Zhao et al., 2025) . Theoretically, SFT is mode covering: by minimizing forward KL to demonstration data, it encourages the model to assign probability mass to all plausible responses. In contrast, reinforcement learning (RL) is mode seeking: by optimizing reward (typically under a KL constraint), it concentrates probability on high-reward responses and suppresses lower-ranked alternatives. As a result, SFT defines the space of acceptable behaviors, while RL selects and amplifies the most preferred ones within that space. Empirically, SFT data should be small and high-quality, i.e. hard and diverse (Guha et al., 2025; Huang et al., 2025b; Muennighoff et al., 2025) , and larger SFT data washes away benefits of high-quality pretraining data (Akter et al., 2025) . In contrast, RL benefits from larger data that is still challenging but not overly difficult for the pretrained model (Meta, 2025; Yue et al., 2025; Zeng et al., 2025) .\n\nNevertheless, the reasons why certain characteristics of pretraining data unlock superior post-training performance, why SFT benefits from a small set of hard and diverse examples while larger datasets can degrade its effectiveness, and why data scale matters more than apparent quality in RL have remained unclear.\n\nOur theoretical framework demystifies these observations, bridging the gap between empirical results and a principled understanding of data dynamics.",
+      "word_count": 324
+    },
+    {
+      "index": 4,
+      "title": "Problem Setup",
+      "kind": "body",
+      "text": "We focus on in-context learning (ICL) setting, where a model is presented with a context dataset D = {(x i , y i )} n i=1 and each (x i , y i ) pair is sampled independently from some underlying distribution P . Here, the input vectors {x i } n i=1 belong to R d , and the corresponding labels {y i } n i=1 may be real numbers (for regression tasks) or binary values such as {0, 1} (for classification tasks). The model is then given a new test input x n+1 ∼ P x and is tasked to predict its associated label or corresponding in-context weight predictor. In other words, in-context learning operates on sequences, called prompts, of input-output pairs (x 1 , y 1 , . . . , x n , y n , x n+1 ) and each prompt may have its own distribution. Linear Self Attention (lSA) Let Z be an embedding formed from the prompt (We will discuss the specific construction later). The softmax self-attention module takes as input an embedding matrix and outputs a matrix of the same size,\n\nf Attn (Z; W K , W Q , W V , W P ) = Z + W P W V Z ⋅ softmax ( (W K Z) ⊺ W Q Z λ )\n\nwhere softmax is applied column-wise. In Linear-Self-Attention (LSA) the softmax nonlinearity is removed.\n\nBy defining W ∶= W ⊺ K W Q , V = W P W V and θ = (W, V ) we arrive at: f LSA (Z; θ) = Z + V Z ⋅ Z ⊺ W Z λ (3.1)\n\nWe will focus on in-context linear predictors. Each prompt is of the form P τ = (x τ,1 , y τ,1 , . . . , x τ,n , y τ,n , x τ,n+1 ), with y τ,i = ⟨w τ , x τ,i ⟩, where w τ ∼ N(0, I d ).\n\nSupervised Fine-Tuning and Outcome Supervision. We begin by describing outcome supervision (OS) training with k steps of chain-of-thought reasoning. As noted in the introduction, this formulation simplifies standard RL-which involves sampling, advantage estimation, and policy gradients-by modeling it as outcome-supervised regression that rewards final answers, while still capturing the core distinction from process-supervised SFT.\n\nSuppose we are given a prompt P τ = (x τ,1 , y τ,1 , . . . , x τ,n , y τ,n ). We construct the embedding\n\nẐτ,0 = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ x τ,1 . . . x τ,n 0 y τ,1 . . . y τ,n 0 0 . . . 0 w τ,0 0 . . . 0 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.2) and iteratively define Ẑτ,i+1 = [ Ẑτ,i , f LSA ( Ẑτ,i ) [∶,-1] ]. We initialize w τ,0 = 0 d×1 and set ŵτ,i+1 ∶= f LSA ( Ẑτ,i ) [d+2∶2d+1,-1] .\n\nThis yields\n\nẐτ,i = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ x τ,1 . . . x τ,n 0 * . . . * y τ,1 . . . y τ,n 0 * . . . * 0 . . . 0 w τ,0 ŵτ,1 . . . ŵτ,i 0 . . . 0 1 1 . . . 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.3)\n\nLet w * τ be the ground-truth weight for prompt P τ , for τ ∈ [B] . The outcome supervision (OS) loss is\n\nL OS (V, W ) = 1 2B B ∑ τ =1 ∥ ŵτ,k -w * τ ∥ 2 ℓ2 , (3.4)\n\ni.e., OS penalizes only the final step of the k-step reasoning process. For Supervised fine-tuning (SFT), we use ground-truth chain-of-thought (CoT) sequences\n\nZ i,τ = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ x 1 . . . x n 0 * . . . * y 1 . . . y n 0 * . . . * 0 . . . 0 w 0,τ w 1,τ . . . w i,τ 0 . . . 0 1 1 . . . 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.5)\n\nwhere w i,τ = (1 -(1 -η) i )w * τ with w 0,τ = 0 provides exponentially converging intermediate targets, with an arbitrary but fixed rate η. The model is trained to predict the next token Z i+1,τ [∶, -1] ∶= (0 d , 0, w i+1,τ , 1) given Z i,τ . Over B training prompts, the SFT loss is\n\nL SFT (V, W ) ∶= 1 2B B ∑ τ =1 k ∑ i=0 ∥f LSA (Z i,τ ) [∶,-1] -(0, 0, w i+1,τ , 1)∥ 2 ℓ2 .\n\nPipeline: Pre-training, Post-training, Post-testing. Our pipeline has three stages distinguished by data covariances: pre-training on Σ 0 , post-testing on Σ = Σ 0 + ∆ (low-rank ∆), and post-training on a chosen intermediate distribution (discussed later for optimal post-test performance). Inputs x ∈ R d are Gaussian throughout.\n\nAssuming infinite pre-training prompts, population analysis of (Huang et al., 2025a) shows that with proper initialization, the pretrained parameters are given by:\n\nV0 = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 0 0 0 0 0 0 -Γ -1 0 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , Ŵ0 = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 I 0 0 0 0 -1 0 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.6)\n\nwhere\n\nΓ 0 ∶= (1 + 1 n ) Σ 0 + 1 n tr(Σ 0 )I d ∈ R d×d , (3.7)\n\nwith n the prompt length. Post-training initializes from ( V0 , Ŵ0 ), and updates the transformer weights by minimizing either the SFT loss or the OS loss. Sparsity structure motivated by the population regime. (Huang et al., 2025a) shows that training with chain-of-thought (paralleling our SFT loss) in the population regime (B → ∞ before d, n) preserves sparsity in the weights from initialization (3.6). Specifically, Lemma C.2 in (Huang et al., 2025a) proves that the gradient flow trajectory preserves the following sparsity structure:\n\nV (t) = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 0 0 0 0 0 0 V 31 (t) 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , W (t) = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 W 13 (t) 0 0 0 0 -1 0 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.8)\n\nwhere V 31 (t), W 13 (t) ∈ R d×d are the parameters at time t. While their analysis assumes identity-covariance Gaussians and intermediate weights w i,τ derived from standard gradient descent the proof of Lemma C.2 in (Huang et al., 2025a) relies only on the symmetry properties of w * τ ∼ N(0, I) and the fact that w i,τ is an odd function of w * τ . Consequently, this structural result extends to our setting of general covariances and supervised sequences. Although our analysis moves beyond the population regime, these insights motivate us to constrain our transformer model to follow similar sparsity pattern. Throughout, we use the shorthands Ṽ and W to indicate the nonzero blocks of V and W .",
+      "word_count": 1266
+    },
+    {
+      "index": 5,
+      "title": "Analysis of the SFT loss",
+      "kind": "results",
+      "text": "Let S τ ∶= 1 n ∑ n i=1 x i,τ x T i,τ be the empirical features covariance for τ ∈ [B] . We also define the following matrices:\n\nΩ ∶= [w * 1 , . . . , w * B ] ∈ R d×B Φ ∶= [S 1 w * 1 , . . . , S B w * B ] ∈ R d×B , M ∶= ΦΦ T ∈ R d×d\n\nThe next theorem characterizes the minimizer of the SFT loss that is closest to the initialization (-Γ -1 0 , I).\n\nTheorem 4.1 Define\n\n( Ṽλ , Wλ ) = arg min ( Ṽ , W ) L SFT ( Ṽ , W ) + λ ∥ Ṽ + Γ -1 0 ∥ 2 F + λ ∥ W -I∥ 2 F .\n\nWe then have lim λ→0 + ( Ṽλ , Wλ ) = ( Ṽ * , W * ), where\n\nW * = I, Ṽ * = -ηΩΦ † -Γ -1 0 (I -ΦΦ † ) (4.1)\n\nOur next theorem shows that the solution ( Ṽ * , W * ) can be attained by gradient descent initialized at (-Γ -1 0 , I), and establishes conditions on the step size for convergence along with its convergence rate. M ) , then the GD updates converges to Ṽ * at the following rate:\n\nc k ∶= ∑ k i=0 ρ 2i < 1 1-ρ 2 = 1 2η-η 2 . If γ < 2B c k λmax(\n\n∥ Ṽt -Ṽ * ∥ F ≤ α t ∥Γ -1 0 + Ṽ * ∥ F , α ∶= max (|1 - γc k B λ max (M )| , |1 - γc k B λ + min (M )|)\n\nwhere λ max (M ) and λ + min (M ) respectively denote the maximum and the minimum (nonzero) eigenvalues of M . In particular, setting γ = B c k λmax(M ) , we obtain\n\n∥ Ṽt -Ṽ * ∥ F ≤ (1 - λ + min (M ) λ max (M ) ) t ∥Γ -1 0 + Ṽ * ∥ F\n\nRemark 4.1 Note that the loss minimizer ( Ṽ * , W * ) given by (4.1) depends on n (prompt length) and B (number of prompts), the step size η in the supervised weight path, but not on k (length of reasoning paths). However, if we fix the gradient step size γ < 2B(2η-η 2 ) λmax(M ) , by Theorem 4.2 larger k implies larger c k and so faster convergence rate.\n\nIt is worth deriving the limit of Ṽ * in the population regime, where B → ∞, while n, d are kept fixed.\n\nProposition 4.3 Suppose that the features are generated as x i,τ ∼ N(0, A) for a positive semidefinite matrix A ∈ R d×d . Suppose n, d are fixed but the number of prompts B → ∞. Then Ṽ * will converge to a limit Ṽ∞ given by\n\nṼ∞ = -η ( n + 1 n A + tr(A) n AA † ) † -Γ -1 0 (I -AA † ) (4.2)\n\n5 Data Selection for Post-training via SFT Proposition 5.1 Consider an LSA model with parameters ( Ṽ , W ). We fix W = I and assume a test prompt of the form P = (x 1 , ⟨w, x 1 ⟩, . . . , x m , ⟨w, x m ⟩). Initializing the in-context learning with w 0 = 0, the predicted weight is given by\n\nŵ = -1 n Ṽ XX ⊺ w * with X = [x 1 | . . . |x n ] ∈ R d×n . In addition, if x i ∼ N(0, Σ), we have E X,w * [∥ ŵ -w * ∥ 2 ] = E X [∥I + Ṽ Σ∥ 2 F ] = = ∥I + Ṽ Σ∥ 2 F + 1 n (tr( Ṽ Σ 2 Ṽ T ) + tr( Ṽ Σ Ṽ T )tr(Σ)) (5.1)\n\nwhere the expectation is with respect to randomness in X and w * ∼ N(0, I d ).\n\nIn the test error (5.1), we focus on the dominant term ∥I + Ṽ Σ∥ F for large prompt length n. Assuming post-training features are i.i.d. from N(0, A) for some A ⪰ 0, the post-training weights Ṽ * (A) depend on the covariance A via Φ in (4.1). Thus, optimal data selection reduces to choosing covariance A that minimizes the post-test error.",
+      "word_count": 760
+    },
+    {
+      "index": 6,
+      "title": "Optimal Data Allocation",
+      "kind": "body",
+      "text": "To analyze the interaction between pre-training and post-training, we consider the test-time covariance Σ = Σ 0 + ∆, where Σ 0 represents the distribution seen during pre-training and ∆ denotes the adaptation task shift. We now characterize how the choice of the post-training covariance A affects the post-test error across different subspaces.\n\nLet U = range(A). From (4.1), the term Φ shares the range U , while on the orthogonal complement U ⊥ , the weight matrix Ṽ * acts simply as the pre-trained inverse -Γ -1 0 . Furthermore, outside the range of the adaptation shift ∆, the test-time covariance Σ coincides with the pre-training covariance Σ 0 . Since Γ -1 0 Σ 0 ≈ I by the definition of Γ 0 in (3.7), the residual error I + Ṽ Σ on U ⊥ becomes negligible if we align U with range(∆). This alignment ensures that the post-training resources are concentrated exclusively on the subspace where the pre-trained model exhibits a deficit.\n\nRestricted to the adaptation subspace U = range(∆), the population-limit error operator is expressed as:\n\nP U (I + V ∞ Σ)P U = I -η ( n + 1 n A + tr(A) n I) -1 (P U Σ 0 P U + ∆)\n\nIn the high-dimensional regime (large n), the trace term and the 1/n scaling factors become secondary, implying that the optimal choice for the post-training covariance is approximately A ≈ η(P U Σ 0 P U + ∆).\n\nConnection to example hardness. In practice, post-training is often employed to address \"gaps\" in the model-specifically, skills or topics that were missing or underrepresented during pre-training. To capture such scenarios, we assume that the range of the pre-training covariance Σ 0 and the range of the adaptation shift ∆ have a small inner product (i.e., they are nearly orthogonal). Consequently, P U Σ 0 P U constitutes only a small component of Σ 0 . We argue that in these scenarios, the most effective strategy is to select post-training examples that the pre-trained model finds \"hard\". Specifically, Proposition 5.1 establishes that the error of a pre-trained model on a task with prompts x i,τ ∼ N (0, A) is approximately L pre ≈ ∥I -Γ -1 0 A∥ 2 F . Because the support of Σ 0 is small on range(∆), the operator Γ -1 0 -which essentially acts as the inverse of the pre-training density-takes its largest values on this space. Therefore, examples whose covariance is spanned by range(∆) represent directions where the pre-trained model has the least confidence and highest residual error. This leads to our first key insight:\n\nInsight 1: Selecting examples that are \"hard\" for the pre-trained model (i.e., those aligned with the adaptation shift ∆) is the most effective strategy for post-training.",
+      "word_count": 464
+    },
+    {
+      "index": 7,
+      "title": "Data Scaling in SFT",
+      "kind": "body",
+      "text": "We study how SFT data size affects post-training performance by analyzing the expected error (Proposition 5.1) on post-test prompts N(0, Σ).We examine how this error varies with the number of prompts B and the prompt length n during SFT. We first present experiments, followed by theory supporting the resulting insights. The pretraining distribution is N(0, Σ 0 ) with Σ 0 = diag(ρ1 m , 0 n-m ), d = 400 and m = 200. The post-test distribution uses Σ = Σ 0 + ∆, where ∆ = diag(1 m , 0 d-m ). During post-training, data is drawn from N(0, A) with A = diag(η(ρ + 1)1 m , r1 n-m ), matching ηΣ on the first m coordinates and using r on the rest. We set ρ and r small so the first m directions are underrepresented in pretraining and can be strengthened during post-training. When r = 0, the post-train distribution matches the optimal allocation of Section 5.1. However, nonzero r introduces interference between post-training and pretraining data, which is often the case in practice. By (4.1), the transformer parameters depend on the pseudo-inverse of the empirical covariance, so smaller nonzero r yields stronger interference.\n\nIn the first experiment, we vary the number of prompts B from 50 to 2000, for prompt lengths n ∈ {400, 800, 1200}, fix ρ = 0.1, and consider interference levels r ∈ {0, 0.01, 0.1}. Fig. 1 shows that the error exhibits double descent, with an overshoot at B = m when r = 0 and at B = d when r ≠ 0. The error first decreases with B, then increases again, and the crossover point grows with the prompt length n. When interference is strong, the error remains above its value at optimal B even in large B limit (Fig. 1b ).\n\nIn the second experiment, we vary the prompt length n from 20 to 1000 and evaluate post-test error at B ∈ {50, 150, 300, 500}. As shown in Figure 2 , the error trends differ across choice ofB. Under interference and for small to moderate values of B, it first decreases with n and then becomes monotonically increasing, yielding a U-shaped curve and indicating an optimal prompt length that minimizes test error. These results show that increasing SFT data volume-either the number of prompts B or the prompt length n-can paradoxically degrade performance in the presence of interference. The key trade-off is that more SFT data helps the model learn underrepresented dimensions from pretraining, but also amplifies interference that erodes pretrained capabilities. Our findings therefore suggest an optimal data size that balances these competing effects. This further supports the empirical preference for small, high-quality datasets, whose high information density enables effective adaptation without the catastrophic costs of over-parameterization and interference. We formalize this observation as follows:\n\nInsight 2: To mitigate the effects of interference between pretraining and post-training, SFT datasets should be curated to be relatively small in volume and high in quality. 100 200 300 400 500 600 700 800 900 Figure 2: Behavior of the post-test error as we varying the prompt length n, under the same setup as in Figure 1 .\n\nIn Appendix B we analyze the post-test error. The analysis, consistent with our experiments, predicts that the test error diverges as B → d when interference is present (r ≠ 0) and as B → m when r = 0. We further characterize the asymptotic limit of the post-test error in the scaling regime where d, m, and B → ∞ while their relative ratios remain constant. This analysis demystifies the quantitative effect of different factors on the test error behavior.",
+      "word_count": 609
+    },
+    {
+      "index": 8,
+      "title": "Analysis of the OS loss",
+      "kind": "results",
+      "text": "We begin by deriving a more direct characterization of the outcome supervision (OS) loss.\n\nProposition 6.1 For the LSA model with k-step of thinking during the post-training the OS loss can be written as\n\nL OS ( Ṽ , W )= 1 2B B ∑ τ =1 ∥(I + k-1 ∑ i=0 ( Ṽ S τ W + I) i Ṽ S τ ) w * τ ∥ 2 ℓ2\n\nThe parameters ( Ṽ , W ) are initialized at (-Γ -1 0 , I) from the pretraining stage. We next study the landscape of the OS loss which demystifies several intriguing characteristics of post-training via OS and how it compares with SFT post training. To simplify our discussions and derivations, we fix W = I and only update Ṽ via gradient descent. However, we expect our discussion to extend to the general case of updating both parameters, albeit with a more complicated derivations. In our experiments, we update all of the transformer weights and showing our insights from analysis are empirically observed as well.\n\nBy fixing W = I, the OS loss simplifies to:\n\nL OS ( Ṽ , I) = 1 2B B ∑ τ =1 ∥(I + Ṽ S τ ) k w * τ ∥ 2 ℓ2 .\n\nLet M τ = I + Ṽ S τ . As derived in Appendix E, the gradient of the OS loss with respect to the operator V is given by:\n\n∇ V L OS = 1 B B ∑ τ =1 k-1 ∑ j=0 (M T τ ) j M k τ w * τ (w * τ ) T (M T τ ) k-1-j S T τ .\n\nVanishing and growing gradients in OS Loss. The gradient contains the term M k τ , which acts as a powerful scaling factor. In the stable region (ρ(M τ ) < 1), the term M k τ shrinks the gradient toward zero exponentially fast as the chain length k increases. In this regime, the model is already stable on the task, but the vanishing gradient makes it increasingly difficult to \"nudge\" the matrix Ṽ into the optimal subspace for further refinement. Conversely, if ρ(M τ ) > 1, the gradient has an exponential growth in k. This creates a sharp \"cliff\" in the loss landscape near the edge of stability (ρ ≈ 1), and training requires infinitesimally small step sizes to prevent numerical divergence. Sharpness and curvature of the landscape. Because the OS loss is effectively a degree-2k polynomial, the Hessian ∇ 2 L is highly sensitive to the operator's spectral properties. As shown in Appendix E, near a global minimum where M k τ w * τ ≈ 0, the Hessian spectral norm λ max scales as:\n\nλ max (H) ∝ 1 B B ∑ τ =1 k 2 ⋅ ρ(M τ ) 2k-2 (6.1)\n\nThis indicates that the curvature grows quadratically with the number of iterations k near the boundary of stability. If gradient descent is not run for a sufficient duration, the model remains near this highcurvature \"cliff.\" In this state, small variations-arising from finite n, B, or sample noise during post-test evaluations-can push the model back into the unstable region, leading to \"overthinking\", even if it pulled into the stable region during training.\n\nInsight 3: High sensitivity to sample variation. The sharp curvature near ρ ≈ 1 suggests that Outcome Supervision (OS) is prone to instability unless trained with large amounts of data (n, B) and many gradient steps. Insufficient training leaves the model at a \"sharp\" minimum where minor distribution shifts cause large errors.\n\nPretraining and Generalization. The pretrained model, which serves as the initialization for the OS loss, plays a critical role in OS stability. Consider a new task drawn from the test-time covariance Σ = Σ 0 + ∆, with Σ 0 the pretraining covariance and ∆ the adaptation shift. Near initialization, and assuming a sufficiently large prompt length n such that\n\nS τ → Σ, the learned operator V is dominated by the prior V 0 ≈ -Γ -1 0 . Consequently, we have V S τ ≈ -Γ -1 0 (Σ 0 + ∆) ≈ -I -Γ -1 0 ∆.\n\nThus, the transition matrix becomes:\n\nM τ = I + V S τ ≈ -Γ -1 0 ∆ ⇒ ρ(M τ ) ≈ ρ(Γ -1 0 ∆\n\n). This relationship reveals two distinct optimization regimes based on the spectral alignment between the pretraining distribution and the adaptation shift:\n\n• Case 1: Incremental adaptation (spectral alignment). When Γ 0 is large in the directions where ∆ is prominent-implying the pretraining distribution effectively covers the shift-the spectral radius ρ(M τ ) remains small. In this regime, the model initializes within the stable region (ρ < 1), permitting a safe, albeit gradual, refinement of the model parameters.\n\n• Case 2: New task adaptation (spectral misalignment). If the task involves novel subspaces where Γ 0 is small but ∆ is large, the spectral radius becomes large, i.e., ρ(Γ -1 0 ∆) ≫ 1. The model starts deep in the unstable region, requiring a drastically reduced step size η to maintain stability:\n\nη < 2 λ max (H) ∝ C k 2 ρ(M τ ) 2k-2 ,\n\nby (6.1). These observations are summarized below:\n\nInsight 4: Synergy of pretraining and Outcome Supervision. OS is most effective at improving performance on tasks already partially learned during pretraining. For novel tasks, the high initial spectral radius necessitates a slow and potentially unstable training procedure.\n\nPractical Implications for Training. The requirement for stability dictates several constraints on Outcome Supervision and RL. To ensure the eigenvalues remain within the stable regime, the learning rate must be carefully tuned to the sharpest direction of the Hessian. This creates a stark disparity in the optimization landscape: the step size η, forced to be infinitesimally small by the unstable directions, can be too small to make meaningful progress in the data-aligned directions. In addition, while RL does not require the high-quality, human-curated labels necessary for SFT, it compensates by requiring massive data diversity and volume. A large number of gradient steps is needed to overcome the slow progress in \"flat\" directions, while a high volume of data ensures the model is pushed deep into the stable region across a broad spectrum of tasks, reducing the risk of \"overthinking\" during inference.",
+      "word_count": 1058
+    },
+    {
+      "index": 9,
+      "title": "Data Diversity and Distributional Balance in Pretraining",
+      "kind": "body",
+      "text": "In our analysis, the influence of the pretrained model on post-trained model is mathematically encapsulated in the initialization V 0 = -Γ -1 0 , where by definition (3.7), Γ 0 ≈ Σ 0 the pretraining covariance. The post-test error, characterized by Proposition 5.1, is governed by the product V Σ = V (Σ 0 + ∆); at initialization, this yields V Σ ≈ -I -Γ -1 0 ∆. Consequently, an imbalanced pretraining distribution-characterized by a singular or ill-conditioned Γ 0 -imposes a severe penalty on adaptation in new directions where Γ 0 is small but ∆ is large. While SFT can partially mitigate a misaligned prior through the stabilizing influence of supervised signals, the OS and RL optimization is strictly bottlenecked by the spectral alignment between Γ 0 and ∆. If Γ 0 lacks sufficient diversity, even minor shifts in novel subspaces trigger an exponential escalation of the Hessian's spectral norm, scaling as k 2 ρ 2k-2 . This spectral divergence necessitates infinitesimally small step sizes and renders the model sensitive to variations in sample prompts in training. Such instability often manifests as \"overthinking\" during inference. Therefore, pretraining must prioritize distributional balance and data diversity as essential mechanisms for optimization stability. A broad spectral prior ensures the model initializes within the stable regime (ρ < 1), effectively smoothing the high-curvature \"cliffs\" of the RL landscape into manageable, flat regions for downstream adaptation.",
+      "word_count": 233
+    },
+    {
+      "index": 10,
+      "title": "Experiments",
+      "kind": "results",
+      "text": "In this section, we conduct experiments to validate our theoretical results.",
+      "word_count": 11
+    },
+    {
+      "index": 11,
+      "title": "Setting.",
+      "kind": "body",
+      "text": "We conduct experiments in two settings. First, we consider a transformer with a single linear self-attention (LSA) to confirm the results of our theorems. Then, we consider large, nonlinear transformer architecture namely GPT2 to validate the generality of our conclusions.\n\nIn both sets of experiments, the data distribution follows our in-context weight prediction task in Sec. 3, where in the pre-training, data has a covariance of Σ 0 , and in the post-testing with SFT or OS we have Σ = Σ 0 + ∆. During post-training, we let the model to output multiple steps before returning the final predicted weight vector, i.e., at each step i we concatenate the embedding with [0 d , ŵi , 1] as in Eq. ( 3 .3) and input the concatenated embedding matrix to the model. The estimated ŵk will be returned after k steps of Chain of Thought (CoT). We report the average results and error bars over 10 runs.\n\nPretrain, post-train, and test data. We generate pretraining data using Σ 0 where Σ i,i = 0.1 for i ∈ {1, . . . , d/5} and Σ i,i = 1 for i ∈ {d/5, . . . , d}. Then, we post-train the transformer on the synthetic data generated with ∆, where ∆ is a low rank PSD matrix with ∆ i,i = 1. For testing the model, we use Σ = Σ 0 + ∆.\n\nLarge, nonlinear transformer architectures. We use a decoder-only Transformer architecture (Vaswani et al., 2017) from the GPT-2 family (Radford et al., 2019) , consisting of 12 layers, 8 attention heads and a 256-dimensional embedding space. In total model contains 9.5M parameters. This architecture takes as input a sequence of vectors in its embedding space and predicts the weight vector within the same space. We apply this architecture to prompts of form (x τ,1 , y τ,1 , ⋯, x τ,m , y τ,m , w 0 , 1) in the following manner. In line with (Garg et al., 2022) , we map each y τ,i to the same dimension as x τ,i by appending zeros, and map x τ,i , y τ,i into the latent embedding space of the Transformer through a (learnable) linear transformation. We get the predicted w τ as the model output. Similarly, we map the model output, i.e., w τ from the latent embedding space of the Transformer to a d-dimensional vector through another (learnable) linear transformation. Training is performed with a batch size of 64 over 100 steps for SFT and 12k steps for OS. The model is first pretrained with a CoT length k = 8. During both training and test, we apply CoT with length k = 3. We used curriculum learning (Garg et al., 2022) to speed up training.\n\nFig. 3 (a)-(c) show the results when post-training is done with the SFT loss. Fig. 3a ,3b show that increasing the sample size (B) or context length (n) initially yields a lower test loss but further increasing the sample size or context length increases the test loss. Fig. 3c shows that the test loss is relatively robust and not sensitive to the length of post-training CoT (k). Fig 3 (d )-(f) show the results when post-training is done with the OS loss. In contrast to SFT, we see that OS benefits from larger sample size (B) and context length (n). In addition, longer CoT (k) during post-training increases the test loss and degrades the performance, confirming insight 4 in Section 6.",
+      "word_count": 583
+    },
+    {
+      "index": 12,
+      "title": "Linear self-attention (LSA) experiments.",
+      "kind": "results",
+      "text": "We next present our results on transformers with a single linear self-attention (LSA) layer. We choose the token dimensions d = 100, and post-train the model for 130 epochs using Adam with learning rate η = 0.001. During inference, we return the final predicted weight vector without CoT, i.e. at test time we use k = 1.\n\nFig. 4 (a)-(c) show the results when post-training is done with the SFT loss. Fig. 4a , 4b show that increasing the sample size (B) or context length (n) initially yields a lower test loss but further increasing the sample size or context length increases the test loss. Fig. 4c shows that the test loss is relatively robust and not sensitive to the length of post-training CoT (k). Fig 4 (d)-(f ) show the results when post-training is done with the OS loss. In contrast to SFT, Fig. 4d , 4e show that OS benefits from larger sample size (B) and context length (n), and Fig. 4f shows that longer CoT (k) during post-training increases the test loss and degrades the performance.",
+      "word_count": 179
+    },
+    {
+      "index": 13,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "Our work provides a theoretical and empirical framework for jointly designing pretraining and post-training for LLMs. Balanced pretraining creates latent capabilities best activated by SFT on small numbers of carefully selected, hard examples aligned with the target shift. Scaling up SFT data introduces interference that erodes pretrained structure, favoring small, high-quality datasets. Outcome Supervision and RL have a sharply curved, unstable landscape that make them data-hungry, yet effective for refining partially learned pretrained capabilities. These insights guide optimal combined use: targeted SFT for efficient adaptation on challenging examples, complemented by large-scale RL (Outcome Supervision) for robust skill refinement.",
+      "word_count": 98
+    },
+    {
+      "index": 14,
+      "title": "A Proof of theorems and technical lemmas",
+      "kind": "body",
+      "text": "A.1 Proof of Theorem 4.1\n\nAs λ → 0 + , the minimizer ( Ṽλ , Wλ ) must converge to a point ( Ṽ * , W * ) in the zero-loss manifold of L( Ṽ , W ) that is closest to the initialization (-Γ -1 0 , I) in the Frobenius norm. We first simplify the dynamic of LSA into a recurrent update on the estimated weight ŵi . We have We have\n\nf LSA (Z i , θ * ) [∶,-1] = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + V Z i ⋅ Z ⊺ i W Z i[∶,-1] n = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n V Z i Z ⊺ i ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ W ŵi -1 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×n 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 Ṽ X 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ X 0 0 . . . 0 y 0 0 . . . 0 0 d×n w 0 ŵ1 . . . ŵi 0 1×n 1 1 . . . 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ T ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ W w 0 -1 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×n 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 Ṽ X 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ [ X T W ŵi -y T 0 ] = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 Ṽ XX T ( W ŵi -w * ) 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ .\n\nHence, we obtain the following recursions for each of the prompt weight vectors:\n\nŵi+1,τ = ŵi,τ + Ṽ S τ ( W ŵi,τ -w * τ ) . (A.1)\n\nNow note that in the SFT loss, at each step we give the model the CoT ground-truth sequence (w 1,τ , . . . , w i,τ ) and compute the error ∥w i+1,τ -ŵi,τ ∥ 2 ℓ2 . Let ρ = 1 -η. Given w i,τ = (1 -ρ i )w * τ , we define the residual R i,τ for i = 0, . . . , k and τ = 1, . . . , B as follows:\n\nR i,τ = w i,τ + Ṽ S τ ( W w i,τ -w * τ ) -w i+1,τ = (1 -ρ i )w * τ + Ṽ S τ ( W (1 -ρ i )w * τ -w * τ ) -(1 -ρ i+1 )w * τ = Ṽ S τ ( W -I)w * τ -ρ i ( Ṽ S τ W + ηI)w * τ\n\nWe characterize this manifold by analyzing the residual R i,τ for each block τ and iteration i ∈ {0, . . . , k}. The loss function can be written as\n\nL SFT ( Ṽ , W ) = 1 2B B ∑ τ =1 k ∑ i=0 ∥R i,τ ∥ 2 ℓ2 .\n\nTo characterize the zero-loss manifold, note that for L( Ṽ , W ) = 0, we require R i,τ = 0 for all i. Since 1 and ρ i are linearly independent for i ≠ 0, the coefficients of the polynomial in ρ i must vanish independently:\n\n1. Ṽ S τ ( W -I)w * τ = 0 2. ( Ṽ S τ W + ηI)w * τ = 0 ⇒ Ṽ S τ W w * τ = -ηw * τ\n\nSubstituting the second condition into the first, we obtain:\n\nṼ S τ W w * τ -Ṽ S τ w * τ = 0 ⇒ -ηw * τ -Ṽ S τ w * τ = 0 ⇒ Ṽ S τ w * τ = -ηw * τ , for all τ = 1, . . . , B. Let Ω = [w * 1 , . . . , w * B ] and Φ = [S 1 w * 1 , . . . , S B w * B ].\n\nThe system is expressed as Ṽ Φ = -ηΩ. The limit Ṽ * minimizes ∥ Ṽ + Γ -1 0 ∥ 2 F subject to Ṽ Φ = -ηΩ, which is solved via the Moore-Penrose pseudoinverse:\n\nṼ * = -ηΩΦ † -Γ -1 0 (I -ΦΦ †\n\n).\n\nThe term (I -ΦΦ † ) is the orthogonal projection onto the null space of Φ ⊺ , ensuring Ṽ follows the initialization -Γ -1 0 in directions not spanned by the data. Now that Ṽ * is characterized, we proceed with proving that W * = I. Note that this choice of Ṽ * , W * satisfies both of the gradient condition (1) and ( 2 ) above. In addition, due to the penalty λ ∥ W -I∥ 2 F , we get W * = I as the unique minimizer.",
+      "word_count": 1008
+    },
+    {
+      "index": 15,
+      "title": "A.2 Proof of Theorem 4.2",
+      "kind": "body",
+      "text": "Let ρ = 1 -η and\n\nc k = ∑ k i=0 ρ 2i . Given W = I and w i,τ = (1 -ρ i )w * τ , the residual is R i,τ = -ρ i ( Ṽ S τ + ηI)w * τ\n\nand the loss can be written as\n\nL SFT ( Ṽ , I) = c k 2B ∥ Ṽ Φ + ηΩ∥ 2 F , where we recall Φ = [S 1 w * 1 , . . . , S B w * B ] and Ω = [w * 1 , . . . , w * B ].\n\nThe gradient of the loss is given by\n\n∇ Ṽ L SF = c k B ( Ṽ Φ + ηΩ)Φ ⊺\n\nDefining ∆ t = Ṽt -Ṽ * and noting Ṽ * Φ = -ηΩ, the GD update Ṽt+1 = Ṽt -γ∇ Ṽ L SF ( Ṽt , I) yields:\n\n∆ t+1 = ∆ t (I - γc k B M ) , M = ΦΦ ⊺\n\nThe error norm evolves as ∥∆ t+1 ∥ F ≤ ∥∆ t ∥ F ⋅ ∥I -γc k B M ∥ op , with ∥⋅∥ op indicating the operator norm. Note that the condition γ < 2B c k λmax(M ) ensures that ∥I -γc k B M ∥ op < 1 and so the GD updates converges to Ṽ * . Specifically, the contraction factor is determined by the most extreme eigenvalues that the error ∆ t sees in the subspace spanned by the data Φ. On the range of Φ, the contraction factor is given by M ) , the rate simplifies to\n\nα ∶= max (|1 - γc k B λ max (M )| , |1 - γc k B λ + min (M )|) By choosing γ = B c k λmax(\n\nα = 1 - λ + min (M ) λ max (M ) Substituting ∆ 0 = Ṽ0 -Ṽ * = -Γ -1\n\n0 -Ṽ * , we obtain the desired bound:\n\n∥ Ṽt -Ṽ * ∥ F ≤ (1 - λ + min (M ) λ max (M ) ) t ∥Γ -1 0 + Ṽ * ∥ F ,\n\nwhich completes the proof.",
+      "word_count": 376
+    },
+    {
+      "index": 16,
+      "title": "A.3 Proof of Proposition 4.3",
+      "kind": "body",
+      "text": "Recalling from (4.1), V * satisfies the system Ṽ Φ = -ηΩ. To find the explicit limit as B → ∞, we analyze the normal equations:\n\nṼ ( 1 B ΦΦ ⊺ ) = - η B ΩΦ ⊺\n\nRecall w * τ ∼ N (0, I) and S τ being the empirical covariance of n samples from N (0, A). In addition, w * τ and S τ are independent.\n\nWe have\n\nE [ 1 B ΩΦ ⊺ ] = E [ 1 B B ∑ τ =1 w * τ (S τ w * τ ) ⊺ ] = E[w * w * ⊺ S ⊺ τ ]\n\nBy independence and the fact that E[w * w * ⊺ ] = I and E[S τ ] = A, we get\n\nE [ 1 B ΩΦ ⊺ ] = A In addition, E [ 1 B ΦΦ ⊺ ] = E [ 1 B B ∑ τ =1 (S τ w * τ )(S τ w * τ ) ⊺ ] = E[S τ w * w * ⊺ S ⊺ τ ] = E[S 2 τ ]\n\nUsing the properties of the Wishart distribution for\n\nS τ = 1 n ∑ n i=1 x i x ⊺ i with x i ∼ N (0, A), (see Lemma A.2 in (Javanmard et al., 2025)) we have E[S 2 τ ] = n + 1 n A 2 + 1 n tr(A)A\n\nFirst consider the case A is invertible. By Slutsky's Theorem and the consistency of the sample covariance, as B → ∞, the learned operator Ṽ converges in probability to:\n\nṼ∞ = -ηA (E[S 2 τ ]) -1\n\nSubstituting the explicit form of E[S 2 τ ]:\n\nṼ∞ = -ηA ( n + 1 n A 2 + tr(A) n A) -1 = -η ( n + 1 n A + tr(A) n I) -1\n\nWhen A is singular, the same derivation holds in the range of A. In the null space of A, Ṽ∞ stays at its initialization -Γ -1 0 . Both cases can be unified as follows:\n\nṼ∞ = -η ( n + 1 n A + tr(A) n AA † ) † -Γ -1 0 (I -AA † ) ,\n\nwhich completes the proof.",
+      "word_count": 379
+    },
+    {
+      "index": 17,
+      "title": "A.4 Proof of Proposition 5.1",
+      "kind": "body",
+      "text": "Specializing the recursion (A.1) to i = 0 and W = I, we have ŵ = w 0 + 1 n Ṽ XX T (w 0 -w * ). By choosing the initialization w 0 = 0 we arrive at ŵ = -1 n Ṽ XX T w * . Letting Σ = 1 n XX T , we have\n\nE[∥ ŵ -w * ∥ 2 ℓ2 ] = E[∥I + Ṽ Σ∥ 2 F ] = ∥I + Ṽ Σ∥ 2 F + 1 n (tr( Ṽ Σ 2 Ṽ T ) + tr( Ṽ Σ Ṽ T )tr(Σ))\n\nwhere the last step follows from Lemma A.1 below.\n\nLemma A.1 Let X = [x 1 | . . . |x n ] T with x i ∼ N(0, Σ) with Σ ∈ R d×d . Define Σ ∶= 1 n X T X. Then, for any matrix A ∈ R d×d , we have E[∥I + A Σ∥ 2 F ] = ∥I + AΣ∥ 2 F + 1 n (tr(AΣ 2 A T ) + tr(AΣA T )tr(Σ)) (A.2) Proof (Proof of Lemma A.1) We write E[∥I + A Σ∥ 2 F ] = d + E[∥A Σ∥ 2 F ] -2 E[tr(AΣ)] (A.3) From (Javanmard et al., 2025)(Lemma A.2) we have\n\nE[ Σ(A T A) Σ)] = n -1 n Σ(A T A)Σ + 1 n (2Σ(A T A)Σ + tr(ΣA T A)Σ) .\n\nHence, by taking the trace of both sides and changing the orde of expectation and trace (since it is a linear operator), we get\n\nE[∥A Σ∥ 2 F ] = n + 1 n tr(AΣ 2 A T ) + 1 n tr(AΣA T )tr(Σ) .\n\nHere we also used the identity tr(AB) = tr(BA) for square matrices of the same size. Substituting back in (A.3) we obtain\n\nE[∥I + A Σ∥ 2 F ] = d + tr(A T Σ 2 A) -2 E[tr(AΣ)] + 1 n (tr(AΣ 2 A T ) + tr(AΣA T )tr(Σ)) = ∥I + AΣ∥ 2 F + 1 n (tr(AΣ 2 A T ) + 2tr(AΣA T )tr(Σ))\n\nwhich completes the proof of lemma.",
+      "word_count": 358
+    },
+    {
+      "index": 18,
+      "title": "A.5 Proof of Proposition 6.1",
+      "kind": "body",
+      "text": "We begin by recalling the recursion (A.1):\n\nŵi+1,τ = ŵi,τ + Ṽ S τ ( W ŵi,τ -w * τ ) = (I + Ṽ S τ W ) ŵi,τ -Ṽ S τ w * τ Solving this recursion, we obtain ŵk,τ = (I + Ṽ S τ W ) k ŵ0 - k-1 ∑ i=0 (I + Ṽ S τ W ) i Ṽ S τ w * τ . (A.4)\n\nNext, using that ŵ0 = w 0 = 0, we get\n\nL OS (V, W ) = 1 2B B ∑ τ =1 ∥ ŵτ,k -w * τ ∥ 2 ℓ2 = 1 2B B ∑ τ =1 ∥(I + k-1 ∑ i=0 ( Ṽ S τ W + I) i Ṽ S τ ) w * τ ∥ 2 ℓ2\n\n, which completes the proof.",
+      "word_count": 138
+    },
+    {
+      "index": 19,
+      "title": "B Asymptotic Analysis of SFT post-training",
+      "kind": "results",
+      "text": "We recall our notations from Section 4. Let S τ ∶= 1 n ∑ n i=1 x i,τ x T i,τ be the empirical features covariance for τ = 1, . . . , B. We also define the following matrices:\n\nΩ ∶= [w * 1 , . . . , w * B ] ∈ R d×B , Φ ∶= [S 1 w * 1 , . . . , S B w * B ] ∈ R d×B , (B.1)\n\nAlso recall that the SFT data are generated as x i ∼ N(0, A) where A = η(P U Σ 0 P U + ∆) + rP U ⊥ , with U = range(∆). When r = 0 this corresponds to the optimal data allocation discussed in Section 5.1 and r ≠ 0 models the interference between SFT data and the pretrained model. We consider the following specific structure for the pretrained covariance Σ 0 and distribution shift covariance ∆ similar to our experiments in Section 5.2, namely\n\nΣ 0 = diag(ρ1 m , 1 d-m ), ∆ = diag(1 m , 0 d-m ) .\n\nDuring post-training, SFT data is generated from N(0, A) with\n\nA = diag(η(ρ + 1)1 m , r1 d-m ), (B.2)\n\nand the post-test distribution is given by the covariance Σ = Σ 0 + ∆. Notably, Our asymptotic framework generalizes to arbitrary covariance structures Γ 0 , ∆, and A, provided the empirical spectral distributions of these matrices converge weakly to probability measures on R ≥0 with finite second moments. Under this Mean-Field regime, the macroscopic behavior of the learned operator Ṽ * is determined by the spectral densities of the data and shift matrices, rather than their specific coordinate-level realizations.\n\nDecomposition of Ṽ * : Starting from Ṽ * = -ηΩΦ † -Γ -1 0 (I -Π Φ ), with projection Π Φ = ΦΦ † . Let Φ = M + E, where M = AΩ and E is the perturbation of Φ from its expectation AΩ with respect to randomness in the empirical features covariances S τ , for τ ∈ [B]. Using the first-order expansion of the pseudoinverse:\n\nΠ Φ ≈ (M + E)(M † -M † EM † + . . . )\n\nMultiplying this out and keeping only terms up to the first power of E:\n\nΠ Φ ≈ M M † Π Ω + EM † -M M † EM † First-order correction\n\nWe can simplify the correction term by factoring M M † :\n\nΠ Φ ≈ M M † + (I -M M † )EM † , (I -Π Φ ) ≈ (I -M M † ) -(I -M M † )EM † .\n\nBy substituting this expanded projection back into the definition of Ṽ * , we get the following first-order approximation:\n\nṼ * ≈ -ηΩ(M † -M † EM † ) -Γ -1 0 [(I -M M † ) -(I -M M † )EM † ] (B.3)\n\nNow, group the terms into deterministic (V S ) and stochastic (V N ) components. The Zero order component is given by:\n\nV S = -ηΩM † -Γ -1 0 (I -M M † ) The first order component is given by: V N = -V S EM † Equation (B.\n\n3) can be written as\n\nṼ * ≈ Ṽ ∶= V S + V N . (B.4)\n\nWe next characterize the limit of test error using (5.1). For convenience we rewrite the characterization for the expected test error below:\n\nErr( Ṽ ) = 1 d E[∥I + Ṽ Σ∥ 2 F ] Term I + 1 nd E [tr( Ṽ Σ 2 Ṽ T ) + tr( Ṽ Σ Ṽ T )tr(Σ)] Term II (B.5)\n\nwhere expectation is with respect to both the training and the test data. We also normalized the test error by the dimension d. Proportional regime. We consider the proportional asymptotic regime, where d, m, n, B → ∞, with n the prompt length and B the number of prompts. In addition, B/d → β, m/d → µ 1 , d/n → γ for some arbitrary but fixed constants β, µ 1 , γ. We also let µ 2 = 1 -µ 1 .\n\nNotations. The deterministic feature covariance A is diagonal with block entries a 1 , a 2 . The test covariance Σ is also diagonal with block diagonals Σ 1 , Σ 2 , namely\n\na 1 ∶= η(ρ + 1), a 2 ∶= r Σ 1 ∶= ρ + 1, Σ 2 ∶= 1 (B.6) Let D 1 = I -Γ -1 0 Σ and D pre = Γ -1 0 -ηA -1 .\n\nBoth are block-diagonal deterministic matrices and in the proportional asymptotic regime, we let α k and δk be their respective scalar values on block k ∈ {1, 2}, and let δ k = δk Σ k . A simple calculation shows that with κ ∶= γ(µρ + 1 -µ), we have\n\nα 1 = κ -1 ρ + κ , α 2 = κ κ + 1 δ 1 = 1 -κ ρ + κ , δ1 = δ 1 Σ 1 = 1 -κ (ρ + κ)(ρ + 1) δ 2 = 1 1 + κ - η r , δ2 = δ 2 Σ 2 = δ 2 (B.7)\n\nIn addition, -Γ -1 0 is also a block-diagonal deterministic matrix and in the asymptotic regime, we let g k be its respective scalar values on block k ∈ {1, 2}. It is easy to see that\n\ng 1 = - 1 ρ + κ , g 2 = - 1 1 + κ (B.8) The matrix Σ A ∶= 1 d (tr(A)A + A 2\n\n) is also block-diagonal and in the proportional regime, its respective scalar values on block k ∈ {1, 2} converge to\n\ns 1 = (µ 1 a 1 + µ 2 a 2 )a 1 = (µ 1 η(ρ + 1) + µ 2 r)η(ρ + 1) s 2 = (µ 1 a 1 + µ 2 a 2 )a 2 = (µ 1 η(ρ + 1) + µ 2 r)r (B.9) Theorem B.1 Consider Ṽ = V S + V N\n\nthe first order approximation of Ṽ * as in (B.4). Under the proportional asymptotic regime, the following holds true:\n\nlim d→∞ Err( Ṽ ) = Bias + γT inv T var + γ ΣT var,Σ + γ 2 ΣT inv,Σ T var (B.10)\n\nwhere the terms are defined as follows, in terms of the notations defined by (B.6), (B.7), (B.8) and (B.9):\n\n• Bias: For β < 1, let q be the non-negative solution to:\n\nβ = 2 ∑ k=1 µ k a 2 k q 1 + a 2 k q (B.11)\n\nand define w k =\n\na 2 k q 1+a 2 k q , v k = w k (1 -w k ), for k ∈ {1, 2} and T 12 = µ 1 µ 2 v 1 v 2 µ 1 v 1 + µ 2 v 2 (B.12)\n\nFor β ≥ 1, set w k = 1, v k = 0, and T 12 = 0. We then have\n\nBias ∶= 2 ∑ k=1 µ k [α 2 k (1 -w k ) + (α k + δ k ) 2 w k ] + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) (B.13)\n\n• The terms T inv and T inv,Σ are given by\n\nT inv = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ 2 k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β < 1) + { 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k } 1(β > 1) (B.14) T inv,Σ = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β < 1) + { 1 β -1 2 ∑ k=1 µ k Σ k a 2 k } 1(β > 1) (B.15)\n\n• The terms T var,E and T var,Σ are given by\n\nT var = 2 ∑ k=1 µ k s k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 s 1 -δ2 s 2 ) (B.16) T var,Σ = 2 ∑ k=1 µ k Σ k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 Σ 1 -δ2 Σ 2 ) (B.17)\n\nWe next compare the predicted asymptotic limit of Err with numerical experiment. Recall Ṽ * as the SFT loss minimizer given by (4.1), Ṽ its first order approximation, given by (B.4). In Figure 5 we plot Err( Ṽ * ), Err( Ṽ ) and our theoretical curve (B.10). As we see there is a great match between our theoretical prediction and simulation result for (Err( Ṽ )). In addition, it approximates Err( Ṽ * ) reasonably well and the approximation becomes tighter as the prompt length (n) grows (Figure 5b shows a better approximation at n = 5000 compared to Figure 5a for n = 1000). Using Theorem B.10 we prove several properties of the asymptotic error and show that under interference, its minimum is achieved in the regime of β < 1. This confirms our Insight 2 in the main text, namely that SFT datasets should be curated to be relatively small in volume.\n\nWe denote the predicted theoretical error (right hand side of (B.10)) by F (β), as function of β, as we would like to understand its behavior as β varies.",
+      "word_count": 1674
+    },
+    {
+      "index": 20,
+      "title": "Proposition B.2",
+      "kind": "body",
+      "text": "The followings hold true:\n\n(i) lim β→1 F (β) = ∞. For β > 1, F (β) is strictly decreasing. As β → ∞, it converges to a finite asymptotic floor:\n\nF (↑∞) ∶= lim β→∞ F (β) = 2 ∑ k=1 µ k (α k + δ k ) 2 + γ Σ 2 ∑ k=1 µ k Σ k (g k + δk ) 2 (ii) We have F (0) = 2 ∑ k=1 µ k α 2 k + γ Σ 2 ∑ k=1 µ k Σ k g 2 k\n\nAlso, F (↑∞) -F (0) scales as O(1/r 2 ). Consequently, for sufficiently small r > 0, F (↑∞) > F (0). This guarantees that the global minimum of F (β) is strictly achieved in the overparameterized regime (β < 1).\n\n(iii) Suppose that µ 1 ≥ ρ 2 1+ρ 2 . For sufficiently small r and γ, the initial derivative is strictly negative (F ′ (0) < 0). Hence, introducing a small number of prompts immediately and strictly decreases the test error.",
+      "word_count": 177
+    },
+    {
+      "index": 21,
+      "title": "C.1 Analysis of Term I",
+      "kind": "results",
+      "text": "We start by analyzing Term I. We have\n\nE[∥I + Ṽ Σ∥ 2 F ] = E[∥I + V S Σ + V N Σ∥ 2 F ] = E[∥I + V S Σ∥ 2 F ] + E[∥V N Σ∥ 2 F ] because conditioned on Ω, E = [(S 1 -A)w * 1 , . . . , (S B -A)w * B ]\n\nis zero mean and independent of V S . Hence,\n\nlim d→∞ 1 d E[∥I + Ṽ Σ∥ 2 F ] = lim d→∞ 1 d E[∥I + V S Σ∥ 2 F ] + lim d→∞ 1 d E[∥V N Σ∥ 2 F ] . (C.1)\n\nAnalysis of the Bias term. The deterministic component of the test error (Bias) is governed by the matrix M S = I + V S Σ. We first express V S in terms of the orthogonal projection matrix Π M = M M † . Using the identity A -1 Π M = ΩM † , we have:\n\nV S = -ηA -1 Π M -Γ -1 0 (I -Π M ) (C.2) M S = (I -Γ -1 0 Σ) + (Γ -1 0 -ηA -1 )Π M Σ (C.3) Let D 1 = I -Γ -1 0 Σ and D pre = Γ -1 0 -ηA -1 . Thus, M S = D 1 + D pre Π M Σ.\n\nNote that D 1 and D pre are block-diagonal deterministic matrices, and in the asymptotic regime, their respective scalar values on block k ∈ {1, 2} converge to α k and δk given by (B.7). Let δ k = δk Σ k .\n\nExpanding the normalized squared Frobenius norm, we obtain:\n\n1 d ∥M S ∥ 2 F = 1 d tr(D 2 1 ) + 2 d tr(D 1 ΣΠ M D pre ) + 1 d tr(D 2 pre Π M Σ 2 Π M ) (C.4)\n\nWe next note that\n\n1 d tr(D 2 1 ) = 2 ∑ k=1 d k d α 2 k = 2 ∑ k=1 µ k α 2 k (C.5)\n\nIn addition, we have\n\n2 d tr(D 1 ΣΠ M D pre ) = 2 d tr(D pre D 1 ΣΠ M ) = 2 d 2 ∑ k=1 α k δ k tr(Π kk ) (C.6)\n\nTo evaluate the quadratic trace Quad ∶= 1 d tr(D 2 pre Π M Σ 2 Π M ), we partition the projection matrix into blocks Π ij with i, j ∈ {1, 2} with Π 11 of size m and\n\nΠ 2,2 of size d -m. Let T ij = 1 d tr(Π ij Π ji ).\n\nExpanding the trace block-by-block yields:\n\nQuad = δ 2 1 T 11 + δ 2 2 T 22 + ( δ2 2 Σ 2 1 + δ2 1 Σ 2 2 ) T 12 . (C.7) Because Π M is a true orthogonal projection, Π 2 M = Π M .\n\nExamining the diagonal blocks of this identity gives\n\nΠ 2 kk + Π kj Π jk = Π kk , (C.8)\n\nwith k ≠ j ∈ {1, 2}. Our next lemma characterizes the limit of normalized trace of Π kk , using Stieltjes transform and Silverstein equation from the Random Matrix Theory.\n\nLemma C.1 Let w k ∶= lim d k →∞ 1 d k tr(Π kk ).\n\nThen, the following holds: For β < 1,\n\nw k = a 2 k q 1 + a 2 k q , (C.9)\n\nwith q being the non-negative solution to:\n\nβ = 2 ∑ k=1 µ k a 2 k q 1 + a 2 k q (C.10) For β ≥ 1, we have w k = 1.\n\nTaking the normalized trace from (C.8) gives:\n\nT kk = µ k w k -T 12 , k ∈ {1, 2} (C.11)\n\nSubstituting this into the quadratic term and simplifying:\n\nQuad = µ 1 δ 2 1 w 1 + µ 2 δ 2 2 w 2 + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) (C.12)\n\nAlso by recalling (C.6) we have\n\nlim d→∞ 2 d tr(D 1 ΣΠ M D pre ) = 2 d tr(D 1 ΣΠ M D pre ) = lim d→∞ 2 2 ∑ k=1 ( d k d ) α k δ k ( 1 d k tr(Π kk )) = 2 2 ∑ k=1 µ k α k δ k w k (C.13)\n\nCombining the linear and quadratic traces given by (C.5), (C.13) and (C.12), the complete rigorous bias evaluates to:\n\nlim d→∞ 1 d ∥M S ∥ 2 F = 2 ∑ k=1 µ k [α 2 k (1 -w k ) + (α k + δ k ) 2 w k ] + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) . (C.14)\n\nIn the next lemma, we characterize T 12 which completes our analysis of the Bias term.\n\nLemma C.2 Let Π M be the orthogonal projection matrix onto the column space of M = AΩ, where Ω ∈ R d×B has i.i.d. entries of variance 1/d, and A is a deterministic block-diagonal matrix with block dimensions d k = µ k d and corresponding squared eigenvalues a 2 k for k ∈ {1, 2}. Let Π ij denote the sub-blocks of Π M . As d, B → ∞ with B/d → β, the normalized cross-subspace leakage trace T 12 = lim d→∞ 1 d tr(Π 12 Π 21 ) is almost surely given by:\n\nT 12 = µ 1 µ 2 v 1 v 2 µ 1 v 1 + µ 2 v 2 (C.15)\n\nwhere v k = w k (1 -w k ) is the variance factor of the projection on block k, and w k = a 2 k q 1+a 2 k q are the Stieltjes weights defined by the fixed-point root q.\n\nAnalysis of the noise term. We recall the dimension ratios as µ 1 = m/d and γ = d/n. The noise operator acting on the test covariance is defined exactly as V N Σ = -V S EM † Σ. We seek the limit of the normalized expected squared Frobenius norm:\n\n1 d E E [∥V N Σ∥ 2 F ] = 1 d E E [tr(V S EM † Σ 2 (M † ) T E T V T S )] (C.16) Let Q = M † Σ 2 (M † ) T . Because M = E[Φ] is deterministic, Q is constant with respect to the noise realization E. Let ε τ = (S τ -A)w * τ be the τ -th column of E.\n\nWe first compute the expectation over the feature samples x i,τ conditioned on the weight matrix Ω. Since the feature samples are independent across different weights τ , the columns of E are mutually independent with zero mean:\n\nE[ε τ ε ⊺ γ | Ω] = 0 for τ ≠ γ\n\nFor the diagonal terms, we use the standard identity for the covariance of a Wishart quadratic form. For any fixed vector u and\n\nS ∼ W d (n, 1 n A): E[(S -A)uu ⊺ (S -A)] = 1 n ((u ⊺ Au)A + Auu ⊺ A)\n\nSumming over the entries of Q:\n\nE E|Ω [EQE ⊺ ] = ∑ τ ≠γ Q τ γ E[ε τ ε ⊺ γ | Ω] = 1 n B ∑ τ =1 Q τ τ ((w * ⊺ τ Aw * τ )A + Aw * τ w * ⊺ τ A)\n\nWe now take the expectation over Ω. By the rotational invariance of the Gaussian distribution, the expectation of any function of Ω that is equivariant under orthogonal transformations must be isotropic. In particular, the term\n\nZ = E [∑ τ Q τ τ w * τ w * ⊺ τ ] must satisfy Z = cI d .\n\nTaking the trace:\n\ncd = E [ B ∑ τ =1 Q τ τ ∥w * τ ∥ 2 ] = dE[tr(Q)] ⇒ c = E[tr(Q)]\n\nIn the high-dimensional limit, the correlation between the weight-norm quadratic form (w * ⊺ τ Aw * τ ) and the kernel diagonal Q τ τ vanishes, by which we obtain\n\nE [ B ∑ τ =1 Q τ τ (w * ⊺ τ Aw * τ )] = E[tr(Q)]tr(A)\n\nCombining these, we obtain:\n\nE[EQE ⊺ ] = E[tr(Q)] n (tr(A)A + A 2 ) (C.17) We set Σ A ∶= 1 d (tr(A)A + A 2 ).\n\nSubstituting the above identity into (C.16) we obtain:\n\n1 d E E [∥V N Σ∥ 2 F ] = 1 d tr(V S [γtr(Q)Σ A ] V T S ) (C.18)\n\nBecause tr(Q) is a scalar, it factors entirely out of the matrix product. Using the property (M † ) T M † = (M M T ) † , the expectation rigorously splits into the product of two independent, normalized trace functionals:\n\n1 d E[∥V N Σ∥ 2 F ] = γ [tr(Σ 2 (M M T ) † )] Tinv ⋅ [ 1 d tr(V S Σ A V T S )] Tvar (C.19)\n\nDerivation of the pseudo-inverse trace (T inv ). We must evaluate the target trace T inv = tr(Σ 2 (M M T ) † ), which governs the variance functional. Because the feature matrix M = AΩ is constructed with Ω ∼ N (0, 1) i.i.d. entries, the unscaled matrix G = M M T has eigenvalues scaling as O(d). To rigorously apply the Stieltjes transform, we define the normalized matrix Ĝ = 1 d G, which has O(1) eigenvalues. The target trace scales as:\n\nT inv = tr(Σ 2 (d Ĝ) † ) = 1 d tr(Σ 2 Ĝ † ) (C.20)\n\n• Over-parameterized regime (β < 1). Because Ĝ is strictly singular in the over-parameterized regime (B < d), direct inversion is invalid. To evaluate the trace rigorously for any aspect ratio β, we introduce a strictly positive regularization parameter z > 0 and define the perturbed resolvent:\n\nR(z, t) = ( Ĝ + tAΣ 2 A + zI d ) -1 (C.21) Let m(z, t) = 1 d tr(R(z, t))\n\nbe its normalized trace. Because z > 0, R(z, t) is unconditionally invertible and bounded for all B. Taking the derivative of m(z, t) with respect to the continuous perturbation t at t = 0 yields:\n\n∂ ∂t m(z, t)| t=0 = - 1 d tr(R(z, 0)(AΣ 2 A)R(z, 0)) (C.22)\n\nBecause R(z, 0), A, and Σ are all well-defined, finite d × d matrices, we can validly apply cyclic permutation to the trace. We move the rightmost R(z, 0) to the left, and use the fact that the diagonal matrices A and\n\nΣ 2 commute (AΣ 2 A = Σ 2 A 2 ): ∂ ∂t m(z, t)| t=0 = - 1 d tr((AΣ 2 A)R(z, 0) 2 ) = - 1 d tr(Σ 2 A 2 R(z, 0) 2 ) (C.23)\n\nWe now define our target Stieltjes derivative q ′ (0) as the limit of this regularized derivative as z → 0 + . By defining the operator limit lim z→0 + R(z, 0) 2 ≡ ( Ĝ † ) 2 strictly on the non-null subspace, this identically maps to our target variance trace T inv across all parameterization regimes:\n\n-q ′ (0) = lim z→0 + 1 d tr(Σ 2 A 2 R(z, 0) 2 ) ≡ 1 d tr(Σ 2 A 2 ( Ĝ † ) 2 ) = T inv (C.24)\n\nTo find q ′ (0) analytically, we differentiate the fixed-point equation of the perturbed resolvent. The eigenvalues of the perturbed deterministic envelope are a 2 k (1 + tΣ 2 k ). Using the Silverstein equation, we have the following fixed-point equation:\n\nβ = 2 ∑ k=1 µ k a 2 k (1 + tΣ 2 k )q(t) 1 + a 2 k (1 + tΣ 2 k )q(t) (C.25)\n\nDifferentiating both sides with respect to t at t = 0 (where q(0) = q) gives:\n\n0 = 2 ∑ k=1 µ k a 2 k Σ 2 k q + a 2 k q ′ (0) (1 + a 2 k q) 2 (C.26)\n\nSeparating the terms and recognizing that the effective block weights are w k = a 2 k q 1+a 2 k q , we observe the algebraic identity\n\na 2 k (1+a 2 k q) 2 = w 2 k a 2 k q 2\n\n. Substituting this into the differential equation gives:\n\n-q ′ ( 0\n\n) 2 ∑ k=1 µ k w 2 k a 2 k q 2 = q 2 ∑ k=1 µ k Σ 2 k w 2 k a 2 k q 2 (C.27)\n\nMultiplying by q 2 and isolating -q ′ (0), we obtain the exact closed-form limit:\n\nT inv = q ∑ 2 k=1 µ k Σ 2 k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k (C.28)\n\n• Under-parameterized regime (β > 1). The differential Stieltjes approach relies on the fixed-point root q being finite, which holds strictly for the over-parameterized regime (β < 1). When β > 1, the number of samples exceeds the ambient dimension (B > d), causing the rank fraction to saturate at β = 1, which mathematically drives q → ∞. However, in this over-parameterized regime, the unscaled feature covariance matrix G = M M T becomes strictly full rank almost surely. Consequently, the normalized matrix Ĝ = 1 d G is strictly invertible, and its pseudoinverse reduces to the standard inverse Ĝ-1 . We skip the perturbation derivative and evaluate the trace directly using the deterministic equivalent for the inverse of a generalized sample covariance matrix. Note that Ĝ-1 = A -1 W -1 A -1 with W = 1 d ΩΩ T a standard Wishart matrix of size d × B and so by the inverse moments of the Marchenko-Pastur law, its deterministic equivalent is given by W ≍ 1 β-1 I d , which implies that\n\nĜ-1 ≍ 1 β -1 (A 2 ) -1 (C.29)\n\nSubstituting this deterministic equivalent directly into the target trace functional yields the exact closed-form limit for β > 1:\n\nT inv = 1 d tr (Σ 2 [ 1 β -1 A -2 ]) = 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k (C.30)\n\nEquations (C.28) and (C.30) both diverge at the interpolation threshold (β = 1). We combine both equation into one unifying relation:\n\nT inv = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ 2 k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β < 1) + { 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k } 1(β > 1) (C.31)\n\nDerivation of the trace term (T var ). We evaluate the trace term\n\nT var = lim d→∞ 1 d tr(V S Σ A V T S ). Recall the deterministic test operator V S = -Γ -1 0 + D pre Π M , where D pre = Γ -1 0 -ηA -1 .\n\nNote that D pre and -Γ -1 0 are both block-diagonal deterministic matrices. Also their respective scalar values on block k ∈ {1, 2} in the proportional asymptotic regime converges to δk and g k given by (B.7) and (B.8). Expanding the trace yields:\n\nT var = 1 d tr(Γ -2 0 Σ A ) + 2 d tr(-Γ -1 0 Σ A D pre Π M ) + 1 d tr(D pre Π M Σ A D pre Π M ) (C.32) Let T ij = 1 d tr(Π ij Π ji ).\n\nThe linear traces evaluate strictly on the diagonal blocks. Similar to derivations (C.5) and (C.13) we have\n\nlim d→∞ tr(Γ -2 0 Σ A ) = 2 ∑ k=1 µ k g 2 k s k\n\nwhere s 1 and s 2 are the limit of the scalar on the blocks of Σ A given by (B.9). In addition,\n\nlim d→∞ 2 d tr(-Γ -1 0 Σ A D pre Π M ) = 2 2 ∑ k=1 µ k g k δk s k w k\n\nThe quadratic trace Quad ∶= 1 d tr(D pre Π M Σ A D pre Π M ) expands over the 2 × 2 block partition as:\n\nQuad = δ2 1 s 1 T 11 + δ2 2 s 2 T 22 + δ1 δ2 (s 1 + s 2 )T 12 (C.33)\n\nInvoking (C.11), we have T kk = µ k w k -T 12 . Substituting these constraints into the quadratic expansion yields:\n\nQuad = 2 ∑ k=1 µ k δ2 k s k w k -T 12 [ δ2 1 s 1 + δ2 2 s 2 -δ1 δ2 s 1 -δ1 δ2 s 2 ] (C.34)\n\nThe bracketed multiplier for T 12 factors analytically into ( δ1 -δ2 )( δ1 s 1 -δ2 s 2 ). Recombining the linear and quadratic components completes the square for the diagonal elements, yielding:\n\nT var = 2 ∑ k=1 µ k s k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 s 1 -δ2 s 2 ) (C.35)\n\nBy recalling (C.19), the noise limit\n\n1 d E E [∥V N Σ∥ 2 F ]\n\nis given by the product of equations (C.28) and (C.35).",
+      "word_count": 2969
+    },
+    {
+      "index": 22,
+      "title": "C.2 Analysis of Term II",
+      "kind": "results",
+      "text": "Since tr(Σ) scales as O(d), the tr( Ṽ Σ Ṽ T )tr(Σ) term dominates the tr( Ṽ Σ 2 Ṽ T ) term in the high-dimensional limit. Letting Σ = lim d→∞ 1 d tr(Σ), the dominant component of Term II evaluates to:\n\nTerm II = γ Σ ⋅ 1 d E [tr( Ṽ Σ Ṽ T )] (C.36)\n\nRecall that Ṽ = V S +V N with V N zero mean. Since the cross-terms are zero, we get the following decomposition:\n\nTerm II = γ Σ 1 d tr(V S ΣV T S ) Term II Signal + γ Σ 1 d E E [tr(V N ΣV T N )]\n\nTerm II Noise (C.37)\n\nDerivation of Term II Signal. We evaluate T var,Σ = 1 d tr(V S ΣV T S ). The deterministic operator is V S = -Γ -1 0 + D pre Π M , where D pre = Γ -1 0 -ηA -1 are block-diagonal. Expanding the trace yields:\n\nT var,Σ = 1 d tr(Γ -2 0 Σ) + 2 d tr(-Γ -1 0 ΣD pre Π M ) + 1 d tr(D pre Π M ΣD pre Π M ) (C.38)\n\nAs we observe the expression for T var,Σ is same as T var with Σ A replaced by Σ. Hence, by a similar derivation of (C.35) we get\n\nT var,Σ = 2 ∑ k=1 µ k Σ k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 Σ 1 -δ2 Σ 2 ) (C.39) Derivation of Term II Noise. We must evaluate 1 d E [tr(V N ΣV T N )].\n\nFollowing similar derivation of (C.19), replacing Σ by Σ 1/2 , we arrive at\n\n1 d E[∥V N Σ 1/2 ∥ 2 F ] = γ [tr(Σ(M M T ) † )] T inv,Σ ⋅ [ 1 d tr(V S ΣE V T S )] Tvar (C.40)\n\nNotice that we already characterized T var in the analysis of Term I. We next evaluate T inv,Σ = lim d→∞ 1 d tr(ΣG † ), where G = M M † = AΩΩ T A. Note that the expression for T inv,Σ is same as T inv where Σ 2 is replaced by Σ. Following the same derivation for (C.31), we arrive at\n\nT inv,Σ = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β < 1) + { 1 β -1 2 ∑ k=1 µ k Σ k a 2 k } 1(β > 1) (C.41)\n\nCombining the above characterizations, the limit for the components of Term II are given by:\n\nTerm II Signal = γ Σ ⋅ T var,Σ (C.42)\n\nTerm II Noise = γ 2 Σ ⋅ T inv,Σ ⋅ T var (C.43)\n\nwhere T var,Σ is given by Eq. (C.39), T inv,Σ by Eq. (C.41), and T var is given by (C.35) from the Term I derivation. Putting the characterizations derived for Term I and Term II in (B.5) completes the proof.",
+      "word_count": 543
+    },
+    {
+      "index": 23,
+      "title": "C.2.1 Proof of Lemma C.1",
+      "kind": "body",
+      "text": "To evaluate the asymptotic trace of Π M , we express the orthogonal projection operator onto the column space of the empirical feature matrix M as the limit of a Ridge-regularized inverse as the regularization parameter z → 0 + :\n\nΠ M = lim z→0 + M (M T M + zI B ) -1 M T = I d -lim z→0 + z(G + zI d ) -1 (C.44)\n\nwhere G = M M T = AΩΩ T A is the generalized sample covariance matrix, and R(z) = (G + zI d ) -1 is its resolvent. By the Bai-Silverstein theorem, as d, B → ∞ with B/d → β, the random resolvent R(z) is asymptotically equivalent to a deterministic diagonal matrix T (z). For any bounded deterministic matrix D, the normalized trace converges almost surely:\n\nlim d→∞ 1 d tr(DR(z)) - 1 d tr(DT (z))\n\na.s.\n\n→ 0 (C.45)\n\nwhere T (z) is given by\n\nT (z) = (zI d + v(z)A 2 ) -1 ,\n\nand v(z) is the Stieltjes transform of the companion matrix G = Ω T A 2 Ω. We define the effective rank fraction preserved in the k-th block as the normalized trace of the projection matrix restricted to that subspace:\n\nw k = lim d→∞ 1 d k tr(Π kk ) (C.46)\n\nSubstituting the resolvent limit and its deterministic equivalent T (z):\n\nw k = 1 -lim z→0 + 1 d k ∑ i∈Block k zT ii (z) = 1 -lim z→0 + z z + a 2 k v(z) = 1 -lim z→0 + 1 1 + a 2 k v(z) z (C.47)\n\nWe define the strict Stieltjes fixed-point root q as the limit of this ratio near the origin:\n\nq = lim z→0 + v(z) z (C.48)\n\nSubstituting q into the limit yields the following relation for the block weights:\n\nw k = 1 - 1 1 + a 2 k q = a 2 k q 1 + a 2 k q (C.49)\n\nTo determine the fixed-point root q, we utilize the trace identity between the resolvents of the d × d generalized sample covariance matrix G and its B × B companion matrix G = Ω T A 2 Ω. Because their nonzero eigenvalues are strictly identical, the normalized trace of the feature resolvent, m(z)\n\n= 1 d tr(R(z)) = 1 d tr[(G + zI d ) -1 ], is given by: zm(z) = 1 -β + βzv(z) .\n\n(C.50) By the Bai-Silverstein theorem, m(z) is asymptotically equivalent to the trace of the deterministic matrix T (z). Substituting this deterministic equivalent yields:\n\nm(z) = K ∑ k=1 µ k 1 z + a 2 k v(z) (C.51)\n\nMultiplying by z and equating this to the trace identity (C.50) establishes the exact relation:\n\n1 -β + βzv(z) = K ∑ k=1 µ k z z + a 2 k v(z) = K ∑ k=1 µ k 1 1 + a 2 k v(z) z\n\n(C.52)\n\nWe evaluate the strict limit of this equation as z → 0 + . On the right side, we substitute our definition of the root q = lim z→0 + v(z) z . On the left side, the limit of zv(z) is governed by the dimension of the null space of the companion matrix G. The maximum rank of G is bounded by d. If B > d (i.e., β > 1), the companion matrix has exactly Bd strict zero eigenvalues and the resolvent trace scales proportionally to B-d B 1 z . We therefore evaluate the limit exactly as:\n\nlim z→0 + zv(z) = max (1 - 1 β , 0) (C.53)\n\nSubstituting these limits into both sides of the trace identity yields:\n\n1 -β + β max (1 - 1 β , 0) = K ∑ k=1 µ k 1 1 + a 2 k q (C.54)\n\nThe left side mathematically simplifies exactly to max(1 -β, 0). On the right side, we substitute the definition of the block weights w k =\n\na 2 k q 1+a 2 k q , utilizing the identity 1 1+a 2 k q = 1 -w k : max(1 -β, 0) = K ∑ k=1 µ k (1 -w k ) = 1 - K ∑ k=1 µ k w k (C.55)\n\nRearranging the terms immediately yields:\n\nK ∑ k=1 µ k w k = 1 -max(1 -β, 0) = min(β, 1) = β (C.56)\n\nThis derivation holds universally across all parameterization regimes. In the under-parameterized regime (β > 1), the effective rank fraction saturates at β = 1, which mathematically forces w k → 1 and q → ∞. Equations (C.49) and (C.56) completely and deterministically parameterize the finite-dimensional traces of the random projection Π M .",
+      "word_count": 793
+    },
+    {
+      "index": 24,
+      "title": "C.2.2 Proof of Lemma C.2",
+      "kind": "body",
+      "text": "We express the orthogonal projection matrix Π M as the limit of the regularized resolvent R(z) = (AΩΩ\n\nT A + zI d ) -1 as z → 0 + : Π M = I d -lim z→0 + zR(z) (C.57)\n\nLet D 1 and D 2 be the orthogonal block indicator matrices for subspaces 1 and 2, such that D 1 D 2 = 0. Specifically,\n\nD 1 = [ I m 0 m×(d-m) 0 (d-m)×m 0 d-m ] , D 2 = [ 0 m 0 m×(d-m) 0 (d-m)×m I d-m ] (C.58)\n\nThe cross-trace can be written as tr(Π 12 Π 21 ) = tr(D 1 Π M D 2 Π M ). Substituting the resolvent limit into the trace definition yields:\n\nT 12 = lim z→0 + lim d→∞ 1 d tr (D 1 (I d -zR(z))D 2 (I d -zR(z))) (C.59)\n\nBecause D 1 D 2 = 0, expanding the product causes all terms of order lower than R(z) 2 to vanish exactly:\n\nT 12 = lim z→0 + z 2 [ lim d→∞ 1 d tr (D 1 R(z)D 2 R(z))] (C.60)\n\nIn the next lemma, we characterize the inner limit.\n\nLemma C.3 Let R(z) = (AΩΩ T A + zI d ) -1 be the resolvent of the generalized sample covariance matrix, and let T (z) = (zI d + v(z)A 2 ) -1 be its deterministic equivalent. Let D 1 and D 2 be d × d diagonal orthogonal block indicator matrices such that D 1 D 2 = 0. In the high-dimensional limit d, B → ∞ with B/d → β, the normalized trace of the product of the two resolvents converges almost surely to:\n\nlim d→∞ 1 d tr (D 1 R(z)D 2 R(z)) = v(z) 2 β Ψ 1 (z)Ψ 2 (z) ∆(z) (C.61)\n\nwhere Ψ k and ∆ k are defined as:\n\nΨ k (z) = lim d→∞ 1 d tr (D k A 2 T (z) 2 ) , ∆(z) = 1 - v(z) 2 β lim d→∞ 1 d tr (A 4 T (z) 2 ) .\n\nUsing Lemma C.3, we have\n\nΨ k (z) = lim d→∞ 1 d tr (D k T (z)A 2 T (z)) = µ k a 2 k (z + a 2 k v(z)) 2 (C.62) ∆(z) = 1 - v(z) 2 β lim d→∞ 1 d tr (A 4 T (z) 2 ) = 1 - v(z) 2 β 2 ∑ k=1 µ k a 4 k (z + a 2 k v(z)) 2\n\n(C.63)\n\nWe now evaluate the limit as z → 0 + . Using the Stieltjes fixed-point definition q = lim z→0 + v(z) z , we have v(z) = qz + o(z).\n\nFirst, we evaluate the limit of the scaled block traces z 2 Ψ k (z):\n\nlim z→0 + z 2 Ψ k (z) = lim z→0 + z 2 µ k a 2 k z 2 (1 + a 2 k q) 2 = µ k a 2 k (1 + a 2 k q) 2 (C.64) Recall that w k = a 2 k q 1+a 2 k q , which implies the variance factor is v k = w k (1 -w k ) = a 2 k q (1+a 2 k q) 2 .\n\nDividing by q, we map the block trace exactly to the variance factor:\n\nlim z→0 + z 2 Ψ k (z) = µ k v k q (C.65)\n\nSecond, we use (C.61) to evaluate T 12 given by (C.60). Distributing the z 2 multiplier from the projection limit alongside the v(z) 2 /z 2 → q 2 convergence yields:\n\nlim z→0 + 1 β ( v(z) 2 z 2 ) [z 2 Ψ 1 (z)][z 2 Ψ 2 (z)] = 1 β (q 2 ) ( µ 1 v 1 q ) ( µ 2 v 2 q ) = µ 1 µ 2 v 1 v 2 β (C.66)\n\nThird, we evaluate the denominator ∆(0) as z → 0 + :\n\n∆(0) = lim z→0 + [1 - 1 β ( v(z) 2 z 2 ) 2 ∑ k=1 µ k a 4 k (1 + a 2 k q) 2 ] = 1 - 1 β 2 ∑ k=1 µ k a 4 k q 2 (1 + a 2 k q) 2 (C.67)\n\nRecognizing the squared weight w 2 k = (\n\na 2 k q 1+a 2 k q ) 2 , we get ∆(0) = 1 -1 β ∑ 2 k=1 µ k w 2 k .\n\nWe apply the identity β = ∑ 2 k=1 µ k w k , given by (C.56), to replace the leading 1:\n\n∆(0) = ∑ 2 k=1 µ k w k -∑ 2 k=1 µ k w 2 k β = 1 β 2 ∑ k=1 µ k w k (1 -w k ) = µ 1 v 1 + µ 2 v 2 β (C.68)\n\nFinally, taking the ratio of the evaluated numerator and denominator, we get\n\nT 12 = µ1µ2v1v2 β µ1v1+µ2v2 β = µ 1 µ 2 v 1 v 2 µ 1 v 1 + µ 2 v 2 (C.69)\n\nwhich concludes the proof.",
+      "word_count": 874
+    },
+    {
+      "index": 25,
+      "title": "C.2.3 Proof of Lemma C.3",
+      "kind": "body",
+      "text": "We evaluate the cross-trace by introducing a continuous, deterministic perturbation t to the resolvent. We define the perturbed resolvent matrix as R(z, t) = (AΩΩ T A + tD 2 + zI d ) -1 . Let m 1 (z, t) = 1 d tr(D 1 R(z, t)) be its normalized trace on the first subspace.\n\nTaking the derivative of the random trace m 1 (z, t) with respect to the perturbation t at t = 0 directly yields the target cross-trace. Using the matrix derivative identity ∂ ∂t M -1 = -M -1 ∂M ∂t M -1 :\n\n∂ ∂t m 1 (z, t)| t=0 = - 1 d tr(D 1 R(z, 0)D 2 R(z, 0)) = - 1 d tr(D 1 R(z)D 2 R(z)) (C.70)\n\nBy the Bai-Silverstein theorem, R(z, t) is asymptotically equivalent to the perturbed deterministic matrix T (z, t). Because the perturbation tD 2 simply shifts the diagonal, the perturbed Stieltjes root v(z, t) enforces the following exact structural form for the deterministic equivalent:\n\nT (z, t) = (zI d + v(z, t)A 2 + tD 2 ) -1 (C.71)\n\nTaking the derivative of the deterministic trace m1 (z, t) = 1 d tr(D 1 T (z, t)) at t = 0 gives:\n\nm′ 1 (0) = - 1 d tr(D 1 T (z)[v ′ (0)A 2 + D 2 ]T (z)) (C.72)\n\nBecause D 1 and D 2 are strictly orthogonal (D 1 D 2 = 0) and T (z) is diagonal, the terms commute and the D 2 cross-term becomes zero (D 1 T (z)D 2 T (z) = 0). Therefore,\n\nm′ 1 (0) = -v ′ (0) [ 1 d tr(D 1 A 2 T (z) 2 )] = -v ′ (0)Ψ 1 (z) (C.73)\n\nTo evaluate the scalar derivative v ′ (0), we must construct the fixed-point equation for the perturbed root v(z, t). Also by the Silverstein equation (Silverstein, 1995) , we have\n\n1 v(z, t) = z + 1 βd tr(A 2 T (z, t)) (C.74)\n\nWe differentiate both sides of this fixed-point equation with respect to t at t = 0:\n\n-\n\nv ′ (0) v(z) 2 = 1 βd tr (A 2 ∂ ∂t T (z, t)| t=0 ) = - 1 βd tr(A 2 T (z)[v ′ (0)A 2 + D 2 ]T (z)) (C.75)\n\nDistributing the trace operator linearly across the sum yields:\n\n-\n\nv ′ (0) v(z) 2 = - v ′ (0) βd tr(A 4 T (z) 2 ) - 1 βd tr(D 2 A 2 T (z) 2 ) (C.76)\n\nMultiplying both sides by -v(z) 2 and substituting the definition Ψ 2 (z) = 1 d tr(D 2 A 2 T (z) 2 ) gives:\n\nv ′ (0) = v ′ (0)\n\nv(z) 2 βd tr(A 4 T (z) 2 ) + v(z) 2 β Ψ 2 (z) (C.77)\n\nGrouping the v ′ (0) terms on the left side exposes the exact macroscopic fluctuation denominator ∆(z):\n\nv ′ (0) [1 - v(z) 2 βd tr(A 4 T (z) 2 )] ∆(z) = v(z) 2 β Ψ 2 (z) ⇒ v ′ (0) = v(z) 2 β Ψ 2 (z) ∆(z) (C.78)\n\nBecause the asymptotic limit of the random trace derivative (C.70) equals the deterministic trace derivative (C.73), we substitute the analytical solution for v ′ (0) into the equivalencelim 1 d tr(D 1 RD 2 R) = -v ′ (0)Ψ 1 (z). The negative signs cancel, yielding the exact closed-form limit:\n\nlim d→∞ 1 d tr (D 1 R(z)D 2 R(z)) = v(z) 2 β Ψ 1 (z)Ψ 2 (z) ∆(z) (C.79)\n\nwhich concludes the proof.",
+      "word_count": 604
+    },
+    {
+      "index": 26,
+      "title": "D Proof of Proposition B.2",
+      "kind": "body",
+      "text": "(i) As β → 1 + , the terms T inv and T inv,Σ diverge clearly due to the term 1/(β -1) in (C.28), (C.41). Also as β → 1 -, then q → ∞ and so T inv and T inv,Σ diverge. This shows that lim β→1 F (β) = ∞.\n\nWe next note that for β ≥ 1, the model definitions dictate that w k = 1, v k = 0, and T 12 = 0. We substitute these constants into the components of F (β):\n\nBias(β) = 2 ∑ k=1 µ k (α k + δ k ) 2 T var (β) = 2 ∑ k=1 µ k s k (g k + δk ) 2 T var,Σ (β) = 2 ∑ k=1 µ k Σ k (g k + δk ) 2 T inv (β) = 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k T inv,Σ (β) = 1 β -1 2 ∑ k=1 µ k Σ k a 2 k\n\nBy substituting these components into the objective function F (β), we can write it in the form:\n\nF (β) = C 1 + C 2 β -1\n\nwhere C 1 and C 2 are finite, strictly positive constants independent of β. The derivative is F ′ (β) = -C2 (β-1) 2 . Since C 2 > 0, we have F ′ (β) < 0, proving F (β) is strictly decreasing for β > 1. As β → ∞, the term C2 β-1 → 0. The function converges to the constant C 1 given by: F (↑∞):\n\nF (↑∞) = 2 ∑ k=1 µ k (α k + δ k ) 2 + γ Σ 2 ∑ k=1 µ k Σ k (g k + δk ) 2\n\n(ii) At β = 0, the implicit variable q = 0, which implies w k = 0, v k = 0, and T 12 = 0. Furthermore, the leading q multiplier in T inv and T inv,Σ sets both inverse trace terms exactly to zero. Substituting these into F (β) eliminates all cross-terms, yielding:\n\nF (0) = 2 ∑ k=1 µ k α 2 k + γ Σ 2 ∑ k=1 µ k Σ k g 2 k\n\nNext, we evaluate the gap ∆F = F (↑∞) -F (0):\n\n∆F = 2 ∑ k=1 µ k [(α k + δ k ) 2 -α 2 k ] + γ Σ 2 ∑ k=1 µ k Σ k [(g k + δk ) 2 -g 2 k ]\n\nBased on the parameter definitions, a 2 = r and δ 2 = δ2 = 1 1+κ -η r . Expanding the squared perturbations for k = 2 yields:\n\n(α 2 + δ 2 ) 2 -α 2 2 = (1 - η r ) 2 -α 2 2 = η 2 r 2 - 2η r + 1 -α 2 2 (g 2 + δ2 ) 2 -g 2 2 = (- η r ) 2 -g 2 2 = η 2 r 2 -g 2 2\n\nSubstituting these into ∆F , the leading-order behavior as r → 0 + is dominated by the 1/r 2 terms:\n\n∆F = η 2 r 2 µ 2 (1 + γ Σ) + O ( 1 r )\n\nBecause µ 2 (1 + γ Σ)η 2 > 0, the gap diverges to positive infinity as r → 0 + . Thus, there exists a sufficiently small r > 0 such that ∆F > 0, or F (↑∞) > F (0).\n\n(iii) We next calculate F ′ (0) = dF dβ | β=0\n\n. The asymptotic test error in the β < 1 regime is given by:\n\nF (β) = Bias + γT inv T var + γ ΣT var,Σ + γ 2 ΣT inv,Σ T var\n\nBy applying the product rule with respect to β, the full derivative is:\n\nF ′ (β) = Bias ′ + γ (T ′ inv T var + T inv T ′ var ) + γ ΣT ′ var,Σ + γ 2 Σ (T ′ inv,Σ T var + T inv,Σ T ′ var )\n\nTo evaluate this at β = 0, we must look at the inverse trace terms. Both T inv and T inv,Σ are defined with a leading factor of q. When β → 0, the implicit root q → 0. Because the fraction following q converges to a finite constant as q → 0, we have exactly:\n\nT inv (0) = 0 and T inv,Σ (0) = 0 Substituting these zeros into the product rule eliminates the T ′ var (0) terms entirely. The derivative simplifies to:\n\nF ′ (0) = Bias ′ (0) + γT ′ inv (0)T var (0) + γ ΣT ′ var,Σ (0) + γ 2 ΣT ′ inv,Σ (0)T var (0)\n\nWe define the rightmost terms collectively as the variance penalty V (γ):\n\nV (γ) ∶= γ(T ′ inv (0)T var (0) + ΣT ′ var,Σ (0)) + γ 2 ( ΣT ′ inv,Σ (0)T var (0))\n\nHence, F ′ (0) = Bias ′ (0) + V (γ). Because all the terms in V (γ) are finite for any strictly positive r > 0, the derivatives evaluated at β = 0 are all finite constants. Since every term in V (γ) is scaled by either γ or γ 2 , we have:\n\nlim γ→0 V (γ) = 0\n\nwhere for a direction E, we have H[E] = d dt ∇ V L(V + tE)| t=0 . We next upper bound the spectral norm of the Hessian as\n\n∥H∥ op ≤ k-1 ∑ j=0 k-1 ∑ l=0 ∥M j ∥ op ∥M l ∥ op ∥M k-1-l ∥ op ∥M k-1-j ∥ op ∥w * ∥ 2 ℓ2 ∥S∥ op ≤ k-1 ∑ j=0 k-1 ∑ l=0 ∥M ∥ j op ∥M ∥ l op ∥M ∥ k-1-l op ∥M ∥ k-1-j op ∥w * ∥ 2 ∥S∥ op = k 2 ρ(M ) 2k-2 ∥w * ∥ 2 ℓ2 ∥S∥ op ,\n\nwhere the second step follows from sub-multiplicativity of the operator norm.",
+      "word_count": 1020
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Front-loading reasoning: The synergy between pretraining and post-training data",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "S N Akter",
+        "S Prabhumoye",
+        "E Nyberg",
+        "M Patwary",
+        "M Shoeybi",
+        "Y Choi",
+        "B Catanzaro"
+      ],
+      "raw_text": "S N Akter S Prabhumoye E Nyberg M Patwary M Shoeybi Y Choi B Catanzaro arXiv:2510.03264 Front-loading reasoning: The synergy between pretraining and post-training data 2025 arXiv preprint"
+    },
+    {
+      "index": 2,
+      "title": "Kl-regularized rlhf with multiple reference models: Exact solutions and sample complexity",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "G Aminian",
+        "A R Asadi",
+        "I Shenfeld",
+        "Y Mroueh"
+      ],
+      "raw_text": "Kl-regularized rlhf with multiple reference models: Exact solutions and sample complexity G Aminian A R Asadi I Shenfeld Y Mroueh The Thirty-ninth Annual Conference on Neural Information Processing Systems 2025"
+    },
+    {
+      "index": 3,
+      "title": "What can transformers learn in-context? a case study of simple function classes",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "S Garg",
+        "D Tsipras",
+        "P S Liang",
+        "G Valiant"
+      ],
+      "raw_text": "What can transformers learn in-context? a case study of simple function classes S Garg D Tsipras P S Liang G Valiant Advances in neural information processing systems 35 2022"
+    },
+    {
+      "index": 4,
+      "title": "Data recipes for reasoning models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "E Guha",
+        "R Marten",
+        "S Keh",
+        "N Raoof",
+        "G Smyrnis",
+        "H Bansal",
+        "M Nezhurina",
+        "J Mercat"
+      ],
+      "raw_text": "E Guha R Marten S Keh N Raoof G Smyrnis H Bansal M Nezhurina J Mercat T Vu Z Sprague arXiv:2506.04178 Data recipes for reasoning models 2025 arXiv preprint"
+    },
+    {
+      "index": 5,
+      "title": "Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "D Guo",
+        "D Yang",
+        "H Zhang",
+        "J Song",
+        "R Zhang",
+        "R Xu",
+        "Q Zhu",
+        "S Ma"
+      ],
+      "raw_text": "D Guo D Yang H Zhang J Song R Zhang R Xu Q Zhu S Ma P Wang X Bi arXiv:2501.12948 Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning 2025 arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "Transformers learn to implement multi-step gradient descent with chain of thought",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "J Huang",
+        "Z Wang",
+        "J D Lee"
+      ],
+      "raw_text": "Transformers learn to implement multi-step gradient descent with chain of thought J Huang Z Wang J D Lee arXiv:2502.21212 2025 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "m1: Unleash the potential of test-time scaling for medical reasoning with large language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "X Huang",
+        "J Wu",
+        "H Liu",
+        "X Tang",
+        "Y Zhou"
+      ],
+      "raw_text": "m1: Unleash the potential of test-time scaling for medical reasoning with large language models X Huang J Wu H Liu X Tang Y Zhou arXiv:2504.00869 2025 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "Understanding the role of training data in test-time scaling",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "A Javanmard",
+        "B Mirzasoleiman",
+        "V Mirrokni"
+      ],
+      "raw_text": "Understanding the role of training data in test-time scaling A Javanmard B Mirzasoleiman V Mirrokni arXiv:2510.03605 2025 arXiv preprint"
+    },
+    {
+      "index": 9,
+      "title": "Datacomp-lm: In search of the next generation of training sets for language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "J Li",
+        "A Fang",
+        "G Smyrnis",
+        "M Ivgi",
+        "M Jordan",
+        "S Y Gadre",
+        "H Bansal",
+        "E Guha"
+      ],
+      "raw_text": "Datacomp-lm: In search of the next generation of training sets for language models J Li A Fang G Smyrnis M Ivgi M Jordan S Y Gadre H Bansal E Guha S S Keh K Arora Advances in Neural Information Processing Systems 37 2024"
+    },
+    {
+      "index": 10,
+      "title": "The llama 4 herd: The beginning of a new era of natively multimodal ai innovation",
+      "doi": "",
+      "year": "2025",
+      "authors": [],
+      "raw_text": "The llama 4 herd: The beginning of a new era of natively multimodal ai innovation Meta April 2025"
+    },
+    {
+      "index": 11,
+      "title": "Simple test-time scaling",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "N Muennighoff",
+        "Z Yang",
+        "W Shi",
+        "X L Li",
+        "L Fei-Fei",
+        "H Hajishirzi",
+        "L Zettlemoyer",
+        "P Liang"
+      ],
+      "raw_text": "Simple test-time scaling N Muennighoff Z Yang W Shi X L Li L Fei-Fei H Hajishirzi L Zettlemoyer P Liang E Candès T B Hashimoto Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing the 2025 Conference on Empirical Methods in Natural Language Processing 2025 1"
+    },
+    {
+      "index": 12,
+      "title": "Mini-batch coresets for memory-efficient language model training on data mixtures",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "D Nguyen",
+        "W Yang",
+        "R Anand",
+        "Y Yang",
+        "B Mirzasoleiman"
+      ],
+      "raw_text": "D Nguyen W Yang R Anand Y Yang B Mirzasoleiman arXiv:2407.19580 Mini-batch coresets for memory-efficient language model training on data mixtures 2024 arXiv preprint"
+    },
+    {
+      "index": 13,
+      "title": "Learning to reason with llms",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Openai"
+      ],
+      "raw_text": "Learning to reason with llms Openai 2024"
+    },
+    {
+      "index": 14,
+      "title": "Language models are unsupervised multitask learners",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "A Radford",
+        "J Wu",
+        "R Child",
+        "D Luan",
+        "D Amodei",
+        "I Sutskever"
+      ],
+      "raw_text": "Language models are unsupervised multitask learners A Radford J Wu R Child D Luan D Amodei I Sutskever OpenAI blog 1 8 9 2019"
+    },
+    {
+      "index": 15,
+      "title": "Strong convergence of the empirical distribution of eigenvalues of large dimensional random matrices",
+      "doi": "",
+      "year": "1995",
+      "authors": [
+        "J W Silverstein"
+      ],
+      "raw_text": "Strong convergence of the empirical distribution of eigenvalues of large dimensional random matrices J W Silverstein Journal of Multivariate Analysis 55 2 1995"
+    },
+    {
+      "index": 16,
+      "title": "Attention is all you need",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "A Vaswani",
+        "N Shazeer",
+        "N Parmar",
+        "J Uszkoreit",
+        "L Jones",
+        "A N Gomez",
+        "Ł Kaiser",
+        "I Polosukhin"
+      ],
+      "raw_text": "Attention is all you need A Vaswani N Shazeer N Parmar J Uszkoreit L Jones A N Gomez Ł Kaiser I Polosukhin Advances in neural information processing systems 30 2017"
+    },
+    {
+      "index": 17,
+      "title": "Doremi: Optimizing data mixtures speeds up language model pretraining",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "S M Xie",
+        "H Pham",
+        "X Dong",
+        "N Du",
+        "H Liu",
+        "Y Lu",
+        "P S Liang",
+        "Q V Le"
+      ],
+      "raw_text": "Doremi: Optimizing data mixtures speeds up language model pretraining S M Xie H Pham X Dong N Du H Liu Y Lu P S Liang Q V Le T Ma A W Yu Advances in Neural Information Processing Systems 36 2023"
+    },
+    {
+      "index": 18,
+      "title": "Iterative preference learning from human feedback: Bridging theory and practice for rlhf under kl-constraint",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "W Xiong",
+        "H Dong",
+        "C Ye",
+        "Z Wang",
+        "H Zhong",
+        "H Ji",
+        "N Jiang",
+        "T Zhang"
+      ],
+      "raw_text": "Iterative preference learning from human feedback: Bridging theory and practice for rlhf under kl-constraint W Xiong H Dong C Ye Z Wang H Zhong H Ji N Jiang T Zhang Forty-first International Conference on Machine Learning"
+    },
+    {
+      "index": 19,
+      "title": "Smalltolarge (s2l): Scalable data selection for finetuning large language models by summarizing training trajectories of small models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Y Yang",
+        "S Mishra",
+        "J Chiang",
+        "B Mirzasoleiman"
+      ],
+      "raw_text": "Smalltolarge (s2l): Scalable data selection for finetuning large language models by summarizing training trajectories of small models Y Yang S Mishra J Chiang B Mirzasoleiman Advances in Neural Information Processing Systems 37 2024"
+    },
+    {
+      "index": 20,
+      "title": "Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model? arXiv preprint",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Y Yue",
+        "Z Chen",
+        "R Lu",
+        "A Zhao",
+        "Z Wang",
+        "S Song",
+        "G Huang"
+      ],
+      "raw_text": "Y Yue Z Chen R Lu A Zhao Z Wang S Song G Huang arXiv:2504.13837 Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model? arXiv preprint 2025"
+    },
+    {
+      "index": 21,
+      "title": "Simplerl-zoo: Investigating and taming zero reinforcement learning for open base models in the wild",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "W Zeng",
+        "Y Huang",
+        "Q Liu",
+        "W Liu",
+        "K He",
+        "Z Ma",
+        "J He"
+      ],
+      "raw_text": "W Zeng Y Huang Q Liu W Liu K He Z Ma J He arXiv:2503.18892 Simplerl-zoo: Investigating and taming zero reinforcement learning for open base models in the wild 2025 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Logarithmic regret for online kl-regularized reinforcement learning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "H Zhao",
+        "C Ye",
+        "W Xiong",
+        "Q Gu",
+        "T Zhang"
+      ],
+      "raw_text": "Logarithmic regret for online kl-regularized reinforcement learning H Zhao C Ye W Xiong Q Gu T Zhang 2025 CoRR"
+    }
+  ],
+  "section_count": 26,
+  "reference_count": 22,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:43.451505+00:00"
+}

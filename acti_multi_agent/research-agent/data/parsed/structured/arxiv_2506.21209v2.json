@@ -1,0 +1,964 @@
+{
+  "paperId": "arxiv:2506.21209v2",
+  "title": "BitMark: Watermarking Bitwise Autoregressive Image Generative Models",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2506.21209v2.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2506.21209v2.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2506.21209v2.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "State-of-the-art text-to-image models generate photorealistic images at an unprecedented speed. This work focuses on models that operate in a bitwise autoregressive manner over a discrete set of tokens that is practically infinite in size. However, their impressive generative power comes with a growing risk: as their outputs increasingly populate the Internet, they are likely to be scraped and reused as training data-potentially by the very same models. This phenomenon has been shown to lead to model collapse, where repeated training on generated content, especially from the models' own previous versions, causes a gradual degradation in performance. A promising mitigation strategy is watermarking, which embeds human-imperceptible yet detectable signals into generated images-enabling the identification of generated content. In this work, we introduce BitMark, a robust bitwise watermarking framework. Our method embeds a watermark directly at the bit level of the token stream during the image generation process. Our bitwise watermark subtly influences the bits to preserve visual fidelity and generation speed while remaining robust against a spectrum of removal techniques. Furthermore, it exhibits high radioactivity, i.e., when watermarked generated images are used to train another image generative model, this second model's outputs will also carry the watermark. The radioactive traces remain detectable even when only fine-tuning diffusion or image autoregressive models on images watermarked with our BitMark. Overall, our approach provides a principled step toward preventing model collapse in image generative models by enabling reliable detection of generated outputs.",
+      "word_count": 238
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "The image generation capabilities of large scale models [8, 11, 37, 12, 23, 26] have improved tremendously. These models can now generate at an unprecedented speed high-quality photorealistic outputs, which are often indistinguishable from real images [11, 37] . Several models [11, 37] now achieve state-of-the-art performance by operating in a bitwise autoregressive manner [35, 41] . This provides them with a near infinite number of possible tokens, yielding high-resolution images. This performance, however, comes at the expense of a training process that is highly time-, cost-and most of all data-intensive [25, 29] . The required training data are often scraped from the Internet [13, 24, 32] . This practice carries risks: with the ever-growing amount of generated data on the internet, the models get increasingly trained on generated data rather than natural data. The iterative training of models on their own generated data has been shown to degrade performance [1, 33] , which is referred to as model collapse. The process also leads to encoding the current models' mistakes, biases, and unfairnesses into its future versions [40] . From the perspective of model owners, especially big companies such as OpenAI, Google, or ByteDance, who invest in large scale proprietary models that are exposed via public APIs, this poses a significant threat. To prevent the possible degradation of model quality, it is crucial for them to identify their own generated content.\n\nA promising way to address the above problems is watermarking [4, 9, 10, 14, 22, 38, 48] . By embedding human-imperceptible, yet detectable signals into generated images, a model owner can automatically identify and filter out their model's previously generated content when collecting training data for future versions. To prevent model collapse, watermarks should be radioactive [7, 28, 31] -that is, they should persist across model lineages, so that models trained on watermarked outputs also reproduce the watermark. This is crucial when third parties fine-tune models on such outputs and use them to generate new content, which may later be scraped and reused by the original model-causing it to (unknowingly) train on data derived from its own outputs. While watermarks have been extensively studied in diffusion models (DMs) [9, 10, 38, 48] , no watermarking methods have been proposed for image autoregressive models such as Infinity, so far. Additionally, existing DM watermarks have been shown to lack radioactiveness [7] , motivating the need for a new approach.\n\nTo close this gap and provide a robust way of detecting images generated by state-of-the-art autoregressive models operating on bits like Infinity [11] and Instella [37] we propose the BitMark watermark that aligns with bitwise image generation process and operates directly on a bit-level. We show that this bit-level design is crucial in image autoregressive models, as watermarks at the token level-a common practice in autoregressive language models [16, 46] -are suboptimal. This is because unlike language models, which operate on discrete tokens and yield stable token representations, image models must decode to and re-encode from a continuous image space, introducing discrepancies between the original and recovered tokens. These discrepancies can decrease the watermark signal. Yet, we find that the discrepancies are substantially smaller at the bit level (Figure 1 ), motivating our bitwise approach to obtain a robust watermark. To embed the watermark, BitMark first divides all possible n-bit sequences into green and red lists, where the green list is supposed to contain sequences indicating the presence of the watermark. The embedding process of the watermark aims at completing one of the green-list bit sequences for every next bit by slightly increasing each logit of the preferred bit that would complete the sequence. This eventually causes the generated image to contain more sequences from the green list than natural images, which can be used for detection. Concretely, the detection of the watermark is performed on re-encoded images and based on the count of bit sequences from the green list.\n\nOur watermark exhibits many desirable properties. Most importantly, the generated images are of similar quality as images generated without the embedded watermark. Moreover, the watermark embedding has a negligible impact on the speed of the image generation. Also, the corresponding watermark detection method is fast and reliable. As in natural images all bit sequences are equally likely to occur while our watermarked images have the bias towards sequences from the green list, natural images are extremely unlikely to be detected as watermarked. Furthermore, working on the bit-level makes BitMark robust against a wide range of attacks, such as adding Gaussian noise or blur to the image, applying color jitter, random crop, or JPEG compression. Our watermark is also highly resilient against dedicated watermark-removal techniques, for example, the watermark in the sand attack [42] or CtrlRegen [20] . Finally, we show that BitMark is radioactive. This means that when we use the watermarked images to train or fine-tune other image generative models, our watermark is still present in the outputs from these other models. We demonstrate all these properties through our extensive experimental evaluation.\n\nIn summary we make the following contributions:\n\n• We propose BitMark-the first watermarking scheme for bitwise image generative models. BitMark leverages the bitwise image generation process of these models to embed the watermark on the level of bits, which preserves the high quality of the models' outputs and its inference speed. We show the success of our method on Infinity and Instella.\n\n• We thoroughly evaluate BitMark against a wide variety of standard and dedicated watermark removal attacks and show its robustness to all of them. Specifically, BitMark is also resilient to the watermark in the sand attack [42] , which is targeted at removing the watermarks from the generated content. Finally, BitMark is also robust against a Bit-Flipper attack carefully crafted against it.\n\n• We also assess BitMark's radioactivity and show that when other image-generative models are trained or fine-tuned on images watermarked with our method, these new models' outputs will also contain our watermark. This makes BitMark highly suitable to identify generated content and contributes to preventing model collapse due to iterative training a model on its generated images.",
+      "word_count": 1012
+    },
+    {
+      "index": 3,
+      "title": "Background",
+      "kind": "introduction",
+      "text": "We first introduce image autoregressive models, with a focus on the state-of-the-art text-to-image models that operate on bits, namely Infinity and Instellaoperating in an autoregressive manner. We then provide an overview on techniques used to robustly watermark image generative models.\n\nVisual AutoRegressive Modeling (VAR) [35] . VAR leverages discrete quantization to predict tokens as residual maps, scaling from an initial low scale (coarse-grain) to a final scale (fine-grain) resolution. VAR further leverages the transformer architecture [36] across all tokens to significantly improve generation quality. VAR was extended from class-to-image to the Infinity model [11] , which is a text-to-image autoregressive model for high-resolution image synthesis, using nextscale prediction similar to VAR [35] . Instead of leveraging index-wise tokens for quantization like VAR [35] , Infinity uses bitwise token prediction with an implicit codebook and applies binary spherical quantization [47] to select an entry from the codebook. This results in more efficient computation and further enables the usage of large codebook sizes, e.g., 2 64 . Random bit flipping further empowers the model to self-correct on each scale, leveling out errors stemming from earlier tokens. The visual autoregressive paradigm instantiated by Infinity achieves the state-of-the-art (SOTA) in image generation. Instella [37] is a token-lightweight next-patch prediction autoregressive model. It efficiently leverages bits to minimize the number of tokens required for generating highresolution images, reducing it to as few as 128 tokens. This bitwise paradigm allows Instella to achieve competitive results in image generation with significantly lower computational resources.",
+      "word_count": 247
+    },
+    {
+      "index": 4,
+      "title": "Watermarking Images.",
+      "kind": "body",
+      "text": "Watermarking entails embedding a message, pattern, or information into an image, that can be detected. The embedded information should be hard to remove and can be also used to verify the provenance of the image. In general, the watermarking methods can be either static or learning-based. In static watermark embedding, a transform is directly applied to an image [22] . Learning-based methods are generally based on three key components: a watermark (w), an encoder (E) and a decoder (D). The encoder is trained to embed the watermark into the image, while not impacting its quality and the decoder is trained to reconstruct the watermark given a watermarked image to perform detection. An important aspect of watermarks is the trade-off between their detectability and their impact on the quality of the data, which was thoroughly analyzed in [39] .",
+      "word_count": 138
+    },
+    {
+      "index": 5,
+      "title": "Watermarking Diffusion Models.",
+      "kind": "body",
+      "text": "Learning-based watermarks represent the SOTA for Diffusion Models [9, 10, 38, 48] . They target different points of the image generation process, such as the initial data used to train the model [48] , noise prediction [10, 38] , or the decoding process [9] . The Recipe method [48] embeds a binary signature into training data using a pretrained encoder-decoder and trains an explicit decoder to extract this watermark from outputs. In contrast, Tree-Ring [38] embeds a structured pattern in the initial noise vector, designed in the Fourier space, achieving robustness to transformations by enabling detection through inversion of the diffusion process. On the other hand, the PRC Watermarking [10] generates the initial noise vector from a pseudorandom error-correcting code, allowing deterministic reconstruction of the noise for watermark retrieval. Finally, Stable Signature [9] fine-tunes the latent decoder of latent diffusion models (LDMs) to insert a recoverable watermark using a pretrained extractor, modifying the generation process at the decoding stage. However, the watermarking techniques for diffusion models are not radioactive [7] , hence, do not prevent the model collapse.",
+      "word_count": 178
+    },
+    {
+      "index": 6,
+      "title": "Watermarking Autoregressive Models.",
+      "kind": "body",
+      "text": "As of now, all the efforts on watermarking autoregressive models have been directed towards creating watermarks for Large Language Models (LLMs) [16] . The KGW watermark [16] uses the concept of a green and red token lists, where generation is softly nudged to predict tokens from the green list rather than from the red list. The lists are generated dynamically, based on the hash value of the previously predicted token(s). For detection, the LLM used to generate the text is not needed. Instead, a suspect text is assessed based on how often tokens from the green list appear, compared to tokens from the red list. At the end of detection a statistical test is performed. KGW was extended to the Unigram-Watermark [46] , which simplifies the design by introducing a fixed global green and red lists. The simplified approached allowed for guaranteed generation quality, provable correctness in watermark detection, and robustness against both text editing and paraphrasing. In this work, we build on these watermarking schemes originally developed for large language models to address the lack of watermarking techniques for bitwise generative models.\n\nPrivate Watermarking. In our watermark, we follow the Private Watermarking from KGW [16] . For this end, the generative model is kept behind a secure API with a secret key K. This secret key K is used as input to a pseudorandom function (PRF) F , with the h previously generated tokens, to compute the red-green list split for the next predicted token. Here the context window h is a hyperparameter, which trades robustness with privacy. For small context windows h (e.g., 1 or 2) the watermark is robust against removal attacks but an attacker could tabulate the frequency of token pairs and brute-force knowledge about the green list, reducing the privacy of the method. For larger values of h (e.g., 5), changing a single token has an impact on the next h downstream tokens, potentially flipping them to the red set. The privacy of this approach can also be boosted by using k different private keys and choosing one randomly during generation.\n\nWatermark Robustness. To reliably perform image provenance, a watermark must be robust to removal attacks. There is a wide range of these kinds of attacks that have been proposed in the literature [2, 20, 27] . For example, the scrubbing attacks aim at removing the watermarks from the outputs of a generative model, which can be done by producing a valid paraphrase that is detected as non-watermarked text [15] or image [3] . Zhang et al. [42] claim that under the assumption that both a quality oracle (that can evaluate whether a candidate output is a high-quality response to a prompt) and a perturbation oracle (which can modify an output with a nontrivial probability of maintaining quality) exist, it is feasible to remove existing watermarks in generative models without quality degradation of the watermarked content. We evaluate our BitMark against a wide spectrum of attacks and show that our method is robust against them.",
+      "word_count": 500
+    },
+    {
+      "index": 7,
+      "title": "BitMark Method",
+      "kind": "methods",
+      "text": "The autoregressive image generative models that we consider, namely Infinity [11] and Instella [37] , predict bits instead of tokens, distinguishing them from other image autoregressive models such as VAR [35] or RAR [41] . We leverage this prediction scheme to design a dedicated watermark. Our BitMark watermark is embedded during the generation process, subtly shifting the bitwise representation towards a higher frequency of detectable patterns to resist manipulation.\n\nProblem Formulation and Desiderata. Our goal is to embed a watermark during the image generation process and subsequently detect it by analyzing the generated image. BitMark targets the prevention of model collapse. In this setup, only the model owner is concerned of detecting the watermark and wants to ensure that their own data are not used to train their next models. Thus, we aim at four essential properties for our watermarking scheme to prevent model collapse: (1) Negligible Impact on the Generation. To maintain the utility of the generative model, the watermark should not degrade the quality of the generated images, while also maintaining a fast inference speed.\n\n(2) Reliable Verification. The model owner should be able to detect the watermarked images and verify the confidence of the extracted watermark. The model owner encodes the image to their own space and it is only relevant to the model owner if the watermark is present there or not. The encoder part of the model is also kept private so only the model owner can verify the watermark. The natural images should not be detected as containing the watermark. At the scale of the large models trained on trillions of samples, a small number of false positives is acceptable as long as it does not exceeds a certain threshold (e.g., 1%), which can also prevent model poisoning [45] . (3) Robustness. The watermark should be robust not only against conventional attacks, such as Gaussian noise or JPEG compression, but also against strong dedicated watermark removal attacks such as CtrlRegen [20] or watermarks in the sand [42] . (4) Radioactivity. If other generative models are trained on watermarked images, images generated by these new models should also contain our watermarks [7, 28, 31] .\n\nThreat Model. We assume two parties: a model owner providing an image generation API where our BitMark is deployed, and an attacker who aims to fool the model owner to train on their own generated images and to prevent the use of large-scale natural image datasets for model training. We assume that the model owner follows the Private Watermarking from [16] and keeps the generative model behind a secure API. The model owner wants to watermark their own images in order not to train on them. The watermark should also be radioactive so that if any other party fine-tunes their own models on the watermarked data, the fine-tuned model's outputs are watermarked, as well. Further, we assume that the watermarking technique is private and verifiable by the model owner.\n\nOn the other hand, the attacker might attempt to remove the embedded watermark. For instance, competitors might still want to remove the watermark to harm the model owner. We assume that the attacker has black-box access to the model, i.e., they can provide inputs and observe the corresponding outputs. The attacker is allowed to make arbitrary modifications to the generated image, including but not limited to: applying image transformations (e.g., noising, blurring, cropping, etc.) or specific watermark removal techniques [20, 42] . We define adversarial behavior as any attempt to remove the watermark in the generated image while preserving high perceptual quality and semantic content. Attacks that destroy the usefulness or visual coherence of the image (e.g., replacing it with noise) are not considered meaningful threats.",
+      "word_count": 615
+    },
+    {
+      "index": 8,
+      "title": "Motivation for the Bitwise Watermark",
+      "kind": "body",
+      "text": "We identify an inherent challenge in watermarking the images generated by autoregressive models stemming from imperfections in image encoding and decoding. Specifically, the model first generates a sequence of tokens, which are decoded into an image. However, when the exact same image is re-encoded and tokenized, it produces a different set of tokens.\n\n0 2 4 6 8 10 12 Scale Index 0% 20% 40% 60% 80% 100% Overlap (%) Mean ± Std Dev for bits Mean ± Std Dev for tokens This also holds partly true for bits that underlie the tokens. The observed behavior does not occur in the autoregressive LLMs, where the tokens produced by decoding and then re-encoding a generated text match exactly. We quantify the bit and token discrepancies in Figure 1 for Infinity. In both cases, bits and tokens are generated by the model and then reconstructed by its auto-encoder. Here, the highest bit overlap occurs at the initial and final resolutions (scales). This is likely because the early stages capture coarse structural features, while the final resolution refines the image, leading to fewer changes in the bit sequence. We observe a consistent average token overlap of approximately 2.385% and bit overlap of 77.432%. Given the significantly large codebook size of 2 32 in Infinity, we observe that the bitwise information loss is much smaller than the token-wise loss. This motivates our work to design a watermark that biases the generated sequences of tokens on the bit-level instead of on the token-level.",
+      "word_count": 248
+    },
+    {
+      "index": 9,
+      "title": "Embedding our BitMark Watermark",
+      "kind": "body",
+      "text": "Next, we detail how BitMark is embedded. The embedding protocol is directly applied on the bit-level in the autoregressive generation process of the model. We present the full procedure for multi-scale models like Infinity in Algorithm 1 and for single-scale models like Instella IAR in Algorithm 3. First, we separate the list of all bit sequences of length n: S = {0, 1} n into a red list R and a green list G. Intuitively, we softly nudge the model to generate bit sequences of length n that are part of the green list G. For each next bit prediction b j , if the bit can complete one of the bit sequences from G, we add a small bias δ to the logit l (bj ) j of the bit b j :\n\np j =        exp(l (b j ) j +δ) exp(l (¬b j ) j\n\n)+exp(l\n\n(b j ) j +δ) , pre + b j ∈ G exp(l (¬b j ) j ) exp(l (¬b j ) j\n\n)+exp(l\n\n(b j ) j +δ) , pre + ¬b j ∈ R, (1)\n\nwhere pre = (b j-(n-1) , . . . , b j-1 ) is the prefix bit sequence of length (n -1), i.e., the sequence of bits preceding b j , + is the bit concatenation operation, and l j is the vector of logits for the bit b j .\n\nWe apply this procedure to all bits that are generated by the model. Thus, as many bit sequences as possible are biased towards G and the final green fraction, i.e., the number of sequences part of the green set, of the generated bits is significantly above the threshold of 50%, the standard fraction for clean images (see Section F.6). By biasing the logit for the preferred bit, BitMark has negligible impact on image quality, as mostly high entropy bits are flipped (see Table 1 ). Since high entropy bits have sufficiently small difference in the probability of assigning them to value 0 or 1, the relatively small added bias influences the final value. Additionally, biasing only the logits makes the watermarking process difficult to revert, as it is difficult to know for an attacker which bits are of high entropy and can be flipped to the red list R without degrading the final image quality (see Figure 9 ).",
+      "word_count": 403
+    },
+    {
+      "index": 10,
+      "title": "Watermark Detection",
+      "kind": "body",
+      "text": "Watermark detection is performed directly on the bits of encoded images. All that is required is knowledge about the green and red lists, as well as access to the tokenizer. Intuitively, we count how often each sequence of bits in the encoded image follows the green list and compare how the frequency differs from non-watermarked images.\n\nDetecting the Watermark. The detection protocol follows the standard encoding of the model and is detailed for multi-scale models in Algorithm 2 and for single-scale models in Algorithm 4. First we obtain the bit representations for each resolution. We then use our knowledge of G and R to test how often the bit sequences from the red and green lists appear and count them. This results in the knowledge of how many green sequences appear in the encoded image, which is random for every non-watermarked image, i.e., 50% (see Section F.6).",
+      "word_count": 147
+    },
+    {
+      "index": 11,
+      "title": "Robust Statistical Testing.",
+      "kind": "body",
+      "text": "Given the final number of green and red sequences detected in the encoded image, we perform a statistical test based on the null hypothesis H 0 : The sequence of bits is generated with no knowledge about the green and red lists. Intuitively, this assumes that a given image is not watermarked. A watermarked image consists of γT green and (1 -γ)T red bit sequences, where γ determines the size of the green list and T is the total number of bits in the encoded image that our watermark can influence. Per a given token t with m bits, BitMark influences k = m -(n -1) bits, since we start watermarking from the first n bit pattern. Thus, overall we have T = K i=1 r i • k, where r i is number of tokens per resolution i. A natural image is expected to violate the red list rule with the half of its bits, while a watermarked image violates this rule less frequently. If the null hypothesis is true, then the number of green list bit sequences denoted C has the expected value of γT and variance γ(1 -γ)T . To ensure statistical validity, we follow [16] and use a z-test:\n\nz = (C -γT )/ T γ(1 -γ) (2)\n\nWe reject the null hypothesis and detect the watermark if z is above a chosen threshold.",
+      "word_count": 228
+    },
+    {
+      "index": 12,
+      "title": "Algorithm 1 Watermark Embedding",
+      "kind": "body",
+      "text": "Inputs: autoregressive model f θ with parameters θ, green list G, red list R, image decoder D. Hyperparameters: steps K (number of resolutions), resolutions (hi, wi) K i=1 , the number of tokens for resolution i is ri, constant δ added to the logits of the green list bits, n -the length of the bit sequences in the lists (G and R), m the number of bits per token.\n\nfor i = 1, . . . , K do (l1, . . . , lr i •m) = f θ (e, hi, wi) for t = 1, . . . , ri do for j = n, . . . , m do c = (t -1) • m + j //counter pc = Bias(G, lc, δ) sc = Softmax(pc) bc = Sample(sc) ui = (b1, . . . , br i •m) zi = Lookup(ui) zi = Interpolate(zi, hK , wK ) e = e + ϕi(zi) im = D(e) Return: watermarked image im",
+      "word_count": 165
+    },
+    {
+      "index": 13,
+      "title": "Algorithm 2 Watermark Detection",
+      "kind": "body",
+      "text": "Inputs: raw image im, green list G, red list R, image encoder E, quantizer Q Hyperparameters: steps K (number of resolutions), resolutions (hi, wi) K i=1 , the number of tokens for resolution i is ri, n -the length of the bit vector. e = E(im)\n\nC = 0 for i = 1, . . . , K do ui = Q(Interpolate(e, hi, wi)) ui = (b1, . . . , br i •m) C = Count((b1, . . . , br i •m), G) zi = Lookup(ui) zi = Interpolate(zi, hK , wK ) e = e -ϕi(zi) Return: StatisticalTest(H0, (C))\n\n4 Empirical Evaluation Experimental Setup. In the following, we employ the Infinity-2B checkpoint [11] as the default model to evaluate BitMark across different watermarking strengths and against a wide variety of attacks. Additionally we show the generalizability of BitMark to other models, namely the Infinity-8B checkpoint as well as the Instella-T2I [37] IAR model. We further show generalizability of our method to bitwise diffusion models in Section G. The Infinity models natively generate 1024 × 1024 pixel RGB-images, we choose the visual-tokenizer with a vocabulary size of 2 32 and 2 56 per token for the Infinity-2B and the Infinity-8B checkpoint, respectively. We follow Han et al. [11] in the choice of hyper-parameters and use a classifier-free-guidance of 4, with a generation over 13 scales, following the scale schedule for an aspect ratio of 1:1. Hence, we utilize the best performing model, tokenizer and hyperparameters reported by Han et al. [11] . We ablate the choice of the green and red list split for our experiments in Section D. For Instella IAR we follow Wang et al. [37] , leveraging a vocabulary of size 2 32 and a cfg of 7.5 at a 1024 × 1024 resolution. We evaluate our experiments based on images and prompts of the MS-COCO 2014 [18] validation dataset. Unless stated otherwise, we use a subset of 10,000 images.\n\nBaselines. To the best our knowledge no prior work developed an in generation-time watermarking scheme for autoregressive image models. Therefore we compare the robustness of BitMark against three postprocessing watermarks in Table 2 . Namely we analyze RivaGAN [43] (with message length = 32), StegaStamp [34] (with message length = 100) and TrustMark [5] (with message length = 100). We applied the postprocessing watermarks on 1,000 images generated by Infinity-2B.",
+      "word_count": 395
+    },
+    {
+      "index": 14,
+      "title": "BitMark Introduces Detectable Watermarks while Maintaining Generation Performance",
+      "kind": "body",
+      "text": "We demonstrate that our BitMark preserves the utility of the model with negligible impact on the image quality and the inference speed.\n\nHigh Image Quality. Table 1 presents a quantitative evaluation of image generation quality for different watermarking strengths dependent on the logit bias parameter δ. We report the FID, KID, measuring the similarity of generated images and natural images in feature space, and the CLIP Score, which measures the alignment between prompt and image, for the varying watermark strengths δ. The results show that, for δ ≤ 3, BitMark has a negligible impact on image quality (as measured by FID and KID) and minimally affects the prompt-following capabilities of the underlying model, as indicated by the CLIP Score.\n\nWe also present a qualitative analysis of image quality in Section F.3, which shows images generated for different δ. While there is an inherent trade-off in terms of watermark strength an image quality, we choose a small δ = 2 for the Infinity-2B checkpoint to obtain minimal impact on the generation while having a significantly strong watermark. We further show that δ = 1.5 does not negatively impact image quality for Infintiy-8B and Instella in Table 15 .\n\nFast Watermark Generation and Verification. For a watermark to be reasonably applicable in a real world setting, the watermark should also have negligible impact on image generation speed [9, 38, 48] .\n\nWe thus analyze the practicality of applying BitMark in a standard setting and its impact on generation speed of the Infinity model. Next to the generation performance, the speed of watermark detection has a strong impact on the possible applications, especially in a setting where we want to quickly detect generated data. The quantitative analysis of BitMark in Section F.4 shows that generating a watermarked image requires at most one-tenth the time longer than the standard image generation. Verification, i.e., encoding an image into its bit representation and computing the z-score, takes less than 0.5 seconds per image, usually around 5× faster than the image generation.",
+      "word_count": 335
+    },
+    {
+      "index": 15,
+      "title": "BitMark is Robust Against a Wide Range of Attacks",
+      "kind": "body",
+      "text": "Our results demonstrate that BitMark is robust against a wide range of attacks, including conventional attacks, reconstruction attacks, watermarks in the sand attack, and our own adaptive bit-flipping attack, with the aim of exploiting knowledge of our watermark method to remove BitMark.\n\nRobustness against Conventional Attacks. We perform a wide range of conventional attacks, namely: 1) Noise: Adds Gaussian noise with a std of 0.1 to the image, 2) Blur Noise attack + application of a Gaussian blur with a kernel size of 7, 3) Color: Color jitter, a random hue of 0.3, saturation scaling of 3.0 and contrast of 3.0, 4) Crop: Random crop to 70%, 5) Rotation: Random rotation between 0°and 180°, 6) JPEG: 25% JPEG compression, 7) Horizontal Flipping, 8) Vertical Flipping. Table 2 shows that our approach achieves a high TPR@1%FPR for most conventional attacks compared to the baselines. Each baseline is weak against at least one conventional attacks.\n\nRivaGAN is not robustness against flipping (0%TPR@1%FPR), StegaStamp is not robustness against cropping (1%TPR@1%FPR) and TrustMark is vulnerable to color jitter (2.2%TPR@1%FPR), rotation (2.7%TPR@1%FPR) and cropping (1.6%TPR@1%FPR). Although Bit-Mark for Infinity-2B has slightly lower performance towards arbitrary rotation angles, the watermark is still highly detectable and it obtains high TPR@1%FPR within a given rotation threshold. We report TPR@1%FPR and mean (std) of z for different degrees of rotations for 1,000 images in Section F.2. Notably, it achieves as high as 99.9% TPR@1%FPR when the rotation range is between -20°and 20°a s shown in Table 3 . Given the strength of off-the-shelf tools for rotation estimation [21] , it is highly achievable to rotate the image back into a tolerable range of rotations during the pre-processing stage of the detection, resulting in a TPR@1%FPR of 98.3% for randomly rotated images as shown in Table 13 . Table 12 provides an ablation of the robustness of BitMark given different values of δ, showing that BitMark for Infinity-2B is highly robust against most attacks even with δ = 1. Infinity-8B is more robust against rotation compared to the smaller 2B checkpoint. The effectiveness of BitMark on Instella IAR is by design very limited, given its total number of 128 tokens, corresponding to 4,096 bits, per image.",
+      "word_count": 366
+    },
+    {
+      "index": 16,
+      "title": "Robustness against Reconstruction Attacks.",
+      "kind": "body",
+      "text": "We also evaluate our proposed method against two state-of-the-art reconstruction attacks (shown as the last two columns in Table 2 ): 1) SD2.1-VAE: Encoding and decoding with the Stable Diffusion 2.1 autoencoder [26] , 2) CtrlRegen+: Application of controllable regeneration from noise in the latent space following [20] . Regarding reconstruction attacks, our results indicate that BitMark for Infinity-2B is robust against the CtrlRegen+ reconstruction attack, achieving 91.6%TPR@1%FPR. Also Instella IAR achieves strong robustness of 93.6%TPR@1%FPR. In contrast, RivaGAN and TrustMark demonstrate a lack of robustness with 1.6%TPR@1%FPR and 1.1%TPR@1%FPR, respectively. StegaStamp exhibits partial robustness of 44.2%TPR@1%FPR. The Infinity-8B shows only partial robustness, which is further discussed in Section A. Table 4 : BitMark is robust against the watermarks in the sand attack [42] . We present the detection results of our watermarking scheme (δ = 2) before and after the attack. We use 200 iterations, and generate 100 candidates during each iteration.\n\nSetting Accuracy AUC TPR@1%FPR Green Fraction z z Threshold (%) (%) (%) (%) @1%FPR Original Image ---49.7 0.2 -Watermarked Image (before attack) 100.0 100.0 100.0 57.6 87.8 59.6 Watermarked Image (after attack) 98.5 99.8 89.0 50.9 10.8 6.8\n\nRobustness against Watermarks in the Sand Attack. We also evaluate the robustness of our watermarking scheme against the attack proposed in [42] , namely, the watermarks in the sand attack. The attack leverages the CLIP Score as a quality oracle, the stable-diffusion-2-base [23] as a perturbation oracle, and iteratively modifies the watermarked image to remove the watermark. During each iteration, the attack produces potential candidates by inpainting randomly masked regions in the image. The attack successfully replaces most visual details in the original watermarked image while selecting the candidate with the best CLIP Score. As a result, many watermarks for diffusion models (e.g., [9] ) can be removed through this attack. However, results in Table 4 show that our proposed method achieves a significant detection rate with TPR@1%FPR of 89.0%. Although a large percentage of the green-list patterns are removed, the average z-score in the attacked images is still as high as 10.8, which remains significant when compared with a mean z-score of 0.2 for non-watermarked images. Moreover, the attack causes a quality loss of the image when compared to the original image generated by Infinity. With 200 iterations and 100 candidates during each iteration, the method further requires a high computational cost, where more than 12 minutes are needed to attack a single image in the environment specified in Section E.2. We note that the results do not conclude the failure of the theoretical framework in watermarks in the sand, but rather that there are currently no successful instantiations of the perturbation oracles and quality oracle for Infinity that can remove our proposed watermark. A more detailed analysis can be found in Section H.2. Robustness Against our Novel Bit-Flipper Attack. We further demonstrate that, even giving the attacker much stronger knowledge than our threat model formulated in Section 3, BitMark cannot be erased even with severe image degradation. Concretely, we assume the attacker is given the knowledge of the auto-encoder of the generative model, the watermark embedding and detection algorithms, and even our red and green lists. We propose a novel Bit-Flipper attack tailored for this broader attack surface, aiming at removing our watermarks. During this attack, the attacker first computes the total number of bit sequences |s| and calculate the green fraction C/|s|. Then, the attacker randomly flips bits to convert green bit sequences to red ones. The goal of the bit flipping is to reduce the green fraction to the level of non-watermarked images, which is 50%, as shown in Section F.6. Specifically, the attacker computes the probability of flipping a bit via a flip factor ϕ, such that p = (C/|s|) -0.5) * ϕ, whereas ϕ determines the bit sequence removal severity. A detailed algorithm of our attack is described in Algorithm 5. As shown in Section H.1, ϕ = 2.2 has the most impact on detectability. However, randomly flipping bits comes with very high degradation in image quality, as shown in Figure 10 . Due to the symmetric detection threshold |z|, if we destroy too many bit sequences in G, this further leads to the detectability of the watermark (see Section H.1).",
+      "word_count": 708
+    },
+    {
+      "index": 17,
+      "title": "Our BitMark Watermark Exhibits High Radioactivity",
+      "kind": "body",
+      "text": "We demonstrate that our BitMark exhibits high radioactivity, i.e., other generative models fine-tuned on our watermarked images also produce our bit patterns that are reliably detectable.\n\nFormalizing Radioactivity. We denote by model M 1 our original model that generates watermarked outputs with a watermarking method, e.g., our BitMark. These watermarked outputs might be used as a training set for a second model M 2 . In the context of language models it has been shown, that there are watermarks that persist this process and remain detectable in the outputs of M 2 , a property referred to as radioactivity [31] . This property enables the detection of generated content, even when it has been used to train subsequent models. However, recent findings indicate that this property does not hold for watermarks in image generative models, such as diffusion models [7] .\n\nTraining Setup. Given the extensive compute costs of training high-performant image-autoregressive models from scratch, we simulate full training by full fine-tuning the models. Therefore, we first generate 1,000 images with prompts of the MS-COCO2014 [18] validation dataset with our BitMark embedded under a watermarking strength of δ = 2. The watermarked outputs of M 1 are then used to (2) the cross-modality setting, transfer to the Latent Diffusion Model (LDM) Stable Diffusion 2.1 [26] . To test the radioactivity, we compute the TPR@1%FPR of output images of M 2 and report them in Table 5 .\n\nBitMark is Highly Radioactive. Table 5 highlights the strong radioactivity of our BitMark.\n\nWhen fine-tuning a model M 2 of the same architecture, the watermark is still detectable with a 99.7%TPR@1%FPR. Even in the cross-modality setting, BitMark is still detectable with a 98.9%TPR@1%FPR. Dubiński et al. [7] attribute the lack of radioactivity of watermarks in LDMs to the encoding from the pixel space into the latent space and the noising-denoising process while training M 2 .\n\nHowever, our BitMark remains detectable despite the encoding and the noising-denoising process. The robustness of our watermark arises from slightly changing all parts of a given generated image, including low-level and high-level features, which are then also partly adapted by M 2 . The observed results are in line with our robustness against CtrlRegen+ (see Table 2 ), an attack which simulates noising and denoising in the latent space. BitMark's radioactivity is a very useful property that allows model owners to track provenance of their data and data generated based on it, even when this new data does not originate directly from their original model.\n\nWe additionally ablate the ratio of watermarked to clean data needed for our BitMark to become radioactive to the Inifinity-2B model in Table 6 . Even when model M 2 is trained on only 10% of our watermarked data, it generates images with a clear bias towards our watermark distribution, resulting in a high TPR of 22.7% at 1% FPR. We note that even a slight bias is significant at the distribution level. To validate this claim, we apply a one-tailed Mann-Whitney U test to determine if the z-score distribution of M 2 -generated data is significantly larger than on M 1 clean generated data. The test is significant with a p-value of 5.6e-62 when M 2 is trained on only 5% watermarked data, showing that our BitMark provides a traceable signal across training cycles in settings where only small fractions of the training data are watermarked.",
+      "word_count": 565
+    },
+    {
+      "index": 18,
+      "title": "A Limitations and Broader Impact",
+      "kind": "limitations",
+      "text": "Limitations. While BitMark for Infinity-2B is robust against moderate rotations (99.9% TPR@1%FPR within rotation angles -20°to 20°), the detection accuracy degrades with larger rotation angles, dropping to 56.8% TPR@1%FPR for ±50°rotations. Although open-source methods have a strong capability for rotation correction, this can be a limitation for real-world scenarios. This rotation sensitivity, however, is an inherent issue in Infinity's data augmentation pipeline, which makes the autoencoder less robust to large rotations. Moreover, the soft biasing parameter δ requires tuning, as values exceeding δ = 3 lead to noticeable quality degradation (FID increases from 29.61 to 127.44 when δ increases from 3 to 5), constraining the maximum achievable watermark strength.\n\nAlthough we evaluate the detection BitMark with a commonly adopted metric, i.e., true positive rate at very low false positive rates (1%), it could potentially become problematic in extreme-scale applications involving trillions of samples, where even small false positive rates might impact training data quality. It is observed that the Infinity-8B checkpoint shows increased sensitivity to larger values of δ. We hypothesize that the lower δ chosen may account for its comparatively lower robustness relative to the Infinity-2B checkpoint, as illustrated in Table 2 .\n\nBroader Impact. Image generative models have the capabilities of generating photorealistic images, which are near imperceptible to human generated content. BitMark provides a method to watermark the content, without harming image generation capabilities of the model and allows for provenance tracking of generated images for models hosted under a private API. It supports the defense against model collapse, when training a model on data generated by itself.",
+      "word_count": 261
+    },
+    {
+      "index": 19,
+      "title": "B Additional Related Work",
+      "kind": "related_work",
+      "text": "LLM Watermarking. Here, we review more related work regarding the LLM watermarking, which we build upon in our method. Beyond the soft biasing approach proposed by KGW [16] , SynthID-Text [6] introduces tournament sampling during the model inference to enhance watermark detectability. This sampling strategy modifies the token sampling process to embed watermark signals. However, tournament sampling is only applicable to autoregressive models with large vocabulary sizes, making it incompatible with the binary bit sampling process used in Infinity. There are also works that incorporate watermarks by training or finetuning the models. For example, REMARK-LLM trains a learning-based encoder for watermark insertion and a decoder for watermark extraction, while using a reparameterization module to bridge the gap between the token distribution and the watermark message [44] . Moreover, potential malicious transformations are incorporated into the training phase to enhance the robustness of the watermarking. Although effective, these training-based methods require substantial computational resources and time. Therefore, we focus on inference-time watermarking methods that can be applied to Infinity without any retraining.\n\nSander et al. [30] investigate the radioactivity of LLM watermarking, which is the ability of watermarks to transfer across different model architectures. They design a specific protocol for amplifying the watermark signals after transferring across models. The radioactivity of watermarks also falls into the scope of our work, as our proposed watermark exhibits significant radioactivity across various model architectures. Regarding the undetectability of the watermark, recent studies show that the biases between watermarked and non-watermarked outputs from the LLM are identifiable with carefully designed prompts [19] . As a specialized application of LLM watermarking, Li et al. [17] design a watermarking scheme tailored for quantized LLMs. The proposed watermarks are only detectable on quantized models while remaining invisible for full-precision models.",
+      "word_count": 292
+    },
+    {
+      "index": 20,
+      "title": "Model Collapse.",
+      "kind": "body",
+      "text": "With the fraction of artificial generated content within the World Wide Web increasing, Shumailov et al. [33] investigate the phenomenon of model collapsing, which is defined as the decrease of generation quality when models are recursively trained on (partly) generated data. This decrease in generation quality is mainly characterized in overestimating probable events and underestimating low-probability events, as well as recursively adding noise (i.e., errors) which is generated during earlier model generations. Hence, this generated data is polluting future datasets, decreasing the potential quality of successor models and therefore highlighting the necessity to distinguish human-from artificial-generated data. BitMark mitigates model collapsing by robustly watermarking generated images to exclude said marked images from future datasets.",
+      "word_count": 114
+    },
+    {
+      "index": 21,
+      "title": "C Application of BitMark on Single-Scale models",
+      "kind": "body",
+      "text": "We report the application of BitMark for single scale models in Algorithm 3 and the detection in Algorithm 4.\n\nWe report the functions used in Algorithm 1, Algorithm 2, Algorithm 3 and Algorithm 4 here:\n\n• Bias: Addition of the bias δ to the current logit l c based on the green list G.\n\n• Sample: Use the probabilities in p c to sample the returned bit, either 0 or 1.\n\n• Lookup: Perform the BSQ lookup [47] to return the quantized states.\n\n• Interpolate: Scaling to target resolution.\n\n• Count: Counts the number of bits which are part of the green list.",
+      "word_count": 103
+    },
+    {
+      "index": 22,
+      "title": "Algorithm 3 Watermark Embedding",
+      "kind": "body",
+      "text": "Inputs: autoregressive model f θ with parameters θ, green list G, red list R, image decoder D.\n\nHyperparameters: the number of tokens r, constant δ added to the logits of the green list bits, n -the length of the bit sequences in the lists (G and R), m the number of bits per token. for t = 1, . . . , r do for j = n, . . . , m do c = (t -1)\n\n• m + j //counter pc = Bias(G, lc, δ) sc = Softmax(pc) bc =",
+      "word_count": 93
+    },
+    {
+      "index": 23,
+      "title": "D Green and Red List Selection",
+      "kind": "body",
+      "text": "Consistency in Longer Sequences. We analyze the overlap of bit sequences with growing size in Figure 3 which shows that with increased length of the sequence, the consistency of the pattern decreases. This has a direct impact on the choice of n, as it shows that larger n lead to less overlap, reducing the impact of BitMark which is already noticeable for n = 3 (see Table 7 ).",
+      "word_count": 69
+    },
+    {
+      "index": 24,
+      "title": "Selection of Red and Green Lists.",
+      "kind": "body",
+      "text": "The re-encoding loss presented in Section 3.1 also motivates the choice of a small length of the green list n, as larger consecutive bit sequences are more likely to be interrupted. Additionally, this auto-encoder has the property of re-encoding images towards an equal frequency of 0's and 1's, so it is not efficiently possible to bias each bit towards either 0 or 1, making the choice of n = 1 unpractical (see Table 7 ). Thus we leverage the second smallest possible choice, n = 2, resulting in 6 possible choices to separate G and R by keeping |G| = |R|.\n\nAs we have the constraint to not bias towards 0 or 1, as this type of pattern is more likely removed by the auto-encoder, and given the constraint shown that the same prefix must not be in the same list twice as discussed in Section 3.2, the most effective G for BitMark are G = {01, 10} and G = {00, 11}. We choose G = {01, 10} throughout all experiments.\n\nFigure 3 : Longer sequences are less consistent after re-encoding. We analyze the consistency of sequences of length n after re-encoding over the whole image, following the setup of Figure 1 .\n\nChanging the Length of the Bit Sequence. We additionally ablate the size of the bit sequence in Table 7 . For each sequence size n, if both lists should have the same size, we choose 2 n 2 out of 2 n possibilities without replacement, so there are 2 n 2 n-1 possibilities of constructing the G and R. For the 2-bit sequences, flipping the green and red list has only limited impact on the final z-score, thus for the 3-bit sequences we only analyze all unique choices, i.e., we do not interchange green and red list, leaving us with 35 distinct possible green and red lists. For n = 3, two G have a similar z compared to the best 2-bit sequences. These choices have the same properties as discussed above, namely (1) they equally often bias towards 0 and 1 and (2) none of the sequences share the same prefix, i.e., the biasing is always effective.",
+      "word_count": 362
+    },
+    {
+      "index": 25,
+      "title": "E.1 Hyperparameters",
+      "kind": "body",
+      "text": "For the experiments on radioactivity, we chose 1,000 prompts from the MS-COCO 2014 validation dataset, generated the respective number of images with the M 1 Infinity model and then fine-tuned the second model M 2 for 5 epochs with a learning rate of 10 -4 and a batch-size of 4 (batch-size of 1 for Infinity-2B). Since VAR [35] and RAR [41] are class-conditional models for the ImageNet1k dataset, we first generated ImageNet fakes using Infinity-2B with the ImagenNet class name and \"A photo of {class name}\" as prompt. We used the same hyperparameters such as batch-size, number of epochs and learning rate consistent with the experiments on Infinity-2B and Stable Diffusion 2.1.",
+      "word_count": 112
+    },
+    {
+      "index": 26,
+      "title": "E.2 Environment",
+      "kind": "body",
+      "text": "Our experiments are performed on Ubuntu 22.04, with Intel(R) Xeon(R) Gold 6330 CPU and NVIDIA A40 Graphics Card with 40 GB of memory. Table 7 : Green and Red list selection. We analyze all possible green and red lists for n = 1, n = 2 and n = 3 with δ = 2 and 1,000 images. We also report the fraction of 1's that are in the bit representation during generation of the image (1s Gen) and after re-encoding the image using the image encoder (1s Enc).",
+      "word_count": 88
+    },
+    {
+      "index": 27,
+      "title": "Green List G",
+      "kind": "body",
+      "text": "Red List R Average Z-Score 1s Gen 1s Enc {0} {1} 6.18 31.50% 49.47% {1} {0} 2.39 64.52% 50.21% {11, 00} {01, 10} 91.35 49.74% 49.98% {01, 10} {00, 11} 90.33 49.97% 49.99% {00, 10} {01, 11} 6.52 31.85% 49.44% {11, 01} {00, 10} 2.56 63.70% 50.22% {00, 01} {10, 11} 0.25 49.92% 49.98% {11, 10} {00, 01} -0.25 49.92% 49.98%\n\n{000, 011, 100, 111} {001, 010, 101, 110} 88.00 49.75% 49.98% {000, 011, 110, 111} {001, 010, 100, 101} 87.91 49.75% 49.98% {000, 011, 101, 111} {001, 010, 100, 110} 67.90 49.75% 49.98% {000, 100, 110, 111} {001, 010, 011, 101} 44.95 40.92% 49.52% {000, 001, 011, 111} {010, 100, 101, 110} 32.91 58.19% 50.24% {000, 001, 010, 101} {011, 100, 110, 111} 32.85 44.09% 49.68% {000, 010, 011, 111} {001, 100, 101, 110} 29.04 40.92% 49.52% {000, 100, 101, 111} {001, 010, 011, 110} 29.04 40.92% 49.52% {000, 101, 110, 111} {001, 010, 011, 100} 26.43 40.92% 49.52% {000, 011, 100, 110} {001, 010, 101, 111} 20.11 49.75% 49.98% {000, 001, 011, 110} {010, 100, 101, 111} 10.03 58.19% 50.24% {000, 001, 011, 100} {010, 101, 110, 111} 8.72 58.19% 50.24% {000, 001, 010, 100} {011, 101, 110, 111} 6.48 44.09% 49.68% {000, 010, 100, 101} {001, 011, 110, 111} 6.20 33.07% 49.48% {000, 010, 100, 110} {001, 011, 101, 111} 5.99 33.07% 49.48% {000, 010, 011, 100} {001, 101, 110, 111} 5.55 40.92% 49.52% {000, 001, 010, 110} {011, 100, 101, 111} 3.74 44.09% 49.68% {000, 010, 101, 110} {001, 011, 100, 111} 3.21 33.07% 49.48% {000, 010, 011, 110} {001, 100, 101, 111} 2.93 40.92% 49.52% {000, 100, 101, 110} {001, 010, 011, 111} 2.93 40.92% 49.52% {000, 010, 100, 111} {001, 011, 101, 110} 2.14 33.07% 49.48% {000, 001, 100, 101} {010, 011, 110, 111} 0.25 49.92% 49.98% {000, 001, 010, 011} {100, 101, 110, 111} 0.25 49.92% 49.98% {000, 011, 100, 101} {001, 010, 110, 111} 0.11 49.75% 49.98% {000, 001, 101, 110} {010, 011, 100, 111} 0.07 49.92% 49.98% {000, 011, 101, 110} {001, 010, 100, 111} 0.02 49.75% 49.98% {000, 001, 100, 110} {010, 011, 101, 111} -0.05 49.92% 49.98% {000, 001, 101, 111} {010, 011, 100, 110} -0.26 49.92% 49.98% {000, 001, 100, 111} {010, 011, 101, 110} -0.37 49.92% 49.98% {000, 001, 110, 111} {010, 011, 100, 101} -0.55 49.92% 49.98% {000, 010, 101, 111} {001, 011, 100, 110} -0.65 33.07% 49.48% {000, 010, 110, 111} {001, 011, 100, 101} -0.85 33.07% 49.48% {000, 001, 011, 101} {010, 100, 110, 111} -1.45 58.19% 50.24% {000, 010, 011, 101} {001, 100, 110, 111} -12.98 40.92% 49.52% {000, 001, 010, 111} {011, 100, 101, 110} -13.39 44.09% 49.68%",
+      "word_count": 446
+    },
+    {
+      "index": 28,
+      "title": "F Additional Experiments",
+      "kind": "results",
+      "text": "In this Section we ablate the behavior of BitMark on the Infinity-2B model.",
+      "word_count": 13
+    },
+    {
+      "index": 29,
+      "title": "F.1 Scalewise Analysis of BitMark",
+      "kind": "results",
+      "text": "Next, we analyze the scalewise impact of BitMark during image generation. Table 8 depicts information about the generation of images with Infinity-2B, averaged over 10,000 images. It shows that the entropy is low in earlier scales, meaning the bits are chosen with high certainty as these depend more on the input prompt, but large on later scales, which means sampling either of the possible values for the bit can lead to different, but both high-quality content. 9 , depicts using BitMark with δ = 2. Applying BitMark changes up to 37% of bits per scale, yet the re-encoding loss only increases by 5% compared to the non watermarked images. Table 10 further shows the correlation between different analyzed factors. As expected, there is a high correlation between changed bits and entropy, as due to the soft-biasing we mostly change bits of low entropy. We further observe that the model produces high-level information in the image during the initial scales, forming a coarse shape of the main visual components, such as the object and the background (see Figure 5 . In larger scales, the model predicts the details of the image (see Figure 6 ). As shown in Table 11 , earlier and late scales contribute differently to the robustness of BitMark. Earlier scales are more robust against like CtrlRegen+, as CtrlRegen+ does not change the content of the image itself, but mostly high level features.\n\nTable 11 : Robustness of BitMark applied to different scales with δ = 2. We report the TPR@1%FPR (%) for the different attacks on 5,000 watermarked images.",
+      "word_count": 262
+    },
+    {
+      "index": 30,
+      "title": "Scales Conventional Attacks Reconstruction Attacks",
+      "kind": "body",
+      "text": "None Noise Blur Color Crop Rotation JPEG SD2.1-VAE CtrlRegen+ 1-10 100.0 97.9 98.7 97.6 61.6 15.0 100.0 100.0 82.1 11-13 100.0 96.7 98.6 99.5 20.0 9.8 100.0 100.0 15.5 1-13 100.0 99.6 99.9 99.8 98.8 20.1 100.0 100.0 91.6",
+      "word_count": 39
+    },
+    {
+      "index": 31,
+      "title": "F.2 Robustness",
+      "kind": "body",
+      "text": "Table 12 shows an ablation of the robustness of BitMark given different values of δ. BitMark achieves a high TPR@1%FPR against most attacks even for a low watermarking strength δ = 1. While stronger robustness can be achieved with higher δ values, there is a direct tradeoff with the image quality, which we show qualitatively in Figure 7 . 100.0 99.6 99.9 99.8 98.8 20.1 100.0 100.0 91.6 3 100.0 99.7 99.9 99.9 99.8 23.8 100.0 100.0 97.0 4 100.0 99.9 99.9 100.0 99.9 29.2 100.0 100.0 99.0 5 100.0 100.0 100.0 99.9 100.0 34.3 100.0 100.0 99.8\n\nRotation. We ablate the robustness of BitMark against different degrees of rotation and different watermarking strengths δ. We find that with δ = 2 BitMark is robust for rotation degrees ±30.\n\nAdditionally we find an increase in TPR@1%FPR for a rotation of 180°.\n\nWe further show the improved detection performance leveraging a rotation estimation tool [21] in Table 13 . After re-rotating the image, the detection performance increases from TPR@1%FPR=0.184 to TPR@1%FPR=0.983. In addition, we consider an even harder case: after the random rotation, we apply a central crop to the image with 50% cropping ratio, such that all the black corners during rotation are completely removed. We show the results in Table 14 .",
+      "word_count": 213
+    },
+    {
+      "index": 32,
+      "title": "F.3 Image Quality",
+      "kind": "body",
+      "text": "Table 15 shows that our chosen biases δ does not negatively impact the image quality for Infinity-2B (δ = 2), Infinity-8B (δ = 1.5) and Instella IAR (δ = 1.5)\n\nAdditionally, we qualitatively analyze the impact of applying BitMark with different δ values. Figure 7 shows that applying BitMark with δ ≤ 3 keeps the semantic structure and quality of the image the same, while changing small features, e.g., the color of the train in the first row. For larger watermarking strengths, the image quality starts to deteriorate, where artifacts become visible in the final image. Table 17 reports the radioactivity of BitMark for the class-conditional autoregressive models, namely, VAR [35] , which operates in the multi-scale manner similarly to Infinity, and RAR [41] , which generates tokens only on a single scale in an autoregressive fashion. We find that BitMark exhibits detectable traces of radioactivity for the class-to-image autoregressive models models with TPR>>1%@FPR=1%, with slightly lower traces for RAR (probably due to its single scale generation) than VAR. A potential cause of the overall relatively lower radioactivity for VAR and RAR is stemming from the class-conditional setting, instead of the text-to-image setting as in Infinity. +",
+      "word_count": 197
+    },
+    {
+      "index": 33,
+      "title": "F.6 Natural Images",
+      "kind": "body",
+      "text": "To ensure the validity of our hypothesis we compute the average number of members of the green list and z for natural images from different datasets, as well as images generated for the non-watermarked Infinity model. Table 18 shows that indeed, the green fraction for non-watermarked images is 50%.",
+      "word_count": 49
+    },
+    {
+      "index": 34,
+      "title": "G Generalization to Diffusion",
+      "kind": "body",
+      "text": "Additionally to the bitwise autoregressive image modeling that we explore in Section 4 we extend our BitMark to bitwise diffusion models, namely BiGR [12] . We employ two variations of BiGR, the L-256x256 with 24 bits per token and L-512x512 which leverages 32 bits per token. We set the Gumbel temperature to 0.01, the cfg to 2.5, the number of iterations as well as the diffusion timesteps to 10 each. We further notice that the detection performance for BiGR increases greatly if, before encoding, a slight amount of noise is added to the image.\n\nIn Table 20 we show that BitMark has negligible impact on the quality of the generated images for both BiGR model sizes. We use 5,000 MS-COCO prompts to generate both BiGR clean and watermarked data. On these images we then compute image quality metrics FID, KID and CLIP. The difference in FID and KID score shows that the watermarked images have lower FID and KID, a sign of more similarity to the MS-COCO baseline images. The CLIP score only increases slightly, showing only minor impact of BitMark to the prompt following capabilities of the model.\n\nAdditionally we show the robustness of BitMark in\n\nTable 21, it achieves significant TPR@1%FPR for all attacks. Especially against the advanced reconstruction attack BitMark achieves 75.2 and 69.2%TPR@1%FPR at resolution of 256 × 256 and 512 × 512, respectively. We note that, BiGR generates smaller images with only 256 or 1024 tokens, leading to a lower robustness compared to the Infinity-2B and 8B model.",
+      "word_count": 253
+    },
+    {
+      "index": 35,
+      "title": "H.1 Analysis for the Bit-Flipper Attack",
+      "kind": "results",
+      "text": "We present the pseudo code of the novel Bit-Flipper attack for multi-scale models in Algorithm 5. To apply the attack, we first encode the image into bits (line 1). During deconstructing the watermarked image, we construct a new attacked image. We recursively iterate through all scales K, retrieve the bit representations of the respective scale (line 4) and count how many bits are part of the green list and the red list (line 5). Then we define the probability of flipping a bit based on the green fraction and the flip factor ϕ. Next, we change the bits which are part of the green list based on the random probability p (line 8, 9). We follow the standard encoding and decoding process, to iterate through all resolutions of the image (line 10-13). Finally, we return the decoded version of the attacked image.\n\nFigure 9 shows different flipping strengths ϕ for δ = 2 on 1,000 watermarked samples. The most effective ϕ is ϕ = 2.2 with a TPR@1%FPR below 50% (see Table 22 ). The decrease in image quality for Bit-Flipper for different ϕ is shown in Figure 9 , as well a more detailed analysis of ϕ = 2.2 on BitMark with a δ = 2 is displayed in Figure 10 . We visualize five sets of images: 1) Original images without watermarking, 2) Watermarked (last 3), where the watermarks are generated on scale 11 to 13, 3) Differences (last 3), which is the difference between the original and watermarked images (last 3), 4) Watermarked (all), where the watermarks are generated on all scales, 5) Differences (all), which is the difference between the original and watermarked images (all). We visualize scales 1-7. We visualize five sets of images: 1) Original images without watermarking, 2) Watermarked (last 3), where the watermarks are generated on scale 11 to 13, 3) Differences (last 3), which is the difference between the original and watermarked images (last 3), 4) Watermarked (all), where the watermarks are generated on all scales, 5) Differences (all), which is the difference between the original and watermarked images (all). We visualize scales 8-13. • Researchers should communicate the details of the dataset/code/model as part of their submissions via structured templates. This includes details about training, license, limitations, etc.\n\n• The paper should discuss whether and how consent was obtained from people whose asset is used.\n\n• At submission time, remember to anonymize your assets (if applicable). You can either create an anonymized URL or include an anonymized zip file. 14. Crowdsourcing and research with human subjects Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants and screenshots, if applicable, as well as details about compensation (if any)? Answer: [NA] Justification: Guidelines:\n\n• The answer NA means that the paper does not involve crowdsourcing nor research with human subjects.\n\n• Including this information in the supplemental material is fine, but if the main contribution of the paper involves human subjects, then as much detail as possible should be included in the main paper.\n\n• According to the NeurIPS Code of Ethics, workers involved in data collection, curation, or other labor should be paid at least the minimum wage in the country of the data collector. 15. Institutional review board (IRB) approvals or equivalent for research with human subjects Question: Does the paper describe potential risks incurred by study participants, whether such risks were disclosed to the subjects, and whether Institutional Review Board (IRB) approvals (or an equivalent approval/review based on the requirements of your country or institution) were obtained? Answer: [NA] Justification: Guidelines: • The answer NA means that the paper does not involve crowdsourcing nor research with human subjects. • Depending on the country in which research is conducted, IRB approval (or equivalent) may be required for any human subjects research. If you obtained IRB approval, you should clearly state this in the paper. • We recognize that the procedures for this may vary significantly between institutions and locations, and we expect authors to adhere to the NeurIPS Code of Ethics and the guidelines for their institution. • For initial submissions, do not include any information that would break anonymity (if applicable), such as the institution conducting the review. 16. Declaration of LLM usage Question: Does the paper describe the usage of LLMs if it is an important, original, or nonstandard component of the core methods in this research? Note that if the LLM is used only for writing, editing, or formatting purposes and does not impact the core methodology, scientific rigorousness, or originality of the research, declaration is not required. Answer: [NA] Justification: Guidelines: • The answer NA means that the core method development in this research does not involve LLMs as any important, original, or non-standard components. • Please refer to our LLM policy ( https://neurips.cc/Conferences/2025/LLM ) for what should or should not be described.",
+      "word_count": 819
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Self-consuming generative models go MAD",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard Baraniuk"
+      ],
+      "raw_text": "Self-consuming generative models go MAD Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard Baraniuk The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 2,
+      "title": "Waves: Benchmarking the robustness of image watermarks",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Bang An",
+        "Mucong Ding",
+        "Tahseen Rabbani",
+        "Aakriti Agrawal",
+        "Yuancheng Xu",
+        "Chenghao Deng",
+        "Sicheng Zhu",
+        "Abdirisak Mohamed"
+      ],
+      "raw_text": "Waves: Benchmarking the robustness of image watermarks Bang An Mucong Ding Tahseen Rabbani Aakriti Agrawal Yuancheng Xu Chenghao Deng Sicheng Zhu Abdirisak Mohamed Yuxin Wen Tom Goldstein International Conference on Machine Learning PMLR 2024"
+    },
+    {
+      "index": 3,
+      "title": "The brittleness of aigenerated image watermarking techniques: Examining their robustness against visual paraphrasing attacks",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Krish Niyar R Barman",
+        "Ashhar Sharma",
+        "Shashwat Aziz",
+        "Shwetangshu Bajpai",
+        "Vasu Biswas",
+        "Vinija Sharma",
+        "Aman Jain",
+        "Amit Chadha"
+      ],
+      "raw_text": "The brittleness of aigenerated image watermarking techniques: Examining their robustness against visual paraphrasing attacks Krish Niyar R Barman Ashhar Sharma Shashwat Aziz Shwetangshu Bajpai Vasu Biswas Vinija Sharma Aman Jain Amit Chadha Amitava Sheth Das arXiv:2408.10446 2024 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "A systematic review on model watermarking for neural networks",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Franziska Boenisch"
+      ],
+      "raw_text": "A systematic review on model watermarking for neural networks Franziska Boenisch Frontiers in big Data 4 729663, 2021"
+    },
+    {
+      "index": 5,
+      "title": "Trustmark: Robust watermarking and watermark removal for arbitrary resolution images",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Tu Bui",
+        "Shruti Agarwal",
+        "John Collomosse"
+      ],
+      "raw_text": "Trustmark: Robust watermarking and watermark removal for arbitrary resolution images Tu Bui Shruti Agarwal John Collomosse IEEE International Conference on Computer Vision (ICCV) October 2025"
+    },
+    {
+      "index": 6,
+      "title": "Scalable watermarking for identifying large language model outputs",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sumanth Dathathri",
+        "Abigail See",
+        "Sumedh Ghaisas",
+        "Po-Sen Huang",
+        "Rob Mcadam",
+        "Johannes Welbl",
+        "Vandana Bachani",
+        "Alex Kaskasoli"
+      ],
+      "raw_text": "Scalable watermarking for identifying large language model outputs Sumanth Dathathri Abigail See Sumedh Ghaisas Po-Sen Huang Rob Mcadam Johannes Welbl Vandana Bachani Alex Kaskasoli Robert Stanforth Tatiana Matejovicova Nature 634 8035 2024"
+    },
+    {
+      "index": 7,
+      "title": "Are watermarks for diffusion models radioactive?",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jan Dubiński",
+        "Michel Meintz",
+        "Franziska Boenisch",
+        "Adam Dziedzic"
+      ],
+      "raw_text": "Are watermarks for diffusion models radioactive? Jan Dubiński Michel Meintz Franziska Boenisch Adam Dziedzic The 1st Workshop on GenAI Watermarking 2025"
+    },
+    {
+      "index": 8,
+      "title": "Scaling rectified flow transformers for high-resolution image synthesis",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Patrick Esser",
+        "Sumith Kulal",
+        "Andreas Blattmann",
+        "Rahim Entezari",
+        "Jonas Müller",
+        "Harry Saini",
+        "Yam Levi",
+        "Dominik Lorenz"
+      ],
+      "raw_text": "Scaling rectified flow transformers for high-resolution image synthesis Patrick Esser Sumith Kulal Andreas Blattmann Rahim Entezari Jonas Müller Harry Saini Yam Levi Dominik Lorenz Axel Sauer Frederic Boesel Forty-first international conference on machine learning 2024"
+    },
+    {
+      "index": 9,
+      "title": "The stable signature: Rooting watermarks in latent diffusion models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Pierre Fernandez",
+        "Guillaume Couairon",
+        "Hervé Jégou",
+        "Matthijs Douze",
+        "Teddy Furon"
+      ],
+      "raw_text": "The stable signature: Rooting watermarks in latent diffusion models Pierre Fernandez Guillaume Couairon Hervé Jégou Matthijs Douze Teddy Furon Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV) the IEEE/CVF International Conference on Computer Vision (ICCV) October 2023"
+    },
+    {
+      "index": 10,
+      "title": "An undetectable watermark for generative image models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Sam Gunn",
+        "Xuandong Zhao",
+        "Dawn Song"
+      ],
+      "raw_text": "An undetectable watermark for generative image models Sam Gunn Xuandong Zhao Dawn Song The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 11,
+      "title": "Infinity: Scaling bitwise autoregressive modeling for high-resolution image synthesis",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jian Han",
+        "Jinlai Liu",
+        "Yi Jiang",
+        "Bin Yan",
+        "Yuqi Zhang",
+        "Zehuan Yuan",
+        "Bingyue Peng",
+        "Xiaobing Liu"
+      ],
+      "raw_text": "Infinity: Scaling bitwise autoregressive modeling for high-resolution image synthesis Jian Han Jinlai Liu Yi Jiang Bin Yan Yuqi Zhang Zehuan Yuan Bingyue Peng Xiaobing Liu Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) 2025"
+    },
+    {
+      "index": 12,
+      "title": "BiGR: Harnessing binary latent codes for image generation and improved visual representation capabilities",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Shaozhe Hao",
+        "Liu Xuantong",
+        "Xianbiao Qi",
+        "Shihao Zhao",
+        "Bojia Zi",
+        "Rong Xiao",
+        "Kai Han",
+        "K Kwan-Yee"
+      ],
+      "raw_text": "BiGR: Harnessing binary latent codes for image generation and improved visual representation capabilities Shaozhe Hao Liu Xuantong Xianbiao Qi Shihao Zhao Bojia Zi Rong Xiao Kai Han K Kwan-Yee Wong The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 13,
+      "title": "Scaling up visual and vision-language representation learning with noisy text supervision",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Chao Jia",
+        "Yinfei Yang",
+        "Ye Xia",
+        "Yi-Ting Chen",
+        "Zarana Parekh",
+        "Hieu Pham",
+        "Quoc Le",
+        "Yun-Hsuan Sung"
+      ],
+      "raw_text": "Scaling up visual and vision-language representation learning with noisy text supervision Chao Jia Yinfei Yang Ye Xia Yi-Ting Chen Zarana Parekh Hieu Pham Quoc Le Yun-Hsuan Sung Zhen Li Tom Duerig International conference on machine learning PMLR 2021"
+    },
+    {
+      "index": 14,
+      "title": "Entangled watermarks as a defense against model extraction",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Hengrui Jia",
+        "Nicolas Christopher A Choquette-Choo",
+        "Papernot"
+      ],
+      "raw_text": "Entangled watermarks as a defense against model extraction Hengrui Jia Nicolas Christopher A Choquette-Choo Papernot arXiv:2002.12200 2020 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "Watermark stealing in large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Nikola Jovanović",
+        "Robin Staab",
+        "Martin Vechev"
+      ],
+      "raw_text": "Watermark stealing in large language models Nikola Jovanović Robin Staab Martin Vechev International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 16,
+      "title": "A watermark for large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "John Kirchenbauer",
+        "Jonas Geiping",
+        "Yuxin Wen",
+        "Jonathan Katz",
+        "Ian Miers",
+        "Tom Goldstein"
+      ],
+      "raw_text": "A watermark for large language models John Kirchenbauer Jonas Geiping Yuxin Wen Jonathan Katz Ian Miers Tom Goldstein PMLR International Conference on Machine Learning 2023"
+    },
+    {
+      "index": 17,
+      "title": "Watermarking llms with weight quantization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Linyang Li",
+        "Botian Jiang",
+        "Pengyu Wang",
+        "Ke Ren",
+        "Hang Yan",
+        "Xipeng Qiu"
+      ],
+      "raw_text": "Watermarking llms with weight quantization Linyang Li Botian Jiang Pengyu Wang Ke Ren Hang Yan Xipeng Qiu Findings of the Association for Computational Linguistics: EMNLP 2023 2023"
+    },
+    {
+      "index": 18,
+      "title": "Microsoft coco: Common objects in context",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "Tsung-Yi Lin",
+        "Michael Maire",
+        "Serge Belongie",
+        "James Hays",
+        "Pietro Perona",
+        "Deva Ramanan",
+        "Piotr Dollár",
+        "C Lawrence"
+      ],
+      "raw_text": "Microsoft coco: Common objects in context Tsung-Yi Lin Michael Maire Serge Belongie James Hays Pietro Perona Deva Ramanan Piotr Dollár C Lawrence Zitnick Computer vision-ECCV 2014: 13th European conference zurich, Switzerland Springer September 6-12, 2014. 2014 13"
+    },
+    {
+      "index": 19,
+      "title": "Can watermarked LLMs be identified by users via crafted prompts?",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Aiwei Liu",
+        "Sheng Guan",
+        "Yiming Liu",
+        "Leyi Pan",
+        "Yifei Zhang",
+        "Liancheng Fang",
+        "Lijie Wen",
+        "Philip S Yu"
+      ],
+      "raw_text": "Can watermarked LLMs be identified by users via crafted prompts? Aiwei Liu Sheng Guan Yiming Liu Leyi Pan Yifei Zhang Liancheng Fang Lijie Wen Philip S Yu Xuming Hu The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 20,
+      "title": "Image watermarks are removable using controllable regeneration from clean noise",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yepeng Liu",
+        "Yiren Song",
+        "Hai Ci",
+        "Yu Zhang",
+        "Haofan Wang",
+        "Mike Zheng Shou",
+        "Yuheng Bu"
+      ],
+      "raw_text": "Image watermarks are removable using controllable regeneration from clean noise Yepeng Liu Yiren Song Hai Ci Yu Zhang Haofan Wang Mike Zheng Shou Yuheng Bu The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 21,
+      "title": "Deep image orientation angle detection",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Subhadip Maji",
+        "Smarajit Bose"
+      ],
+      "raw_text": "Subhadip Maji Smarajit Bose arXiv:2007.06709 Deep image orientation angle detection 2020 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Dwt-dct-svd based watermarking",
+      "doi": "10.1109/COMSWA.2008.4554423",
+      "year": "2008",
+      "authors": [
+        "K A Navas",
+        "M Mathews Ajay",
+        "Tampy Lekshmi",
+        "M Archana",
+        "Sasikumar"
+      ],
+      "raw_text": "Dwt-dct-svd based watermarking K A Navas M Mathews Ajay Tampy Lekshmi M Archana Sasikumar 10.1109/COMSWA.2008.4554423 02 2008"
+    },
+    {
+      "index": 23,
+      "title": "Sdxl: Improving latent diffusion models for high-resolution image synthesis",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Dustin Podell",
+        "Zion English",
+        "Kyle Lacey",
+        "Andreas Blattmann",
+        "Tim Dockhorn",
+        "Jonas Müller",
+        "Joe Penna",
+        "Robin Rombach"
+      ],
+      "raw_text": "Sdxl: Improving latent diffusion models for high-resolution image synthesis Dustin Podell Zion English Kyle Lacey Andreas Blattmann Tim Dockhorn Jonas Müller Joe Penna Robin Rombach arXiv:2307.01952 2023 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "Zero-shot text-to-image generation",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Aditya Ramesh",
+        "Mikhail Pavlov",
+        "Gabriel Goh",
+        "Scott Gray",
+        "Chelsea Voss",
+        "Alec Radford",
+        "Mark Chen",
+        "Ilya Sutskever"
+      ],
+      "raw_text": "Zero-shot text-to-image generation Aditya Ramesh Mikhail Pavlov Gabriel Goh Scott Gray Chelsea Voss Alec Radford Mark Chen Ilya Sutskever International conference on machine learning Pmlr 2021"
+    },
+    {
+      "index": 25,
+      "title": "Hierarchical text-conditional image generation with clip latents",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Aditya Ramesh",
+        "Prafulla Dhariwal",
+        "Alex Nichol",
+        "Casey Chu",
+        "Mark Chen"
+      ],
+      "raw_text": "Hierarchical text-conditional image generation with clip latents Aditya Ramesh Prafulla Dhariwal Alex Nichol Casey Chu Mark Chen arXiv:2204.06125 2022 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Highresolution image synthesis with latent diffusion models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Robin Rombach",
+        "Andreas Blattmann",
+        "Dominik Lorenz",
+        "Patrick Esser",
+        "Björn Ommer"
+      ],
+      "raw_text": "Highresolution image synthesis with latent diffusion models Robin Rombach Andreas Blattmann Dominik Lorenz Patrick Esser Björn Ommer IEEE/CVF Conference on Computer Vision and Pattern Recognition 2022"
+    },
+    {
+      "index": 27,
+      "title": "Robustness of AI-image detectors: Fundamental limits and practical attacks",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mehrdad Saberi",
+        "Vinu Sankar Sadasivan",
+        "Keivan Rezaei",
+        "Aounon Kumar",
+        "Atoosa Chegini",
+        "Wenxiao Wang",
+        "Soheil Feizi"
+      ],
+      "raw_text": "Robustness of AI-image detectors: Fundamental limits and practical attacks Mehrdad Saberi Vinu Sankar Sadasivan Keivan Rezaei Aounon Kumar Atoosa Chegini Wenxiao Wang Soheil Feizi The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 28,
+      "title": "Radioactive data: tracing through training",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Alexandre Sablayrolles",
+        "Matthijs Douze",
+        "Cordelia Schmid",
+        "Hervé Jégou"
+      ],
+      "raw_text": "Radioactive data: tracing through training Alexandre Sablayrolles Matthijs Douze Cordelia Schmid Hervé Jégou PMLR International Conference on Machine Learning 2020"
+    },
+    {
+      "index": 29,
+      "title": "Photorealistic text-to-image diffusion models with deep language understanding",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Chitwan Saharia",
+        "William Chan",
+        "Saurabh Saxena",
+        "Lala Li",
+        "Jay Whang",
+        "Emily L Denton",
+        "Kamyar Ghasemipour",
+        "Raphael Gontijo Lopes"
+      ],
+      "raw_text": "Photorealistic text-to-image diffusion models with deep language understanding Chitwan Saharia William Chan Saurabh Saxena Lala Li Jay Whang Emily L Denton Kamyar Ghasemipour Raphael Gontijo Lopes Burcu Karagol Ayan Tim Salimans Advances in neural information processing systems 35 2022"
+    },
+    {
+      "index": 30,
+      "title": "Watermarking makes language models radioactive",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tom Sander",
+        "Pierre Fernandez",
+        "Alain Durmus",
+        "Matthijs Douze",
+        "Teddy Furon"
+      ],
+      "raw_text": "Watermarking makes language models radioactive Tom Sander Pierre Fernandez Alain Durmus Matthijs Douze Teddy Furon Advances in Neural Information Processing Systems 37 2024"
+    },
+    {
+      "index": 31,
+      "title": "Alain Oliviero Durmus, Matthijs Douze, and Teddy Furon",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tom Sander",
+        "Pierre Fernandez"
+      ],
+      "raw_text": "Alain Oliviero Durmus, Matthijs Douze, and Teddy Furon Tom Sander Pierre Fernandez The Thirty-eighth Annual Conference on Neural Information Processing Systems 2024 Watermarking makes language models radioactive"
+    },
+    {
+      "index": 32,
+      "title": "Laion-5b: An open large-scale dataset for training next generation image-text models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Christoph Schuhmann",
+        "Romain Beaumont",
+        "Richard Vencu",
+        "Cade Gordon",
+        "Ross Wightman",
+        "Mehdi Cherti",
+        "Theo Coombes",
+        "Aarush Katta"
+      ],
+      "raw_text": "Laion-5b: An open large-scale dataset for training next generation image-text models Christoph Schuhmann Romain Beaumont Richard Vencu Cade Gordon Ross Wightman Mehdi Cherti Theo Coombes Aarush Katta Clayton Mullis Mitchell Wortsman Advances in neural information processing systems 35 2022"
+    },
+    {
+      "index": 33,
+      "title": "Ai models collapse when trained on recursively generated data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Nicolas Papernot",
+        "Ross Anderson",
+        "Yarin Gal"
+      ],
+      "raw_text": "Ai models collapse when trained on recursively generated data Ilia Shumailov Zakhar Shumaylov Yiren Zhao Nicolas Papernot Ross Anderson Yarin Gal Nature 631 8022 2024"
+    },
+    {
+      "index": 34,
+      "title": "Stegastamp: Invisible hyperlinks in physical photographs",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Matthew Tancik",
+        "Ben Mildenhall",
+        "Ren Ng"
+      ],
+      "raw_text": "Stegastamp: Invisible hyperlinks in physical photographs Matthew Tancik Ben Mildenhall Ren Ng Proceedings of the IEEE/CVF conference on computer vision and pattern recognition the IEEE/CVF conference on computer vision and pattern recognition 2020"
+    },
+    {
+      "index": 35,
+      "title": "Visual autoregressive modeling: Scalable image generation via next-scale prediction",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Keyu Tian",
+        "Yi Jiang",
+        "Zehuan Yuan",
+        "Bingyue Peng",
+        "Liwei Wang"
+      ],
+      "raw_text": "Visual autoregressive modeling: Scalable image generation via next-scale prediction Keyu Tian Yi Jiang Zehuan Yuan Bingyue Peng Liwei Wang Advances in neural information processing systems 37 2024"
+    },
+    {
+      "index": 36,
+      "title": "Attention is all you need",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer",
+        "Niki Parmar",
+        "Jakob Uszkoreit",
+        "Llion Jones",
+        "Aidan N Gomez",
+        "Łukasz Kaiser",
+        "Illia Polosukhin"
+      ],
+      "raw_text": "Attention is all you need Ashish Vaswani Noam Shazeer Niki Parmar Jakob Uszkoreit Llion Jones Aidan N Gomez Łukasz Kaiser Illia Polosukhin Advances in neural information processing systems 30 2017"
+    },
+    {
+      "index": 37,
+      "title": "Instella-t2i: Pushing the limits of 1d discrete latent space image generation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Ze Wang",
+        "Hao Chen",
+        "Benran Hu",
+        "Jiang Liu",
+        "Ximeng Sun",
+        "Jialian Wu",
+        "Yusheng Su",
+        "Xiaodong Yu"
+      ],
+      "raw_text": "Instella-t2i: Pushing the limits of 1d discrete latent space image generation Ze Wang Hao Chen Benran Hu Jiang Liu Ximeng Sun Jialian Wu Yusheng Su Xiaodong Yu Emad Barsoum Zicheng Liu arXiv:2506.21022 2025 arXiv preprint"
+    },
+    {
+      "index": 38,
+      "title": "Tree-rings watermarks: Invisible fingerprints for diffusion images",
+      "doi": "",
+      "year": "1757",
+      "authors": [
+        "Yuxin Wen",
+        "John Kirchenbauer",
+        "Jonas Geiping",
+        "Tom Goldstein"
+      ],
+      "raw_text": "Tree-rings watermarks: Invisible fingerprints for diffusion images Yuxin Wen John Kirchenbauer Jonas Geiping Tom Goldstein Advances in Neural Information Processing Systems A Oh T Naumann A Globerson K Saenko M Hardt S Levine Curran Associates, Inc 2023. 1757 36 c190ba20dbc4f9e4a2f54149-Paper-Conference.pdf"
+    },
+    {
+      "index": 39,
+      "title": "Optimizing watermarks for large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Bram Wouters"
+      ],
+      "raw_text": "Optimizing watermarks for large language models Bram Wouters Forty-first International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 40,
+      "title": "Fairness feedback loops: training on synthetic data amplifies bias",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sierra Wyllie",
+        "Ilia Shumailov",
+        "Nicolas Papernot"
+      ],
+      "raw_text": "Fairness feedback loops: training on synthetic data amplifies bias Sierra Wyllie Ilia Shumailov Nicolas Papernot Proceedings of the 2024 ACM Conference on Fairness, Accountability, and Transparency the 2024 ACM Conference on Fairness, Accountability, and Transparency 2024"
+    },
+    {
+      "index": 41,
+      "title": "Randomized autoregressive visual generation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Qihang Yu",
+        "Ju He",
+        "Xueqing Deng",
+        "Xiaohui Shen",
+        "Liang-Chieh Chen"
+      ],
+      "raw_text": "Randomized autoregressive visual generation Qihang Yu Ju He Xueqing Deng Xiaohui Shen Liang-Chieh Chen 2024"
+    },
+    {
+      "index": 42,
+      "title": "Watermarks in the sand: impossibility of strong watermarking for language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Hanlin Zhang",
+        "Danilo Benjamin L Edelman",
+        "Daniele Francati",
+        "Giuseppe Venturi",
+        "Boaz Ateniese",
+        "Barak"
+      ],
+      "raw_text": "Watermarks in the sand: impossibility of strong watermarking for language models Hanlin Zhang Danilo Benjamin L Edelman Daniele Francati Giuseppe Venturi Boaz Ateniese Barak Forty-first International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 43,
+      "title": "Robust invisible video watermarking with attention",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Kevin Alex Zhang",
+        "Lei Xu",
+        "Alfredo Cuesta-Infante",
+        "Kalyan Veeramachaneni"
+      ],
+      "raw_text": "Robust invisible video watermarking with attention Kevin Alex Zhang Lei Xu Alfredo Cuesta-Infante Kalyan Veeramachaneni 2019"
+    },
+    {
+      "index": 44,
+      "title": "Remarkllm: A robust and efficient watermarking framework for generative large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ruisi Zhang",
+        "Shehzeen Samarah Hussain",
+        "Paarth Neekhara",
+        "Farinaz Koushanfar"
+      ],
+      "raw_text": "Remarkllm: A robust and efficient watermarking framework for generative large language models Ruisi Zhang Shehzeen Samarah Hussain Paarth Neekhara Farinaz Koushanfar 33rd USENIX Security Symposium (USENIX Security 24) 2024"
+    },
+    {
+      "index": 45,
+      "title": "Persistent pre-training poisoning of LLMs",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yiming Zhang",
+        "Javier Rando",
+        "Ivan Evtimov",
+        "Jianfeng Chi",
+        "Eric Michael Smith",
+        "Nicholas Carlini",
+        "Florian Tramèr",
+        "Daphne Ippolito"
+      ],
+      "raw_text": "Persistent pre-training poisoning of LLMs Yiming Zhang Javier Rando Ivan Evtimov Jianfeng Chi Eric Michael Smith Nicholas Carlini Florian Tramèr Daphne Ippolito The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 46,
+      "title": "Provable robust watermarking for AI-generated text",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Xuandong Zhao",
+        "Prabhanjan Vijendra Ananth",
+        "Lei Li",
+        "Yu-Xiang Wang"
+      ],
+      "raw_text": "Provable robust watermarking for AI-generated text Xuandong Zhao Prabhanjan Vijendra Ananth Lei Li Yu-Xiang Wang The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 47,
+      "title": "Image and video tokenization with binary spherical quantization",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yue Zhao",
+        "Yuanjun Xiong",
+        "Philipp Kraehenbuehl"
+      ],
+      "raw_text": "Image and video tokenization with binary spherical quantization Yue Zhao Yuanjun Xiong Philipp Kraehenbuehl The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 48,
+      "title": "A recipe for watermarking diffusion models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yunqing Zhao",
+        "Tianyu Pang",
+        "Chao Du",
+        "Xiao Yang",
+        "Ngai-Man Cheung",
+        "Min Lin"
+      ],
+      "raw_text": "Yunqing Zhao Tianyu Pang Chao Du Xiao Yang Ngai-Man Cheung Min Lin A recipe for watermarking diffusion models 2023"
+    }
+  ],
+  "section_count": 35,
+  "reference_count": 48,
+  "error": "",
+  "updated_at": "2026-04-12T03:12:03.018789+00:00"
+}

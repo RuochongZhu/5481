@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
@@ -40,6 +41,7 @@ def setup_logging(log_dir: str, phase: int | None = None) -> logging.Logger:
     logger = logging.getLogger("research_agent")
     logger.setLevel(logging.DEBUG)
     logger.handlers.clear()
+    logger.propagate = False
 
     fh = logging.FileHandler(log_file, encoding="utf-8")
     fh.setLevel(logging.DEBUG)
@@ -66,3 +68,9 @@ def load_json(filepath: str):
     """Load JSON file with error handling."""
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def stable_fingerprint(value) -> str:
+    """Return a stable SHA1 fingerprint for JSON-serializable values."""
+    payload = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()

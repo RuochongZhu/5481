@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import os
 import logging
 from datetime import datetime, timezone
@@ -9,8 +10,26 @@ from .utils import atomic_write_json, load_json
 
 log = logging.getLogger("research_agent")
 
+def _initial_stats() -> dict:
+    return {
+        "total_api_calls_llm": 0,
+        "total_api_calls_anthropic": 0,
+        "total_api_calls_openai": 0,
+        "total_api_calls_s2": 0,
+        "total_api_calls_openalex": 0,
+        "total_api_calls_lens": 0,
+        "total_api_calls_crossref": 0,
+        "total_api_calls_opencitations": 0,
+        "total_api_calls_arxiv": 0,
+        "total_tokens_input": 0,
+        "total_tokens_output": 0,
+        "total_tokens_used": 0,
+        "estimated_cost_usd": 0.0,
+    }
+
+
 INITIAL_STATE = {
-    "version": "3.0",
+    "version": "3.3",
     "created_at": None,
     "updated_at": None,
     "current_phase": 1,
@@ -19,11 +38,12 @@ INITIAL_STATE = {
             "status": "pending",
             "steps": {
                 "openalex_search": {"status": "pending", "queries_completed": 0, "papers_found": 0},
+                "lens_search": {"status": "pending", "queries_completed": 0, "papers_found": 0},
                 "s2_citation_expansion": {"status": "pending", "seeds_processed": 0, "papers_added": 0},
                 "arxiv_search": {"status": "pending", "papers_found": 0},
                 "manual_import": {"status": "pending", "files_imported": [], "papers_added": 0},
-                "pdf_download": {"status": "pending", "downloaded": 0, "skipped": 0},
                 "dedup_and_merge": {"status": "pending", "total_before": 0, "total_after": 0},
+                "pdf_download": {"status": "pending", "attempted": 0, "downloaded": 0, "skipped": 0},
             },
             "quality_check": {"total_papers": 0, "passed": False},
         },
@@ -38,6 +58,13 @@ INITIAL_STATE = {
         "2.5": {
             "status": "pending",
             "steps": {
+                "grobid_parse": {
+                    "status": "pending",
+                    "papers_considered": 0,
+                    "parsed": 0,
+                    "missing_pdf": 0,
+                    "failed": 0,
+                },
                 "mineru_convert": {"status": "pending", "converted": 0},
                 "deep_extraction": {"status": "pending", "papers_extracted": 0, "last_batch_index": 0},
                 "merge_deep": {"status": "pending"},
@@ -95,12 +122,7 @@ INITIAL_STATE = {
             },
         },
     },
-    "stats": {
-        "total_api_calls_anthropic": 0,
-        "total_api_calls_s2": 0,
-        "total_tokens_used": 0,
-        "estimated_cost_usd": 0.0,
-    },
+    "stats": _initial_stats(),
 }
 
 # Ordered list of all phases for sequential execution
@@ -185,11 +207,32 @@ def is_step_complete(state: dict, phase: int | str, step: str) -> bool:
     return state["phases"].get(p, {}).get("steps", {}).get(step, {}).get("status") == "completed"
 
 
+def reset_phase_tree(state: dict, state_path: str, start_phase: int | str) -> dict:
+    """Reset a phase and all downstream phases back to initial defaults."""
+    start = str(start_phase)
+    if start not in PHASE_ORDER:
+        return state
+
+    start_idx = PHASE_ORDER.index(start)
+    for phase in PHASE_ORDER[start_idx:]:
+        state["phases"][phase]["status"] = "pending"
+        state["phases"][phase]["steps"] = copy.deepcopy(INITIAL_STATE["phases"][phase]["steps"])
+        if "quality_check" in INITIAL_STATE["phases"][phase]:
+            state["phases"][phase]["quality_check"] = copy.deepcopy(
+                INITIAL_STATE["phases"][phase]["quality_check"]
+            )
+        elif "quality_check" in state["phases"][phase]:
+            state["phases"][phase].pop("quality_check", None)
+
+    state["current_phase"] = start
+    save_state(state_path, state)
+    log.info(f"Reset phase {start} and downstream phases to pending")
+    return state
+
+
 def migrate_state(state: dict) -> dict:
     """Migrate older state versions by adding missing phase/step entries."""
     version = state.get("version", "1.0")
-    if version == "3.0":
-        return state
     for p_key in PHASE_ORDER:
         if p_key not in state["phases"]:
             state["phases"][p_key] = {
@@ -207,7 +250,12 @@ def migrate_state(state: dict) -> dict:
             for step_key, step_val in INITIAL_STATE["phases"][p_key]["steps"].items():
                 if step_key not in state["phases"][p_key].get("steps", {}):
                     state["phases"][p_key].setdefault("steps", {})[step_key] = dict(step_val)
-    state["version"] = "3.0"
+
+    stats = state.setdefault("stats", {})
+    for key, value in _initial_stats().items():
+        stats.setdefault(key, value)
+
+    state["version"] = "3.3"
     return state
 
 
@@ -218,3 +266,47 @@ def bump_stats(state: dict, anthropic_calls: int = 0, s2_calls: int = 0, tokens:
     state["stats"]["total_tokens_used"] += tokens
     # Rough cost estimate: $3/M input + $15/M output for Sonnet, assume 50/50 split
     state["stats"]["estimated_cost_usd"] = round(state["stats"]["total_tokens_used"] * 9e-6, 2)
+
+
+def merge_usage_delta(state: dict, usage_delta: dict | None):
+    """Merge provider-level runtime telemetry into persistent state."""
+    if not usage_delta:
+        return state
+
+    stats = state.setdefault("stats", {})
+    for key, default in _initial_stats().items():
+        stats.setdefault(key, default)
+
+    call_key_map = {
+        "anthropic": "total_api_calls_anthropic",
+        "openai": "total_api_calls_openai",
+        "s2": "total_api_calls_s2",
+        "openalex": "total_api_calls_openalex",
+        "lens": "total_api_calls_lens",
+        "crossref": "total_api_calls_crossref",
+        "opencitations": "total_api_calls_opencitations",
+        "arxiv": "total_api_calls_arxiv",
+    }
+
+    llm_calls = 0
+    for provider, stat_key in call_key_map.items():
+        calls = int(usage_delta.get("api_calls", {}).get(provider, 0) or 0)
+        if calls:
+            stats[stat_key] += calls
+            if provider in {"anthropic", "openai"}:
+                llm_calls += calls
+
+    stats["total_api_calls_llm"] += llm_calls
+
+    input_tokens = int(usage_delta.get("tokens", {}).get("input", 0) or 0)
+    output_tokens = int(usage_delta.get("tokens", {}).get("output", 0) or 0)
+    total_tokens = int(usage_delta.get("tokens", {}).get("total", input_tokens + output_tokens) or 0)
+
+    stats["total_tokens_input"] += input_tokens
+    stats["total_tokens_output"] += output_tokens
+    stats["total_tokens_used"] += total_tokens
+    stats["estimated_cost_usd"] = round(
+        stats.get("estimated_cost_usd", 0.0) + float(usage_delta.get("estimated_cost_usd", 0.0) or 0.0),
+        4,
+    )
+    return state

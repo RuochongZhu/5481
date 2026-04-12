@@ -1,0 +1,1927 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences</title>
+				<funder ref="#_Ue5PP5Y">
+					<orgName type="full">NSERC</orgName>
+				</funder>
+				<funder ref="#_ArmWThR">
+					<orgName type="full">EPSRC</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2024-06-12">12 Jun 2024</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Damien</forename><surname>Ferbach</surname></persName>
+							<email>ferbach.damien@gmail.com</email>
+						</author>
+						<author>
+							<persName><forename type="first">Quentin</forename><surname>Bertrand</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Avishek</forename><forename type="middle">Joey</forename><surname>Bose</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Oxford</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Gauthier</forename><surname>Gidel</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="institution">CIFAR AI Chair</orgName>
+								<address>
+									<country key="CA">Canada</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Université</forename><surname>De Montréal</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Ecole</forename><surname>Normale</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Supérieure</forename><surname>De Paris</surname></persName>
+						</author>
+						<title level="a" type="main">Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2024-06-12">12 Jun 2024</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">6FACF3C2954BBC39D8C726FA55ACA353</idno>
+					<idno type="arXiv">arXiv:2407.09499v1[cs.CV]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:11+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>The rapid progress in generative models has resulted in impressive leaps in generation quality, blurring the lines between synthetic and real data. Web-scale datasets are now prone to the inevitable contamination by synthetic data, directly impacting the training of future generated models. Already, some theoretical results on self-consuming generative models (a.k.a., iterative retraining) have emerged in the literature, showcasing that either model collapse or stability could be possible depending on the fraction of generated data used at each retraining step. However, in practice, synthetic data is often subject to human feedback and curated by users before being used and uploaded online. For instance, many interfaces of popular text-to-image generative models, such as Stable Diffusion or Midjourney, produce several variations of an image for a given query which can eventually be curated by the users. In this paper, we theoretically study the impact of data curation on iterated retraining of generative models and show that it can be seen as an implicit preference optimization mechanism. However, unlike standard preference optimization, the generative model does not have access to the reward function or negative samples needed for pairwise comparisons. Moreover, our study doesn't require access to the density function, only to samples. We prove that, if the data is curated according to a reward model, then the expected reward of the iterative retraining procedure is maximized. We further provide theoretical results on the stability of the retraining loop when using a positive fraction of real data at each step. Finally, we conduct illustrative experiments on both synthetic datasets and on CIFAR10 showing that such a procedure amplifies biases of the reward model.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Today state-of-the-art generative models can produce multi-modal generations virtually indistinguishable from human-created content, like text <ref type="bibr" target="#b1">(Achiam et al., 2023)</ref>, images <ref type="bibr" target="#b53">(Stability AI, 2023)</ref>, audio <ref type="bibr" target="#b8">(Borsos et al., 2023)</ref>, or videos <ref type="bibr" target="#b60">(Villegas et al., 2022;</ref><ref type="bibr" target="#b11">Brooks et al., 2024)</ref>. The democratization of these powerful models by open-sourcing their weights <ref type="bibr" target="#b53">(Stability AI, 2023;</ref><ref type="bibr" target="#b29">Jiang et al., 2023;</ref><ref type="bibr" target="#b58">Touvron et al., 2023)</ref> or allowing public inference <ref type="bibr" target="#b42">(Ramesh et al., 2021;</ref><ref type="bibr" target="#b37">Midjourney, 2023;</ref><ref type="bibr" target="#b1">Achiam et al., 2023)</ref> paves the way to creating synthetic content at an unprecedented scale-the results inevitably populate the Web. In particular, existing datasets are already composed of synthetic data such as JourneyDB <ref type="bibr" target="#b39">(Pan et al., 2023)</ref> and SAC <ref type="bibr" target="#b40">(Pressman et al., 2022)</ref>. Moreover, <ref type="bibr">Alemohammad et al. (2024, Fig.</ref> 2) showed LAION-5B <ref type="bibr" target="#b44">(Schuhmann et al., 2022)</ref>, a large-scale Web-crawled dataset used to train future generative models, already contains synthetically generated images.</p><p>There is strong evidence that the synthetic data on the web has been, to a large extent, curated by human users. For instance, the <ref type="url" target="https://laion.ai/blog/laion-aesthetics/">LAION-Aesthetics datasets</ref> contains synthetically generated 3. Sample is upscaled by User with probability:</p><p>x k e r(x k ) ∑ 4 i=1 e r(x i )   4. Only the upscaled samples are in the dataset 𝒟 t 1. User picks prompts 2. Sample: y ∼ p user (y) x 1 , x 2 , x 3 , x 4 ∼ p t (x | y) … …</p><p>5. Train the model on the dataset p t+1 𝒟 t REPEAT Figure <ref type="figure">1</ref>: Illustration of the curation phenomenon: 1. User proposes prompts such as "butterfly going to the bathroom", 2. Four images are generated with Midjourney, 3. User only upscale one (e.g. the top left image) image, 4. Solely upscaled images are incorporated into the JourneyDB dataset <ref type="bibr" target="#b39">(Pan et al., 2023)</ref>. Samples from other diffusion models can be found in Figures <ref type="figure">10a</ref> and <ref type="figure">10b</ref>.</p><p>images that have been curated using a reward model learned from human feedback on the <ref type="url" target="https://github.com/JD-P/simulacra-aesthetic-captions">Simulacra  Aesthetic Captions</ref> dataset <ref type="bibr" target="#b40">(Pressman et al., 2022)</ref>. Additionally, the <ref type="url" target="https://journeydb.github.io/">JourneyDB</ref> dataset, contains human-picked images from the Midjourney <ref type="bibr" target="#b37">(Midjourney 2023</ref>) discord server, that have been upscaled, i.e., images that have been requested in a higher resolution (see Figure <ref type="figure">1</ref>). More generally, the user interface of the most popular state-of-the-art text-to-image models (e.g., Midjourney and Stable Diffusion 2.1 Huggingface implementation) proposes four alternatives for a single prompt for the user to pick their favorite.</p><p>While the consequences of iterative retraining of generative models on synthetically generated data have raised a lot of attention in the community <ref type="bibr" target="#b2">(Alemohammad et al., 2024;</ref><ref type="bibr" target="#b49">Shumailov et al., 2023;</ref><ref type="bibr" target="#b5">Bertrand et al., 2024;</ref><ref type="bibr">Dohmatob et al., 2024a)</ref>, previous works do not consider that generated data could be curated. This subtle nuance may be of major importance since in numerous applications, augmenting the datasets with curated synthetically generated data is found to enhance the performance of the downstream task <ref type="bibr" target="#b4">(Azizi et al., 2023;</ref><ref type="bibr" target="#b61">Wang et al., 2023;</ref><ref type="bibr" target="#b21">Gillman et al., 2024)</ref> and even generative models themselves <ref type="bibr" target="#b26">(Hemmat et al., 2023;</ref><ref type="bibr" target="#b24">Gulcehre et al., 2023)</ref>, hinting that quality might not be the biggest problem. On the other hand, recent works <ref type="bibr" target="#b62">Wyllie et al. (2024)</ref>; <ref type="bibr">Chen et al. (2024b)</ref> showed that this might lead to new issues, such as bias amplification. This is why, in this work, we aim to theoretically understand how the process of curation of synthetic data is connected with the reward model underlying human preferences and what distribution is learned by generative models trained on such curated synthetic data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Main contributions.</head><p>We summarize our core contributions as the following:</p><p>• We first focus on the self-consuming loop on (only) curated synthetic samples: we show that the expected reward gets maximized in Lemma 2.2 and that its variance vanishes. We further provide a convergence result in Theorem 2.1.</p><p>by a discrete choice model and highlight connections with RLHF. We additionally show that the expected reward increases and that its variance vanishes Lemma 2.2. Finally, inspired by stability results of <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref>, in Section 2.2 we extend our study to settings when real data is injected. More precisely, we improve previous results of stability <ref type="bibr" target="#b5">of Bertrand et al. (2024)</ref> without curation and provide novel theoretical bounds when the synthetic data is curated.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Notation and conventions.</head><p>Lowercase letters p denote densities while uppercase letters P indicate their associated probabilities. We denote p data ∈ P(R d ) the real data distribution and for t ∈ N, we denote p t ∈ P(R d ) the model distribution at step t of the iterative retraining loop. Analogously, θ t is the corresponding parameters of the learned parametric model p t . We write p 0 to indicate the initial model learned using maximum likelihood on p data , this includes many modern generative model families such as diffusion models <ref type="bibr" target="#b28">(Ho et al., 2020;</ref><ref type="bibr" target="#b52">Song et al., 2021)</ref> and flow-matching methods <ref type="bibr" target="#b33">(Lipman et al., 2022;</ref><ref type="bibr">Tong et al., 2023b)</ref>.</p><p>Discrete K-choice model. We propose using a discrete choice model for the curation phenomenon illustrated in Figure <ref type="figure">1</ref>, where users pick their preferred image that will be upscaled in the next dataset. Modeling human preferences is usually done via the Luce choice rule model <ref type="bibr" target="#b47">(Shepard, 1957;</ref><ref type="bibr" target="#b34">Luce et al., 1963;</ref><ref type="bibr" target="#b18">Dumoulin et al., 2023)</ref>, where the human is modeled as a rational Bayesian subject. The probability that x 1 is preferred to x 2 is formulated using an underlying reward function r(x) and Bradley-Terry model, <ref type="bibr" target="#b9">(Bradley and Terry 1952)</ref>. Under Luce's choice axiom <ref type="bibr" target="#b35">(Luce, 2005)</ref>, it is possible to generalize this formula to K ≥ 1 samples as in Equation 2. For given samples x 1 , . . . , x K drawn from p t , the random curated sample denoted x is chosen according to this generalized Bradley-Terry model x ∼ BT (x 1 , . . . , x K ) as in Equation 2 <ref type="bibr" target="#b9">(Bradley and Terry, 1952)</ref>. In particular, the curation procedure can be summarized as follows</p><formula xml:id="formula_0">1) Sample x 1 ∼ p t , . . . , x K ∼ p t , independently, 2) Pick x ∼ BT (x 1 , . . . , x K ) , i.e., P(x = x k |x 1 , . . . , x K ) = e r(x k ) K j=1 e r(xj ) , 1 ≤ k ≤ K.<label>(1)</label></formula><p>(2)</p><p>Self-consuming loop. After generating and curating a synthetic dataset according to Equations 1 and 2, the next generation of generative models is trained either solely on the distribution of curated samples (λ → ∞), or on a mixture of reference samples (that either comes from real data p data or a reference generative model p 0 ) and synthetic curated samples (λ &lt; ∞) depending on the studied setting</p><formula xml:id="formula_1">p t+1 = arg max p∈P 1 1 + λ • E x∼p ref log p(x) + λ 1 + λ • E x1,...,x K ∼pt x∼BT (x1,...,x K ) log p(x) .<label>(3)</label></formula><p>where P is the set of achievable distributions with our model. This work aims to study the retraining dynamics of the distribution defined in Equation 3. First, in Section 2.1 we study the simplified dynamics of Equation 3 in the regime λ → ∞, i.e., when solely retraining on curated synthetic data and show convergence of the process but variance collapse. In Section 2.2 we study the exact dynamics given in Equation <ref type="formula" target="#formula_1">3</ref>and the impact on the stability of retraining on a mix of real data synthetic curated data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1">Iterative retraining only on the curated synthetic samples</head><p>In this section, we study the dynamics of the density learned through iterative discrete K-choice curation in the fully-synthetic setting (i.e., λ → ∞): Equation 3 boils down to</p><formula xml:id="formula_2">p t+1 = arg max p∈P E x1,...,x K ∼pt x∼BT (x1,...,x K ) log p(x) .<label>(4)</label></formula><p>As a warm-up, we first consider the limit of K → ∞ in Lemma 2.1 and draw explicit connections with RLHF. This simplification yields a closed-form formula form for the solution of Equation <ref type="formula" target="#formula_2">4</ref>and provides intuitions for the dynamics of learning on curated samples.</p><p>Lemma 2.1. Let p t+1 be defined as in Equation <ref type="formula" target="#formula_2">4</ref>. If P = P(R d ) is the set of probability distributions on R d , and if we assume that E y∼pt e r(y) &lt; ∞, then we have for all x ∈ R d , x) .</p><formula xml:id="formula_3">p t+1 (x) K→∞ ----→ p t (x) e r(x) E x∼pt e r(</formula><p>(5)</p><p>Dependency on K and connection to RLHF.. The proof of Lemma 2.1 relies on the fact that we can obtain a closed-form formula for the density p t+1 induced from discrete K-choice curation on p t (Equation <ref type="formula" target="#formula_2">4</ref>). This is done in Appendix A.1.1 where we show that its density can be written xi)   . (6)</p><formula xml:id="formula_4">p t+1 (x) = p t (x) • H K pt (x) , with H K pt (x) := E x1,...,x K-1 ∼pt K • e r(x) e r(x) + K-1 i=1 e r(</formula><p>The latter directly implies that for all K ≥ 1, H K pt (x) ∈ (0, K). In particular, small values of K act as a regularization which prevents the density from blowing up too much in high rewards areas. On the other hand, the higher the number of samples used for curation, the more it can affect the induced distribution. In the limit K → ∞, Lemma 2.1 shows an interesting connection between iterative retraining on curated data and reward maximization via RLHF. Given a supervised-finetuned model distribution π SFT and a regularization parameter β, the goal of RLHF is to find a policy that maximizes a reward r(x) fitted on human preferences : <ref type="bibr" target="#b22">(Go et al., 2023;</ref><ref type="bibr" target="#b41">Rafailov et al., 2024)</ref>.</p><formula xml:id="formula_5">π RLHF = arg max π E x∼π [r(x)] -βD KL π||π SFT , which has a closed form formula , π RLHF (x) ∝ π SFT (x)e r(x) /β</formula><p>Therefore, in the limit K → ∞, Equation 5 shows that performing iterative retraining with human curation for t iterations is equivalent to performing RLHF with hyperparameter β = 1 t from the initial distribution π SFT := p 0 . The corresponding regularization parameter β is inversely proportional to the number of retraining steps. This connection is surprising since performing maximum likelihood on a curated distribution (Equation <ref type="formula" target="#formula_1">3</ref>) is a priori different than directly maximizing a reward with Kullback-Leibler (KL) regularization.</p><p>To prove that curation both increases the expected reward and reduces the variance, we need an additional assumption to ensure that it is almost surely bounded at initialization: Assumption 2.1. There exists r * ∈ R such that: (a) p 0 -almost surely, r(x) ≤ r * and (b) p 0 puts positive mass in a neighborhood of r * i.e., ∀ε &gt; 0, P 0 (r(x) ≥ r * -ε) &gt; 0.</p><p>In particular, Assumption 2.1 is satisfied if we suppose that the reward bounded, which is reasonable if we suppose it is continuous given that the set of images [0, 1] d is compact. Finally note that assuming (a), we can always choose r * such that (b) is satisfied by picking the smallest value that almost surely bounds the reward at initialization. On the other hand (b) imposes that r * is the smallest value that a.s. upper-bounds the reward. This shows that r * is uniquely defined which is an important point as we will show convergence of p t towards the level set r(x) = r * in Lemma 2.2 and Theorem 2.1. Lemma 2.2 states the reward expectation increases proportionally to the reward variance.</p><p>Lemma 2.2. Let p t+1 be the distribution induced from a discrete choice model on p t (Equation 4). Suppose Assumption 2.1 holds, then the expected reward increases proportionally to its variance at each retraining iteration:</p><formula xml:id="formula_6">E pt+1 e r(x) ≥ E pt e r(x) + K -1 K Var pt e r(x) e r * .<label>(7)</label></formula><p>Especially the expected reward converges to the maximum reward and its variance vanishes:</p><p>E pt e r(x) t→∞ ---→ e r * and Var pt e r(x) t→∞ ---→ 0 .</p><p>Discussion. Lemma 2.2 shows that the reward augmentation is directly proportional to the reward variance at each retraining step. In other words, the more heterogeneous the reward is, the more its expectation increases at the next step. Lemma 2.2 further shows that the expected reward converges towards the reward maximizers. We can additionally deduce that the variance is doomed to vanish. This is detailed in Appendix A.1.3 which additionally states that the reward variance decreases fast enough to have finite sum. Finally, we note that Lemma 2.2 helps us understand the fixed points of this process: due to the variance term in Equation <ref type="formula" target="#formula_6">7</ref>, a fixed point of the retraining loop must put mass on a single level set of the reward function. The reciprocal is obviously true as detailed in the appendix (Lemma A.3).</p><p>We can finally show a stronger result of convergence for the Kullback-Leibler divergence. We will need to assume that at initialization, the probability density puts a positive mass on the level set r(x) = r * . This corresponds to additionally assuming that ε ≥ 0 instead of only ε &gt; 0 in Assumption 2.1 b). Without this assumption, the probability density support would consecutively vanish towards the maximizer of the reward preventing KL convergence. We therefore assume P 0 (r(x) = r * ) &gt; 0. Further denote p * the probability density at initialization restricted to the domain that maximizes the reward and renormalized:</p><formula xml:id="formula_7">p * (x) := p0(x)1 r(x)=r * P0(r(x)=r * ) .</formula><p>Theorem 2.1. The self-consuming loop on curated samples p t converges to p * :</p><formula xml:id="formula_8">D KL (p * ||p t ) t→∞ ---→ 0 .</formula><p>Theorem 2.1 shows that the process of retraining with curation Equation 2 eventually converges to the highest level set of the reward reached at initialization. In particular, in the limit of a large number of retraining steps, the probability of all smaller rewards vanishes. This can have strong implications when retraining the next generation of generative models on a curated Web-scaled dataset: the learned distribution will lose diversity and collapse to the highest reward samples.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2">Stability of iterative retraining on a mixture of real and synthetic data</head><p>After showing convergence but variance collapse of the self-consuming loop on curated synthetic samples, we now study the impact on the stability of injecting real data at each step. This setting is motivated by the recent work of <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref> that showed stability of the iterative retraining loop with real and synthetic data around a local maximizer θ * of the training distribution likelihood. This setting is furthermore relevant since Web-scrolled datasets will presumably keep containing a mixture of real data and human-curated synthetic data. In Section 2.2.1 we first improve previous results on retraining on mixed datasets which underlines the beneficial impact of real data on stability and in Section 2.2.2, we prove both stability and reward augmentation in the setting of mixed real and curated synthetic data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.1">Iterative retraining without curation</head><p>To motivate the impact of real data on the stability of the retraining loop with curation, we focus first on its impact without curation and improve previous results in that setting in Theorem 2.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Setting.</head><p>In this section only, following the approach of <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref>, we will not assume infinite capacity for our distribution (i.e., P ̸ = P(R d ) and hence adopt a parametric approach P = P Θ := {p θ | θ ∈ Θ}. Given the current generative model distribution p θt , p θt+1 must at the next iteration maximize the combined log-likelihood of real and generated data with hyperparameter λ, i.e., Equation 3 becomes:</p><formula xml:id="formula_9">p θt+1 = arg max p θ ∈PΘ 1 1 + λ • E p data [log p θ (x)] + λ 1 + λ • E p θ t [log p θ (x)] .</formula><p>We finally denote p θ * = arg max</p><formula xml:id="formula_10">p θ ∈PΘ E p data [log p θ (x)</formula><p>] a maximizer of the data distribution loglikelihood. We also make the following assumption taken from <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref>: <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref> proved stability of the retraining loop provided λ is sufficiently small. However, their proof is restricted to λ &lt; 1 2 , preventing the use of a fraction of synthetic data λ 1+λ bigger than one-third which they left as future work. In Theorem 2.2, we extend their proof to any fraction of synthetic data provided the best model distribution is sufficiently close to p data in Wasserstein distance <ref type="bibr" target="#b59">(Villani et al., 2009)</ref> i.e., W 1 (p θ * , p data ) ≤ ε &lt; α L . Additionally, we express the result in distribution, while they expressed it in parameter space.</p><formula xml:id="formula_11">Assumption 2.2. For θ close enough to θ * , the mapping x → ∇ 2 θ log p θ (x) is L- Lipschitz and the mapping θ → E p data [log p θ (x)] is continuously twice differentiable with E p data ∇ 2 θ log p θ (x) ⪯ -αI ≺ 0.</formula><p>Theorem 2.2. If Lε &lt; α and λ &lt; α 2Lε , then there exists a neighborhood of the optimal distribution parameters θ * such that for any initial parameters θ 0 in that neighborhood, p θt converges to p θ * exponentially fast:</p><formula xml:id="formula_12">D KL (p θ * ||p θt ) = Õ λ(α + εL) α + λ(α -εL) 2t .</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.2">Iterative retraining on a mixture of real and curated samples</head><p>Interestingly when curating the synthetic samples we cannot expect stability around the optimal distribution (θ * in Theorem 2.2) since it is no longer a fixed point of the retraining loop. We will instead show a closeness result in KL divergence combined with an increasing property of the expectation of the reward, which bears close connections to RLHF. We therefore now study the setting described in Equation 3 where the synthetic samples are curated using a discrete K-choice model and real data is reused at each step (λ &lt; ∞). In other words, we suppose that the retraining step uses a mixture of a reference distribution and a curated distribution as</p><formula xml:id="formula_13">p t+1 (x) = 1 1+λ p ref (x) + λ 1+λ p t (x) • H K pt (x)(H K pt is defined in Equation 6) .<label>(8)</label></formula><p>In Theorem 2.3, we prove that when retraining on a mixture of real and curated samples, the reward increases with respect to the initialization:</p><p>Theorem 2.3. Consider the process (p t ) defined in eq. 8, with p 0 = p ref , then, for all t ≥ 1</p><formula xml:id="formula_14">E pt e r(x) ≥ E p ref e r(x) + λ (1 + λ) 3 (K -1)Var p ref e r(x)</formula><p>Ke r * .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Discussion.</head><p>A first interesting case is taking the reference distribution p ref equal to p data . In that case, we recover the fact that p data is not a fixed point of the retraining loop as soon as different reward values have non-zero probabilities to happen (we recover the result from Lemma A.3). In fact, Theorem 2.3 shows that such a process initialized at p data will increase the reward expectation.</p><p>The second interesting case is taking p ref = p 0 the generative model at initialization. In that case, retraining on a mixture of samples from the initial model and curated samples from the current model improves the reward expectation with respect to initialization.</p><p>After showing that such a retraining loop improves the expected reward, we can conversely show that this process does not deviate too much from p ref .</p><p>Theorem 2.4. Consider the process (p t ) defined in Equation <ref type="formula" target="#formula_13">8</ref>, with p 0 = p ref .</p><p>In addition, suppose that λ &lt; 1 K-1 , then, for all t ≥ 1</p><formula xml:id="formula_15">D KL (p t ||p ref ) ≤ -log (1 -λ(K -1)) .</formula><p>Applying Theorem 2.4 with p ref = p data shows that retraining on a mixture of real and curated synthetic samples does not deviate too much from the data distribution. On the other hand, when setting p ref to be any initial model distribution, we see that reusing samples from the initial model stabilizes the retraining loop around initialization.</p><p>Connection with RLHF. Theorem 2.3 and Theorem 2.4 together emphasize that retraining on a mixture of reference and filtered synthetic data bears important connections with RLHF. Indeed, the RLHF objective is composed of both a reward maximization term and a KL regularization between the current and initial model. In turn, Theorem 2.3 states that the expected reward increases and Theorem 2.4 shows that the KL divergence with respect to initialization remains bounded. The upper bound on the KL divergence further indicates that setting K small, i.e., using fewer samples for comparison acts as a regularizer, as previously noticed.</p><p>3 Related work Aligning models with human preferences. With the urgent and critical safety concerns of public deployment, the need to align models with human preferences has gained significant importance. RLHF is a popular reinforcement learning technique to align an already pretrained and finetuned model on human preferences <ref type="bibr" target="#b54">(Stiennon et al., 2020;</ref><ref type="bibr" target="#b14">Christiano et al., 2017;</ref><ref type="bibr" target="#b32">Lee et al., 2021;</ref><ref type="bibr" target="#b38">Ouyang et al., 2022;</ref><ref type="bibr" target="#b48">Shin et al., 2023)</ref>. It consists of two steps: first fitting a reward r(x) on human preferences using a dataset of pairwise human comparisons and then, maximizing the expected reward over the model distribution. A Kullback-Leibler regularization to the initial model is further used during the maximization step to avoid reward hacking <ref type="bibr" target="#b51">(Skalse et al., 2022;</ref><ref type="bibr">Chen et al., 2024a)</ref> or catastrophic forgetting <ref type="bibr" target="#b30">(Korbak et al., 2022)</ref>. Variants of RLHF have recently been proposed such as Direct Preference Optimization (DPO) which maximizes the reward directly without modeling it <ref type="bibr" target="#b41">(Rafailov et al., 2024)</ref>, Identity Preference Optimization (IPO) <ref type="bibr" target="#b3">(Azar et al., 2024)</ref> or Kahneman-Tversky Optimization (KTO) <ref type="bibr" target="#b19">(Ethayarajh et al., 2024)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Experiments</head><p>This section aims to empirically illustrate our previous theoretical results on how curation impacts the self-consuming loop. In Algorithm 1, we recall and detail the different steps performed in our experiments.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Synthetic datasets.</head><p>We first focus on two synthetic datasets: a mixture of Gaussians and the two moons dataset. For both datasets, we study the two settings of solely retraining on curated synthetic samples (λ = ∞) and mixed datasets (λ = 1). In Figure <ref type="figure">4</ref>, we iteratively retrain a denoising diffusion probabilistic model (DDPM, Ho et al. 2020) on a mixture of 8 Gaussians. The reward r(x) used for the discrete choice model is the clipped negative Euclidean distance to one of the centers of the Gaussians x * , i.e., r(x) := -γ max{0, ∥x -x * ∥ -r min } where we choose γ = 10, r min = 1. Clipping the distance is used to ensure that the process does not collapse to a single point. Indeed applying Theorem 2.1, we know that the density will converge to a renormalized Gaussian distribution restricted to the ball centered at x * of radius r min . In Figure <ref type="figure">5</ref>, we plot the retraining curves on the two moons dataset: to compute the reward, we use an MLP classifier with 2 hidden layers of width 512 which yields probabilities q 0 (x), q 1 (x) for each class. The reward is then defined as : r(x) := γq 0 (x), γ &gt; 0. Both Figure <ref type="figure">4</ref> and Figure <ref type="figure">5</ref> illustrate that retraining on solely curated samples induces collapse to regions that maximize the reward: respectively one mode of the MoG or one single moon. On the other hand, the use of real data results at the same time both in stability and higher density in high reward regions. Further experimental details are provided in Appendix A.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Natural images on CIFAR10</head><p>Setting. We train a normalizing flow using optimal transport conditional flow matching <ref type="bibr" target="#b33">(Lipman et al., 2022;</ref><ref type="bibr" target="#b45">Shaul et al., 2023;</ref><ref type="bibr">Tong et al., 2023b)</ref> with the torchcfm library <ref type="bibr">Tong et al. (2023a</ref><ref type="bibr" target="#b57">Tong et al. ( , 2024))</ref>. The initial model has been pretrained on the 50000 train images of the CIFAR-10 dataset <ref type="bibr" target="#b31">(Krizhevsky et al., 2009)</ref>. At each iteration, we generate 5 • 10 4 samples using the current model from which we keep 2.5 • 10 3 samples filtered by discrete K-choice comparisons. The reward r(x) is computed using the class probabilities q 0 (x), . . . , q 9 (x) from a pretrained VGG11 classifier <ref type="bibr" target="#b50">(Simonyan and Zisserman, 2014)</ref> with 92.39% test accuracy. Due to the expensive compute cost of retraining a generative model for multiple iterations (c.f. Appendix A.2.3), we plot only one run on each figure. To ensure the reproducibility of our results, we plot the retraining curves for 3 independent runs in Figure <ref type="figure">9</ref> in the appendix, illustrating that they have small variance.</p><p>Using probability of one class as reward. As a first experiment, we filter samples following the probability of the classifier on a predefined class. We arbitrarily chose the class 0 corresponding to planes. The reward is then defined as r(x) = γ • q 0 (x), γ &gt; 0. We plot the evolution of the class proportions as well as the averaged reward across 10 retraining steps in Figure <ref type="figure" target="#fig_1">2</ref> with γ = 5. Figure <ref type="figure" target="#fig_1">2</ref> shows collapse to the single plane class as the reward increases monotonically, illustrating Lemma 2.2.</p><p>Using the confidence of the classifier as a reward: the emergence of bias. As a second experiment, we use the confidence of the classifier as a reward, i.e., r(x) = γ • max 0≤i≤9 q i (x), γ &gt; 0. As written, the reward is therefore uncorrelated from the class but, remains implicitly correlated to it by the fact that the classifier statistics are class dependent. In Figure <ref type="figure" target="#fig_2">3</ref> we plot the evolution of the class proportions as well as the average reward. As expected by our theoretical results in Section 2, the average reward increases monotonically. On the other hand, we clearly see that the class proportions become more and more heterogeneous throughout the retraining loop. While confirming our theoretical study this plot therefore additionally shows that retraining on filtered samples increases bias, in a setting where the reward is implicitly correlated to diversity. Taking a step back, this has strong societal and ethical implications as it may imply that in a filtered internet biases may emerge or strengthen as we explain in Section 6.</p><p>Reusing real samples: stability and reward augmentation. Finally, we illustrate our results from Section 2.2.1 by mixing real and filtered synthetic samples with hyperparameter λ = 1 2 . Figure <ref type="figure" target="#fig_2">3</ref> shows that the process remains stable as the proportion of classes remains approximately uniform (as suggested by Theorem 2.3). On the other hand, the average reward increases before stabilizing as predicted by Theorem 2.3.</p><p>Airplane Automobile Bird Cat Deer Dog Frog Horse Ship Truck 0.0 0.5 Proportion Only Curated Synthetic Real &amp; Curated Synthetic 0 5 10 15 20 # retraining 0.925 0.950 0.975 Avg. Confidence 0 5 10 15 20 # retraining </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Conclusion and open questions</head><p>We study the impact of data curation on the training of generative models in the self-consuming loop. We provide theoretical results demonstrating that the expected reward underlying the curation process increases and its variance collapses (Lemma 2.2) as well as a convergence result (Theorem 2.1) for the generative model. We additionally provide stability guarantees when reusing real data at each step (Theorem 2.3 and Theorem 2.4) establishing close connections with RLHF and preference optimization. Our work sheds light and theoretically grounds a novel phenomenon: increasing the proportion of curated synthetic data on the Web automatically optimizes preferences for future trained large models. A limitation is that we do not propose an algorithm to address emerging issues like bias amplification as we feel it goes beyond the scope of our paper and is a substantially complex field already intensively explored <ref type="bibr" target="#b23">(Grover et al., 2019;</ref><ref type="bibr" target="#b62">Wyllie et al., 2024;</ref><ref type="bibr">Chen et al., 2024b)</ref>. We believe, however, that it should be a research priority and constitutes an interesting avenue for future work. Another interesting direction is to study the impact of the particular reward function underlying filtering (confidence, quality, diversity...) on the emerging bias amplification.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Broader impacts</head><p>Training and alignment of large generative models are prone to substantial ethical concerns regarding their alignment objective <ref type="bibr" target="#b46">(Shen et al., 2023)</ref>, representational disparities of the training datasets <ref type="bibr" target="#b15">(Clemmensen and Kjaersgaard, 2022)</ref>, or the presence of harmful images in the datasets <ref type="bibr" target="#b6">(Birhane et al., 2021;</ref><ref type="bibr" target="#b43">Schramowski et al., 2023;</ref><ref type="bibr" target="#b7">Birhane et al., 2024)</ref>. Our work mostly focuses on the impact of the curation of synthetic datasets which itself heavily depends on the agent performing the curation and its underlying reward function. In particular the documentation of the <ref type="url" target="https://github.com/JD-P/simulacra-aesthetic-captions">Simulacra Aesthetic  Captions</ref> dataset <ref type="bibr" target="#b40">(Pressman et al., 2022)</ref> alerts that the human-based curation step is performed by a group of individuals that lacks diversity, mostly from Western, Educated, Industrialized, Rich, and Democratic (WEIRD) individuals <ref type="bibr" target="#b27">(Henrich et al., 2010)</ref>. A similar bias is likely occurring in the JourneyDB <ref type="bibr" target="#b39">(Pan et al., 2023)</ref> dataset and, more generally, in the synthetic data appearing on the web. However, our work mostly revolves around a theoretical analysis and raises awareness of the implicit alignment and potential bias amplification of self-consuming generative models. We therefore firmly believe that the potential benefits of this awareness outweigh the potential unforeseen negative consequences of this work.</p><formula xml:id="formula_16">H K pt (x) K→∞ ----→ e r(x)</formula><p>E y∼pt e r(y) which directly implies</p><formula xml:id="formula_17">p t+1 (x) K→∞ ----→ p t (x) e r(x)</formula><p>E y∼pt e r(y)</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.2 Additional lemma: the reward expectation is increasing</head><p>Without assuming that the reward is bounded, we can show using Jensen inequality that the reward expectation increases at each retraining step.</p><p>Lemma A.1. When performing K-wise filtering, the expected reward increases, i.e., ∀t ≥ 0:</p><formula xml:id="formula_18">E pt+1 e r(x) ≥ E pt e r(x) . (<label>12</label></formula><formula xml:id="formula_19">)</formula><p>Proof. Consider the random variable</p><formula xml:id="formula_20">Y = K-1 K K-1 i=1 e r(y i ) K-1 when y 1 , • • • , y K-1 i.i.d. ∼ p t .</formula><p>For a, b &gt; 0, the function x → a b+x is convex on R * + . Hence by Jensen inequality, for any x:</p><formula xml:id="formula_21">H K pt (x) = E Y e r(x) e r(x) K + Y ≥ e r(x) e r(x) K + E[Y ] = e r(x) e r(x) K + K-1 K E pt e r(x)</formula><p>Finally, we can write:</p><formula xml:id="formula_22">E pt+1 e r(x) = e r(x) p t (x)H K pt (x)dx ≥ p t (x) e 2r(x) e r(x) K + K-1 K E y∼pt e r(y) dx ≥ E x∼pt e r(x) 2 Ex∼p t [e r(x) ] K + K-1 K E y∼pt e r(y) = E x∼pt e r(x)</formula><p>where we have used again Jensen inequality on the convex function</p><formula xml:id="formula_23">x 2 x K +c on R * +<label>where</label></formula><formula xml:id="formula_24">c := K -1 K E y∼pt e r(y) &gt; 0 A.1.3 Proof of Lemma 2.2</formula><p>Lemma 2.2. Let p t+1 be the distribution induced from a discrete choice model on p t (Equation <ref type="formula" target="#formula_2">4</ref>). Suppose Assumption 2.1 holds, then the expected reward increases proportionally to its variance at each retraining iteration:</p><formula xml:id="formula_25">E pt+1 e r(x) ≥ E pt e r(x) + K -1 K Var pt e r(x) e r * .<label>(7)</label></formula><p>Especially the expected reward converges to the maximum reward and its variance vanishes:</p><formula xml:id="formula_26">E pt e r(x) t→∞ ---→ e r * and Var pt e r(x) t→∞ ---→ 0 .</formula><p>Proof. By symmetry, we can write:</p><formula xml:id="formula_27">KE pt+1 e r(x) = x1,••• ,x K K e 2r(x1) + • • • + e 2r(x K ) e r(x1) + • • • + e r(x K ) K k=1 p t (x k )dx k = x1,...,x K K j=1 e r(xj ) e r(x1) + • • • + e r(x K ) e r(x1) + • • • + e r(x K ) + e r(xj ) (K -1)e r(xj ) -i̸ =j e r(xi) e r(x1) + • • • + e r(x K ) K k=1 p t (x k )dx k = KE pt e r(x) + x1,...,x K i&lt;j e r(xi) -e r(xj ) 2 e r(x1) + • • • + e r(x K ) K k=1 p t (x k )dx k ≤ KE pt e r(x) + i&lt;j 2Var pt e r(x) Ke r * ≤ KE pt e r(x) + K(K -1) 2 2Var pt e r(x) Ke r * ≤ KE pt e r(x) + (K -1)Var pt e r(x) e r * This brings finally, E pt+1 e r(x) ≥ E pt+1 e r(x) + K -1 K Var pt e r(x) e r *</formula><p>We now prove that the expected reward converges and we will first show the following lemma:</p><formula xml:id="formula_28">Lemma A.2. ∀ε ≥ 0, ∀t ≥ 0, P t+1 (r(x) ≥ r * -ε) ≥ P t (r(x) ≥ r * -ε) (<label>13</label></formula><formula xml:id="formula_29">) Proof. Consider (x 1 , . . . , x K ) i.i.d. ∼ p t and denote B ε := {x, r(x) ≥ r * -ε}. Then, P t (r(x) ≥ r * -ε) = 1 K E x1,...,x K K i=1 1 xi∈Bε .</formula><p>On the other hand, x k ) . We can then write:</p><formula xml:id="formula_30">P t+1 (r(x) ≥ r * -ε) = E x1,...,x K K i=1 1 xi∈Bε e r(xi) K k=1 e r(x k ) Proving Lemma A.2 is then equivalent, by permutation symmetries to showing that ∀k ≤ K, if r(x 1 ), . . . , r(x k ) ≥ r * -ε and r(x k+1 ), . . . , r(x K ) &lt; r * -ε, then k K ≤ k i=1 e r(x i ) K k=1 e r(</formula><formula xml:id="formula_31">k i=1 e r(xi) K k=1 e r(x k ) = k i=1 e r(xi) K k=1 e r(x k ) = kµ 1 kµ 1 + (K -k)µ 2 ≥ k K Where µ 2 := K i=k+1 e r(x i ) K-k ≤ k i=1 e r(x i ) k =: µ 1 Let ε &gt; 0.</formula><p>By assumption on r * (Assumption 2.1), we know that there exists δ &gt; 0 such that</p><formula xml:id="formula_32">P 0 (r(x) ≥ r * -ε) ≥ δ and hence using Lemma A.2, ∀t ≥ 0, P t (r(x) ≥ r * -ε) ≥ δ. Therefore, while E pt e r(x) ≤ e r * -2ε, we know that Var pt e r(x) ≥ ε 2 P t (r(x) ≥ r * -ε) ≥ ε 2 δ .</formula><p>Therefore, while E pt e r(x) ≤ e r * -2ε, we have using Lemma 2.2 that</p><formula xml:id="formula_33">E pt+1 e r(x) ≥ E pt+1 e r(x) + K -1 K ε 2 δ e r * . Since K-1 K ε 2 δ e r * &gt; 0,</formula><p>this can happen for only a finite number of steps and hence we know that there exists a time T ε ≥ 0 such that (remind that the expectation of the reward is increasing by Lemma 2.2):</p><formula xml:id="formula_34">∀t ≥ T ε , E pt e r(x) &gt; e r * -2ε .</formula><p>Since, the expected reward is obviously recursively bounded by e r * at any iteration t, we just have proved that it converges.</p><p>We now prove that the variance has finite sum. Indeed, just notice that using Lemma 2.2 that ∀T ≥ 0:</p><formula xml:id="formula_35">T t=0 Var pt e r(x) ≤ e r * K K -1 E p T +1 e r(x) -E p0 e r(x) ≤ K K -1 e 2r * .</formula><p>This proves that</p><formula xml:id="formula_36">T t=0 Var pt e r(x) &lt; ∞.</formula><p>Especially since the reward variance has finite sum and is positive, it converges to 0.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.4 Fixed points of the retraining loop with filtering</head><p>Lemma A.3. A probability density p is a fixed point of Equation <ref type="formula">10</ref>if and only if it puts all its mass on a single level set of the reward function. In other words, there exists r * ∈ R such that</p><formula xml:id="formula_37">P(r(x) = r * ) = 1.</formula><p>Proof. Given the density p, denote P the corresponding probability function and F K (p) the curated distribution using Equations 1 and 2. When the reward r is p-a.s. bounded, this is a direct consequence of Lemma 2.2. When this is not the case, we know the existence of two disjoint interval I, J ⊂ R such that P(r(x) ∈ I) &gt; 0 and P(r(x) ∈ J) &gt; 0. From the proof of Lemma 2.2, we have seen that, taking p t := p: x)   using that I, J have strictly positive mass and disjoint rewards. Therefore, p cannot be a fixed point.</p><formula xml:id="formula_38">KE F K (p) e r(x) = KE p e r(x) + x1,...,x K i&lt;j e r(xi) -e r(xj ) 2 e r(x1) + • • • + e r(x K ) K k=1 p(x k )dx k &gt; KE p e r(</formula><formula xml:id="formula_39">Conversely, if p puts mass on a single level set of r, it is straightforward that it is a fixed point of the filtering operator because H K p (x) is almost surely constant.</formula><p>A.1.5 Proof of Theorem 2.1</p><p>Theorem 2.1. The self-consuming loop on curated samples p t converges to p * :</p><formula xml:id="formula_40">D KL (p * ||p t ) t→∞ ---→ 0 .</formula><p>We can now prove P t (r(x) = r * ) t→∞ ---→ 1. Let δ &gt; 0, suppose that at time t,</p><formula xml:id="formula_41">P t (r(x) = r * ) ≤ 1 -δ . Denote for ε &gt; 0, U ε = {x ∈ R d |r * &gt; r(x) ≥ r * -ε}.</formula><p>We know that ε&gt;0 U ε = ∅. Therefore, ∃ε t &gt; 0 such that P t (U ε t ) ≤ δ 4 . Furthermore, for any t ′ ≥ t, we know that</p><formula xml:id="formula_42">P t ′ (r(x) ≤ r * -ε t ) t ′ →∞ ----→ 1 (<label>15</label></formula><formula xml:id="formula_43">)</formula><p>by convergence of the expectation (Lemma 2.2) and Markov property. We therefore know that ∃t ′ ≥ t such that P t ′ (r(x) ≤ r * -ε t ) ≥ 1 -δ 2 . By using the preceding Lemma A.4, we get:</p><formula xml:id="formula_44">P t ′ (r(x) = r * ) -P t (r(x) = r * ) ≥ p 0 • (P t ′ (r(x) ≥ r * -ε t ) -P t (r(x) ≥ r * -ε t )) ≥ P 0 (r(x) = r * ) • ((1 - δ 2 ) -(1 -δ + δ 4 )) ≥ P 0 (r(x) = r * ) • δ 4</formula><p>and P t (r(x) = r * ) hence increases by at least δ 4 . Therefore, the condition P t (r(x) = r * ) ≤ 1 -δ must become invalid at some point. Since we have shown this for any δ &gt; 0, this shows that P t (r(x) = r * ) → 1.</p><p>A.1.6 Proof of Theorem 2.3 Theorem 2.3. Consider the process (p t ) defined in eq. 8, with p 0 = p ref , then, for all t ≥ 1</p><formula xml:id="formula_45">E pt e r(x) ≥ E p ref e r(x) + λ (1 + λ) 3 (K -1)Var p ref e r(x) Ke r * .</formula><p>Proof. We proceed by recursion. First, we know that ∀t ≥ 1, Var pt e r(x) ≥ 1 1+λ 2 Var p ref e r(x) . Furthermore it is straightforward using Lemma A.1 and a recursion that (x) . This brings that</p><formula xml:id="formula_46">∀t ≥ 0, E pt e r(x) ≥ E p ref e r</formula><formula xml:id="formula_47">∀t ≥ 1, E pt e r(x) ≥ 1 1+λ E p ref e r(x) + λ 1+λ E p ref e r(x) + λ (1+λ) 3 (K-1)Varp ref [e r(x) ] Ke r *</formula><p>which brings the result.</p><p>We can actually show the following lower bound on the limit:</p><formula xml:id="formula_48">Lemma A.5. Consider the process p t+1 (x) = 1 1+λ p ref (x)+ λ 1+λ p t (x)•H K pt (x) with p 0 = p ref . Then, lim inf t→∞ E pt e r(x) ≥ E p ref e r(x) + λ (1 + λ) 2 (K -1)Var p ref e r(x) Ke r * .</formula><p>Proof. Using the proof of Theorem 2.3 we can show the following more precise lower bound at each step: denote A := λ 1+λ and B = 1</p><formula xml:id="formula_49">(1+λ) 2 (K-1)Varp ref [e r(x) ] Ke r *</formula><p>, then for all t ≥ 1:</p><formula xml:id="formula_50">E pt e r(x) ≥ E p ref e r(x) + A t B + A t-1 B + • • • + AB .</formula><p>accumulating data with fixed relative ratios breaks the curse of recursion. However, note that the focus is different since they are in the finite sample setting while we study the infinite sample setting. Finally Lemma A.6 implies that to ensure convergence, we need to relatively decrease the proportion of previous iterations and comparatively increase the relative proportion of the data distribution or only use the distribution of the current iteration. This has been done in <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref> for parametrized generative models under some assumptions</p><p>Proof. We prove the result by recursion starting t = T . By definition:</p><formula xml:id="formula_51">θ T = arg max θ T -1 i=0 α i E p θ i log(p θ (x))</formula><p>Then suppose that for all j such that T ≤ j ≤ t, θ j = θ T . Then we can write:</p><formula xml:id="formula_52">θ t+1 = arg max θ t i=0 α i log(p θ (x))</formula><p>But we know by cross-entropy minimization that</p><formula xml:id="formula_53">θ T = arg max θ E p θ T log(p θ (x)) = arg max θ t i=T E p θ i log(p θ (x)) .</formula><p>Furthermore, by definition,</p><formula xml:id="formula_54">θ T = arg max θ T -1 i=0 α i E p θ i log(p θ (x)) .</formula><p>In particular it maximizes the sum of both previous terms and hence θ t+1 = θ T</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.9 Additional lemma of convergence in parameters</head><p>Lemma A.7. ∀λ ∈ R + , if λ &lt; α 2Lε , then for θ 0 in a neighborhood of θ * , we have the following rate of convergence:</p><formula xml:id="formula_55">∥θ t -θ * ∥ = Õ λ(α + εL) α + λ(α -εL) t .<label>(16)</label></formula><p>Proof. We follow the same steps and notations as in <ref type="bibr" target="#b5">Bertrand et al. (2024)</ref>. The main idea is to get another bound on the operator norm of the Jacobian at θ * : ∥J G(θ * )∥ (their lemma E.1 (iii)). We begin with their intermediate result (lemma E.1 (ii)):</p><formula xml:id="formula_56">J G(θ * ) = (I + λA -1 B) -1 λA -1 B</formula><p>However we will bound this term differently. First note that ∥B -A∥ ≤ Lε.</p><p>From this, we deduce by sub-multiplicativity of the matrix norm that:</p><formula xml:id="formula_57">∥A -1 B -I∥ ≤ ∥A -1 ∥∥B -A∥ ≤ Lε α</formula><p>and by triangular inequality:</p><formula xml:id="formula_58">∥A -1 B∥ = ∥A -1 (B -A) + I∥ ≤ ∥A -1 ∥∥B -A∥ + 1 ≤ 1 + Lε α .</formula><p>Now we use the triangular inequality again to write:</p><formula xml:id="formula_59">∥J G(θ * )∥ ≤ ∥(I + λA -1 B) -1 ∥∥λA -1 B∥ .</formula><p>But,</p><formula xml:id="formula_60">∥(I + λA -1 B) -1 ∥ = ∥((I + λI) + λ(A -1 B -I)) -1 ∥ = 1 1 + λ ∥(I + λ 1 + λ (A -1 B -I)) -1 ∥ ≤ 1 1 + λ 1 1 -λ 1+λ ∥A -1 B -I∥ ≤ 1 1 + λ -λ Lε α where we have used that Lε α &lt; 1. Finally, ∥J G(θ * )∥ ≤ λ 1 1 + λ -λ Lε α (1 + Lε α ) and a sufficient condition for having ∥J G(θ * )∥ &lt; 1 is λ 1 1 + λ -λ Lε α (1 + Lε α ) &lt; 1 or equivalently, λ &lt; α 2Lε .</formula><p>With this new bound λ &lt; α 2Lε which ensures that the operator norm of the Jacobian is smaller than 1, i.e., ∥J G(θ * )∥ &lt; 1, we can unroll the remaining steps of their proof to get Equation <ref type="formula" target="#formula_55">16</ref>A.1.10 Proof of Theorem 2.2 Theorem 2.2. If Lε &lt; α and λ &lt; α 2Lε , then there exists a neighborhood of the optimal distribution parameters θ * such that for any initial parameters θ 0 in that neighborhood, p θt converges to p θ * exponentially fast:</p><formula xml:id="formula_61">D KL (p θ * ||p θt ) = Õ λ(α + εL) α + λ(α -εL) 2t . Proof. We know that θ * locally maximizes θ → E x∼p θ * log(p θ (x)) and hence locally minimizes θ → D KL (p θ * ||p θ ). Hence, ∇ θ D KL (p θ * ||p θ * ) = 0. Furthermore we know that ∇ 2 θ D KL (p θ * ||p θ ) = -p θ * (x)∇ 2 θ log(p θ )dx</formula><p>For fixed parameters θ, denote for s ∈ [0, 1], θ s = sθ + (1 -s)θ * and f (s) = D KL (p θ * ||p θs ). We have f ′ (0) = 0 and</p><formula xml:id="formula_62">f ′′ (s) = (θ -θ * ) ⊤ -p θ * (x)∇ 2 θ log(p θs )dx (θ -θ * )</formula><p>Using Taylor expansion with explicit remaining, we know the existence of s ∈ [0, 1] such that f (1) = f (0) + f ′ (0) + s 2 f ′′ (s) 2 . There remains to bound the spectral norm of</p><p>Algorithm 1 Iterative retraining with curated synthetic data input : D real := {x i } n i=1 , A // True data, learning procedure, param: T , λ, β // Number of retraining iterations, proportion of gen. data, reward multiplicative factor p 0 = A(D real ) // Learn generative model on true data for t in 1, . . . , T do for i in 1, . . . , ⌊λ • n⌋ do x1 , . . . , xK ∼ p t-1 // Sample K synthetic data points xk is selected by a user with probability e r(x k )</p><formula xml:id="formula_63">K j=1 e r(x j ) , 1 ≤ k ≤ K . // Luce's model xi ← xk D filtered = {x i } ⌊λ•n⌋ i=1 // New filtered dataset p t = A(D real ∪ D filtered ) //</formula><p>Generative model is learned on synthetic and true data return p T (-p θ * (x)∇ 2 θs log(p θ )dx). Since by assumption the mapping θ → E p data ∇ 2 θ log(p θ (x)) is locally continuous, and that the spectral norm is itself continuous, we know that we can bound on a</p><formula xml:id="formula_64">neighborhood of θ * , ∥E p data ∇ 2 θ log(p θ (x))∥ ≤ 2∥E p data ∇ 2 θ log(p θ * (x))∥ := 2C &lt; ∞. Further- more, using that x → ∇ 2 θ log(p θ (x)) is L-Lipschitz (Assumption 2.</formula><p>2) and that W(p θ * , p data ) ≤ ε by assumption, using Kantorovitch-Rubinstein duality we know that</p><formula xml:id="formula_65">p θ * (x)∇ 2 θ log(p θs )dx -p data (x)∇ 2 θ log(p θs )dx ≤ εL</formula><p>Putting all things together, we know the existence of a constant C ′ such that for θ in a neighborhood of θ * (that we can in particular choose convex), we have for s ≤ 1, |f ′′ (s)| ≤ 2C ′ ∥θ -θ * ∥ 2 2 and hence D KL (p θ * ||p θ ) ≤ C ′ ∥θ t -θ * ∥ 2 for C ′ &lt; ∞ on a neighborhood of θ * . Using the previous Lemma A.7, we deduce the convergence rate:</p><formula xml:id="formula_66">D KL (p θ * ||p θt ) = Õ λ(α + εL) α + λ(α -εL) 2t .</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2 Experiments</head><p>We recall and detail the general set-up of iteratively retraining on a mixture of real data and curated synthetic samples in Algorithm 1 A.2.1 MoG and two moons datasets -DDPM Experimental details. For both experiments, the learned vector field is parametrized by an MLP of 2 hidden layers and hidden width 128. We use a time discretization in 250 steps. Finally, we retrain the model for 5 iterations, first only on real data and then on filtered synthetic samples from the previous iteration using pairwise comparisons. We use 5 • 10 3 initial samples from the real data distribution and 5 • 10 3 generated samples filtered from 10 4 generated initial samples. When mixing, we use equal fractions of real and filtered samples. For the two moons we add a Gaussian noise with standard deviation 1.10 -1 .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Only Synth.</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ground Truth Iteration 0 Iteration 1 Iteration 2 Iteration 3 Iteration 4</head><p>Real &amp; Synth.</p><p>Figure <ref type="figure">4</ref>: Mixture of Gaussians. Iterative retraining on the two moons dataset for 5 iterations. On the top row, we display the fully filtered synthetic loop, and below we use a mixture of real and filtered data.</p><p>Only Synth.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ground Truth Iteration 0 Iteration 1 Iteration 2 Iteration 3 Iteration 4</head><p>Real &amp; Synth.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Figure 5: Two moons.</head><p>Iterative retraining on the two moons dataset for 5 iterations. On the top row, we display the fully filtered synthetic loop, and below we use a mixture of real and filtered data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2.2 FID, precision, recall</head><p>We measured FID, precision and recall for the three different settings on CIFAR10 presented in Section 4, i.e., a) filtering based on the probability of a classifier on class 0 of planes (Figure <ref type="figure" target="#fig_3">6</ref>), b) filtering based on the confidence of the classifier (Figure <ref type="figure">7</ref>) and c) filtering based on the confidence of the classifier and using a mixture of real data and filtered synthetic samples at each retraining step (Figure <ref type="figure">8</ref>).</p><p>In the first two settings, we observe that the FID dramatically increases during retraining. We want to point out that it is not only due to a degradation in quality of the generated samples but also and mostly from the inequalities of the class proportions emerging during retraining. A clear indicator of this is the correlation between the FID behavior in Figure <ref type="figure" target="#fig_3">6</ref> and the behavior of the proportion of class 0 shown in Figure <ref type="figure" target="#fig_1">2</ref>: the FID stabilizes at the end of the retraining loop when the proportion of class 0 reaches its maximum. A second interesting fact is that in all three settings, the precision increases, which hints that filtering does not necessarily degrades the quality of generated samples in our case. Additionally, we can clearly see the impact on stability of real data on Figure <ref type="figure">8</ref> where the FID witnesses much smaller variations compared to Figure <ref type="figure">7</ref> and Figure <ref type="figure">7</ref>. Interestingly, we see on Figure <ref type="figure">7</ref> that using the confidence of the classifier as a reward function implies a bigger increase of the precision than on Figure <ref type="figure" target="#fig_3">6</ref> or Figure <ref type="figure">8</ref>, which correlates with the intuition that confidence is linked to precision. Finally, notice that the three runs on Figure <ref type="figure">7</ref> have small variance, as we have already highlighted. 0 10 20 Step 0 20 40 60 80 FID 0 10 20 Step 0.675 0.700 0.725 0.750 0.775 0.800 Precision 0 10 20 Step 0.1 0.2 0.3 0.4 0.5 0.6 Recall Figure 7: FID, precision and recall when retraining with filtering and r(x) = γ arg max 0≤i≤9 p i (x), γ = 15 0 10 20 Step 4.25 4.50 4.75 5.00 5.25 FID 0 10 20 Step 0.680 0.685 0.690 0.695 Precision 0 10 20 Step 0.560 0.565 0.570 0.575 Recall Figure <ref type="figure">10</ref>: Two sets of four images were generated using two different generative models. For Midjourney (Figure <ref type="figure">10a</ref>), users can select which image to upscale. The upscaled images are then incorporated into the JourneyDB dataset <ref type="bibr" target="#b39">(Pan et al., 2023)</ref>. For Stable Diffusion, users can choose the preferred generated image.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><figDesc>Iterative retraining on synthetic data and model collapse. The study of the retraining loop of a generative model on synthetic data has witnessed a recent surge of interest. Alemohammad et al. (2024); Shumailov et al. (2023) first evidenced catastrophic degradation of the generated data in the fully synthetic loop. Bertrand et al. (2024) mitigate these conclusions in the setting where the model is retrained on a mixture of synthetic and real data and they show the stability of the process around the data distribution. Briesch et al. (2023) specifically focus on large langage models and Hataya et al. (2023); Martínez et al. (2023) study large scale datasets. A recent theoretical push by Dohmatob et al. (2024a,b) provides bounds on the performance degradation in the regression setting as well as modified scaling laws. Finally recent works, Wyllie et al. (2024); Chen et al. (2024b) study the emergence or amplification of biases in self-consuming loops.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 :</head><label>2</label><figDesc>Figure 2: CIFAR-10. Evolution of the proportion of the class 'Airplane' and of the 9 other classes when filtering on curated synthetic samples with reward r(x) = γ • q 0 (x)</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 3 :</head><label>3</label><figDesc>Figure3: CIFAR-10. Evolution of the proportion of each class and the average reward r(x) when filtering based on the confidence of a classifier. On the left, retraining is done solely on the curated synthetic samples which results in the emergence of proportion biases. On the right, retraining is performed on a mixture of real and curated synthetic samples which results in both increased stability and still reward augmentation.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 6 :</head><label>6</label><figDesc>Figure 6: FID, precision and recall when retraining with filtering and r(x) = -γq 0 (x), γ = 5</figDesc></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head n="7">Acknowledgements</head><p>We sincerely thank <rs type="person">Sophie Xhonneux</rs> for providing feedback and corrections on the paper. We further thank <rs type="person">Mats L. Richter</rs> and <rs type="person">William Buchwalter</rs> for fruitful discussions about the experiments. We thank <rs type="person">Mila Cluster</rs> for access to computing resources, especially GPUs. AJB is partially funded by an <rs type="funder">NSERC</rs> <rs type="grantName">Post-doc fellowship</rs> and an <rs type="funder">EPSRC</rs> <rs type="grantName">Turing AI World-Leading Research Fellowship</rs>.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_Ue5PP5Y">
+					<orgName type="grant-name">Post-doc fellowship</orgName>
+				</org>
+				<org type="funding" xml:id="_ArmWThR">
+					<orgName type="grant-name">Turing AI World-Leading Research Fellowship</orgName>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>A Appendix / supplemental material A.1 Proofs A.1.1 Proof of Lemma 2.1 Lemma 2.1. Let p t+1 be defined as in Equation <ref type="formula">4</ref>. If P = P(R d ) is the set of probability distributions on R d , and if we assume that E y∼pt e r(y) &lt; ∞, then we have for all x ∈ R d ,</p><formula xml:id="formula_67">p t+1 (x) K→∞ ----→ p t (x)</formula><p>e r(x)   E x∼pt e r(x) .</p><p>(5)</p><p>Proof. First, by minimization of the cross-entropy, we know that for any distribution q, arg max p E x∼q [log(p(x))] = q. Therefore, if p t+1 is the solution of Equation 4, then we have directly that p t+1 has the law of x, where x is defined in Equations 1 and 2. We can now specify explicitly the distribution p t+1 . Let p t be the current distribution at time t. We first sample</p><formula xml:id="formula_68">x 1 , • • • , x K i.i.d.</formula><p>∼ p t . and then independently sample an index i K following the generalized Bradley-Terry model: xj )   .</p><formula xml:id="formula_69">P(i K = i|x 1 , • • • , x K ) = e r(xi) K k=1 e r(</formula><p>(</p><p>By noting that the events {i K = i} K i=1 are disjoint, we can write the resulting density:</p><formula xml:id="formula_71">p t+1 (x) = K i=1 yj ,j̸ =i p t (y 1 , • • • , y i-1 , x, y i+1 , • • • , y K )P(i K = i|x, y j , j ̸ = i) j̸ =i dy j .</formula><p>By independence since the K samples are drawn i.i.d. and since the Bradley-Terry formula is symmetric, all K terms in the sum are equal. This leads to rewriting:</p><formula xml:id="formula_72">p t+1 (x) = K y1,••• ,y K-1 p t (y 1 , • • • , y K-1 , x)P(i K = K|y 1 , • • • , y K-1 , x)dy 1 • • • dy K-1 = p t (x)K y1,••• ,y K-1 e r(x) e r(x) + K-1 i=1 e r(yi) p t (y 1 ) • • • p t (y K-1 )dy 1 • • • dy K-1 = p t (x) • H K pt (x)<label>where</label></formula><formula xml:id="formula_73">H K pt (x) = y1,••• ,y K-1 e r(x) e r(x) K + K-1 i=1 e r(y i ) K p t (y 1 ) • • • p t (y K-1 )dy 1 • • • dy K-1<label>(10)</label></formula><p>We now can study the limit K → ∞. Consider the random variable X = e r(x) as x ∼ p t . By assumption, E[X] &lt; ∞. We can therefore apply the law of large numbers. Namely, if</p><formula xml:id="formula_74">X 1 , • • • , X K-1 are sampled i.i.d.: 1 K -1 (X 1 + • • • + X K-1 ) P → E[X]<label>(11)</label></formula><p>Furthermore, for all x, y 1 , . . . , y K-1 , we have 0 ≤</p><formula xml:id="formula_75">e r(x) e r(x) + K-1 i=1 e r(y i ) ≤ 1 and e r(x) K K→∞ ----→ 0.</formula><p>Rewriting Equation 10:</p><formula xml:id="formula_76">H K pt (x) = y1,••• ,y K-1 e r(x) e r(x) K + K-1 K K-1 i=1 e r(y i ) K-1 p t (y 1 ) • • • p t (y K-1 )dy 1 • • • dy K-1</formula><p>we get that:</p><formula xml:id="formula_77">Proof. Recall p * (x) = p0(x)1 r(x)=r * P0(r(x)=r * )</formula><p>. Furthermore, notice that for any t ≥ 0,</p><formula xml:id="formula_78">p t+1 (x)1 r(x)=r * ∝ p 0 (x)1 r(x)=r *</formula><p>by recursion because H K pt (x) depends only on r(x). From that we deduce:</p><formula xml:id="formula_79">D KL (p * ||p t ) = -log(P t (r(x) = r * )).</formula><p>We therefore only have to show that P t (r(x) = r * ) t→∞ ---→ 1.</p><p>We will first show the following lemma:</p><p>Lemma A.4. ∀ε ≥ 0, ∀t ≥ 0,</p><formula xml:id="formula_80">P t+1 (r(x) = r * ) -P t (r(x) = r * ) ≥ P 0 (r(x) = r * ) * (P t+1 (r(x) ≥ r * -ε) -P t (r(x) ≥ r * -ε))</formula><p>Proof. We will actually show:</p><formula xml:id="formula_81">P t+1 (r(x) = r * ) -P t (r(x) = r * ) ≥ P t (r(x) = r * ) * (P t+1 (r(x) ≥ r * -ε) -P t (r(x) ≥ r * -ε))<label>(14)</label></formula><p>from what we directly deduce Lemma A.4 by using Lemma A.2.</p><p>To prove Equation 14, just notice that for any x, y, if r(x) ≥ r(y) then H K pt (x) ≥ H K pt (y) by increasing monotonicity of z → z z+c on R * + for a positive constant c &gt; 0. Therefore we know the existence of a constant C such that ∀x, y, if r(x) = r * and r(y) ≤ r * , then H K pt (x) ≥ C ≥ H K pt (y). For example, take C = inf x s.t. r(x)=r * H K pt (x). Then we can write:</p><formula xml:id="formula_82">P t+1 (r(x) = r * ) -P t (r(x) = r * ) = 1 r(x)=r * (p t+1 (x) -p t (x))dx = 1 r(x)=r * p t (x)(H K pt (x) -1)dx ≥ 1 r(x)=r * p t (x)(C -1)dx = P t (r(x) = r * )(C -1)</formula><p>and:</p><formula xml:id="formula_83">P t+1 (r(x) ≥ r * -ε) -P t (r(x) ≥ r * -ε) = 1 r(x)≥r * -ε (p t+1 (x) -p t (x))dx = 1 r(x)≥r * -ε (H K pt (x) -1)dx ≤ 1 r(x)≥r * -ε p t (x)(C -1)dx = P t (r(x) ≥ r * -ε)(C -1) ≤ (C -1)</formula><p>where in the last step we have used C -1 ≥ 0 because</p><formula xml:id="formula_84">P t+1 (r(x) ≥ r * -ε)-P t (r(x) ≥ r * -ε) ≥ 0 by Lemma A.2 and P t (r(x) ≥ r * -ε) ≤ 1.</formula><p>Combining the last two equations we get:</p><formula xml:id="formula_85">P t+1 (r(x) = r * ) -P t (r(x) = r * ) ≥ P t (r(x) = r * ) * (P t+1 (r(x) ≥ r * -ε) -P t (r(x) ≥ r * -ε))</formula><p>This directly bring that :</p><formula xml:id="formula_86">lim inf t→∞ E pt e r(x) ≥ E p ref e r(x) + AB ∞ i=0 A = E p ref e r(x) + AB 1 -A = E p ref e r(x) + λ 1 + λ 1 (1 + λ) 2 (K -1)Var p ref e r(x) Ke r * 1 1 -λ 1+λ = E p ref e r(x) + λ (1 + λ) 2 (K -1)Var p ref e r(</formula><p>x) Ke r * A.1.7 Proof of Theorem 2.4 Theorem 2.4. Consider the process (p t ) defined in Equation 8, with p 0</p><formula xml:id="formula_87">= p ref . In addition, suppose that λ &lt; 1 K-1 , then, for all t ≥ 1 D KL (p t ||p ref ) ≤ -log (1 -λ(K -1)) .</formula><p>Proof. We know that ∀K ≥ 2, ∀x ∈ R d , H K pt (x) ≤ K.</p><p>We can then show by recursion that ∀t ≥ 1, ∀x, pt(x) p ref (x) ≤ 1 1-λ(K-1) . Indeed, it is true at initialization and if true at time t, then at time t + 1:</p><formula xml:id="formula_88">p t+1 (x) p ref (x) ≤ 1 1 + λ + λ 1 + λ 1 1 -λ(K -1) • K ≤ 1 1 -λ(K -1)</formula><p>We then just replace this bound in the expression of the D KL (p t ||p ref ):</p><formula xml:id="formula_89">D KL (p t ||p ref ) = E pt log( p t (x) p ref (x) ≤ log 1 1 -λ(K -1)</formula><p>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.8 Additional lemma: retraining on a convex combination of previous iterations</head><p>We study here the impact of retraining on a combination of all previous iterations and show that the process remains constant. This motivates and enlightens previous works that consider only retraining on the distribution at the last iteration. Let α 0 , α 1 , α 2 . . . a fixed non-negative sequence and consider a retraining process using maximum likelihood:</p><formula xml:id="formula_90">θ t+1 = arg max θ t i=0 α i E p θ i log(p θ (x)</formula><p>). We will assume for this lemma that the solution of this optimization problem is unique. Otherwise the lemma remains valid but for a carefully chosen solution when there are multiple possibilities.</p><p>Lemma A.6. Suppose we start with the first T iterations predefined, i.e., by fixing p 0 , • • • , p T -1 . Then starting t = T , the learned distribution is constant, i.e., ∀t ≥ T, p t = p T . Discussion. As an example, suppose that we take p 0 = p data and p 1 an initial generative model trained on p data . Then, Lemma A.6 states that starting t = 2, the learned distribution at each step will be constant equal to p 2 . In other words, we cannot expect the process to converge to a global maximizer of the data log-likelihood. More generally, Lemma A.6 shows that if the respective proportion of previous iterations remains constant throughout the retraining loop, the process remains constant and hence cannot converge towards the data distribution. These considerations have interesting links with previous work by <ref type="bibr" target="#b20">Gerstgrasser et al. (2024)</ref> which experimentally showed that</p><p>Airplane Automobile Bird Cat Deer Dog Frog Horse Ship Truck 0.0 0.5 Proportion Run 0 Run 1 Run 2 0 10 20 # retraining 0.925 0.950 0.975 Avg. Confidence 0 10 20 # retraining 0 10 20</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head># retraining</head><p>Figure <ref type="figure">9</ref>: CIFAR-10. Evolution of the proportion of the classes and the average reward when filtering based on the confidence of a classifier for three independent runs. The curves have small variance which supports our results when only one run was reported due to the high compute costs of retraining a generative models multiple times.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2.3 Compute Cost</head><p>Experiments on synthetic data (mixture of Gaussians and two moons) ran on a single GPU in a few minutes. However, retraining with filtering on CIFAR10 was more costly. On a A100 GPU of 40GB RAM and using 4 workers with total 32 GB RAM, retraining for 20 iterations with generation of 50000 samples took about 22 hours.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.3 Examples of sets of four generated images on MidJourney and Stable Diffusion 2.1</head><p>We show in Figure <ref type="figure">10</ref> two sets of four images generated respectively with Midjourney and Stable Diffusion. In both cases, users can choose their preferred image out of the 4 proposed and more specifically in the case of Midjourney, upscale it.</p></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<ptr target="https://huggingface.co/spaces/stabilityai/stable-diffusion" />
+		<title level="m">References Hugging face Stable Diffusion 2.1</title>
+		<imprint>
+			<biblScope unit="page" from="2024" to="2025" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Achiam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Adler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ahmad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Akkaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">L</forename><surname>Aleman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Altenschmidt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Altman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Anadkat</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.08774</idno>
+		<title level="m">GPT-4 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Self-consuming generative models go MAD</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">I</forename><surname>Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">G</forename><surname>Baraniuk</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning and Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">A general theoretical paradigm to understand learning from human preferences</title>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">G</forename><surname>Azar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><forename type="middle">D</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Piot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Munos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Rowland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Valko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Calandriello</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Artificial Intelligence and Statistics</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Synthetic data from diffusion models improves imagenet classification</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Azizi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kornblith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Saharia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Norouzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">J</forename><surname>Fleet</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">TMLR</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">On the stability of iterative retraining of generative models on their own data</title>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">J</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Duplessis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Jiralerspong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Gidel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning and Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Birhane</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><forename type="middle">U</forename><surname>Prabhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Kahembwe</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2110.01963</idno>
+		<title level="m">Multimodal datasets: misogyny, pornography, and malignant stereotypes</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Into the LAION&apos;s Den: Investigating hate in multimodal datasets</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Birhane</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Boddeti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Luccioni</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Audiolm: a language modeling approach to audio generation</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Borsos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Marinier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Vincent</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Kharitonov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Pietquin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sharifi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Roblek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Teboul</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Grangier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Tagliasacchi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE/ACM Transactions on Audio, Speech, and Language Processing</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Rank analysis of incomplete block designs: I. the method of paired comparisons</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">A</forename><surname>Bradley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">E</forename><surname>Terry</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Biometrika</title>
+		<imprint>
+			<date type="published" when="1952">1952</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Large language models suffer from their own output: An analysis of the self-consuming training loop</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Briesch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Sobania</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Rothlauf</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.16822</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Video generation models as world simulators</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Brooks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Peebles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Holmes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Depue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Jing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Schnurr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Taylor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Luhman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Luhman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Ng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ramesh</surname></persName>
+		</author>
+		<ptr target="https://openai.com/research/video-generation-models-as-world-simulators" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">L</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Soselia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Goldstein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Shoeybi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Catanzaro</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Odin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.07319</idno>
+		<title level="m">Disentangled reward mitigates hacking in rlhf</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<author>
+			<persName><forename type="first">T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Hirota</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Otani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Garcia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Nakashima</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.03242</idno>
+		<title level="m">Would deep generative models amplify bias in future models? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Deep reinforcement learning from human preferences</title>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">F</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Martic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Legg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">H</forename><surname>Clemmensen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">D</forename><surname>Kjaersgaard</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.04706</idno>
+		<title level="m">Data representativity for machine learning and AI systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<title level="m" type="main">Model collapse demystified: The case of regression</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kempe</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.07712</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">A tale of tails: Model collapse as a change of scaling laws</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Charton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kempe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024b</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<author>
+			<persName><forename type="first">V</forename><surname>Dumoulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">D</forename><surname>Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">S</forename><surname>Castro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Larochelle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Dauphin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.14115</idno>
+		<title level="m">A density estimation perspective on learning from pairwise human preferences</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<author>
+			<persName><forename type="first">K</forename><surname>Ethayarajh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Jurafsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Kiela</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.01306</idno>
+		<title level="m">Kto: Model alignment as prospect theoretic optimization</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Sleight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Pai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gromov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.01413</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Self-correcting self-consuming loops for generative model training</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Gillman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Freeman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Aggarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">H</forename><surname>Hsu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Sun</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.07087</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Aligning language models with preferences through f-divergence minimization</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Go</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Kruszewski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Rozen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Ryu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Dymetman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.08215</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Bias correction of learned generative models using likelihood-free importance weighting</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Grover</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kapoor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Tran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">J</forename><surname>Horvitz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gulcehre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">L</forename><surname>Paine</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Srinivasan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Konyushkova</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Weerts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Siddhant</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ahern</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Macherey</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2308.08998</idno>
+		<title level="m">Reinforced self-training (rest) for language modeling</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">Will large-scale generative models corrupt future datasets?</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Hataya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Arai</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF International Conference on Computer Vision</title>
+		<meeting>the IEEE/CVF International Conference on Computer Vision</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">A</forename><surname>Hemmat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Pezeshki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Bordes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Drozdzal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Romero-Soriano</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.00158</idno>
+		<title level="m">Feedback-guided data synthesis for imbalanced classification</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">The weirdest people in the world?</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Henrich</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">J</forename><surname>Heine</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Norenzayan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Behavioral and brain sciences</title>
+		<imprint>
+			<date type="published" when="2010">2010</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title level="m" type="main">Denoising diffusion probabilistic models. Advances in neural information processing systems</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Abbeel</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">33</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">Q</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sablayrolles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Bamford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">S</forename><surname>Chaplot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Bressand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Lengyel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Lample</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Saulnier</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.06825</idno>
+		<title level="m">Mistral 7B</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">On reinforcement learning and distribution matching for fine-tuning language models with no catastrophic forgetting</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Elsahar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Kruszewski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Dymetman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Learning multiple layers of features from tiny images</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Krizhevsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Hinton</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<title level="m" type="main">Pebble: Feedback-efficient interactive reinforcement learning via relabeling experience and unsupervised pre-training</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Abbeel</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2106.05091</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Lipman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ben-Hamu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Nickel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Le</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2210.02747</idno>
+		<title level="m">Flow matching for generative modeling</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<title level="m" type="main">Handbook of mathematical psychology: I</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Luce</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">R</forename><surname>Bush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">E</forename><surname>Galanter</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1963">1963</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">Individual choice behavior: A theoretical analysis</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">D</forename><surname>Luce</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2005">2005</date>
+		</imprint>
+		<respStmt>
+			<orgName>Courier Corporation</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<author>
+			<persName><forename type="first">G</forename><surname>Martínez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Watson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Reviriego</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">A</forename><surname>Hernández</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Juarez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Sarkar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.01255</idno>
+		<title level="m">Combining generative artificial intelligence (AI) and the internet: Heading towards evolution or degradation? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<title/>
+		<author>
+			<persName><surname>Midjourney</surname></persName>
+		</author>
+		<ptr target="https://www.midjourney.com/home/" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="2023" to="2029" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title level="a" type="main">Training language models to follow instructions with human feedback</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ray</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<title level="m" type="main">JourneyDB: A benchmark for generative image understanding</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Qin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Qiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Li</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Simulacra aesthetic captions</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">D</forename><surname>Pressman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Crowson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">C</forename><surname>Contributors</surname></persName>
+		</author>
+		<idno>Version 1.0</idno>
+		<ptr target="https://github.com/JD-P/simulacra-aesthetic-captions" />
+	</analytic>
+	<monogr>
+		<title level="m">Stability AI</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Technical Report</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Direct preference optimization: Your language model is secretly a reward model</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">D</forename><surname>Manning</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Finn</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Zero-shot text-to-image generation</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ramesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Pavlov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Goh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<analytic>
+		<title level="a" type="main">Safe latent diffusion: Mitigating inappropriate degeneration in diffusion models</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Schramowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Brack</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Deiseroth</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Kersting</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<analytic>
+		<title level="a" type="main">LAION-5B: An open large-scale dataset for training next generation image-text models</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Schuhmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Beaumont</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Vencu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gordon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Wightman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Cherti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Coombes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Katta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Mullis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Wortsman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<analytic>
+		<title level="a" type="main">On kinetic optimal probability paths for generative models</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shaul</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Nickel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Lipman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<monogr>
+		<author>
+			<persName><forename type="first">T</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Jin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Xiong</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.15025</idno>
+		<title level="m">Large language model alignment: A survey</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<analytic>
+		<title level="a" type="main">Stimulus and response generalization: A stochastic model relating generalization to distance in psychological space</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Shepard</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Psychological Review</title>
+		<imprint>
+			<biblScope unit="volume">22</biblScope>
+			<biblScope unit="page">32545</biblScope>
+			<date type="published" when="1957">1958. 1957</date>
+		</imprint>
+	</monogr>
+	<note>stimulus and response generalization: Deduction of the generalization gradient from a trace model psychometrika</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<title level="m" type="main">Benchmarks and algorithms for offline preference-based reward learning</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Shin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">D</forename><surname>Dragan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">S</forename><surname>Brown</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2301.01392</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<monogr>
+		<title level="m" type="main">The curse of recursion: Training on generated data makes models forget</title>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.17493</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<monogr>
+		<title level="m" type="main">Very deep convolutional networks for large-scale image recognition</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zisserman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1409.1556</idno>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<analytic>
+		<title level="a" type="main">Defining and characterizing reward gaming</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Skalse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Howe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Krasheninnikov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Krueger</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<analytic>
+		<title level="a" type="main">Score-based generative modeling through stochastic differential equations</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Sohl-Dickstein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">P</forename><surname>Kingma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Poole</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">I</forename><surname>Stability</surname></persName>
+		</author>
+		<ptr target="https://stability.ai/stablediffusion" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="2024" to="2025" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b54">
+	<analytic>
+		<title level="a" type="main">Learning to summarize with human feedback</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Stiennon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lowe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">F</forename><surname>Christiano</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="3008" to="3021" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b55">
+	<monogr>
+		<title level="m" type="main">Simulation-free schrödinger bridges via score and flow matching</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Malkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Fatras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Atanackovic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Huguet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bengio</surname></persName>
+		</author>
+		<idno>2307.03672</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b56">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Malkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Huguet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Rector-Brooks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Fatras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bengio</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.00482</idno>
+		<title level="m">Conditional flow matching: Simulation-free dynamic optimal transport</title>
+		<imprint>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">2023</biblScope>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b57">
+	<analytic>
+		<title level="a" type="main">Improving and generalizing flow-based generative models with minibatch optimal transport</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Fatras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Malkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Huguet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Rector-Brooks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bengio</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=CD9Snc73AW" />
+	</analytic>
+	<monogr>
+		<title level="j">Transactions on Machine Learning Research</title>
+		<idno type="ISSN">2835-8856</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>Expert Certification</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b58">
+	<monogr>
+		<author>
+			<persName><forename type="first">H</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M.-A</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Hambro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Azhar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.13971</idno>
+		<title level="m">Open and efficient foundation language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b59">
+	<monogr>
+		<title level="m" type="main">Optimal transport: old and new</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Villani</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<publisher>Springer</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b60">
+	<analytic>
+		<title level="a" type="main">Phenaki: Variable length video generation from open domain textual descriptions</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Villegas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Babaeizadeh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P.-J</forename><surname>Kindermans</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Moraldo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">T</forename><surname>Saffar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Castro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kunze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Erhan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b61">
+	<analytic>
+		<title level="a" type="main">Better diffusion models further improve adversarial training</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b62">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wyllie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.07857</idno>
+		<title level="m">Fairness feedback loops: Training on synthetic data amplifies bias</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

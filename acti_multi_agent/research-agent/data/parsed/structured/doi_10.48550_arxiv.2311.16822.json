@@ -1,0 +1,596 @@
+{
+  "paperId": "doi:10.48550/arxiv.2311.16822",
+  "title": "Large Language Models Suffer From Their Own Output: An Analysis of the Self-Consuming Training Loop",
+  "year": 2023,
+  "source": "openalex+s2+arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2311.16822.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2311.16822.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2311.16822.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Large Language Models (LLM) are already widely used to generate content for a variety of online platforms. As we are not able to safely distinguish LLM-generated content from human-produced content, LLM-generated content is used to train the next generation of LLMs, giving rise to a self-consuming training loop. From the image generation domain we know that such a self-consuming training loop reduces both quality and diversity of images finally ending in a model collapse. However, it is unclear whether this alarming effect can also be observed for LLMs. Therefore, we present the first study investigating the self-consuming training loop for LLMs. Further, we propose a novel method based on logic expressions that allows us to unambiguously verify the correctness of LLM-generated content, which is difficult for natural language text. We find that the self-consuming training loop produces correct outputs, however, the output declines in its diversity depending on the proportion of the used generated data. Fresh data can slow down this decline, but not stop it. Given these concerning results, we encourage researchers to study methods to negate this process.",
+      "word_count": 180
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Transformer-based language models have received much attention in the machine learning community in recent years. Especially large language models (LLM) trained on massive amounts of data from the internet became state of the art in many benchmarks (Brown et al., 2020) and specialized conversational LLM applications like ChatGPT foot_0 have a massive influence on society already. LLMs can be used for multiple tasks ranging from code generation (Chen et al., 2021; Sobania et al., 2022; Fan et al., 2023) and automated program repair (Sobania et al., 2023 ) to text summarization (Yang et al., 2023) and teaching assistance (Baidoo-Anu and Ansah, 2023) .\n\nDue to their convincing generated outputs, LLMs can be used to generate a large amount of content that is posted online to coding platforms like GitHub and Stackoverflow foot_1 , social media platforms like Reddit foot_2 and other platforms on the internet. Even academic writing is already being influenced by LLM outputs (Geng and Trotta, 2024; Liang et al., 2024) . Such LLM-generated text is often hard to distinguish from human-generated content (Sadasivan et al., 2023) and in turn might unwillingly be used to train the next generation of LLMs. Even paying for human-generated content might not be an option in the future, as workers at paid services like Amazon's Mechanical Turk also use LLMs to produce content (Veselovsky et al., 2023) . Consequently, a self-consuming training loop emerges in which future models are trained repeatedly on LLM-generated data from previous generations. This process was first observed for generative models in the image domain (Martínez et al., 2023; Alemohammad et al., 2023; Shumailov et al., 2023; Bertrand et al., 2023) . These studies found that this self-consuming training loop leads to a decline in quality and diversity of generated images, ultimately resulting in a so called model collapse. However, it is unclear what happens with LLMs that are trained in such a self-consuming training loop from scratch, as usually done in realworld applications like ChatGPT.\n\nTherefore, we present the first study analyzing the behavior of LLMs trained over many generations in a self-consuming training loop. We conduct experiments on a GPT-style model in different settings and measure both quality and diversity of samples from the trained model at each generation in the self-consuming training loop. The settings differ in the way a dataset is created for each generation (so called data cycles) as well as the proportion of original real and LLM-generated synthetic data samples. To better analyze the behavior of the trained models we conduct our experiments on a dataset consisting of logic expressions. In contrast to natural language, this logic expressions can be evaluated unambiguously. This allows us to analytically and accurately measure correctness and diversity of the generated samples.\n\nWe find that repeatedly training new models with synthetic data from previous models initially improves quality. However, diversity degenerates and the learned distribution inevitably collapses to a single point. In extreme cases this happens already after less than 10 generations. Additionally, we find that the speed at which diversity degenerates depends on the data cycle as well as on the proportion of real and synthetic data. Fresh real data added during the data cycle slows down but can not negate the effects of a self-consuming training loop.\n\nIn summary, our main contributions are as follows:\n\n• The first comprehensive empirical study of the self-consuming training loop for LLMs trained from scratch,\n\n• A novel method to unambiguously evaluate quality/correctness and diversity of LLMgenerated outputs,\n\n• An in-depth analysis and discussion of the effects and implications of this self-consuming training loop for LLMs.\n\nFollowing this introduction, Sect. 2 describes the self-consuming training loop and gives an overview of related work. In Sect. 3, we describe our experimental setting. Section 4 presents the experimental results, followed by a discussion in Section 5. Section 6 concludes the paper.",
+      "word_count": 640
+    },
+    {
+      "index": 3,
+      "title": "The Self-Consuming Training Loop",
+      "kind": "body",
+      "text": "Current generations of LLMs are usually trained on large amounts of unstructured data like text and code gathered from the Internet (Brown et al., 2020) . Due to their generative nature and capacity those models can in turn be used to generate new synthetic data, often indistinguishable from the original real data (Sadasivan et al., 2023) . This Algorithm 1 Self-Consuming Training Loop Input: number of generations T , data cycle Initialize: Sample D 0 from P X for t = 1 to t = T do Train Model M t with D t-1 Sample S t from M t Create D t from D 0 and S 1...t according to data cycle end for\n\nsynthetic data ends up back on the internet and thus in the next large dataset, which is used to train the next generation of LLMs. These LLMs in turn produce new content and data, setting in motion a repetitive cycle in which new generations of models are trained each time with a higher proportion of synthetic data from previous generations. We call this process a self-consuming training loop, depicted in Figure 1 .\n\nMore specifically, consider a dataset D 0 consisting of real data points x ∈ X sampled from the original distribution P X . A generative model M t is trained on this original dataset D 0 until the data is sufficiently fitted, producing the first generation t = 1 of generative models. In a self-consuming training loop, a new set of m synthetic data points S t is now sampled from the previous generation of generative models M t . The next generation of generative models M t+1 is then trained from scratch on the new dataset D t . This self-consuming training loop is repeated until the maximum number of generations t = T is reached. Algorithm 1 presents a pseudo-code describing this self-consuming training loop.\n\nRelated Work Current research has analyzed the self-consuming training loop mostly in the context of image generating models. Martínez et al. (2023) first studied the self-consuming training loop for diffusion models and find that the self-consuming training loop leads to a collapse in diversity of the generated images. Other work have given theoretical frameworks for this phenomenon and look at more complex data cycles in the context of image generation (Alemohammad et al., 2023; Shumailov et al., 2023; Bertrand et al., 2023) . Both Alemo- hammad et al. (2023) and Bertrand et al. (2023) find that fresh real data can lead to stability within the self-consuming training loop. Shumailov et al. (2023) observe a degeneration of diversity for Variational Autoencoders and Gaussian Mixture Models if some of the output is used again as input. Additionally, the authors perform experiments for iteratively fine-tuning LLMs in a self-consuming way and observe a degradation in quality. They find that degradation is less strong than in the imagine generation context and that keeping some original data helps mitigating this phenomenon. Other contemporary work also analyzed repeated fine-tuning of LLMs in a selfconsuming way and observed a decrease in lexical diversity (Guo et al., 2023) .\n\nHowever, new generations of LLMs are usually trained from scratch with web scraped datasets while fine-tuning is mainly done with curated datasets. So the analysis of the self-consuming training loop when training from scratch is of pressing concern. To the best of our knowledge, we are the first to study the behavior of LLMs trained in a self-consuming loop from scratch. Furthermore, self-consuming loops in LLMs have not yet been analyzed with a method that allows to unambiguously evaluate the quality and diversity of generated model output.",
+      "word_count": 603
+    },
+    {
+      "index": 4,
+      "title": "Experimental Setup",
+      "kind": "methods",
+      "text": "We present our logic expression dataset, which is the foundation for the verification of the language model's output. Furthermore, we explain the data cycles we analyze in our experiments and describe the used model architecture in detail.",
+      "word_count": 37
+    },
+    {
+      "index": 5,
+      "title": "Verification with a Logic Expression Dataset",
+      "kind": "body",
+      "text": "LLMs usually generate natural language texts and their performance is typically measured by using similarity metrics like the BLEU score (Papineni et al., 2002) , ROUGE score (Lin, 2004) and BERT score (Zhang et al., 2019) as well as perplexity (Jurafsky and Martin, 2009) . However, those metrics rely on measuring similarity of outputs with expected reference data, which can only serve as a proxy for quality of a language model (Callison-Burch et al., 2006; Gehrmann et al., 2023) . Consequently, we propose using a dataset consisting of logic expressions. Those expressions can be represented as a sequence making them a good fit for language modeling. In contrast to natural language text, we can easily and systematically evaluate the quality of logic expressions by verifying their correctness. An expression is defined to be syntactically correct, if it can be parsed without an error. The semantic correctness can be evaluated if an expression is either True or False. If the original dataset only consists of True expressions, then a high-quality trained model should also only generate True expressions. We build a logic expression as a tree in a recursive way specified in the function GenLogicExpr(d), where d is the desired depth of a logic expression tree. If the desired tree depth is reached when calling the function, a random Boolean is returned (either True or False). Otherwise, a logic operator (not,and,or) is selected and the function is called again recursively with d -1. To build the entire original dataset we use this recursive function to sample new random logic expression trees with a random depth between d min and d max until we have a dataset with m unique expressions that evaluate in a True Boolean expression. The complexity of the dataset can be easily controlled by adjusting d max . For our experiments we chose a initial dataset size of m = 10, 000 with expressions of minimum depth d min = 1 and maximum depth d max = 5. Algorithm 2 in Appendix A describes the generation of our logic expression dataset in pseudo-code.\n\nThe resulting logic expression trees can then be saved as strings, e.g., not ( True and False ). This allows us to evaluate them in Python using the eval() function to test whether they are correct or trigger an error and whether they evaluate to a True or False Boolean. Additionally, we can en- code those strings to a sequence of tokens (True, False, not, and, or, (, ), <eos>, where <eos> is a stop token and indicates the end of an expression) and use these sequences to train a language model.\n\n𝒮 1 𝒟 0 𝒮 2 𝒮 3 (a) Full Synthetic Data Cycle 𝒮 1 𝒟 0 𝒮 3 𝒟 0 𝒟 0 𝒮 1 𝒮 2 𝒟 0 𝒮 1 𝒮 2 (b) Balanced Data Cycle 𝒮 1 𝒟 0 𝒮 2 𝒮 3 𝒟 0 𝒟 0 𝒟 0 𝒟 1 𝒟 2 (c) Incremental Data Cycle 𝒮 2 ℱ 2 𝒮 1 ℱ 1 𝒮 1 ℱ 1 𝒟 0 𝒟 0 𝒮 1 𝒟 0 𝒮 2 𝒮 3 𝒟 0 ℱ 1 ℱ 2 ℱ 3 (d) Expanding Data Cycle",
+      "word_count": 532
+    },
+    {
+      "index": 6,
+      "title": "Measuring the Diversity of the Model's Output",
+      "kind": "body",
+      "text": "A generative model does not only need to generate correct outputs but also a diverse set of outputs.\n\nTo measure the diversity of a sample from a LLM we use the Levenshtein diversity (Wittenberg et al., 2023) in our experiments. This metric calculates the pairwise Levenshtein distance between each expression in the sample normalized by the number of tokens of the longer expression of each pairwise comparison and averaged over the number of pairwise comparisons. If the average pairwise normalized Levenshtein distance is close to zero the diversity within a sample is low. A value closer to one suggests a stronger diversity within a sample. The Levenshtein distance itself is a metric for measuring the distance between two strings and is defined as the number of edits (deletion, addition, substitution) required to change one string to another (Levenshtein et al., 1966) . Normally, this edit distance is calculated on a character basis, however, we calculate it on the tokens from our encoding of the logic expressions to accommodate for the different length each token has in character representation.",
+      "word_count": 178
+    },
+    {
+      "index": 7,
+      "title": "Data Cycles",
+      "kind": "body",
+      "text": "We define a data cycle as the way a dataset D t is constructed in generation t from the original data D 0 , potential fresh data F t from the original distribution, and the generated data from the current and previous generations S 1...t . This way of constructing a new dataset may vary and different data cycles are possible. In the image generation domain, previous work suggests that the self-consuming training loop is influenced by the data cycle being used (Alemohammad et al., 2023) . Therefore, inspired by their work we conduct our experiments with the following four different data cycles (also depicted in Fig. 2 ): Full Synthetic Data Cycle: In the most extreme case of a self-consuming training loop a new model M t is only trained on the generated data from the last generation so that D t-1 = S t-1 . We call this a full synthetic data cycle. Normally, new datasets would still contain the original data when they are collected in practice. However, we can use this data cycle to study the most extreme changes in behavior of models from generation to generation.\n\nBalanced Data Cycle: We refer to the second data cycle as the balanced data cycle. In this data cycle, we construct the new dataset D t from equal parts of all the previous samples",
+      "word_count": 225
+    },
+    {
+      "index": 8,
+      "title": "Incremental Data Cycle:",
+      "kind": "body",
+      "text": "The third data cycle we study is called the incremental data cycle. In this data cycle, the new dataset is created by a portion (1 -λ) of the last dataset D t-1 and a portion λ of new sampled data S t so that D t = (1 -λ) * D t-1 + λ * S t while holding the size m of the dataset constant each generation. A λ = 1 would result in a full synthetic data cycle. We chose λ = 0.1 for our initial experiments and later used different values of λ to study the influence of this parameter on diversity.\n\nExpanding Data Cycle: The first three data cycles create a dataset of equal size in each generation. In practice, however, the dataset would grow each generation by adding new generated data to the already existing dataset. Additionally, fresh data samples F t from the original distribution (e.g. human generated) would also be added at each generation. Consequently, the last data cycle we study is an expanding data cycle. At each generation the new dataset is created so that D t = D t-1 + (1 -λ) * F t + λ * S t , where λ is the portion of generated data we add each generation and (1 -λ) is the portion of fresh real data added at each generation. For this data cycle, we chose λ = 0.9 for our initial experiments and later used different values of λ to study the influence of fresh data in an expanding data cycle on diversity.",
+      "word_count": 260
+    },
+    {
+      "index": 9,
+      "title": "Model Architecture and Training",
+      "kind": "body",
+      "text": "We employ a GPT-style LLM using the opensource implementation nanoGPT foot_3 (MIT license) in our experiments. The model accepts a context of up to 256 tokens and consists of 6 attention layers with 6 attention heads each and an embedding dimensionality of 384, resulting in roughly 10.6 million parameters.\n\nDuring training we use a batch size of 64 and a dropout rate of 0.2, training for 5000 iterations minimizing cross entropy loss, starting with a learning rate of 10 -3 decaying to 10 -4 , to achieve a sufficient fitting of the training data. We split the dataset in 90% training and 10% validation data. During training we calculate the validation error every 250 iterations and use the model parameters with the lowest validation error as our final model M t for each generation t in the self-consuming training loop.\n\nWe use the trained model at each generation to sample m = 10, 000 logic expressions. During sampling, we auto-regressively generate new tokens with temperature 0.8 and feed them back into the model until a stop token <eos> is sampled up to a maximum of 200 tokens per expression. We run the self-consuming training loop for T = 50 generations in each experiment.\n\nAll experiments are performed on a workstation using a NVIDIA Turing architecture graphics card.",
+      "word_count": 217
+    },
+    {
+      "index": 10,
+      "title": "Results",
+      "kind": "results",
+      "text": "We present our experimental results. First, we describe our results on the performance in terms of correctness of models trained in a self-consuming training loop. Afterwards, we present our results in terms of diversity for those models.",
+      "word_count": 37
+    },
+    {
+      "index": 11,
+      "title": "Correctness of Generated Content",
+      "kind": "body",
+      "text": "We first study the correctness of the expressions within a generated sample S t from a model M t at each generation t. As described in Sec. 3.1, we consider an expression to be syntactically correct if it can be parsed without error. Since the original dataset D 0 only consists of True expressions, we consider a generated expression to be semantically correct if it also evaluates to True. A semantically correct expression is also syntactically correct.\n\nFigure 3 displays the composition of samples S t generated during a self-consuming training loop. Each subplot presents the results for a different data cycle: a) full synthetic, b) balanced, c) incremental, and d) expanding. Every bar in a subplot displays the composition of S t generated from model M t at generation t, except for the first bar in each subplot which displays D 0 . The green portion of a bar indicates the number of syntactically correct expressions that evaluate to True in that sample. The yellow part of a bar represents the number of syntactically correct expressions that evaluate to False, and the red part of a bar displays the number of syntactically incorrect expressions that result in an error when being parsed.\n\nOverall, we see that only very few expressions are syntactically incorrect. This indicates that the models are sufficiently trained and can correctly learn the syntactic rules of a logic expression. We see a drop of around 20% in the number of semantically correct expressions from the original data D 0 to the first sample S 1 in every data cycle. Interestingly, the number of semantically correct expressions increases afterwards over the course of the self-consuming training loop. The speed at which this number increases depends on the data cycle. We can see the fastest increase for the full synthetic data cycle in which the whole sample consists of True expressions by generation t = 6. The incremental data cycle takes consistently longer but also nearly reaches this point by generation t = 36. While the balanced data cycle has an initially steeper increase in semantically correct expressions, it does not reach the point of a completely semantically correct sample by the end of 50 generations but comes very close to it. Lastly, the expanding data cycle shows this trend as well.\n\nOverall, we see that the self-consuming training loop seems to help with generating more semantically correct expressions in our experiments and the rate at which this happens differs by data cycle.",
+      "word_count": 415
+    },
+    {
+      "index": 12,
+      "title": "Diversity of Generated Content",
+      "kind": "body",
+      "text": "While we can see an increase in correctness over generations in our experiments, contemporary work in the image generation domain suggests, that this comes with a loss of diversity (Martínez et al., 2023; Alemohammad et al., 2023; Bertrand et al., 2023) . Therefore, in this section we study the diversity within a sample S t of model M t for each generation t.\n\nFigure 4 displays the average pairwise normalized Levenshtein distance over generations of a selfconsuming training loop for different data cycles. For each data cycle, we observe a decrease in diversity over the course of generations, with the degree of decrease varying depending on the data cycle. For the full synthetic data cycle we see a steep decline in diversity with a collapse into a single point by generation t = 39. The incremental data cycle is initially stable, but decreases in diversity from the 10th generation onwards, with a decrease of 68% in diversity by the end of the 50 generations. The balanced and expanding data cycle also decrease in diversity, however, this decrease is way slower, with a 30% decrease in diversity for the balanced data cycle and a 22% decrease for the expanding data cycle. While not all data cycles fully collapse in diversity by generation 50, ultimately, we expect all of them to eventually reach zero diversity if the self-consuming training loop is run for enough generations.\n\nTo get further insight into the decline in diversity, we also inspect the number of unique expressions sampled per generation for the full synthetic data cycle. We find that the number of unique expressions is stable at first while the diversity already declines and then rapidly decreases within 5 generations to very few unique expressions (see Appendix B) .\n\nTo better understand the influence of the amount of generated data in each generation on the diversity, we also study the incremental data cycle in more detail with different portions λ of new sampled data. Figure 5 displays the average pairwise normalized Levenshtein distance over generations in a self-consuming training loop for the incremen- tal data cycle with different values of λ. We observe, that the loss in diversity is stronger for a higher share of generated data added in each generation of the self-consuming training loop. Even with as little as λ = 0.25, we reach the complete loss of diversity within 50 generations. Only for our experimental run with λ = 0.10 the diversity does not drop to zero, but to a value around 0.17 after 50 generations. However, we see that the speed at which diversity decreases does not scale linear with the amount of generated data. Instead we observe a more exponential increase in speed where larger amounts of generated data lead to an even quicker decay in diversity.\n\nLastly, we study the expanding data cycle in more detail with regard to the proportion between generated data and fresh data added to the training data at each generation. Figure 6 displays the average pairwise normalized Levenshtein distance over generations in a self-consuming training loop for the expanding data cycle with different portions λ of generated data and (1 -λ) fresh real data. We observe, that while each configuration declines in diversity, the rate of this decline depends on the proportion between generated and fresh data. The more fresh data is added at each generation, the slower diversity decreases. With no fresh data or only 1% of fresh data the diversity decreases by approximately 36%. If the portion of fresh data is 25% we only observe a decrease in diversity of approximately 11%. This indicates that fresh data cannot stop the self-consuming training loop but enough fresh data can slow down the rate of the decline in diversity.",
+      "word_count": 623
+    },
+    {
+      "index": 13,
+      "title": "Discussion",
+      "kind": "discussion",
+      "text": "In our experiments we found that iteratively retraining LLMs from scratch might help with correctness of model output. This is sometimes already done in practice where the output of LLMs is used to improve their performance (Huang et al., 2022; Wang et al., 2022) or generate new training data (Yu et al., 2023) . However, this trend is concerning as we also found that this self-consuming training loop eventually leads to a drastic loss of diversity of a model's output. Our results confirm the findings on the self-consuming training loop in the field of image generation (Martínez et al., 2023; Alemohammad et al., 2023; Shumailov et al., 2023; Bertrand et al., 2023) , further highlighting the importance of this issue for generative models and LLMs in particular. These LLMs have an even greater impact on society than image generation models, leading to more LLM-generated data being produced and potentially having a greater impact on society as a whole, as many people already rely on good model performance.\n\nConsequently, as we expect that a self-consuming training loop will harm model performance in the future, researchers and practitioners should carefully choose their data when training their models and test those models sufficiently for diversity. Additionally, the machine learning community at large needs to find ways to deal with this problem as generated text data is already present in new internet scraped datasets. While our results indicate that fresh real data can slow down the selfconsuming training loop, other studies suggest that this is not an option as we will run out of real data eventually and have to rely on generated data for future models (Villalobos et al., 2022) . Additionally, LLM-generated data has already found its way onto the internet, even infecting academic publications (Geng and Trotta, 2024; Liang et al., 2024) , and LLM-generated data may soon overtake real data on the internet. Furthermore, this LLM-generated data is hard to differentiate from real data (Kreps et al., 2022; Sadasivan et al., 2023; Huschens et al., 2023) , making it difficult to curate datasets scraped from the web. This makes the self-consuming training loop inevitable in the future. Therefore, we advise to further study ways to maintain diversity of generative model outputs like quality diversity methods (Pugh et al., 2015; Fontaine and Nikolaidis, 2021) .",
+      "word_count": 384
+    },
+    {
+      "index": 14,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this paper we studied the behavior of LLMs trained in a self-consuming training loop and found that iteratively training LLMs from scratch with self generated data can initially help with correctness of model outputs. However, this comes at a price, as the diversity of generated data eventually degenerates and collapses into a single point. The rate of this decline in diversity depends on the data cycle creating the training data at each generation. Furthermore, we found that fresh data can slow down this process and preserve diversity of a model output for longer. This should encourage researches to carefully look at their datasets and models to mitigate such a harmful self-consuming training loop in the future.\n\nIn future work, we will study how fine-tuning can influence the self-consuming training loop for LLMs. Additionally, we plan to further investigate how the effects of a self-consuming training loop can be slowed down or completely negated.\n\nOne major cause for limitations of our work are limited computational resources. First, we ran our experiments with a smaller GPT-style model than for example GPT-4. Even though we expect that larger models with billions of parameters still suffer from the same loss of diversity if trained in a selfconsuming training loop, we note that the behavior may vary for those larger models. However, a study for models of those size is not feasible with current compute options nor is it responsible in terms of the expected CO 2 emissions (Strubell et al., 2019) .\n\nSecond, another limitation imposed by our computational resources is that the main results of this work consist of only one run per experimental configuration. With more runs per experiment the results would be more robust, but conducting more runs for our experiments was simply not feasible with our available computing resources. As all our experiments point towards the same direction, however, we do not believe that this limitation is crucial. Nevertheless, to further mitigate this limitation we performed additional experiments for the full synthetic data cycle with fewer generations over multiple runs and with different initializations in Appendix C. These results show that the trend of a decline in diversity still holds true over multiple runs.\n\nAnother limitation is that our work focuses on repeatedly training foundation models from scratch in a self-consuming way. However, in practice those models are normally fine-tuned after the initial training. It is unclear from our work if this fine-tuning process can slow down or negate the effects of a self-consuming training loop when performed with fresh real data. However, we plan to investigate this in future work.\n\nLastly, one may argue that real text has a way larger vocabulary and more complex structures. Therefore, our results might be slightly different when performed on a real text corpus. However, measuring both quality and diversity of generated text is not trivial and can only achieved by using a proxy (Callison-Burch et al., 2006; Gehrmann et al., 2023) . Consequently, we intentionally performed our study on a logic expression dataset to ensure a controlled experimental setting in which we can measure both quality and diversity of a trained model.",
+      "word_count": 521
+    },
+    {
+      "index": 15,
+      "title": "A Generation of the Logic Expression Dataset",
+      "kind": "body",
+      "text": "Algorithm 2 describes the generation of our logic expression dataset in detail.",
+      "word_count": 12
+    },
+    {
+      "index": 16,
+      "title": "Algorithm 2 Generate Logic Expression Dataset",
+      "kind": "body",
+      "text": "Input: number of unique expressions m, minimum tree depth d min , maximum tree depth d max Initialize:\n\nD 0 = {} function GenLogicExpr(d) : if d = 0 then return RandomBool() else op ← RandomLogicOperator() if op = 'not' then return op + GenLogicExpr(d -1) else lef tExpr ← GenLogicExpr(d -1) rightExpr ← GenLogicExpr(d -1) return lef tExpr + op + rightExpr end if end if end function while |D 0 | < m do i ← RandomIntegerInRange(d min , d max ) expr ← GenLogicExpr(d = i) if EvalBoolExpr(expr) = True then D 0 ← D 0 ∪ {expr} end if end while",
+      "word_count": 105
+    },
+    {
+      "index": 17,
+      "title": "B Unique Expressions Generated",
+      "kind": "body",
+      "text": "To better understand the decline of diversity, we inspect the number of unique expressions sampled at each generation. We focus on the full synthetic data cycle, as this data cycle fully collapses to a single point within 50 generations.\n\nFigure 7 displays the number of unique expressions (right y-axis) generated at each generation of a self-consuming training loop in comparison to the diversity measured as the average pairwise normalized Levenshtein distance (left y-axis). We observe that in the beginning the number of unique expressions stays stable while the diversity is already in a steep decline. Only by generation t = 10 the number of unique individuals starts to decline rapidly and by generation t = 15 only around 400 unique expressions are sampled while the decline in diversity slows down. In generation t = 21 the number of unique individuals is below 10 and in generation t = 39 only a single individual is sampled at each generation. Consequently, the diversity is collapsed to zero.\n\nThis shows that it is not enough to only track unique outputs of a model, but that diversity needs to be tracked as well. By the time a decrease in unique results is noticeable, the diversity already decreased significantly.",
+      "word_count": 204
+    },
+    {
+      "index": 18,
+      "title": "C Impact of Initialization",
+      "kind": "body",
+      "text": "So far we only looked at the self-consuming training loop starting from an initial dataset consisting only of True expressions. To check whether our findings also hold for different initializations of data across multiple runs, we conduct further experiments. Specifically, we analyze the full synthetic data cycle with the original dataset D 0 only consisting of (1) True expressions, (2) False expressions, and (3) an equal mixture of both. The results from Sect. 4 indicate that the effect of the self-consuming training loop for the full synthetic data cycle are already clearly visible in the first 10 generations. Therefore, we conduct experiments with only 10 generations. With this saved computing time, we conduct 5 independent runs for each initialization.\n\nFigure 8 displays the composition of samples S t generated during a self-consuming training loop. Each subplot presents the composition for a different initialization for the full synthetic data cycle averaged over 5 independent runs: a) only True expressions, b) only False expressions, and c) half True expressions and half False expressions. Every bar in a subplot displays the composition of S t generated from model M t at generation t, except for the first bar in each subplot which displays D 0 .\n\nThe green portion of a bar indicates the number of syntactically correct expressions that evaluate to True in that sample. The yellow part of a bar represents the number of syntactically correct expressions that evaluate to False, and the red part of a bar displays the number of syntactically incorrect expressions that result in an error when being parsed.\n\nSimilar to our results in Sect. 4.1, we observe an initial drop of True expressions by 20% in favor of False expressions for the initialization with only True expressions in the first generation. Afterwards, the number of True expressions in a sample increases again over the course of generations. For the initialization with only False expressions, we observe a similar effect, only in the opposite direction. The number of False expression first drops by around 20% and then increases again until the whole sample consists of only False expressions. When initialized with an equal amount of True and False expressions, we can observe that the proportion of both expression types first stays stable and then by generation t = 6 starts to slightly shift towards True expressions. Upon further inspection of the 5 runs, we find that one run quickly shifts towards only True expressions, one run shifts quickly to only False expression, one run shifts slowly to True expressions, and two runs maintain equal proportions between True and False expressions across the 10 generations.\n\nFigure 9 displays the diversity measured in the average pairwise normalized Levenshtein distance for the three different initializations. Displayed is the mean and standard deviation of five runs over the number of generations. We observe that the diversity declines for all three types of initialization, further confirming our results from Sect. 4.2. The initializations with only True and only False expressions decline at around the same speed. The initialization with equal proportions of True and False expressions declines a bit slower but shows the same effect.\n\nOverall these findings indicate that the effects of the self-consuming training loop apply to different initializations across multiple runs, partially mitigating the limitations mentioned in Sect. 7.",
+      "word_count": 550
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Self-consuming generative models go mad",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard G Baraniuk"
+      ],
+      "raw_text": "Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard G Baraniuk arXiv:2307.01850 Self-consuming generative models go mad 2023 arXiv preprint"
+    },
+    {
+      "index": 2,
+      "title": "Education in the era of generative artificial intelligence (ai): Understanding the potential benefits of chatgpt in promoting teaching and learning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "David Baidoo",
+        "-Anu",
+        "Leticia Owusu",
+        "Ansah"
+      ],
+      "raw_text": "Education in the era of generative artificial intelligence (ai): Understanding the potential benefits of chatgpt in promoting teaching and learning David Baidoo -Anu Leticia Owusu Ansah Journal of AI 7 1 2023"
+    },
+    {
+      "index": 3,
+      "title": "On the stability of iterative retraining of generative models on their own data",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Quentin Bertrand",
+        "Joey Avishek",
+        "Alexandre Bose",
+        "Marco Duplessis",
+        "Gauthier Jiralerspong",
+        "Gidel"
+      ],
+      "raw_text": "On the stability of iterative retraining of generative models on their own data Quentin Bertrand Joey Avishek Alexandre Bose Marco Duplessis Gauthier Jiralerspong Gidel arXiv:2310.00429 2023 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "Language models are few-shot learners",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Brown",
+        "Benjamin Mann",
+        "Nick Ryder",
+        "Melanie Subbiah",
+        "Jared D Kaplan",
+        "Prafulla Dhariwal",
+        "Arvind Neelakantan",
+        "Pranav Shyam"
+      ],
+      "raw_text": "Language models are few-shot learners Tom Brown Benjamin Mann Nick Ryder Melanie Subbiah Jared D Kaplan Prafulla Dhariwal Arvind Neelakantan Pranav Shyam Girish Sastry Amanda Askell Advances in neural information processing systems 33 2020"
+    },
+    {
+      "index": 5,
+      "title": "Re-evaluating the role of bleu in machine translation research",
+      "doi": "",
+      "year": "2006",
+      "authors": [
+        "Chris Callison-Burch",
+        "Miles Osborne",
+        "Philipp Koehn"
+      ],
+      "raw_text": "Re-evaluating the role of bleu in machine translation research Chris Callison-Burch Miles Osborne Philipp Koehn 2006 In 11th conference of the european chapter of the association for computational linguistics"
+    },
+    {
+      "index": 6,
+      "title": "Evaluating large language models trained on code",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Mark Chen",
+        "Jerry Tworek",
+        "Heewoo Jun",
+        "Qiming Yuan",
+        "Henrique Ponde De Oliveira Pinto",
+        "Jared Kaplan",
+        "Harri Edwards",
+        "Yuri Burda"
+      ],
+      "raw_text": "Mark Chen Jerry Tworek Heewoo Jun Qiming Yuan Henrique Ponde De Oliveira Pinto Jared Kaplan Harri Edwards Yuri Burda Nicholas Joseph Greg Brockman arXiv:2107.03374 Evaluating large language models trained on code 2021 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "Large language models for software engineering: Survey and open problems",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Angela Fan",
+        "Beliz Gokkaya",
+        "Mark Harman",
+        "Mitya Lyubarskiy",
+        "Shubho Sengupta",
+        "Shin Yoo",
+        "Jie M Zhang"
+      ],
+      "raw_text": "Angela Fan Beliz Gokkaya Mark Harman Mitya Lyubarskiy Shubho Sengupta Shin Yoo Jie M Zhang arXiv:2310.03533 Large language models for software engineering: Survey and open problems 2023 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "Differentiable quality diversity",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Matthew Fontaine",
+        "Stefanos Nikolaidis"
+      ],
+      "raw_text": "Differentiable quality diversity Matthew Fontaine Stefanos Nikolaidis Advances in Neural Information Processing Systems 34 2021"
+    },
+    {
+      "index": 9,
+      "title": "Repairing the cracked foundation: A survey of obstacles in evaluation practices for generated text",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sebastian Gehrmann",
+        "Elizabeth Clark",
+        "Thibault Sellam"
+      ],
+      "raw_text": "Repairing the cracked foundation: A survey of obstacles in evaluation practices for generated text Sebastian Gehrmann Elizabeth Clark Thibault Sellam Journal of Artificial Intelligence Research 77 2023"
+    },
+    {
+      "index": 10,
+      "title": "Is chatgpt transforming academics' writing style?",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mingmeng Geng",
+        "Roberto Trotta"
+      ],
+      "raw_text": "Mingmeng Geng Roberto Trotta arXiv:2404.08627 Is chatgpt transforming academics' writing style? 2024 arXiv preprint"
+    },
+    {
+      "index": 11,
+      "title": "Michalis Vazirgiannis, and Chloé Clavel. 2023. The curious decline of linguistic diversity: Training language models on synthetic text",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Yanzhu Guo",
+        "Guokan Shang"
+      ],
+      "raw_text": "Yanzhu Guo Guokan Shang arXiv:2311.09807 Michalis Vazirgiannis, and Chloé Clavel. 2023. The curious decline of linguistic diversity: Training language models on synthetic text arXiv preprint"
+    },
+    {
+      "index": 12,
+      "title": "Large language models can self-improve",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jiaxin Huang",
+        "Shixiang Shane Gu",
+        "Le Hou",
+        "Yuexin Wu",
+        "Xuezhi Wang",
+        "Hongkun Yu",
+        "Jiawei Han"
+      ],
+      "raw_text": "Jiaxin Huang Shixiang Shane Gu Le Hou Yuexin Wu Xuezhi Wang Hongkun Yu Jiawei Han arXiv:2210.11610 Large language models can self-improve 2022 arXiv preprint"
+    },
+    {
+      "index": 13,
+      "title": "Do you trust chatgpt?perceived credibility of human and ai-generated content",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Martin Huschens",
+        "Martin Briesch",
+        "Dominik Sobania",
+        "Franz Rothlauf"
+      ],
+      "raw_text": "Martin Huschens Martin Briesch Dominik Sobania Franz Rothlauf arXiv:2309.02524 Do you trust chatgpt?perceived credibility of human and ai-generated content 2023 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Speech and language processing: An introduction to natural language processing, computational linguistics, and speech recognition",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "Dan Jurafsky",
+        "James H Martin"
+      ],
+      "raw_text": "Speech and language processing: An introduction to natural language processing, computational linguistics, and speech recognition Dan Jurafsky James H Martin 2009 Pearson Education Upper Saddle River, NJ, USA"
+    },
+    {
+      "index": 15,
+      "title": "All the news that's fit to fabricate: Aigenerated text as a tool of media misinformation",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Sarah Kreps",
+        "R Miles Mccain",
+        "Miles Brundage"
+      ],
+      "raw_text": "All the news that's fit to fabricate: Aigenerated text as a tool of media misinformation Sarah Kreps R Miles Mccain Miles Brundage Journal of experimental political science 9 1 2022"
+    },
+    {
+      "index": 16,
+      "title": "Binary codes capable of correcting deletions, insertions, and reversals",
+      "doi": "",
+      "year": "1966",
+      "authors": [
+        "Vladimir I Levenshtein"
+      ],
+      "raw_text": "Binary codes capable of correcting deletions, insertions, and reversals Vladimir I Levenshtein Soviet physics doklady Soviet Union 1966 10"
+    },
+    {
+      "index": 17,
+      "title": "Mapping the increasing use of llms in scientific papers",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Weixin Liang",
+        "Yaohui Zhang",
+        "Zhengxuan Wu",
+        "Haley Lepp",
+        "Wenlong Ji",
+        "Xuandong Zhao",
+        "Hancheng Cao",
+        "Sheng Liu"
+      ],
+      "raw_text": "Weixin Liang Yaohui Zhang Zhengxuan Wu Haley Lepp Wenlong Ji Xuandong Zhao Hancheng Cao Sheng Liu Siyu He Zhi Huang arXiv:2404.01268 Mapping the increasing use of llms in scientific papers 2024 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "Rouge: A package for automatic evaluation of summaries",
+      "doi": "",
+      "year": "2004",
+      "authors": [
+        "Chin-Yew Lin"
+      ],
+      "raw_text": "Rouge: A package for automatic evaluation of summaries Chin-Yew Lin Text summarization branches out 2004"
+    },
+    {
+      "index": 19,
+      "title": "Towards understanding the interplay of generative artificial intelligence and the internet",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar arXiv:2306.06130 Towards understanding the interplay of generative artificial intelligence and the internet 2023 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "Bleu: a method for automatic evaluation of machine translation",
+      "doi": "",
+      "year": "2002",
+      "authors": [
+        "Kishore Papineni",
+        "Salim Roukos",
+        "Todd Ward",
+        "Wei-Jing Zhu"
+      ],
+      "raw_text": "Bleu: a method for automatic evaluation of machine translation Kishore Papineni Salim Roukos Todd Ward Wei-Jing Zhu Proceedings of the 40th annual meeting of the Association for Computational Linguistics the 40th annual meeting of the Association for Computational Linguistics 2002"
+    },
+    {
+      "index": 21,
+      "title": "Confronting the challenge of quality diversity",
+      "doi": "",
+      "year": "2015",
+      "authors": [
+        "Justin K Pugh",
+        "Lisa B Soros",
+        "Paul A Szerlip",
+        "Kenneth O Stanley"
+      ],
+      "raw_text": "Confronting the challenge of quality diversity Justin K Pugh Lisa B Soros Paul A Szerlip Kenneth O Stanley Proceedings of the 2015 Annual Conference on Genetic and Evolutionary Computation the 2015 Annual Conference on Genetic and Evolutionary Computation 2015"
+    },
+    {
+      "index": 22,
+      "title": "Can ai-generated text be reliably detected? arXiv preprint",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Aounon Vinu Sankar Sadasivan",
+        "Sriram Kumar",
+        "Wenxiao Balasubramanian",
+        "Soheil Wang",
+        "Feizi"
+      ],
+      "raw_text": "Aounon Vinu Sankar Sadasivan Sriram Kumar Wenxiao Balasubramanian Soheil Wang Feizi arXiv:2303.11156 Can ai-generated text be reliably detected? arXiv preprint 2023"
+    },
+    {
+      "index": 23,
+      "title": "The curse of recursion: Training on generated data makes models forget",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Yarin Gal",
+        "Nicolas Papernot",
+        "Ross Anderson"
+      ],
+      "raw_text": "The curse of recursion: Training on generated data makes models forget Ilia Shumailov Zakhar Shumaylov Yiren Zhao Yarin Gal Nicolas Papernot Ross Anderson arXiv:2305.17493 2023 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "An analysis of the automatic bug fixing performance of chatgpt",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Dominik Sobania",
+        "Martin Briesch",
+        "Carol Hanna",
+        "Justyna Petke"
+      ],
+      "raw_text": "An analysis of the automatic bug fixing performance of chatgpt Dominik Sobania Martin Briesch Carol Hanna Justyna Petke IEEE/ACM International Workshop on Automated Program Repair (APR) 2023. 2023 IEEE Computer Society Los Alamitos, CA, USA"
+    },
+    {
+      "index": 25,
+      "title": "Choose your programming copilot: A comparison of the program synthesis performance of github copilot and genetic programming",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Dominik Sobania",
+        "Martin Briesch",
+        "Franz Rothlauf"
+      ],
+      "raw_text": "Choose your programming copilot: A comparison of the program synthesis performance of github copilot and genetic programming Dominik Sobania Martin Briesch Franz Rothlauf Proceedings of the genetic and evolutionary computation conference the genetic and evolutionary computation conference 2022"
+    },
+    {
+      "index": 26,
+      "title": "Energy and policy considerations for deep learning in nlp",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Emma Strubell",
+        "Ananya Ganesh",
+        "Andrew Mccallum"
+      ],
+      "raw_text": "Emma Strubell Ananya Ganesh Andrew Mccallum arXiv:1906.02243 Energy and policy considerations for deep learning in nlp 2019 arXiv preprint"
+    },
+    {
+      "index": 27,
+      "title": "Artificial artificial artificial intelligence: Crowd workers widely use large language models for text production tasks",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Veniamin Veselovsky",
+        "Manoel Horta Ribeiro",
+        "Robert West"
+      ],
+      "raw_text": "Artificial artificial artificial intelligence: Crowd workers widely use large language models for text production tasks Veniamin Veselovsky Manoel Horta Ribeiro Robert West arXiv:2306.07899 2023 arXiv preprint"
+    },
+    {
+      "index": 28,
+      "title": "Will we run out of data? an analysis of the limits of scaling datasets in machine learning",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Pablo Villalobos",
+        "Jaime Sevilla",
+        "Lennart Heim",
+        "Tamay Besiroglu",
+        "Marius Hobbhahn",
+        "Anson Ho"
+      ],
+      "raw_text": "Pablo Villalobos Jaime Sevilla Lennart Heim Tamay Besiroglu Marius Hobbhahn Anson Ho arXiv:2211.04325 Will we run out of data? an analysis of the limits of scaling datasets in machine learning 2022 arXiv preprint"
+    },
+    {
+      "index": 29,
+      "title": "Self-instruct: Aligning language model with self generated instructions",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Yizhong Wang",
+        "Yeganeh Kordi",
+        "Swaroop Mishra",
+        "Alisa Liu",
+        "Noah A Smith",
+        "Daniel Khashabi",
+        "Hannaneh Hajishirzi"
+      ],
+      "raw_text": "Self-instruct: Aligning language model with self generated instructions Yizhong Wang Yeganeh Kordi Swaroop Mishra Alisa Liu Noah A Smith Daniel Khashabi Hannaneh Hajishirzi arXiv:2212.10560 2022 arXiv preprint"
+    },
+    {
+      "index": 30,
+      "title": "Denoising autoencoder genetic programming: strategies to control exploration and exploitation in search",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "David Wittenberg",
+        "Franz Rothlauf",
+        "Christian Gagné"
+      ],
+      "raw_text": "Denoising autoencoder genetic programming: strategies to control exploration and exploitation in search David Wittenberg Franz Rothlauf Christian Gagné Genetic Programming and Evolvable Machines 24 2 17 2023"
+    },
+    {
+      "index": 31,
+      "title": "Exploring the limits of chatgpt for query or aspect-based text summarization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Xianjun Yang",
+        "Yan Li",
+        "Xinlu Zhang",
+        "Haifeng Chen",
+        "Wei Cheng"
+      ],
+      "raw_text": "Exploring the limits of chatgpt for query or aspect-based text summarization Xianjun Yang Yan Li Xinlu Zhang Haifeng Chen Wei Cheng arXiv:2302.08081 2023 arXiv preprint"
+    },
+    {
+      "index": 32,
+      "title": "Large language model as attributed training data generator: A tale of diversity and bias",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yue Yu",
+        "Yuchen Zhuang",
+        "Jieyu Zhang",
+        "Yu Meng",
+        "Alexander Ratner",
+        "Ranjay Krishna",
+        "Jiaming Shen",
+        "Chao Zhang"
+      ],
+      "raw_text": "Yue Yu Yuchen Zhuang Jieyu Zhang Yu Meng Alexander Ratner Ranjay Krishna Jiaming Shen Chao Zhang arXiv:2306.15895 Large language model as attributed training data generator: A tale of diversity and bias 2023 arXiv preprint"
+    },
+    {
+      "index": 33,
+      "title": "Bertscore: Evaluating text generation with bert",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Tianyi Zhang",
+        "Varsha Kishore",
+        "Felix Wu",
+        "Kilian Q Weinberger",
+        "Yoav Artzi"
+      ],
+      "raw_text": "Tianyi Zhang Varsha Kishore Felix Wu Kilian Q Weinberger Yoav Artzi arXiv:1904.09675 Bertscore: Evaluating text generation with bert 2019 arXiv preprint"
+    }
+  ],
+  "section_count": 18,
+  "reference_count": 33,
+  "error": "",
+  "updated_at": "2026-04-12T03:11:15.478070+00:00"
+}

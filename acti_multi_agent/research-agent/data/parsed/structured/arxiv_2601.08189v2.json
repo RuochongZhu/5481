@@ -1,0 +1,940 @@
+{
+  "paperId": "arxiv:2601.08189v2",
+  "title": "ForgetMark: Stealthy Fingerprint Embedding via Targeted Unlearning in Language Models",
+  "year": 2026,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2601.08189v2.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2601.08189v2.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2601.08189v2.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Existing invasive (backdoor) fingerprints suffer from high-perplexity triggers that are easily filtered, fixed response patterns exposed by heuristic detectors, and spurious activations on benign inputs. We introduce ForgetMark, a stealthy fingerprinting framework that encodes provenance via targeted unlearning. It builds a compact, human-readable key-value set with an assistant model and predictive-entropy ranking, then trains lightweight LoRA adapters to suppress the original values on their keys while preserving general capabilities; ownership is verified under black/gray-box access by aggregating likelihood and semantic evidence into a fingerprint success rate. By relying on probabilistic forgetting traces rather than fixed trigger-response patterns, ForgetMark avoids high-perplexity triggers, reduces detectability, and lowers false triggers. Across diverse architectures and settings, it achieves 100% ownership verification on fingerprinted models while maintaining standard performance, surpasses backdoor baselines in stealthiness and robustness to model merging, and remains effective under moderate incremental fine-tuning. Our code and data can be found in https://github.com/Xuzhenhua55/ForgetMark .",
+      "word_count": 151
+    },
+    {
+      "index": 2,
+      "title": "INTRODUCTION",
+      "kind": "introduction",
+      "text": "Large language models (LLMs) and related paradigms such as vision-language models [1, 2, 3] , autonomous agents [4, 5, 6] , and AI systems for security applications [7, 8, 9, 10, 11, 12] have become central to modern machine learning research and deployment, yet their creation depends on substantial proprietary data, compute, and engineering. Illicit model exfiltration and unauthorized fine-tuning have lowered the barrier to redistributing derivatives, creating urgent needs for reliable provenance auditing and copyright protection.\n\nModel fingerprinting [13] has emerged as a practical remedy. Existing approaches fall into two families: intrinsic fingerprints, which rely on internal parameters or representations [14, 15, 16, 17] , and invasive (backdoor-based) fingerprints, which implant a trigger-response mechanism detectable under black-box access [18, 19, 20, 21, 22, 23] . Intrinsic methods often require access to weights or activations, limiting deployment. Backdoorbased methods face additional pitfalls: ★ triggers built from highperplexity, low-frequency tokens are easily caught by perplexity filters [20, 21] ; ■ fixed response patterns can be exposed by heuristic searches [24] ; and ◆ spurious activations on benign inputs risk revealing the fingerprint and degrading usability [18, 20, 25, 26] .\n\nBuilding on these limitations, we propose ForgetMark, a stealthy fingerprinting framework that encodes provenance via targeted unlearning. First, we construct a compact key-value set by prompting an assistant model (with task-specific system prompts and light manual screening) to produce human-readable keys, eliciting multiple candidate answers from the target model, and retaining highdeterminacy pairs via predictive-entropy ranking; this prioritizes confident, low-variance behaviors, enlarges the pre/post-unlearning likelihood margin, and lowers false triggers on benign inputs. Second, we train parameter-efficient adapters via targeted unlearning to suppress the fingerprint values on their keys while preserving general capabilities on a retention distribution. Third, we verify ownership under black/gray-box access by aggregating likelihoodand semantics-based evidence into a unified fingerprint success rate.\n\nThese design choices directly target the earlier limitations: by relying on probabilistic forgetting traces rather than a fixed trigger-response, we reduce exposure to heuristic backdoor detectors (■); by keeping keys natural and distributionally close to ordinary prompts, we avoid high-perplexity triggers that are easily filtered (★); and by using entropy-guided selection, we lower false triggers both in non-fingerprinted models and for benign inputs to the fingerprinted model (◆).\n\nAcross diverse LLM architectures and access settings, Forget-Mark attains 100% ownership verification on fingerprinted models while maintaining standard task performance. Compared with backdoor baselines, it is markedly more stealthy-keys have lower perplexity and no fixed trigger-response patterns, reducing heuristic de-tectability-and more robust to model merging. The fingerprint also remains effective under moderate incremental fine-tuning.",
+      "word_count": 426
+    },
+    {
+      "index": 3,
+      "title": "LLM Fingerprinting",
+      "kind": "body",
+      "text": "Non-Invasive Fingerprints. These extract signatures from internal states: DEEPJUDGE compares weight-vector cosine similarity [14] , HuRef derives permutation-invariant weight features [15] , Yang and Wu use logits distributions as fingerprint [16] , and REEF measures activation patterns via CKA [17] . Despite being model-agnostic, they require access to weights/activations, limiting real-world use. Invasive Fingerprinting. These verify IP via trigger-response backdoors: IF-SFT [20] and UTF [21] adopt low-probability triggers, and Chain&Hash [27] hashes query-output pairs . However, they (i) are caught by perplexity filters, (ii) expose fixed responses to heuristic detectors, and (iii) spuriously activate on benign inputs. In contrast, our method uses semantically natural keys, avoids fixed outputs, and verifies ownership via probability-based evidence.",
+      "word_count": 114
+    },
+    {
+      "index": 4,
+      "title": "Machine Unlearning",
+      "kind": "body",
+      "text": "Machine unlearning removes the influence of designated data from a trained model, ideally matching a model trained on the retained data alone [28] . In LLMs, objectives, trade-offs, and practical mechanisms are increasingly well understood [29, 30] . We repurpose selective unlearning for provenance: erasing a compact key-value set induces systematic suppression of the values on their keys, yielding a measurable probabilistic deficit under black-/gray-box access that serves as a fingerprint. Retention objectives and parameter-efficient adapters localize updates and preserve general capabilities.",
+      "word_count": 82
+    },
+    {
+      "index": 5,
+      "title": "Problem Definition",
+      "kind": "body",
+      "text": "We embed a verifiable fingerprint into a pretrained target model Mtarget by selectively unlearning a compact key-value set F. The adapted model attenuates P (v | k) for k ∈ F while remaining faithful on non-fingerprint inputs. This systematic suppression constitutes the fingerprint-owner-verifiable, hard to counterfeit, and minimally intrusive. To test a suspect model, we probe it with the keys and score affinity to the corresponding values (likelihood or semantic agreement); persistently low affinity indicates reuse. The framework has three stages (Figure 2 ): (i) construct F, (ii) embed via parameter-efficient unlearning, and (iii) ownership verification.",
+      "word_count": 96
+    },
+    {
+      "index": 6,
+      "title": "Fingerprint Construction",
+      "kind": "body",
+      "text": "Our construction proceeds in three sub-stages: Key Generation, Value Generation, and Uncertainty-Driven Selection. In the first stage, an assistant model Massistant proposes a pool of marginalized knowledge queries using carefully designed system prompts, after which we apply light manual screening to ensure safety and minimal impact on core abilities, yielding a key set K = {k1, . . . , kN }. In the second stage, the target model Mtarget is prompted with each ki to produce M independent continuations vi,1, . . . , vi,M , along with token-level generation probabilities p (t) i,j , forming the candidate pair set C = {(ki, vi,j)}. The final stage ranks candidates by predictive entropy to favor stable, low-variance behaviors: for each key, we\n\ncompute Ui = - 1 M M j=1 |v i,j | t=1 log p (t) i,j , (1)\n\nand select the N keys with the smallest Ui. For each selected key, we retain the continuation with minimal negative log-likelihood as vi, yielding the forgetting set F = {(ki, vi)} N i=1 . This uncertaintyaware selection prioritizes pairs that the base model answers confidently and consistently, thereby maximizing the pre/post-unlearning likelihood margin and making it unlikely that a non-fingerprinted model would assign very low probability to vi; this reduces false triggers during verification and strengthens the discriminative power of the fingerprint.",
+      "word_count": 222
+    },
+    {
+      "index": 7,
+      "title": "Parameter-Efficient Unlearning",
+      "kind": "body",
+      "text": "Given the fingerprint set F, we adapt Mtarget so that each key suppresses its original value while routine behavior is preserved. Because even carefully chosen keys can induce collateral shifts, we stabilize training with a retention set Dretain spanning general QA, dialogue, and reasoning. We fine-tune only low-rank adapters via LoRA, introducing trainable matrices Wlora = AB ⊤ while keeping the base parameters θ frozen, yielding the adapted distribution p(• | •; θ + Wlora). The signed likelihood objective enforces ascent on F and descent on Dretain:\n\nmin A,B L(A, B) = γ E (k,v)∈F log p(v | k; θ + Wlora) -α E (x,y)∈D retain log p(y | x; θ + Wlora) .\n\n(2) Minimizing (2) ascends the negative log-likelihood (NLL) on (k, v) ∈ F (driving p(v | k) down) and descends the NLL on (x, y) ∈ Dretain, embedding the forgetting trace as a compact fingerprint with minimal disruption to overall capability.",
+      "word_count": 155
+    },
+    {
+      "index": 8,
+      "title": "Fingerprint-Based Evaluation",
+      "kind": "results",
+      "text": "We verify the forgetting trace using two signals per pair: the likelihood that the suspect model MS emits the preset value and the semantic match to its actual output. For each (ki, vi) ∈ F , query MS to obtain vi and compute PM S (vi | ki) and ROUGE-L(vi, vi). The ownership indicator is the Fingerprint Success Rate (FSR), which aggregates per-key successes into a single quantity:\n\nFSR = 1 N N i=1 ⊮ PM S (vi | ki) < τ or ROUGE-L(vi, vi) < τ .\n\n(3) where ⊮[•] is the indicator function that returns 1 if the condition holds and 0 otherwise. A higher FSR suggests stronger evidence that the suspect model MS contains the forgetting trace embedded in F, thus indicating potential ownership leakage.",
+      "word_count": 128
+    },
+    {
+      "index": 9,
+      "title": "Experimental Setting",
+      "kind": "body",
+      "text": "Models and Datasets. We evaluate on three 7-8B foundation models: Mistral-7B-v0.3 (Mistral) [31] , LLaMA-3-8B (LLaMA3) [32] and Qwen2.5-7B (Qwen2.5) [33] spanning heterogeneous architectures. To construct the fingerprint candidate pool, we use GPT-4 [34] as the auxiliary assistant model with the backbone prompt: \"Generate human-readable, safe, single-turn prompts (10-40 tokens) that elicit specific, verifiable answers; use ordinary vocabulary; avoid unsafe content; return K=500 unique Keys.\" Each Key is queried 3 times (M =3) against the target model to obtain independent continuations with token-level probabilities. For the retention set Dretain, we sample from the Alpaca dataset [35] such that |Dretain| : |F| = 9 : 1 (i.e., |Dretain| = 9N , where N = |F|), covering general QA, dialogue, and reasoning. Fingerprint Injection. We select N =100 low-entropy Keys (Eq. 1), keep the minimum-NLL Value per Key, and train LoRA adapters with the signed objective (Eq. 2) to suppress P (v | k) on F while preserving utility via Dretain. Ablation 5.2 shows that larger N strengthens forgetting as reflected by decreasing P (v | k) and ROUGE-L (gray-/black-box proxies), at the cost of a slight drop in the average harmlessness score; N =100 provides a favorable trade-off between sensitivity and utility. Baselines and Metrics. We compare against IF-SFT [20] and Chain&Hash [27] , both of which operationalize ownership via predefined trigger-response pairs. All methods are trained with LoRA under matched data budgets and hyperparameters. We report two complementary fingerprint success rates tailored to access regimes: (i) gray-box FSRprb, which counts a success when PM S (vi | ki) < τprb with τprb = 10 -3 ; and (ii) black-box FSRrouge, which counts a success when ROUGE-L(vi, vi) < τrg with τrg = 10 -3 . Thresholds are calibrated as in Ablation 5.1 on non-target models to minimize false triggers (empirical FP ≈ 0). Scores are averaged over N Key-Values.",
+      "word_count": 309
+    },
+    {
+      "index": 10,
+      "title": "Scenario",
+      "kind": "body",
+      "text": "Baselines ForgetMark",
+      "word_count": 2
+    },
+    {
+      "index": 11,
+      "title": "IF-SFT Chain&Hash FSRprb FSRrouge",
+      "kind": "body",
+      "text": "Fingerprinted Model 100% 90% 100% 100% reaches 100% on fingerprinted models, and Chain&Hash is also strong but slightly lower (90% in Table 1 ). This shortfall stems from semantic inconsistency between certain triggers and their fixed responses, which prevents a subset of trigger-response pairs from being reliably memorized. ForgetMark attains 100% under both criteria while avoiding fixed trigger-response coupling, matching or surpassing backdoor baselines on clean models. For harmlessness, we report zero-shot performance on Qwen2.5-7B across four categories-(i) logical and commonsense reasoning (ANLI R1-R3 [36] , ARC [37] , OpenBookQA [38] , Winogrande [39] , LogiQA [40] ); (ii) scientific understanding (SciQ [41] ); (iii) linguistic and textual entailment (BoolQ [42] , CB [43] , RTE [44] , WiC [45] , WSC [46] , CoPA [47] , Mul-tiRC [48] ); and (iv) long-form prediction (LAMBADA-OpenAI, LAMBADA-Standard [49] ). Evaluations are zero-shot under standardized prompt templates without task-specific tuning; metrics are accuracy. Comparisons follow a uniform protocol contrasting IF-SFT and Chain&Hash with our method. Averaging over the 18 tasks (mean row), our method closely tracks the original model, indicating minimal utility loss. Compared with IF-SFT and Chain&Hash, the slightly larger deviation observed for ours is primarily due to fingerprint size: we use N =100 Keys, whereas IF-SFT and Chain&Hash use N =8 and N =10, so their induced shifts are smaller. Consistent with this, Ablation 5.2 shows that when we set N =25, the average performance remains essentially unchanged.",
+      "word_count": 238
+    },
+    {
+      "index": 12,
+      "title": "Stealthiness",
+      "kind": "body",
+      "text": "We assess input-level stealth via mean perplexity (PPL) and backdoorlevel stealth via Token Forcing (TF) [24] . For PPL, we use GPT-2 foot_0 and LLaMA3-Instruct foot_1 as external estimators (denoted as EstimatorGPT2 and EstimatorLLaMA3Ins in Table 3 ). TF probes whether known responses emerge when only a single token is prepended; we consider TF-F (token alone), TF-BF (after BOS), and TF-TF (within an instruction template). A detection is recorded if any known response appears at least once.\n\nResults (Table 3 ) show that ForgetMark yields the lowest PPL under both estimators, indicating more natural inputs. Under TF, IF-SFT is fully detected (DR=100%), Chain&Hash is partially detected (50%), and for ours we list 0% by construction: TF looks for fixed, known responses, whereas ForgetMark's forgetting objective does not define a fixed Value; consequently, minimal prefixes cannot reliably elicit any specific response, aligning with the absence of fixed trigger-response mappings.",
+      "word_count": 148
+    },
+    {
+      "index": 13,
+      "title": "Model-Level Attack Robustness",
+      "kind": "body",
+      "text": "Model Merging. We evaluate fingerprint identifiability when a fingerprinted model MFP is merged with a donor MD to form Table 4: Ownership verification under model merging on Mistral: comparison across methods (IF-SFT, Chain&Hash, ForgetMark) for Mtask and Mtie at different mixing ratios. Higher is better (FSR).",
+      "word_count": 46
+    },
+    {
+      "index": 14,
+      "title": "MS.",
+      "kind": "body",
+      "text": "Concretely on Mistral, we first apply unlearning to Mistral-7B-v0.3 to obtain the fingerprinted/unlearned model (i.e., MFP = unlearned Mistral-7B-v0.3), and then merge it with Mistral-7B-Instruct-v0.3 [50] as the donor (i.e., MD = Mistral-7B-Instruct-v0.3) using MergeKit [51] . We instantiate four strategies-Task, DARE-Task, TIE, and DARE-Tie-and for each we sweep the mixing ratio α ∈ {0.1, 0.2, . . . , 0.9} (following MergeGuard [52] ). For brevity, Table 4 reports the Task and TIE cases; the DARE variants exhibit the same trend. As donor weight increases, Chain&Hash degrades rapidly, IF-SFT remains partially resilient (rare-token triggers persist), while ForgetMark sustains high FSR across broad ratios across all strategies-suggesting that forgetting-based traces are intrinsically more robust than fixed trigger-response fingerprints. Incremental Fine-Tuning. We also examine robustness under incremental fine-tuning, where a fingerprinted model is repeatedly adapted on small batches of downstream data UltraChat [53] . While ForgetMark is stealthy and resistant to merging, the unlearning trace can gradually recover as updates accumulate: additional fine-tuning steps increase the likelihood of the original values, reducing FSR.\n\nTable 5 summarizes a representative trajectory on Mistral-7B-v0.3. Periodic refresh of the forgetting set, anti-recovery regularizers, or interleaved retention are promising mitigations. Strengthening resistance to the recovery of forgotten data is left for future work, as this behavior is inherent to knowledge unlearning. Incremental Budget Steps FSR prb FSRrouge 0 (Before inc. FT) 0 1.00 1.00 Light 1k 0.87 0.82 Moderate 5k 0.61 0.55 Heavy 20k 0.23 0.18 Table 5: Incremental fine-tuning on Mistral-7B-v0.3: as the model is continually adapted, the unlearning trace gradually recovers and the FSR decreases.",
+      "word_count": 261
+    },
+    {
+      "index": 15,
+      "title": "Necessity of Uncertainty-Driven Selection",
+      "kind": "body",
+      "text": "We compare two selectors on an identical candidate pool: (i) a random pairing baseline and (ii) an entropy-based selector retaining the N lowest-uncertainty Keys (Eq. 1). We assess the original P (v | k) and ROUGE-L on the non-unlearned target and an unrelated model (e.g., LLaMA3-8B). As shown in\n\nTable 6, the entropy-based policy concentrates high-determinacy prompts, increases P (v | k) on both models, and enlarges the pre/post-unlearning margin; random pairing yields uniformly low scores and weak contrast. Hence, uncertainty-driven selection lowers false alarms on pristine models while maintaining strong verification power on fingerprinted ones. Qwen2.5-7B without unlearning LLaMA3-8B Prob. P (v | k) ROUGE-L Prob. P (v | k) ROUGE-L Random Selection 0.091 0.069 0.084 0.074 Uncertainty-Driven 0.662 0.432 0.384 0.269 Table 6: Ablation 1: Uncertainty-driven vs random selection. Values are per-key averages of P (v | k) and ROUGE-L on nonunlearned models.",
+      "word_count": 145
+    },
+    {
+      "index": 16,
+      "title": "Size of the Key Set (N)",
+      "kind": "body",
+      "text": "We sweep N ∈ {25, 50, 100, 200} and report per-key averages of prob and ROUGE-L. All other variables are held fixed across N : training budget, detection thresholds, and the retention dataset with |Dretain| : |F| = 9 : 1. Larger N yields more stable estimates and stronger forgetting (lower prob/ROUGE-L), but slightly reduces harmlessness and increases compute. We use N = 100 as a balanced trade-off: at N = 100, ROUGE-L is already near 0 and prob is about 10 -17 (Table 7 ), providing a clear verification margin while maintaining average harmlessness at ≈ 0.631 and moderate training cost; increasing to N = 200 gives marginal proxy gains but a more pronounced utility drop (≈ 0.593) and higher compute.",
+      "word_count": 122
+    },
+    {
+      "index": 17,
+      "title": "CONCLUSION",
+      "kind": "conclusion",
+      "text": "We present ForgetMark, a fingerprinting framework based on targeted unlearning: a compact, human-readable, low-entropy Key-Value set is constructed and LoRA adapters are trained to suppress preset values while preserving utility, with ownership verified in gray/black-box regimes via likelihood-and semantics-based signals (FSR). Across 7-8B LLMs, ForgetMark achieves perfect verification on fingerprinted models with minimal utility loss, higher stealth (lower PPL, 0% TF detections), and stronger robustness to model merging than backdoor baselines; ablations validate uncertainty-driven key selection and a moderate key-set size (e.g., N =100). A limitation is partial recovery under sustained incremental fine-tuning; strengthening anti-recovery (e.g., refreshable/rotating fingerprints and regularization during downstream adaptation) is left for future work. An additional open question is whether fingerprints embedded by ForgetMark can reliably transfer across homologous models, which remains to be systematically validated in future work [54, 55] .",
+      "word_count": 136
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "References"
+      ],
+      "raw_text": "References"
+    },
+    {
+      "index": 2,
+      "title": "Chemvlm: Exploring the power of multimodal large language models in chemistry area",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Junxian Li",
+        "Di Zhang",
+        "Xunzhi Wang",
+        "Zeying Hao",
+        "Jingdi Lei",
+        "Qian Tan",
+        "Cai Zhou",
+        "Wei Liu"
+      ],
+      "raw_text": "Chemvlm: Exploring the power of multimodal large language models in chemistry area Junxian Li Di Zhang Xunzhi Wang Zeying Hao Jingdi Lei Qian Tan Cai Zhou Wei Liu Yaotian Yang Xinrui Xiong Proceedings of the AAAI Conference on Artificial Intelligence the AAAI Conference on Artificial Intelligence 2025 39"
+    },
+    {
+      "index": 3,
+      "title": "Hybridtoken-vlm: Hybrid token compression for vision-language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jusheng Zhang",
+        "Xiaoyang Guo",
+        "Kaitong Cai",
+        "Qinhan Lv",
+        "Yijia Fan",
+        "Wenhao Chai",
+        "Jian Wang",
+        "Keze Wang"
+      ],
+      "raw_text": "Hybridtoken-vlm: Hybrid token compression for vision-language models Jusheng Zhang Xiaoyang Guo Kaitong Cai Qinhan Lv Yijia Fan Wenhao Chai Jian Wang Keze Wang 2025"
+    },
+    {
+      "index": 4,
+      "title": "CF-VLM: Counterfactual vision-language fine-tuning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jusheng Zhang",
+        "Kaitong Cai",
+        "Yijia Fan",
+        "Jian Wang",
+        "Keze Wang"
+      ],
+      "raw_text": "CF-VLM: Counterfactual vision-language fine-tuning Jusheng Zhang Kaitong Cai Yijia Fan Jian Wang Keze Wang The Thirtyninth Annual Conference on Neural Information Processing Systems 2025"
+    },
+    {
+      "index": 5,
+      "title": "Adamarp: An adaptive multi-agent interaction framework for general immersive role-playing",
+      "doi": "",
+      "year": "2026",
+      "authors": [
+        "Zhenhua Xu",
+        "Dongsheng Chen",
+        "Shuo Wang",
+        "Jian Li",
+        "Chengjie Wang",
+        "Meng Han",
+        "Yabiao Wang"
+      ],
+      "raw_text": "Adamarp: An adaptive multi-agent interaction framework for general immersive role-playing Zhenhua Xu Dongsheng Chen Shuo Wang Jian Li Chengjie Wang Meng Han Yabiao Wang 2026"
+    },
+    {
+      "index": 6,
+      "title": "MAT-agent: Adaptive multi-agent training optimization",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jusheng Zhang",
+        "Kaitong Cai",
+        "Yijia Fan",
+        "Ningyuan Liu",
+        "Keze Wang"
+      ],
+      "raw_text": "MAT-agent: Adaptive multi-agent training optimization Jusheng Zhang Kaitong Cai Yijia Fan Ningyuan Liu Keze Wang The Thirty-ninth Annual Conference on Neural Information Processing Systems 2025"
+    },
+    {
+      "index": 7,
+      "title": "Tri-MARF: A tri-modal multi-agent responsive framework for comprehensive 3d object annotation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jusheng Zhang",
+        "Yijia Fan",
+        "Zimo Wen",
+        "Jian Wang",
+        "Keze Wang"
+      ],
+      "raw_text": "Tri-MARF: A tri-modal multi-agent responsive framework for comprehensive 3d object annotation Jusheng Zhang Yijia Fan Zimo Wen Jian Wang Keze Wang The Thirty-ninth Annual Conference on Neural Information Processing Systems 2025"
+    },
+    {
+      "index": 8,
+      "title": "A survey of llm-driven ai agent communication: Protocols, security risks, and defense countermeasures",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Dezhang Kong",
+        "Shi Lin",
+        "Zhenhua Xu",
+        "Zhebo Wang",
+        "Minghao Li",
+        "Yufeng Li",
+        "Yilun Zhang",
+        "Hujin Peng"
+      ],
+      "raw_text": "A survey of llm-driven ai agent communication: Protocols, security risks, and defense countermeasures Dezhang Kong Shi Lin Zhenhua Xu Zhebo Wang Minghao Li Yufeng Li Yilun Zhang Hujin Peng Zeyang Sha Yuyuan Li arXiv:2506.19676 2025 arXiv preprint"
+    },
+    {
+      "index": 9,
+      "title": "Iag: Input-aware backdoor attack on vlm-based visual grounding",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Junxian Li",
+        "Beining Xu",
+        "Simin Chen",
+        "Jiatong Li",
+        "Jingdi Lei",
+        "Haodong Zhao",
+        "Di Zhang"
+      ],
+      "raw_text": "Iag: Input-aware backdoor attack on vlm-based visual grounding Junxian Li Beining Xu Simin Chen Jiatong Li Jingdi Lei Haodong Zhao Di Zhang arXiv:2508.09456 2025 arXiv preprint"
+    },
+    {
+      "index": 10,
+      "title": "Web fraud attacks against llmdriven multi-agent systems",
+      "doi": "",
+      "year": "2026",
+      "authors": [
+        "Dezhang Kong",
+        "Hujin Peng",
+        "Yilun Zhang",
+        "Lele Zhao",
+        "Zhenhua Xu",
+        "Shi Lin",
+        "Changting Lin",
+        "Meng Han"
+      ],
+      "raw_text": "Web fraud attacks against llmdriven multi-agent systems Dezhang Kong Hujin Peng Yilun Zhang Lele Zhao Zhenhua Xu Shi Lin Changting Lin Meng Han 2026"
+    },
+    {
+      "index": 11,
+      "title": "Evertracer: Hunting stolen large language models via stealthy and robust probabilistic fingerprint",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhenhua Xu",
+        "Meng Han",
+        "Wenpeng Xing"
+      ],
+      "raw_text": "Evertracer: Hunting stolen large language models via stealthy and robust probabilistic fingerprint Zhenhua Xu Meng Han Wenpeng Xing 2025"
+    },
+    {
+      "index": 12,
+      "title": "Sraf: Stealthy and robust adversarial fingerprint for copyright verification of large language models",
+      "doi": "",
+      "year": "2026",
+      "authors": [
+        "Zhebo Wang",
+        "Zhenhua Xu",
+        "Maike Li",
+        "Wenpeng Xing",
+        "Chunqiang Hu",
+        "Chen Zhi",
+        "Meng Han"
+      ],
+      "raw_text": "Sraf: Stealthy and robust adversarial fingerprint for copyright verification of large language models Zhebo Wang Zhenhua Xu Maike Li Wenpeng Xing Chunqiang Hu Chen Zhi Meng Han 2026"
+    },
+    {
+      "index": 13,
+      "title": "Pree: Towards harmless and adaptive fingerprint editing in large language models via knowledge prefix enhancement",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Xubin Yue",
+        "Zhenhua Xu",
+        "Wenpeng Xing",
+        "Jiahui Yu",
+        "Mohan Li",
+        "Meng Han"
+      ],
+      "raw_text": "Pree: Towards harmless and adaptive fingerprint editing in large language models via knowledge prefix enhancement Xubin Yue Zhenhua Xu Wenpeng Xing Jiahui Yu Mohan Li Meng Han 2025"
+    },
+    {
+      "index": 14,
+      "title": "Copyright protection for large language models: A survey of methods, challenges, and trends",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhenhua Xu",
+        "Xubin Yue"
+      ],
+      "raw_text": "Copyright protection for large language models: A survey of methods, challenges, and trends Zhenhua Xu Xubin Yue 2025"
+    },
+    {
+      "index": 15,
+      "title": "Copy, right? a testing framework for copyright protection of deep learning models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jialuo Chen",
+        "Jingyi Wang",
+        "Tinglan Peng",
+        "Youcheng Sun",
+        "Peng Cheng",
+        "Shouling Ji",
+        "Xingjun Ma",
+        "Bo Li"
+      ],
+      "raw_text": "Copy, right? a testing framework for copyright protection of deep learning models Jialuo Chen Jingyi Wang Tinglan Peng Youcheng Sun Peng Cheng Shouling Ji Xingjun Ma Bo Li Dawn Song 2022 IEEE symposium on security and privacy IEEE 2022"
+    },
+    {
+      "index": 16,
+      "title": "Huref: Human-readable fingerprint for large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Boyi Zeng",
+        "Chenghu Zhou",
+        "Xinbing Wang",
+        "Zhouhan Lin"
+      ],
+      "raw_text": "Huref: Human-readable fingerprint for large language models Boyi Zeng Chenghu Zhou Xinbing Wang Zhouhan Lin arXiv:2312.04828 2023 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "A fingerprint for large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zhiguang Yang",
+        "Hanzhou Wu"
+      ],
+      "raw_text": "A fingerprint for large language models Zhiguang Yang Hanzhou Wu arXiv:2407.01235 2024 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "Reef: Representation encoding fingerprints for large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jie Zhang",
+        "Dongrui Liu",
+        "Chen Qian",
+        "Linfeng Zhang",
+        "Yong Liu",
+        "Yu Qiao",
+        "Jing Shao"
+      ],
+      "raw_text": "Reef: Representation encoding fingerprints for large language models Jie Zhang Dongrui Liu Chen Qian Linfeng Zhang Yong Liu Yu Qiao Jing Shao arXiv:2410.14273 2024 arXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "Hey, that's my model! introducing chain & hash, an llm fingerprinting technique",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mark Russinovich",
+        "Ahmed Salem"
+      ],
+      "raw_text": "Hey, that's my model! introducing chain & hash, an llm fingerprinting technique Mark Russinovich Ahmed Salem arXiv:2407.10887 2024 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "CTCC: A Robust and Stealthy Fingerprinting Framework for Large Language Models via Cross-Turn Contextual Correlation Backdoor",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhenhua Xu",
+        "Xixiang Zhao",
+        "Xubin Yue",
+        "Shengwei Tian",
+        "Changting Lin",
+        "Meng Han"
+      ],
+      "raw_text": "CTCC: A Robust and Stealthy Fingerprinting Framework for Large Language Models via Cross-Turn Contextual Correlation Backdoor Zhenhua Xu Xixiang Zhao Xubin Yue Shengwei Tian Changting Lin Meng Han Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing Tanmoy Christodoulopoulos Carolyn Chakraborty Violet Rose Peng the 2025 Conference on Empirical Methods in Natural Language Processing Suzhou, China Association for Computational Linguistics 2025"
+    },
+    {
+      "index": 21,
+      "title": "Instructional fingerprinting of large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jiashu Xu",
+        "Fei Wang",
+        "Derek Mingyu",
+        "Pang Ma",
+        "Chaowei Wei Koh",
+        "Muhao Xiao",
+        "Chen"
+      ],
+      "raw_text": "Instructional fingerprinting of large language models Jiashu Xu Fei Wang Derek Mingyu Pang Ma Chaowei Wei Koh Muhao Xiao Chen arXiv:2401.12255 2024 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Utf: Undertrained tokens as fingerprints a novel approach to llm identification",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jiacheng Cai",
+        "Jiahao Yu",
+        "Yangguang Shao",
+        "Yuhang Wu",
+        "Xinyu Xing"
+      ],
+      "raw_text": "Utf: Undertrained tokens as fingerprints a novel approach to llm identification Jiacheng Cai Jiahao Yu Yangguang Shao Yuhang Wu Xinyu Xing arXiv:2410.12318 2024 arXiv preprint"
+    },
+    {
+      "index": 23,
+      "title": "Insty: a robust multi-level cross-granularity fingerprint embedding algorithm for multi-turn dialogue in large language models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Zhenhua Xu",
+        "Meng Han",
+        "Xubin Yue",
+        "Wenpeng Xing"
+      ],
+      "raw_text": "Insty: a robust multi-level cross-granularity fingerprint embedding algorithm for multi-turn dialogue in large language models Zhenhua Xu Meng Han Xubin Yue Wenpeng Xing SCIENTIA SINICA Informationis 55 8 2025"
+    },
+    {
+      "index": 24,
+      "title": "Dnf: Dual-layer nested fingerprinting for large language model intellectual property protection",
+      "doi": "",
+      "year": "2026",
+      "authors": [
+        "Zhenhua Xu",
+        "Yiran Zhao",
+        "Mengting Zhong",
+        "Dezhang Kong",
+        "Changting Lin",
+        "Tong Qiao",
+        "Meng Han"
+      ],
+      "raw_text": "Dnf: Dual-layer nested fingerprinting for large language model intellectual property protection Zhenhua Xu Yiran Zhao Mengting Zhong Dezhang Kong Changting Lin Tong Qiao Meng Han 2026"
+    },
+    {
+      "index": 25,
+      "title": "Hiding text in large language models: Introducing unconditional token forcing confusion",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jakub Hoscilowicz",
+        "Pawel Popiolek",
+        "Jan Rudkowski",
+        "Jedrzej Bieniasz",
+        "Artur Janicki"
+      ],
+      "raw_text": "Hiding text in large language models: Introducing unconditional token forcing confusion Jakub Hoscilowicz Pawel Popiolek Jan Rudkowski Jedrzej Bieniasz Artur Janicki arXiv:2406.02481 2024 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Mark your llm: Detecting the misuse of open-source large language models via watermarking",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yijie Xu",
+        "Aiwei Liu",
+        "Xuming Hu",
+        "Lijie Wen",
+        "Hui Xiong"
+      ],
+      "raw_text": "Mark your llm: Detecting the misuse of open-source large language models via watermarking Yijie Xu Aiwei Liu Xuming Hu Lijie Wen Hui Xiong 2025"
+    },
+    {
+      "index": 27,
+      "title": "MEraser: An effective fingerprint erasure approach for large language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jingxuan Zhang",
+        "Zhenhua Xu",
+        "Rui Hu",
+        "Wenpeng Xing",
+        "Xuhong Zhang",
+        "Meng Han"
+      ],
+      "raw_text": "MEraser: An effective fingerprint erasure approach for large language models Jingxuan Zhang Zhenhua Xu Rui Hu Wenpeng Xing Xuhong Zhang Meng Han Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics Wanxiang Che Joyce Nabende Ekaterina Shutova Mohammad Taher Pilehvar the 63rd Annual Meeting of the Association for Computational Linguistics Vienna, Austria Association for Computational Linguistics July 2025 1"
+    },
+    {
+      "index": 28,
+      "title": "Hey, that's my model! introducing chain & hash, an llm fingerprinting technique",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Mark Russinovich",
+        "Ahmed Salem"
+      ],
+      "raw_text": "Hey, that's my model! introducing chain & hash, an llm fingerprinting technique Mark Russinovich Ahmed Salem arXiv:2407.10887 2024 arXiv preprint"
+    },
+    {
+      "index": 29,
+      "title": "Machine unlearning",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Lucas Bourtoule",
+        "Varun Chandrasekaran",
+        "Christopher A Choquette-Choo",
+        "Hengrui Jia",
+        "Adelin Travers",
+        "Baiwu Zhang",
+        "David Lie",
+        "Nicolas Papernot"
+      ],
+      "raw_text": "Machine unlearning Lucas Bourtoule Varun Chandrasekaran Christopher A Choquette-Choo Hengrui Jia Adelin Travers Baiwu Zhang David Lie Nicolas Papernot 2021 IEEE symposium on security and privacy (SP) IEEE 2021"
+    },
+    {
+      "index": 30,
+      "title": "Rethinking machine unlearning for large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sijia Liu",
+        "Yuanshun Yao",
+        "Jinghan Jia",
+        "Stephen Casper",
+        "Nathalie Baracaldo",
+        "Peter Hase",
+        "Yuguang Yao",
+        "Chris Yuhao Liu"
+      ],
+      "raw_text": "Rethinking machine unlearning for large language models Sijia Liu Yuanshun Yao Jinghan Jia Stephen Casper Nathalie Baracaldo Peter Hase Yuguang Yao Chris Yuhao Liu Xiaojun Xu Hang Li Kush R Varshney Mohit Bansal Sanmi Koyejo Yang Liu 2024"
+    },
+    {
+      "index": 31,
+      "title": "A comprehensive survey of machine unlearning techniques for large language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Jiahui Geng",
+        "Qing Li",
+        "Herbert Woisetschlaeger",
+        "Zongxiong Chen",
+        "Fengyu Cai",
+        "Yuxia Wang",
+        "Preslav Nakov",
+        "Hans-Arno Jacobsen"
+      ],
+      "raw_text": "A comprehensive survey of machine unlearning techniques for large language models Jiahui Geng Qing Li Herbert Woisetschlaeger Zongxiong Chen Fengyu Cai Yuxia Wang Preslav Nakov Hans-Arno Jacobsen Fakhri Karray 2025"
+    },
+    {
+      "index": 32,
+      "title": "Mistral 7b",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Alexandre Albert Q Jiang",
+        "Arthur Sablayrolles",
+        "Chris Mensch",
+        "Devendra Bamford",
+        "Diego Singh Chaplot",
+        "Florian De Las Casas",
+        "Gianna Bressand",
+        "Guillaume Lengyel"
+      ],
+      "raw_text": "Alexandre Albert Q Jiang Arthur Sablayrolles Chris Mensch Devendra Bamford Diego Singh Chaplot Florian De Las Casas Gianna Bressand Guillaume Lengyel Lucile Lample Saulnier arXiv:2310.06825 Mistral 7b 2023 arXiv preprint"
+    },
+    {
+      "index": 33,
+      "title": "Llama 3 model card",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ai@meta"
+      ],
+      "raw_text": "Llama 3 model card Ai@meta Meta Github 2024"
+    },
+    {
+      "index": 34,
+      "title": "Qwen2.5: A party of foundation models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Qwen Team"
+      ],
+      "raw_text": "Qwen2.5: A party of foundation models Qwen Team September 2024"
+    },
+    {
+      "index": 35,
+      "title": "Gpt-4 technical report",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Josh Achiam",
+        "Steven Adler",
+        "Sandhini Agarwal",
+        "Lama Ahmad",
+        "Ilge Akkaya",
+        "Florencia Leoni Aleman",
+        "Diogo Almeida",
+        "Janko Altenschmidt"
+      ],
+      "raw_text": "Josh Achiam Steven Adler Sandhini Agarwal Lama Ahmad Ilge Akkaya Florencia Leoni Aleman Diogo Almeida Janko Altenschmidt Sam Altman Shyamal Anadkat arXiv:2303.08774 Gpt-4 technical report 2023 arXiv preprint"
+    },
+    {
+      "index": 36,
+      "title": "Stanford alpaca: An instruction-following llama model",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Rohan Taori",
+        "Ishaan Gulrajani",
+        "Tianyi Zhang",
+        "Yann Dubois",
+        "Xuechen Li",
+        "Carlos Guestrin",
+        "Percy Liang",
+        "Tatsunori B Hashimoto"
+      ],
+      "raw_text": "Rohan Taori Ishaan Gulrajani Tianyi Zhang Yann Dubois Xuechen Li Carlos Guestrin Percy Liang Tatsunori B Hashimoto Stanford alpaca: An instruction-following llama model 2023"
+    },
+    {
+      "index": 37,
+      "title": "Adversarial NLI: A new benchmark for natural language understanding",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Yixin Nie",
+        "Adina Williams",
+        "Emily Dinan",
+        "Mohit Bansal",
+        "Jason Weston",
+        "Douwe Kiela"
+      ],
+      "raw_text": "Adversarial NLI: A new benchmark for natural language understanding Yixin Nie Adina Williams Emily Dinan Mohit Bansal Jason Weston Douwe Kiela Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics the 58th Annual Meeting of the Association for Computational Linguistics Association for Computational Linguistics 2020"
+    },
+    {
+      "index": 38,
+      "title": "Think you have solved question answering? try arc, the ai2 reasoning challenge",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Peter Clark",
+        "Isaac Cowhey",
+        "Oren Etzioni",
+        "Tushar Khot",
+        "Ashish Sabharwal",
+        "Carissa Schoenick",
+        "Oyvind Tafjord"
+      ],
+      "raw_text": "Think you have solved question answering? try arc, the ai2 reasoning challenge Peter Clark Isaac Cowhey Oren Etzioni Tushar Khot Ashish Sabharwal Carissa Schoenick Oyvind Tafjord arXiv:1803.05457 2018 arXiv preprint"
+    },
+    {
+      "index": 39,
+      "title": "Can a suit of armor conduct electricity? a new dataset for open book question answering",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Todor Mihaylov",
+        "Peter Clark",
+        "Tushar Khot",
+        "Ashish Sabharwal"
+      ],
+      "raw_text": "Can a suit of armor conduct electricity? a new dataset for open book question answering Todor Mihaylov Peter Clark Tushar Khot Ashish Sabharwal Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing the 2018 Conference on Empirical Methods in Natural Language Processing 2018"
+    },
+    {
+      "index": 40,
+      "title": "Winogrande: An adversarial winograd schema challenge at scale",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Keisuke Sakaguchi",
+        "Le Ronan",
+        "Chandra Bras",
+        "Yejin Bhagavatula",
+        "Choi"
+      ],
+      "raw_text": "Winogrande: An adversarial winograd schema challenge at scale Keisuke Sakaguchi Le Ronan Chandra Bras Yejin Bhagavatula Choi Communications of the ACM 64 9 2021"
+    },
+    {
+      "index": 41,
+      "title": "Logiqa: a challenge dataset for machine reading comprehension with logical reasoning",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Jian Liu",
+        "Leyang Cui",
+        "Hanmeng Liu",
+        "Dandan Huang",
+        "Yile Wang",
+        "Yue Zhang"
+      ],
+      "raw_text": "Logiqa: a challenge dataset for machine reading comprehension with logical reasoning Jian Liu Leyang Cui Hanmeng Liu Dandan Huang Yile Wang Yue Zhang Proceedings of the Twenty-Ninth International Conference on International Joint Conferences on Artificial Intelligence the Twenty-Ninth International Conference on International Joint Conferences on Artificial Intelligence 2021"
+    },
+    {
+      "index": 42,
+      "title": "Crowdsourcing multiple choice science questions",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Johannes Welbl",
+        "Nelson F Liu",
+        "Matt Gardner"
+      ],
+      "raw_text": "Crowdsourcing multiple choice science questions Johannes Welbl Nelson F Liu Matt Gardner Proceedings of the 3rd Workshop on Noisy User-generated Text the 3rd Workshop on Noisy User-generated Text 2017"
+    },
+    {
+      "index": 43,
+      "title": "Boolq: Exploring the surprising difficulty of natural yes/no questions",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Christopher Clark",
+        "Kenton Lee",
+        "Ming-Wei Chang",
+        "Tom Kwiatkowski",
+        "Michael Collins",
+        "Kristina Toutanova"
+      ],
+      "raw_text": "Boolq: Exploring the surprising difficulty of natural yes/no questions Christopher Clark Kenton Lee Ming-Wei Chang Tom Kwiatkowski Michael Collins Kristina Toutanova Proceedings of NAACL-HLT NAACL-HLT 2019"
+    },
+    {
+      "index": 44,
+      "title": "The commitmentbank: Investigating projection in naturally occurring discourse,\" in proceedings of Sinn und Bedeutung",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Marie-Catherine De Marneffe",
+        "Mandy Simons",
+        "Judith Tonhauser"
+      ],
+      "raw_text": "Marie-Catherine De Marneffe Mandy Simons Judith Tonhauser The commitmentbank: Investigating projection in naturally occurring discourse,\" in proceedings of Sinn und Bedeutung 2019 23"
+    },
+    {
+      "index": 45,
+      "title": "The third pascal recognizing textual entailment challenge",
+      "doi": "",
+      "year": "2007",
+      "authors": [
+        "Danilo Giampiccolo",
+        "Bernardo Magnini",
+        "Ido Dagan",
+        "William B Dolan"
+      ],
+      "raw_text": "The third pascal recognizing textual entailment challenge Danilo Giampiccolo Bernardo Magnini Ido Dagan William B Dolan Proceedings of the ACL-PASCAL workshop on textual entailment and paraphrasing the ACL-PASCAL workshop on textual entailment and paraphrasing 2007"
+    },
+    {
+      "index": 46,
+      "title": "Wic: the word-in-context dataset for evaluating context-sensitive meaning representations",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Mohammad Taher",
+        "Pilehvar",
+        "Jose Camacho-Collados"
+      ],
+      "raw_text": "Wic: the word-in-context dataset for evaluating context-sensitive meaning representations Mohammad Taher Pilehvar Jose Camacho-Collados Proceedings of the 2019 Conference of the North American Chapter Long and Short Papers the 2019 Conference of the North American Chapter the Association for Computational Linguistics 2019 1"
+    },
+    {
+      "index": 47,
+      "title": "The winograd schema challenge",
+      "doi": "",
+      "year": "2012",
+      "authors": [
+        "Hector Levesque",
+        "Ernest Davis",
+        "Leora Morgenstern"
+      ],
+      "raw_text": "The winograd schema challenge Hector Levesque Ernest Davis Leora Morgenstern Thirteenth international conference on the principles of knowledge representation and reasoning 2012"
+    },
+    {
+      "index": 48,
+      "title": "Choice of plausible alternatives: An evaluation of commonsense causal reasoning",
+      "doi": "",
+      "year": "2011",
+      "authors": [
+        "Melissa Roemmele",
+        "Cosmin",
+        "Adrian Bejan",
+        "Andrew S Gordon"
+      ],
+      "raw_text": "Choice of plausible alternatives: An evaluation of commonsense causal reasoning Melissa Roemmele Cosmin Adrian Bejan Andrew S Gordon 2011 AAAI Spring Symposium Series 2011"
+    },
+    {
+      "index": 49,
+      "title": "Looking beyond the surface: A challenge set for reading comprehension over multiple sentences",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Daniel Khashabi",
+        "Snigdha Chaturvedi",
+        "Michael Roth",
+        "Shyam Upadhyay",
+        "Dan Roth"
+      ],
+      "raw_text": "Looking beyond the surface: A challenge set for reading comprehension over multiple sentences Daniel Khashabi Snigdha Chaturvedi Michael Roth Shyam Upadhyay Dan Roth Proceedings of the 2018 Conference of the North American Chapter Long Papers the 2018 Conference of the North American Chapter Human Language Technologies 2018 1"
+    },
+    {
+      "index": 50,
+      "title": "The lambada dataset: Word prediction requiring a broad discourse context",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "Denis Paperno",
+        "Germán Kruszewski",
+        "Angeliki Lazaridou",
+        "Ngoc Quan",
+        "Raffaella Pham",
+        "Sandro Bernardi",
+        "Marco Pezzelle",
+        "Gemma Baroni"
+      ],
+      "raw_text": "Denis Paperno Germán Kruszewski Angeliki Lazaridou Ngoc Quan Raffaella Pham Sandro Bernardi Marco Pezzelle Gemma Baroni Raquel Boleda Fernández arXiv:1606.06031 The lambada dataset: Word prediction requiring a broad discourse context 2016 arXiv preprint"
+    },
+    {
+      "index": 51,
+      "title": "Arcee's mergekit: A toolkit for merging large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Charles Goddard",
+        "Shamane Siriwardhana",
+        "Malikeh Ehghaghi",
+        "Luke Meyers",
+        "Vlad Karpukhin",
+        "Brian Benedict",
+        "Mark Mcquade",
+        "Jacob Solawetz"
+      ],
+      "raw_text": "Arcee's mergekit: A toolkit for merging large language models Charles Goddard Shamane Siriwardhana Malikeh Ehghaghi Luke Meyers Vlad Karpukhin Brian Benedict Mark Mcquade Jacob Solawetz arXiv:2403.13257 2024 arXiv preprint"
+    },
+    {
+      "index": 52,
+      "title": "Have you merged my model? on the robustness of large language model ip protection methods against model merging",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tianshuo Cong",
+        "Zesen Delong Ran",
+        "Xinlei Liu",
+        "Jinyuan He",
+        "Yichen Liu",
+        "Qi Gong",
+        "Anyu Li",
+        "Xiaoyun Wang"
+      ],
+      "raw_text": "Tianshuo Cong Zesen Delong Ran Xinlei Liu Jinyuan He Yichen Liu Qi Gong Anyu Li Xiaoyun Wang Wang arXiv:2404.05188 Have you merged my model? on the robustness of large language model ip protection methods against model merging 2024 arXiv preprint"
+    },
+    {
+      "index": 53,
+      "title": "Enhancing chat language models by scaling high-quality instructional conversations",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ning Ding",
+        "Yulin Chen",
+        "Bokai Xu",
+        "Yujia Qin",
+        "Zhi Zheng",
+        "Shengding Hu",
+        "Zhiyuan Liu",
+        "Maosong Sun"
+      ],
+      "raw_text": "Enhancing chat language models by scaling high-quality instructional conversations Ning Ding Yulin Chen Bokai Xu Yujia Qin Zhi Zheng Shengding Hu Zhiyuan Liu Maosong Sun Bowen Zhou arXiv:2305.14233 2023 arXiv preprint"
+    },
+    {
+      "index": 54,
+      "title": "Fingerprint vector: Enabling scalable and efficient model fingerprint transfer via vector addition",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhenhua Xu",
+        "Qichen Liu",
+        "Zhebo Wang",
+        "Wenpeng Xing",
+        "Dezhang Kong",
+        "Mohan Li",
+        "Meng Han"
+      ],
+      "raw_text": "Fingerprint vector: Enabling scalable and efficient model fingerprint transfer via vector addition Zhenhua Xu Qichen Liu Zhebo Wang Wenpeng Xing Dezhang Kong Mohan Li Meng Han 2025"
+    },
+    {
+      "index": 55,
+      "title": "Unlocking the effectiveness of lora-fp for seamless transfer implantation of fingerprints in downstream models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhenhua Xu",
+        "Zhaokun Yan",
+        "Binhan Xu",
+        "Xin Tong",
+        "Haitao Xu",
+        "Yourong Chen",
+        "Meng Han"
+      ],
+      "raw_text": "Unlocking the effectiveness of lora-fp for seamless transfer implantation of fingerprints in downstream models Zhenhua Xu Zhaokun Yan Binhan Xu Xin Tong Haitao Xu Yourong Chen Meng Han 2025"
+    }
+  ],
+  "section_count": 17,
+  "reference_count": 55,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:04.247060+00:00"
+}

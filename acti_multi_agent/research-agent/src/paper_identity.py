@@ -9,6 +9,7 @@ import re
 _OPENALEX_RE = re.compile(r"(?:https?://openalex\.org/)?(W\d+)", re.I)
 _ARXIV_RE = re.compile(r"(?:arxiv:)?([A-Za-z\-\.]+/\d{7}|\d{4}\.\d{4,5}(?:v\d+)?)", re.I)
 _S2_HEX_RE = re.compile(r"^[0-9a-f]{20,64}$", re.I)
+_LENS_RE = re.compile(r"(?:lens:)?([0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{3})", re.I)
 
 
 def normalize_doi(value: str | None) -> str | None:
@@ -33,6 +34,15 @@ def normalize_arxiv_id(value: str | None) -> str | None:
     if not value:
         return None
     match = _ARXIV_RE.search(value.strip())
+    if not match:
+        return None
+    return match.group(1)
+
+
+def normalize_lens_id(value: str | None) -> str | None:
+    if not value:
+        return None
+    match = _LENS_RE.search(value.strip())
     if not match:
         return None
     return match.group(1)
@@ -80,6 +90,15 @@ def extract_source_ids(paper: dict) -> dict[str, str]:
     if arxiv:
         source_ids["arxiv"] = arxiv
 
+    lens_id = normalize_lens_id(
+        source_ids.get("lens")
+        or external_ids.get("lens")
+        or external_ids.get("Lens")
+        or legacy_paper_id
+    )
+    if lens_id:
+        source_ids["lens"] = lens_id
+
     s2_id = source_ids.get("s2")
     if not s2_id and looks_like_s2_paper_id(legacy_paper_id):
         s2_id = legacy_paper_id
@@ -115,6 +134,8 @@ def canonical_id_for_paper(paper: dict) -> str:
         return f"openalex:{source_ids['openalex'].rsplit('/', 1)[-1]}"
     if source_ids.get("arxiv"):
         return f"arxiv:{source_ids['arxiv']}"
+    if source_ids.get("lens"):
+        return f"lens:{source_ids['lens']}"
 
     title = (paper.get("title") or "").strip().lower()
     digest = hashlib.sha256(title.encode()).hexdigest()[:16]
@@ -147,6 +168,10 @@ def alias_ids_for_paper(paper: dict) -> list[str]:
         aliases.add(source_ids["arxiv"])
         aliases.add(f"arxiv:{source_ids['arxiv']}")
         aliases.add(f"ARXIV:{source_ids['arxiv']}")
+    if source_ids.get("lens"):
+        aliases.add(source_ids["lens"])
+        aliases.add(f"lens:{source_ids['lens']}")
+        aliases.add(f"LENS:{source_ids['lens']}")
 
     return sorted(a for a in aliases if a)
 
@@ -192,9 +217,17 @@ def build_alias_lookup(papers: list[dict]) -> dict[str, str]:
     return lookup
 
 
-def canonicalize_paper_ref(ref_id: str | None, alias_lookup: dict[str, str]) -> str | None:
+def canonicalize_paper_ref(ref_id, alias_lookup: dict[str, str]) -> str | None:
     if not ref_id:
         return None
+    if isinstance(ref_id, dict):
+        for key in ("paperId", "canonical_id", "id", "doi"):
+            value = ref_id.get(key)
+            if value:
+                return canonicalize_paper_ref(value, alias_lookup)
+        return None
+    if not isinstance(ref_id, str):
+        ref_id = str(ref_id)
     raw = ref_id.strip()
     if raw in alias_lookup:
         return alias_lookup[raw]

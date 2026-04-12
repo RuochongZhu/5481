@@ -1,0 +1,818 @@
+{
+  "paperId": "arxiv:2512.17394v2",
+  "title": "Are Vision Language Models Cross-Cultural Theory of Mind Reasoners?",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2512.17394v2.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2512.17394v2.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2512.17394v2.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Theory of Mind (ToM) -the ability to attribute beliefs and intents to others -is fundamental for social intelligence, yet Vision-Language Model (VLM) evaluations remain largely Western-centric. In this work, we introduce CulturalToM-VQA, a benchmark of 5,095 visually situated ToM probes across diverse cultural contexts, rituals, and social norms. Constructed through a frontier proprietary MLLM, human-verified pipeline, the dataset spans a taxonomy of six ToM tasks and four complexity levels. We benchmark 10 VLMs (2023-2025) and observe a significant performance leap: while earlier models struggle, frontier models achieve high accuracy (> 93%). However, significant limitations persist: models struggle with false belief reasoning (19-83% accuracy) and show high regional variance (20-30% gaps). Crucially, ablation experiments reveal a modality gap, some frontier models exhibit a strong tendency to rely on parametric social priors, frequently defaulting to safety-aligned predictions even when visual context is removed. We find that SOTA models show social desirability bias -systematically favoring semantically positive answer choices over negative ones without visual evidence. Furthermore, while Chain-of-Thought prompting aids older models, it yields minimal gains for newer ones. Overall, our work provides a testbed for cross-cultural social reasoning, underscoring that despite architectural gains, achieving robust, visually grounded understanding remains an open challenge.",
+      "word_count": 200
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Understanding human behavior in social contexts requires more than perceiving visible cues -it necessitates Theory of Mind (ToM), the cognitive ability to reason about others' beliefs, desires, intentions, and emotions, even when they remain hidden or must be inferred indirectly (Premack and Woodruff, 1978; Baron-Cohen et al., 1985) . In hu-mans, ToM underpins essential social capacities including communication, coordination, empathy, and navigating cultural norms. As artificial intelligence systems increasingly interact with people across diverse contexts, developing robust ToM reasoning capabilities has emerged as a critical frontier (Kosinski, 2023; Sap et al., 2022) .\n\nRecent advances in vision-language models (VLMs) have yielded remarkable progress on image captioning, visual question answering, and grounded reasoning. Current VLMs (OpenAI, 2023; Liu et al., 2023a; Team et al., 2023; Bai et al., 2023; Chen et al., 2024a) demonstrate strong performance when combining visual and linguistic understanding. However, their capacity for social inference -particularly in cultural contexts where mental states must be interpreted through the lens of cultural knowledge -remains far less explored.\n\nA gesture, ritual, or social role carries different mental-state implications across cultures. For instance, sustained direct eye contact during conversation with an elder signals confidence and respectful engagement in many Western contexts, yet constitutes disrespect or inappropriate challenge in many East Asian, Indigenous, and Middle Eastern cultures, where averting one's gaze signals deference (McCarthy et al., 2006) . Without culturally grounded ToM reasoning, AI systems may misinterpret intentions, violate social expectations, or exhibit uneven behavior across cultural groups (Tao et al., 2024) . Crucially, as models undergo safety alignment, a potential risk emerges: what we term an 'illusion of empathy,' where systems may favor socially desirable or harmonious mental-state interpretations even when visual evidence is weak or absent (Sorin et al., 2024) . Distinguishing true cross-cultural understanding from these alignment artifacts remains an under-addressed challenge.\n\nBackground and Motivation. While ToM has been studied extensively in cognitive science and arXiv:2512.17394v2 [cs.CL] 7 Jan 2026 increasingly in natural language processing, existing benchmarks reveal three critical limitations when considering VLMs operating across diverse cultural contexts.\n\n(a) Limited cultural scope in ToM benchmarks. In the language domain, ToMBench provides one of the most systematic evaluations of ToM capabilities in large language models, spanning 8 ToM tasks and 31 social-cognitive abilities (Chen et al., 2024b) . However, ToMBench focuses on textual scenarios without visual grounding and with limited cultural diversity. In the multimodal space, MMToM-QA fuses textual and visual inputs for ToM tasks, yet its scenarios predominantly reflect Western everyday life -indoor settings, common objects, familiar social scripts -without systematic variation across cultural contexts (Ma et al., 2024) . More recently, Wen et al. (2025) propose an openended evaluation of VLMs on inferring human intentions from images using 30 carefully curated scenes involving deception, conflicting interests, or hidden motives. Nevertheless, their dataset size is modest and cultural diversity remains limited. Embodied perspectives have also been explored: SoMi-ToM investigates agent-based social interaction in multimodal settings, examining first-person versus third-person perspective-taking (Fan et al., 2025) . More broadly, the existing ToM benchmarks rarely examine how culture itself shapes the inference process -how rituals, symbols, dress codes, and social roles mediate our understanding of others' minds.",
+      "word_count": 525
+    },
+    {
+      "index": 3,
+      "title": "(b) Underexplored cultural reasoning in VLMs.",
+      "kind": "body",
+      "text": "The capacity of VLMs to understand cultural context has recently attracted increased attention, though much of this work focuses on factoid-style comprehension rather than mental-state inference. CulturalVQA, a benchmark drawn from 11 countries, probes VLM understanding of clothing, rituals, food, and traditions (Nayak et al., 2024) . Their experiments reveal pronounced imbalances, with models performing substantially better on North American content than on other regions. Cul-tureVLM extends this line of inquiry with a massive benchmark encompassing 19,682 cultural concepts across 188 regions, demonstrating that standard VLMs struggle significantly with non-Western content, and that targeted fine-tuning can partially -but not fully close the gap (Liu et al., 2025) . CROPE examines how VLMs adapt to culturespecific concepts through in-context prompting, showing that effectively combining parametric knowledge with contextual cultural cues remains challenging (Nikandrou et al., 2024) . In a comprehensive survey of over 300 works, Pawar et al. (2024) document how cultural awareness in multimodal and language models is often treated superficially or as an afterthought, with many systems failing to move beyond surface-level pattern matching. This limitation extends to current benchmarks as well, which often test whether models can identify cultural artifacts (naming a ritual, recognizing traditional dress) rather than whether they can perform mental-state inference grounded in cultural understanding. (c) Methodological challenges. Building crosscultural ToM benchmarks is hindered by expensive, slow manual annotation and biased, hallucinated model data that risks superficial, stereotypical, or derogatory reasoning (Ignat et al., 2024) . To be rigorous, these frameworks must navigate such hurdles to incorporate diverse sub-tasks across multiple cognitive complexity levels for nuanced social intelligence evaluation (Gandhi et al., 2023) . Our Contribution. We introduce CulturalToM-VQA, a benchmark comprising 5,095 questionanswer pairs for cross-cultural, vision-based Theory of Mind tasks. Our main contributions are: • Human-in-the-Loop (HITL) Annotation Pipeline: We combine human expert curation of culturally rich imagery with GPT-assisted description and question generation, then validate outputs through human review following existing works (Kim et al., 2024; Gandhi et al., 2023) . This approach balances scalability with semantic reliability and cultural relevance.\n\n• Structured ToM Task Taxonomy: We formalize a taxonomy covering six ToM task types (mental state attribution, false belief reasoning, nonliteral communication, social norm violations, perspective coordination, and multi-agent reasoning) across four complexity levels, ranging from the perception of basic mental states to recursive reasoning about others' beliefs, and extending to culturally grounded social coordination involving norms, intentions, and multi-agent interactions.\n\n• Systematic Evaluation: We systematically evaluate a broad set of VLMs using three prompting methods (zero-shot, zero-shot-CoT, compositional-CoT). Importantly, our evaluation focuses on modern instruction-following multimodal LLMs rather than contrastive CLIP- style vision-language encoders, as the latter are not designed for open-ended or multiple-choice social reasoning. We analyze both aggregate and stratified performance -across task types, complexity levels, data splits and examine finegrained failure modes. We find a sharp capability gap across model generations: recent instruction-tuned VLMs achieve high accuracy on explicit ToM tasks (e.g, mental state attribution), yet all models degrade substantially on implicit reasoning such as false belief and exhibit cross-cultural performance variance. We conduct supplementary no-image and option-level diagnostics on the best-performing models to further interpret these results. The findings suggest a modest positivity heuristic in these models -likely reflecting safety alignment and socially normative priors -which partially explains no-image correctness, with remaining accuracy appearing to stem from higher-level semantic and social knowledge acquired during large-scale pretraining rather than simple lexical pattern matching (Strachan et al., 2024) .",
+      "word_count": 571
+    },
+    {
+      "index": 4,
+      "title": "CulturalToM-VQA",
+      "kind": "body",
+      "text": "We construct CulturalToM-VQA via a three-stage pipeline: image selection by human annotators, proprietary MLLM GPT-assisted scene description with structured cues, and systematic question generation based on our task-complexity framework. Finally, we apply rigorous quality controls to ensure dataset integrity. We employ GPT-4.1 for annotation, crucially conditioning all prompts on the corresponding image to ensure generations are grounded in visual evidence rather than hallucinated priors. This methodology builds on evidence that GPT-4-class models serve as reliable human proxies for annotation (Jahan et al., 2024; Liyanage et al., 2024) including ToM (Gandhi et al., 2023) and effectively synthesize complex multimodal rea-soning data (Liu et al., 2023b; Kim et al., 2023a) . Some examples from the dataset are demonstrated in Figure 1 .",
+      "word_count": 120
+    },
+    {
+      "index": 5,
+      "title": "Data Sources",
+      "kind": "body",
+      "text": "We curate images for our dataset from the following three existing complementary image sources.\n\n(a) FindingEmo: Unlike conventional emotion recognition datasets that focus on isolated faces or single individuals, FindingEmo (Mertens et al., 2024) annotates 25,869 entire scenes collected from web depicting multiple people in naturalistic social settings making it particularly suitable for evaluating cultural ToM reasoning.\n\n(b) CulturalVQA: Nayak et al. (2024) provides a culturally diverse benchmark of 2,378 imagequestion pairs sourced from 11 countries across 5 continents. While many questions focus on identifying cultural objects such as food, clothing, or artifacts, a selective subset involves humans or groups engaged in rituals and social activities that require contextual and inferential understanding. These instances, though fewer, are particularly relevant for evaluating ToM-related reasoning, as they demand recognition of culturally grounded intentions, shared beliefs, and social dynamics beyond surfacelevel visual cues.\n\n(c) CVQA: Romero et al. (2024) features a dataset of approximately 10,000 cross-cultural image-question pairs. The collection spans 30 countries across 4 continents and supports high linguistic diversity, covering 31 languages written in 13 distinct scripts. Although CVQA supports multiple languages, in our study, the evaluation is conducted in English.",
+      "word_count": 190
+    },
+    {
+      "index": 6,
+      "title": "Image Selection",
+      "kind": "body",
+      "text": "Let I source denote the union of images from our three source datasets. Human annotators performed a filtering operation to identify images suitable for Theory of Mind reasoning. Each image I ∈ I source was evaluated according to four criteria: (i) social or mental state interpretability, defined as the presence of either multiple interacting agents or a single agent whose emotions, intentions, or social role can be inferred from contextual or cultural cues; (ii) observable interpersonal dynamics or role relationships; (iii) culturally specific contexts or practices; and (iv) emotional expressiveness conveyed through facial expressions or body language. Our final dataset comprises I = {I ∈ I source : I satisfies all four criteria}, resulting in |I| = 394 images after selection process (221 images from FindingEmo, 90 from CulturalVQA, and 83 from CVQA).\n\n2.3 Theory-of-Mind Task Taxonomy Task Description. We select six abilities reflecting key stages in cognitive development: (i) Mental State Attribution (MSA) refers to an individual's early-developing ability to interpret the observable actions and expressions of others (such as facial cues, body language, or vocal tone) to infer their underlying basic emotions and desires (Strachan et al., 2024; Chen et al., 2024b) , (ii) False Belief Reasoning (FBR) is the ability to attribute a mental state, specifically a false belief, to oneself or to another person, and to understand that this belief might differ from one's own correct understanding of reality (Kosinski, 2024) , (iii) Non-literal Communication (NLC) is the ability to to understand messages where the intended meaning is not the same as the literal words spoken or written (such as interpreting irony, sarcasm, or indirect speech that requires higher-order intention tracking and pragmatic inference) (Winner and Leekam, 1991) , (iv) Social Norm Violations (SNV) is the ability to perceive that a social error has occurred by integrating their knowledge of general social rules with an understanding of what the people involved in the situation actually know or believe Baron-Cohen et al. (1999); Strachan et al. (2024) , (v) Perspective Coordination (PC) encompasses the progression from simple visual perspective-taking to reasoning about embedded and conflicting viewpoints Frick et al. (2014) ; Wilf et al. (2024) , and lastly, (vi) Multi-agent Reasoning (MAR) involves tracking and reasoning on the most complex scenarios where multiple agents' beliefs and intentions must be tracked simultaneously Kim et al. (2023b) .\n\nTASK COMPLEXITY LEVEL 1 2 3 4 Mental State Attribution (MSA) 1 1 0 0 False Belief Reasoning (FBR) 0 1 1 1 Non-literal Communication (NLC) 0 0 1 1 Social Norm Violations (SNV) 0 0 1 1 Perspective Coordination (PC) 0 1 1 1 Multi-agent Reasoning (MAR) 0 0 0 1 Table 1: Task-complexity Q-matrix, Q ∈ {0, 1} 6×4 encoding the cognitive appropriateness of Theory-of-Mind tasks (ti) at each complexity level (cj). Bold entries denote Qij = 1, indicating that task ti is validly defined at complexity level cj.\n\nTask-Complexity Mapping. We pair each ToM task with a graded complexity hierarchy which is required later to generate questions from images. We formalize this pairing with a Q-matrix from cognitive diagnosis models (CDMs), which encode item-skill relationships via an item-byattribute incidence matrix (Qin and Guo, 2024 ). Let T = {t 1 , . . . , t 6 } be the set of ToM task types and let C = {1, 2, 3, 4} denote four complexity levels. We define a binary matrix Q ∈ {0, 1} |T |×|C| with entries\n\nQ ij = 1 task t i is cognitively appropriate at c j , 0 otherwise.\n\nThe set of admissible task-level pairs is V = {(t i , c j ) ∈ T × C : Q ij = 1}. The Q-matrix (Q) as shown in Table 1 maps each Theory-of-Mind (ToM) task to the levels of cognitive complexity. These assignments are grounded in developmental psychology and pragmatics literature (Strachan et al., 2024; Kosinski, 2024; Winner and Leekam, 1991; Baron-Cohen et al., 1999) . We provide detailed definitions and cognitive justifications for each specific task and mapping in Appendix B.",
+      "word_count": 672
+    },
+    {
+      "index": 7,
+      "title": "Scene Description Generation",
+      "kind": "body",
+      "text": "For each image I i ∈ I and metadata M i , we use\n\nGPT-4.1 to generate structured annotations via a template P scene (see Appendix H.1) that prioritizes inferred mental states over surface-level description. The model produces a structured representation D i = (d i , E i , T i , C i ), where d i is a ToMfocused narrative, and E i , T i , C i are sets of phrases capturing emotional expressions, mental state inferences (beliefs, intentions), and cultural elements (symbols, rituals, norms) respectively.",
+      "word_count": 91
+    },
+    {
+      "index": 8,
+      "title": "Structured Question Generation",
+      "kind": "body",
+      "text": "For each annotated image I i with structured description D i = (d i , E i , T i , C i ), we generate one multiple-choice question for each admissible task-complexity pair (t, c) ∈ V defined by the Qmatrix. Let k index the set of valid task-complexity pairs for image I i , i.e., k = 1, . . . , |V|. Each question is represented as:\n\nq i,k = s i,k , O i,k , a i,k , e i,k ,\n\nwhere s i,k is the question stem, O i,k = {o i,1 , o i,2 , o i,3 , o i,4 } denotes the answer options, a i,k ∈ {A, B, C, D} identifies the correct answer, and e i,k provides a short explanation referencing supporting cues from (E i , T i , C i ). For each valid (t, c) pair, we ask GPT-4.1 with a structured prompt P Q (t, c, D i ) that inputs the narrative d i and cue sets to generate a question targeting the specific mental state construct t at inference depth c. (See Appendix H.2 for full templates).",
+      "word_count": 192
+    },
+    {
+      "index": 9,
+      "title": "Validation and Randomization",
+      "kind": "body",
+      "text": "We apply a rigorous two-stage filtering: (1) an automated parser verifying structural integrity and uniqueness, and (2) expert review by two annotators with cultural studies backgrounds. Prior to validation, annotators completed a 40-hour training module on the specific cultural contexts and social norms represented in the images. Disagreements were adjudicated by 2 senior researchers. Finally, answer options were randomly permuted (seed 42) to eliminate position bias. Additional details can be found in Appendix C.",
+      "word_count": 74
+    },
+    {
+      "index": 10,
+      "title": "Dataset Statistics",
+      "kind": "body",
+      "text": "From an initial pool of 7, 092 generations across 394 images, we retained N valid = 5,095 highquality questions (on average 12.93 questions per image) after validation. We report the task and level wise dataset distribution in Appendix A.",
+      "word_count": 39
+    },
+    {
+      "index": 11,
+      "title": "Human Evaluation",
+      "kind": "results",
+      "text": "We assessed data quality on a stratified random sample (N = 533, ≈ 10%). Two independent raters evaluated items across five dimensions, achieving substantial inter-rater reliability (Cohen's κ) (Cohen, 1960) . We observed high consensus on Cultural Appropriateness (κ = 0.86, 99.8% agreement) and Complexity Correctness (κ = 0.67). Crucially, the Image Necessity dimension (κ = 0.62, 76.7% agreement) confirmed that questions effectively test visual reasoning rather than textual priors. Additional details on human evaluation are provided in C.",
+      "word_count": 79
+    },
+    {
+      "index": 12,
+      "title": "Experimental Details",
+      "kind": "body",
+      "text": "(a) Evaluated Models. We evaluated a diverse set of open-source vision-language models (VLMs) spanning different architectures, generations, and parameter scales. The selected models include InternVL-3.5-8B, LLaVA-1.5-7B, LLaVA-Next-7B, Qwen-VL Chat, Qwen2-VL-7B, Qwen2.5-VL-7B, Phi-4-6B, InstructBLIP-Vicuna, IDEFICS-9B, and Llama-11B; full model access links are provided in Appendix E. These models were chosen to capture a range of multimodal reasoning capabilities -from instruction-tuned LLM-VLM hybrids (e.g., LLaVA, InstructBLIP) to more recent architectures optimized for high-resolution perception and advanced multimodal reasoning (e.g., Qwen2.5, InternVL-3.5). All models were evaluated in their publicly released form using their respective Hug-gingFace checkpoints without further fine-tuning or hyperparameter modification.\n\n(b) Prompting Strategies. Each VLM was prompted under three settings -zero-shot, zeroshot chain-of-thought, and compositional chain-ofthought -to assess differences in basic reasoning, step-by-step inference, and structured relational reasoning. All prompts follow a consistent structure across models for fair comparison. The complete templates are provided in Appendix H.\n\nZero-shot prompting. Following visual question answering evaluation from (Kojima et al., 2022) , each model receives an image and a multiplechoice question containing four labeled options (A-D). The model is instructed to select the correct answer directly by outputting only the corresponding option letter.",
+      "word_count": 190
+    },
+    {
+      "index": 13,
+      "title": "Zero-shot CoT prompting.",
+      "kind": "body",
+      "text": "We employ an extended variant, the zero-shot chain-of-thought prompting strategy introduced by Kojima et al. (2022) . The model is first prompted with \"Let's think step by step.\" and required to conclude with an explicit answer format (\"Answer: <option let-ter>\").",
+      "word_count": 40
+    },
+    {
+      "index": 14,
+      "title": "Compositional CoT prompting.",
+      "kind": "body",
+      "text": "We adopt the two-stage compositional CoT framework proposed by Mitra et al. (2024) . In the first stage, the model is instructed to generate a JSON-formatted scene graph describing relevant objects, attributes, and relations observed in the image. In the second stage, the model uses this scene graph, along with the original question and image, to infer the answer.\n\n(c) Evaluation Setup. We used default sampling Model Rel. Date Prompt Config. Accuracy InstructBLIP-Vicuna May'23 Zero-Shot 0.257 Zero-Shot CoT 0.648 Comp. CoT 0.473 IDEFICS-9B-Instruct Aug'23 Zero-Shot 0.210 Zero-Shot CoT 0.466 Comp. CoT 0.471 Qwen-VL-Chat Aug'23 Zero-Shot 0.575 Zero-Shot CoT 0.421 Comp. CoT 0.624 LLaVA-1.5-7B Sep'23 Zero-Shot 0.433 Zero-Shot CoT 0.508 Comp. CoT 0.450 LLaVA-Next-7B Jan'24 Zero-Shot 0.713 Zero-Shot CoT 0.609 Comp. CoT 0.765 Qwen2-VL-7B Aug'24 Zero-Shot 0.928 Zero-Shot CoT 0.929 Comp. CoT 0.914 Llama-3.2-11B-Vision Sep'24 Zero-Shot 0.158 Zero-Shot CoT 0.412 Comp. CoT 0.643 Qwen2.5-VL-7B Jan'25 Zero-Shot 0.939 Zero-Shot CoT 0.909 * Comp. CoT 0.924 Phi-4-multimodal Mar'25 Zero-Shot 0.933 Zero-Shot CoT 0.936 Comp. CoT 0.929 InternVL-3.5-8B Aug'25 Zero-Shot 0.882 Zero-Shot CoT 0.891 * Comp. CoT 0.916\n\nTable 2: Aggregate performance by model and prompting strategy. parameters and native image preprocessing (RGB). The max token limit was set to 256, but increased to 512 for InternVL and Qwen2.5-VL in Zeroshot CoT to prevent truncation (see Appendix D.2). Zero-shot settings utilized a single inference pass, while Compositional CoT chained the intermediate scene graph to the reasoning prompt. Final predictions were extracted as the selected option.\n\n4 Results and Analysis (a) Human Baseline. We evaluated human accuracy on a stratified sample of 481 questions balanced across task and complexity levels. Three independent raters achieved a majority-vote accuracy of 98.34% and a mean individual accuracy of 98.20% (σ = 0.0063). This near-ceiling performance confirms the validity of the ground truth labels. Detailed sampling methodology and interrater analysis are provided in Appendix D.1.\n\n(b) Overall Model Performance. Table 2 shows that Qwen-2.5-7B achieves the highest accuracy (93.9%), followed closely by Phi-4-6B (93.6%) and Qwen2-VL-7B (92.9%). These recent architectures exhibit seemingly strong performance with minimal sensitivity to prompting strategies. In contrast, earlier models like IDEFICS-9B (47.1%) and InstructBLIP-Vicuna (64.9%) perform significantly worse. Notably, while older and mid-tier models (e.g., LLaVA-Next, InternVL-3.5) benefit substantially from Compositional CoT (improving by 3-5%), frontier models operate near a zero-shot ceiling, yielding negligible gains from explicit reasoning scaffolds.\n\n(c) Image source-wise Performance. Figure 2 reveals a dramatic performance range, from 8.01% (LLaMA-11B on FindingEmo images) to 95.38% (Qwen 2.5 7B on CulturalVQA images). Find-ingEmo proves slightly more challenging (top scores 91-93%) than CulturalVQA/CVQA (94-95%), suggesting potential difficulty with websourced imagery. We observe a sharp generational gap: 2023 models (e.g., LLaVA 1.5) rarely exceed 68%, while recent models (e.g., Qwen 2.5, Phi-4) consistently surpass 90%, marking a 25-30% improvement in one year. Regarding prompting, zero-shot CoT yields inconsistent results; Table 4 in Appendix D.2 indicates that newer models require higher token budgets for effective reasoning. Conversely, compositional CoT substantially benefits mid-tier and older models (≈ 10% gain), whereas frontier models like Phi-4 and Qwen2-VL maintain stability within 1.5% variance across strategies. prompting proves particularly valuable at Complexity 4, providing improvement across all model tiers, with the largest gains for older VLMs. This suggests that while modern architectures show good performance on lower complexity tasks, highly complex cross-cultural multi-step scenarios still remain a fundamental challenge.\n\n(f) Cross-Cultural Bias Analysis. Figure 4 reveals systematic zero-shot performance disparities across cultural regions on the CVQA split our dataset, proving that VLMs lack cultural uniformity. While regions like Colombia, France, Mexico, and Romania show consistent high accuracy (> 95%), Argentina and Russia see significantly lower performance, particularly for InternVL-3.5-8B, which drops to 70-75%. InternVL underperforms generally, with drastic drops in Bulgaria, Russia, and Argentina. In contrast, Qwen2-VL-7B achieves perfect accuracy in Norway and Russia where others struggle. Phi-4-6B and Qwen-2.5-7B remain largely stable but dip in Russia and Bulgaria. Tight clustering in Colombia and France suggests these contexts are well-represented, whereas Norway, Nigeria, Bulgaria, and Russia show large gaps between models, highlighting that \"cross-cultural\" capability varies heavily by architecture and training distribution.",
+      "word_count": 673
+    },
+    {
+      "index": 15,
+      "title": "Disentangling Visual Grounding from Alignment Priors",
+      "kind": "body",
+      "text": "To rigorously assess whether high VLM performance stems from genuine visual perception anc culural understanding or language priors, we conducted a visual ablation study. We focus our analysis on the Qwen family as it uniquely spans the trajectory from early multimodal capabilities (Qwen-VL: 57% accuracy) to best overall performance (Qwen2.5: 94% accuracy), allowing us to trace the emergence of non-visual reasoning patterns. (a) The 'Blind' Baseline. From Table 3 , we find that while the older Qwen-VL-Chat drops to near-random performance without visual context (≈ 39%), Qwen2-VL and Qwen2.5-VL maintain high accuracy. All models are benefited with visual context overall. This suggests that some frontier models can effectively shortcut visual reasoning, leveraging parametric social priors learnt during training to approximate the correct answer. We investigate two hypotheses for this behavior: (1) simple lexical leakage, or (2) safety-aligned social priors.\n\n(b) Excluding Lexical Shortcuts. We first test if questions contain exploitable keyword patterns. We trained a TF-IDF + Logistic Regression baseline under cross-validation. Across all splits, this baseline performs near chance (≈ 25%; e.g., 0.233 ± 0.02 on CulturalVQA), confirming that the high accuracy of frontier models is not driven by surfacelevel lexical heuristics. Additional details can be found in Appendix F.1. (c) Quantifying Social Desirability Bias. We next investigate if safety alignment drives models to heuristically select \"positive\" or \"safe\" answers.\n\nWe utilize a sentiment-based \"Positivity Heuristic\" classifier that selects the most semantically positive option. Dataset Bias: A simple positivity heuristic yields accuracies between 45% (FindingEmo) and 56% (CulturalVQA). This reflects our rigorous exclusion of culturally offensive or stereotypical content during annotation, which naturally skews the ground truth toward socially constructive interactions.\n\nModel Bias: When VLMs make incorrect predictions, they are more likely than chance to select an option that is more positive than the correct answer -a behavior we quantify using Excess Positivity Drift. For Qwen2.5-VL on CulturalVQA, this drift is substantial (0.111, p < 0.05), corresponding to an 11 percentage-point increase over chance among distractors. This tendency is further amplified in conflict cases, where the correct answer is not the most positive option: in such cases, the model selects the most positive distractor 22 percentage points more often than expected under random choice. Appendix G provides additional qualitative evidence showing that, without visual input, models often default to socially favorable interpretations (e.g., happiness or comfort) in ambiguous scenarios instead of abstention.\n\nWhile social desirability bias explains a substantial portion of the performance (≈ 56%), it does not account for the full > 93% accuracy. Since simple lexical patterns are ruled out, we conclude that the remaining performance gap stems from the models' extensive pre-trained world knowledge, enabling them to infer plausible social contexts from text alone, independent of visual grounding.",
+      "word_count": 452
+    },
+    {
+      "index": 16,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "We introduced CulturalToM-VQA to evaluate visually grounded Theory of Mind across diverse cultures. Benchmarking VLMs reveals a sharp generational shift, with frontier models achieving near-human accuracy on explicit tasks. However, critical gaps persist: models struggle with false belief reasoning and exhibit inconsistent generalization across cultural regions. Crucially, visual ablation exposes a visual insensitivity where SOTA models maintain high performance without images. We trace this to pre-trained world knowledge and social desirability bias, where safety alignment predisposes models toward \"positive\" answers when grounding is absent. These findings indicate that while architecture and alignment have enhanced surface-level reasoning, achieving genuine, culturally informed Theory of Mind remains an open challenge for multimodal AI.",
+      "word_count": 110
+    },
+    {
+      "index": 17,
+      "title": "Visual Necessity and Parametric Knowledge.",
+      "kind": "body",
+      "text": "A primary limitation of this work is that strong performance on CulturalToM-VQA does not uniformly imply strict visual grounding. Visual ablation reveals a visual bypass tendency, where some frontier VLMs effectively shortcut explicit visual processing by leveraging parametric priors to approximate socially aligned answers. At the same time, we observe a clear generational distinction: older VLMs exhibit substantially lower overall accuracy and show markedly larger performance gains when visual input is available, indicating a stronger dependence on visual grounding. Accordingly, CulturalToM-VQA should be interpreted as a diagnostic instrument for examining how different generations of models integrate visual and social information, rather than as a definitive test that correct answers always require visual perception.\n\nAmbiguity in Image Necessity for Social Reasoning. Human evaluation reveals only moderate agreement on whether an image is strictly required to answer a given question. This reflects a broader challenge inherent to Theory of Mind tasks, where mental-state inference often combines visual cues with commonsense and culturally shared knowledge. Consequently, many questions are not designed to make the image the sole source of information, but rather to situate the social interaction within a culturally meaningful visual context. As such, image necessity should be understood as contextual rather than absolute.",
+      "word_count": 202
+    },
+    {
+      "index": 18,
+      "title": "Dataset Scale and Inter-Question Dependence.",
+      "kind": "body",
+      "text": "Although CulturalToM-VQA contains over 5,000 questions, these are derived from a limited set of curated images, with multiple questions associated with each image. This design introduces dependencies that may allow models to exploit recurring scene archetypes or culturally familiar scripts, potentially inflating performance without demonstrating robust generalization. While this structure enables controlled variation across Theory of Mind task types and complexity levels, it constrains claims about performance on entirely novel visual contexts.",
+      "word_count": 72
+    },
+    {
+      "index": 19,
+      "title": "Cultural Coverage and Language Constraints.",
+      "kind": "body",
+      "text": "While the benchmark targets culturally diverse social scenarios, all questions and evaluations are conducted in English. As a result, the dataset evaluates culturally grounded content rather than cross-lingual or language-specific Theory of Mind reasoning. Performance should therefore not be interpreted as evidence of multilingual cultural competence.",
+      "word_count": 46
+    },
+    {
+      "index": 20,
+      "title": "Dataset Construction and Model Involvement.",
+      "kind": "body",
+      "text": "CulturalToM-VQA is constructed using a frontier proprietary multimodal language model, followed by extensive expert human verification. Although this process substantially improves quality and consistency, it may introduce stylistic regularities or biases characteristic of contemporary large language models. Consequently, the benchmark is not fully independent of current model-generation paradigms, and future extensions would benefit from alternative collection or generation strategies.\n\nPotential Training Data Exposure. Because the source images originate from publicly available datasets, it is possible that some evaluated models were exposed to related visual content during pretraining. While our visual ablations and baseline comparisons help contextualize performance, we cannot fully rule out indirect memorization at the image or scene level.",
+      "word_count": 110
+    },
+    {
+      "index": 21,
+      "title": "Non-Orthogonality of Theory of Mind Tasks.",
+      "kind": "body",
+      "text": "Although questions are categorized into distinct Theory of Mind task types and complexity levels, these dimensions are not strictly orthogonal. For example, false-belief reasoning may implicitly require perspective coordination or emotion recognition. The proposed taxonomy should therefore be viewed as a practical analytical framework rather than a strict cognitive decomposition.\n\nIntended Use of the Benchmark. Taken together, these limitations indicate that CulturalToM-VQA is most appropriately used as a structured analytical benchmark rather than as a single-score evaluation. Its primary purpose is to facilitate finegrained analysis of when and how vision-language models succeed, fail, or rely on unintended shortcuts in culturally grounded social reasoning, rather than to provide a definitive measure of general Theory of Mind capability.",
+      "word_count": 116
+    },
+    {
+      "index": 22,
+      "title": "Ethics Statement",
+      "kind": "body",
+      "text": "Cultural Essentialism and Stereotyping. A primary ethical concern in evaluating cross-cultural Theory of Mind (ToM) is the risk of reducing complex, fluid cultural dynamics to static or essentialized representations. By employing a VLM-assisted pipeline to extract \"cultural cues\" and generate questions anchored in specific traditions, there is an inherent risk that the model may reinforce existing stereotypes or produce reductive generalizations about non-Western cultures. We acknowledge that culture is not monolithic; rituals, gestures, and social norms vary significantly by region, sub-group, and context. To mitigate this, we utilized a human-in-the-loop verification process where annotators with backgrounds in cultural studies reviewed items for cultural appropriateness, achieving high agreement (κ = 0.86) on the cultural fidelity of the content. However, users of this dataset should remain aware that the \"correct\" reasoning reflects a consensus between expert verification and model generation, rather than an absolute ground truth of the lived cultural experience.\n\nBias in Model Generated Annotations. We explicitly state that relying on GPT-4.1 for data generation introduces the risk of propagating the model's intrinsic training biases. Large language models have been shown to exhibit Western-centric biases in social reasoning and may hallucinate cultural details when parametric knowledge is sparse. While our pipeline incorporated strict \"grounding\" constraints -requiring questions to rely on observable visual cues with expert supervision rather than external priors -the resulting dataset inevitably reflects the cultural knowledge boundaries of the teacher model. We caution against using high performance on this benchmark as definitive proof of a model's cultural competence in real-world deployments, as models may still struggle with embodied cultural interactions not captured by static QA pairs.\n\nPrivacy and Data Usage. The images included in CulturalToM-VQA are curated from three existing public datasets: FindingEmo, CulturalVQA, and CVQA. We adhered to the usage policies of these source datasets. In our selection of the images, we manually filtered scenes to ensure they do not depict individuals in compromising, undignified, or harmful situations and we do not claim ownership of the source images.",
+      "word_count": 330
+    },
+    {
+      "index": 23,
+      "title": "Broader Impact and Dual Use.",
+      "kind": "body",
+      "text": "Developing AI systems capable of inferring hidden mental states and cultural intentions carries significant dual-use risks. While robust cross-cultural ToM is essential for empathetic human-AI interaction and reducing bias in automated systems, these capabilities could theoretically be misused for manipulative social engineering or surveillance that exploits cultural vulnerabilities. By highlighting the current limitations of VLMs -specifically their struggle with False Belief Reasoning and Social Norm Violations -we aim to steer research toward more robust and transparent social reasoning, rather than deceptive applications.",
+      "word_count": 82
+    },
+    {
+      "index": 24,
+      "title": "B Theory-of-Mind Task Taxonomy",
+      "kind": "body",
+      "text": "We include six Theory of Mind (ToM) abilities chosen because they reflect key stages in human cognitive development, capture both social and pragmatic aspects of reasoning, and show clear differences in difficulty for large language models. The Q-matrix (Q) as shown in Table 1 maps each Theory-of-Mind (ToM) task to the levels of cognitive complexity at which it is meaningfully expressed, guided by developmental evidence and empirical results from LLM evaluations. Mental State Attribution (MSA) spans Levels 1-2, reflecting early-emerging abilities to infer basic emotions and desires from observable cues (Strachan et al., 2024; Chen et al., 2024b) . False Belief Reasoning (FBR) is associated with Levels 2-3, capturing the developmental shift from understanding others' beliefs to reasoning about second-order beliefs (Kosinski, 2024) . Non-literal Communication (NLC) corresponds to Levels 3-4 (Winner and Leekam, 1991) , as interpreting irony, sarcasm, or indirect speech requires higher-order intention tracking and pragmatic inference. Social Norm Violations (SNV) also align with Levels 3-4, since detecting faux pas or inappropriate actions requires integrating knowledge of social conventions with mental-state attribution Baron-Cohen et al. (1999); Strachan et al. (2024) . Perspective Coordination (PC) extends across Levels 2-4, encompassing the progression from simple visual perspective-taking to reasoning about embedded and conflicting viewpoints Frick et al. (2014) ; Wilf et al. (2024) . Finally, Multi-agent Reasoning (MAR) is limited to Level 4, representing the most complex scenarios where multiple agents' beliefs and intentions must be tracked simultaneously Kim et al. (2023b) .",
+      "word_count": 244
+    },
+    {
+      "index": 25,
+      "title": "Task t 1 : Mental State Attribution (MSA).",
+      "kind": "body",
+      "text": "This task involves recognizing emotions, desires, and knowledge states from observable behavior such as facial expressions, gaze, or posture. It represents the foundational Theory of Mind (ToM) ability on which higher-order reasoning builds. Both humans and current large language models (LLMs) show near-ceiling performance on simple attribution tasks (Strachan et al., 2024; Chen et al., 2024b) . In this benchmark, Mental State Attribution strictly necessitates visual processing to identify affective cues (e.g., facial expressions or posture), which serve as the raw evidence that must be mapped to mental states within the specific cultural context provided.\n\n2. Task t 2 : False Belief Reasoning (FBR). This task involves understanding that an agent can hold a belief that differs from reality, allowing one to distinguish between mental representa- tions and the actual state of the world. False belief reasoning is regarded as a core stage in the development of Theory of Mind, typically emerging around ages 4-5 when children begin to predict actions based on others' mistaken beliefs rather than factual conditions. GPT-4 achieves approximately 75% accuracy on standard false belief tasks, comparable to the performance of 6-year-old children but still below adult reasoning levels (Kosinski, 2024) . In our benchmark, these tasks necessitate multimodal integration: the textual scenario establishes the specific cultural or situational context -often containing the agent's true intent or limitations in knowledge -while the visual input provides the observable behavioral cues that differ from the agent's internal belief, forcing the model to distinguish between the visual appearance and the true mental state.",
+      "word_count": 254
+    },
+    {
+      "index": 26,
+      "title": "Task t 3 : Non-literal Communication (NLC).",
+      "kind": "body",
+      "text": "This task encompasses understanding irony, sarcasm, hints, and indirect requests, which typically requires attributing second-order intentions -recognizing that a speaker intends the listener to recognize that the literal utterance is not the intended meaning. (Winner and Leekam, 1991) demonstrated that irony comprehension requires recognising a speaker's second-order intention, that is, understanding what the speaker intends the listener to believe about their intended meaning. In Non-literal Communication tasks in the benchmark, the image generally provides the physical instantiation of a communicative act which must be visually recognized before it can be mapped to its symbolic second-order meaning using the specific cultural norms defined in the question stem.\n\n4. Task t 4 : Social Norm Violations (SNV). This task involves recognizing when an individual violates a social or moral norm, such as committing a faux pas or acting inappropriately in a given context. Successful reasoning in this domain requires integrating knowledge of cultural or situational norms with inferences about others' intentions and emotions. Baron-Cohen et al. (1999) demonstrated that the ability to detect faux pas continues to develop through middle childhood, with significant improvements between ages 7, 9, and 11 suggesting that understanding social norm violations requires the integration of both social-norm knowledge and mental-state attribution, a more advanced capacity than basic false-belief reasoning. (Strachan et al., 2024) found that GPT-4 performs comparably to humans across several Theory of Mind tasks, though it shows variability across aspects of social reasoning and particular difficulty with Faux Pas detection. Detecting Social Norm Violations in this study requires the visual input to confirm the exact nature of the agent's conduct which serves as the evidence that must be evaluated against the cultural expectations provided in the scenario text.\n\n5. Task t 5 : Perspective Coordination (PC). This task requires integrating multiple agents' viewpoints or coordinating what different agents know, see, or believe about a situation. Developmental research shows that children's ability to coordinate conflicting visual or informational perspectives improves markedly between ages 6-8 (Frick et al., 2014) . In computational settings, recent worksWilf et al.\n\n(2024) demonstrate that explicitly modeling perspective-taking boosts LLM performance on ToM tasks, suggesting that perspective coordination remains a key limitation in the reasoning abilities of current large language models. In this benchmark, Perspective Coordination relies on the visual scene to define distinct physical lines of sight or occlusions, which must be cross-referenced with the informational states described in the text to determine what specific agents can or cannot perceive.\n\n6. Task t 6 : Multi-agent Reasoning (MAR). This task involves tracking and reasoning about the mental states of multiple interacting agents simultaneously, including how each agent's beliefs, intentions, and knowledge may differ from those of others. Such scenarios require recursive coordination of nested mental representations across multiple agents, constituting the highest level of cognitive demand within Theory-of-Mind reasoning. Kim et al. (2023b) -evaluate over 10,000 multi-party interaction questions and report a substantial human-model performance gap: GPT-4 achieves 26.6% accuracy compared with 87.5% for human participants. These findings indicate that multiagent reasoning remains the most challenging and least mastered dimension of ToM for current large language models. For Multi-agent Reasoning, the visual scene is essential to establish the spatial configuration and distinct physical vantage points of multiple characters which serve as the grounding anchor for tracking the recursive mental representations described in the text.",
+      "word_count": 553
+    },
+    {
+      "index": 27,
+      "title": "C Dataset Construction Details",
+      "kind": "body",
+      "text": "Prompt construction. For each (t, c) ∈ V, we define a structured prompt P Q (t, c, D i ) that instructs GPT-4.1 to generate a question testing task t at complexity level c. The prompt includes the narrative d i and the associated cue sets (E i , T i , C i ), together with explicit instructions specifying the intended reasoning depth and cognitive focus. The model is directed to generate a single correct an-swer and three distractors that reflect typical reasoning errors for the target task (for example, mistaking what someone believes for what is actually true in false-belief tasks, or misunderstanding a speaker's intended meaning in non-literal communication). Options are required to be similar in length and syntactic form, and each question must rely on visual or contextual inference rather than surface-level cues. The complexity level c determines the degree of inference required -from direct perception at Level 1 to recursive multi-agent reasoning at Level 4 -while the task t specifies the mental-state construct being tested. The prompt can be found in Appendix H.2.\n\nValidation and filtering. Each generated question underwent a two-stage validation process. An automated parser first verified structural integrity -ensuring that each entry contained a single question stem, four labeled options (A-D), one correct answer, and an explanation field -while also checking for formatting consistency and duplicate or empty options. Subsequently, two annotators from cultural studies background reviewed all items for clarity and relevance. Crucially, to prevent superficial interpretation, both annotators completed a 40hour preparatory module prior to validation, covering the cultural backgrounds, region-specific social norms, and contextual cues represented in the selected images, along with calibration exercises on pilot items. The annotation process was independently conducted by the two annotators and subsequently supervised by two PhD researchers, who acted solely as adjudicators for ambiguous cases and ensured that retained items strictly aligned with the intended task-complexity pair (t, c).",
+      "word_count": 317
+    },
+    {
+      "index": 28,
+      "title": "Answer randomization.",
+      "kind": "body",
+      "text": "To reduce position bias, the four answer options for each question were randomly permuted using a uniform random permutation π over the option indices {1, 2, 3, 4}. Let O i,k = {o i,1 , o i,2 , o i,3 , o i,4 } denote the original option set and a i,k the correct answer index. After randomization, the permuted options and updated answer label are given by\n\nO ′ i,k = {π(o i,1 ), π(o i,2 ), π(o i,3 ), π(o i,4 )}, a ′ i,k = π(a i,k ).\n\nWe used a seed value 42 to ensure reproducibility of option ordering across all generated questions.",
+      "word_count": 107
+    },
+    {
+      "index": 29,
+      "title": "Generated Questions.",
+      "kind": "body",
+      "text": "Across all |I| = 394 images, the procedure produced N total = 7092 ques-tions. After automated validation and human review, N valid = 5,095 questions were retained, averaging q = 12.93 valid questions per image. We report the dataset statistics in Figure 5 .",
+      "word_count": 44
+    },
+    {
+      "index": 30,
+      "title": "Human Evaluation.",
+      "kind": "results",
+      "text": "To assess the quality and reliability of the constructed dataset, we conducted a rigorous human evaluation on a stratified random sample of approximately 10% of the total questions (N = 533). Two independent raters evaluated each item across five key dimensions: answer validity, complexity level correctness, cultural appropriateness, distractor quality, and the necessity of the image for answering the question.\n\nInter-rater reliability was measured using Cohen's Kappa (κ) (Cohen, 1960) and agreement percentage, revealing substantial consistency across all metrics. Cultural appropriateness achieved the highest reliability (κ = 0.86, 99.8% agreement), indicating strong consensus on the dataset's cultural fidelity. Similarly, complexity level correctness showed robust alignment (κ = 0.67, 99.8% agreement), validating the distinctiveness of the assigned reasoning levels. The structural quality of the items was also confirmed, with answer validity (κ = 0.62, 92.1% agreement) and distractor quality (κ = 0.61, 89.8% agreement) demonstrating that questions possessed unambiguous correct answers and plausible distractors. Finally, the image requirement dimension (κ = 0.62, 76.7% agreement) verified that the questions effectively test visual reasoning rather than relying solely on textual priors. Note that the divergence between high percent agreement and moderate Kappa scores in these dimensions is an artifact of the prevalence paradox, caused by the high density of positive labels in the dataset which penalizes the Kappa metric.",
+      "word_count": 216
+    },
+    {
+      "index": 31,
+      "title": "D.1 Human Baseline",
+      "kind": "body",
+      "text": "We evaluated human accuracy on a representative subset of the data. We employed a stratified sampling procedure to ensure a balanced evaluation across different question types. Questions were stratified based on Task and Complexity levels. To prevent oversampling underrepresented categories, we enforced an equal number of questions per (Task, Complexity) group, capped by the size of the smallest available group. While the nominal target was 10% of the dataset (509 questions), the strict balancing constraints resulted in a final sample size of 481 questions. Human evaluators demonstrated exceptionally high performance and consistency across the sampled dataset. When applying a majority vote aggregation across three raters to resolve individual discrepancies, the human baseline accuracy reached 98.34% accuracy. We also analyzed the performance of individual raters without aggregation to assess consistency. The raters demonstrated exceptional uniformity, achieving a mean Accuracy of 98.20% (σ = 0.0063) and a mean Macro F1 score of 98.21% (σ = 0.0064). The marginal difference between the majority vote accuracy (98.34%) and the mean individual accuracy (98.20%) suggests that individual human errors were rare and uncorrelated.",
+      "word_count": 178
+    },
+    {
+      "index": 32,
+      "title": "D.2 Impact of Token Budget on Zero-Shot Chain-of-Thought",
+      "kind": "body",
+      "text": "We carefully investigated the significant performance drop observed in InternVL 3.5 and Qwen 2.5, when employing zero-shot Chain-of-Thought (CoT) prompting under 256 token budget. We identified that this degradation is primarily caused by insufficient maximum token length during generation. Zero-shot CoT prompts induce substantially longer intermediate reasoning traces, and under a 256-token limit, the models frequently fail to complete the reasoning process or produce a final answer, leading to truncated or invalid outputs. To confirm this hypothesis, we progressively increase the token budget during inference. As shown in Table 4, increasing the limit to 512 tokens results in a sharp recovery: InternVL 3.5 improves to 89.3% accuracy on CulturalVQA and 91.3% on CVQA, while Qwen 2.5 reaches 93.5% and 92.1% respectively. Further increasing the limit to 1024 tokens yields additional gains, with InternVL 3.5 achieving 94.1% on CulturalVQA and Qwen 2.5 maintaining strong performance above 93% across datasets. These results indicate that the observed performance drop is not due to a failure of reasoning capability, but rather an artifact of token-budget mismatch between prompt style and inference constraints. However, the gain over zero shot prompting is still small compared to older models.",
+      "word_count": 192
+    },
+    {
+      "index": 33,
+      "title": "D.3 Effect of Option Order Permutation.",
+      "kind": "body",
+      "text": "Table 5 evaluates the robustness of Qwen-2.5-VL (Zero-Shot) to permutations in multiple-choice option order. Permuting the option order results in minimal performance variation, indicating that the model is largely robust to option-order bias. On",
+      "word_count": 34
+    },
+    {
+      "index": 34,
+      "title": "F.3 Model-level Positivity Alignment in the No-image Setting",
+      "kind": "body",
+      "text": "Models, setting, and outputs. We analyze three vision-language models: Qwen-VL-Chat, Qwen2-VL-7B, and Qwen2.5-VL-7B. All results are obtained in the text-only (no-image) zero-shot setting. Each example i is a 4-way multiple-choice item with options {o i,0 , o i,1 , o i,2 , o i,3 } and gold label y i ∈ {0, 1, 2, 3} (mapped from {A,B,C,D}).",
+      "word_count": 58
+    },
+    {
+      "index": 35,
+      "title": "Option positivity scores.",
+      "kind": "body",
+      "text": "Each option o i,j is assigned a positivity score pos(o i,j ) ∈ [0, 1], defined as the sentiment model probability P (positive | o i,j ). Let\n\nj * i = arg max j∈{0,1,2,3} pos(o i,j ) (8)\n\ndenote the index of the most-positive option.\n\nResolvable set. Let ŷi ∈ {0, 1, 2, 3} denote the predicted option index obtained by an explicit option letter. Let R denote the set of items for which ŷi is resolvable.\n\nMost-positive option selection rate. We compute:\n\nSel top-pos = 1 |R| i∈R I[ŷ i = j * i ], (9)\n\nwith a random-choice baseline of 0.25.",
+      "word_count": 104
+    },
+    {
+      "index": 36,
+      "title": "Excess positivity on incorrect predictions.",
+      "kind": "body",
+      "text": "Let W = {i ∈ R : ŷi ̸ = y i }. For each i ∈ W, define:\n\nObs i = I[pos(o i,ŷ i ) > pos(o i,y i )], (10)\n\nCF i = 1 3 j∈{0,1,2,3}\\{y i } I[pos(o i,j ) > pos(o i,y i )]. (11)\n\nThe excess positivity rate is:\n\nExcess pos = 1 |W| i∈W (Obs i -CF i ), (12)\n\nwith a no-drift baseline of 0.\n\nExcess selection of the most-positive distractor under conflict. Define the set of conflict items:\n\nC = {i ∈ R : j * i ̸ = y i }, (13)\n\nand restrict to items that are both conflict and incorrect: CW = C ∩ W. We compute:\n\nExcess conflict = 1 |CW| i∈CW I[ŷ i = j * i ] - 1 3 , (14)\n\nwhere 1 3 is the uniform baseline among the three distractors.\n\nUncertainty estimates. For Excess pos and Excess conflict , we report 95% bootstrap confidence intervals computed over the corresponding per-item excess values using percentile bootstrap with 2,000 resamples.\n\nAnalysis. From 9, across all splits, models exhibit a systematic tendency to prefer positivesentiment answer options even in the absence of visual input. Overall, the probability of selecting the most positive option substantially exceeds the random baseline of 25%, ranging from 38.6% to 56.8% across models and datasets -corresponding to an absolute increase of approximately 14-32 percentage points over chance. This tendency persists when restricting to incorrect predictions: excess positivity on errors is positive for most model-dataset pairs, with statistically supported effects in several cases (e.g., +11.4% for Qwen2-VL-7B and +11.1% for Qwen2.5-VL-7B on Cul-turalVQA), indicating that when models err, they are more likely than chance to select an option that is more positive than the correct answer. The strongest evidence appears under conflict conditions, where the correct answer is not the most positive option: here, models select the most positive distractor 5-22 percentage points more often than expected under uniform random choice among distractors. For example, on CulturalVQA, Qwen2.5-VL-7B chooses the most positive distractor approximately 55.6% of the time in conflictand-wrong cases, compared to a random baseline of 33.3%. While the magnitude of this effect varies across datasets and is weaker or statistically inconclusive for some settings (notably CVQA and Find-ingEmo with Qwen-VL-Chat), the overall pattern indicates a consistent, though partial, positivityaligned heuristic that increases the likelihood of selecting socially favorable answers beyond chance, Table 9 : Selection of positive-sentiment answer options in the text-only setting. The first column reports how often a model selects the most positive option overall (random baseline: 25%). The second reports excess positivity on incorrect predictions, measuring whether wrong answers are more positive than the gold answer beyond chance (random baseline: 0). The third further restricts to incorrect cases where the correct answer is not the most positive option, measuring excess selection of the most positive distractor (random baseline: 0). Error bars in brackets indicate 95% bootstrap confidence intervals.\n\nImage source Model Top-positive sel. Excess positivity (wrong) Excess positivity (conflict) CulturalVQA Qwen-VL-Chat 0.484 0.038 [0.008, 0.066] 0.097 [0.032, 0.162] Qwen2-VL-7B 0.568 0.114 [0.035, 0.193] 0.204 [0.074, 0.333] Qwen2.5-VL-7B 0.556 0.111 [0.037, 0.196] 0.222 [0.056, 0.389] CVQA Qwen-VL-Chat 0.456 0.010 [-0.018, 0.039] 0.022 [-0.048, 0.091] Qwen2-VL-7B 0.536 0.079 [0.000, 0.153] 0.194 [0.028, 0.361] Qwen2.5-VL-7B 0.531 0.005 [-0.067, 0.077] 0.045 [-0.117, 0.207] FindingEmo Qwen-VL-Chat 0.386 0.009 [-0.007, 0.026] 0.030 [-0.006, 0.067] Qwen2-VL-7B 0.466 0.076 [0.038, 0.114] 0.150 [0.081, 0.218] Qwen2.5-VL-7B 0.448 0.046 [0.010, 0.081] 0.090 [0.017, 0.164] without fully accounting for the high accuracies observed for larger models.",
+      "word_count": 587
+    },
+    {
+      "index": 37,
+      "title": "G Qualitative Analysis of Predictions without Visual Context",
+      "kind": "results",
+      "text": "We present representative qualitative examples illustrating how vision-language models produce confident yet image-dependent predictions when evaluated without the visual context. In both cases, models converge on a single answer despite the absence of visual input, whereas human annotators correctly identify the questions as unanswerable.",
+      "word_count": 44
+    },
+    {
+      "index": 38,
+      "title": "VLM Predictions without Visual Input",
+      "kind": "body",
+      "text": "Question: Based on the group's visible expressions and gestures, what is the most likely feeling shared among the children? Options: A) They are expressing disappointment in the activity. B) They are showing nervousness about being outside. C) They are feeling confused about their surroundings. D) They are experiencing happiness together. Predictions Qwen-VL D Qwen-2 D Qwen-2.5 D Human Not answerable without image VLM Predictions without Visual Input Question: Based on the boy's posture and expression while he sits in the basin, what is the most likely feeling he is experiencing in this situation? Options: A) He is feeling worried about being outside in the basin. B) He is feeling comfortable and at ease in his environment. C) He is feeling bored and uninterested in the activity. D) He is feeling upset about being watched by someone nearby. Predictions Qwen-VL B Qwen-2 B Qwen-2.5 B Human Not answerable without image H Prompts H.1 Scene Description and Cue Extraction Prompt Prompt Template for Generating ToM-Focused Scene Descriptions Ensure the output is formatted as a structured JSON object.",
+      "word_count": 175
+    },
+    {
+      "index": 39,
+      "title": "↩→",
+      "kind": "body",
+      "text": "Input: { \"Metadata\": \"[Insert the description from metadata]\" } Output: { \"ToMFocusedDescription\": \"[Insert inferred ToM-focused description ↩→ based on the input]\", \"EmotionalCues\": [\"Cue 1\", \"Cue 2\", ...], \"ToMCues\": [\"Cue 1\", \"Cue 2\", ...], \"CulturalCues\": [\"Cue 1\", \"Cue 2\", .\n\n..] } H.2 Theory of Mind Multiple-Choice Question Generation Prompt Prompt Template for Generating ToM-Based Multiple-Choice Questions [Image] You are an expert in multi-cultural Theory of Mind reasoning. ↩→ TASK: Write a multiple-choice question that evaluates the Theory of Mind task \"{task}\" ↩→ at complexity level {complexity}. COMPLEXITY LEVEL: Level {complexity}: {complexity_description} INSTRUCTIONS: 1. Return exactly one question for complexity level {complexity} focusing on ↩→ the task \"{task}\" in JSON format. 2. Include 4 answer choices per question (labeled A through D) with one ↩→ objectively correct response. 3. Make the distractors plausible and commonly confusable with the correct ↩→ answer -prefer near-misses (e.g., flipped intentions or misread cultural ↩→ norms). Ensure they're mutually exclusive, similar in length and tone to ↩→ the correct option, and avoid generic negations, tautologies, or irrelevant ↩→ details. 4. Mark the correct answer (A, B, C, or D). 5. Provide a brief explanation of how the question measures the specific ToM task. ↩→ 6. Do NOT describe the image, the emotion or activities of the characters, or ↩→ restate its caption in the question stem. Instead, refer to the main ↩→ character(s) in neutral or role-based terms so that the test-taker, who ↩→ only sees the image and the question, must rely on interpreting the visual ↩→ scene itself rather than being handed details from the image description. ↩→ 7. The question MUST not contain any direct hints or giveaways to the correct answer. ↩→ 8. Incorporate cultural context appropriately. REQUIREMENTS: -Base the question on the provided image, image description, cues, and ↩→ cultural context. -Use details from Emotional/ToM/Cultural Cues in the question or explanation. ↩→ -Design distractors as near-misses: each wrong option must sound plausible ↩→ and differ from the correct answer only by a subtle mistake in belief, ↩→ perspective, or norm interpretation. -For complexity 3 and 4, optionally anchor the scenario in an ANALOGOUS, ↩→ less-common cultural setting if supported by Cultural Cues (e.g., map a ↩→ familiar ritual to an analogous practice noted in the cues); keep the ↩→ mental-state logic consistent. -The question should accurately reflect the specified complexity level.\n\n↩→ -Maintain consistent formatting in your response.\n\nOUTPUT SCHEMA: Return the question as structured JSON: { \"Question\": <question text>, \"Options\": [\"A) option1\", \"B) option2\", \"C) option3\", \"D) option4\"], ↩→ \"CorrectAnswer\": <letter A-D>, \"Task\": \"{task}\", \"Complexity\": {complexity}, \"Explanation\": <brief reasoning for how the question tests the Theory of\n\n↩→ Mind task and references provided cues> } CONTEXT: Image Description: {{description}} Emotional Cues: {{emotional_cues}} Theory of Mind Cues: {{tom_cues}} Cultural Cues: {{cultural_cues}} H.3 Zero-shot Prompt Zero-shot Prompt Template\n\n[IMAGE] Task: {question} Options: A) ..., B) ..., C) ..., D) ...\n\nFor the provided image and its associated question, generate a scene graph in JSON ↩→ format that includes: 1. Objects relevant to answering the question. 2. Attributes relevant to answering the question. 3. Relationships among the relevant objects. Scene Graph:\n\nCompositional Chain-of-Thought: Answer Generation Scene Graph: ...\n\nUse the image and scene graph as context and answer the following question:\n\n↩→ Task: {question} Options: A) ..., B) ..., C) ..., D) ...\n\nAnswer with the option letter from the given choices directly.",
+      "word_count": 560
+    },
+    {
+      "index": 40,
+      "title": "↩→",
+      "kind": "body",
+      "text": "Answer:",
+      "word_count": 1
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Jinze Bai and 1 others",
+      "doi": "",
+      "year": "2023",
+      "authors": [],
+      "raw_text": "Jinze Bai and 1 others arXiv:2308.12966 Qwen-vl: A versatile vision-language model for understanding, localization, text reading, and beyond 2023 arXiv preprint"
+    },
+    {
+      "index": 2,
+      "title": "Does the autistic child have a \"theory of mind",
+      "doi": "",
+      "year": "1985",
+      "authors": [
+        "Simon Baron-Cohen",
+        "Alan M Leslie",
+        "Uta Frith"
+      ],
+      "raw_text": "Does the autistic child have a \"theory of mind Simon Baron-Cohen Alan M Leslie Uta Frith Cognition 21 1 1985"
+    },
+    {
+      "index": 3,
+      "title": "Recognition of faux pas by normally developing children and children with asperger syndrome or high-functioning autism",
+      "doi": "",
+      "year": "1999",
+      "authors": [
+        "Simon Baron-Cohen",
+        "Michelle O 'riordan",
+        "Valerie Stone",
+        "Rosie Jones",
+        "Kate Plaisted"
+      ],
+      "raw_text": "Recognition of faux pas by normally developing children and children with asperger syndrome or high-functioning autism Simon Baron-Cohen Michelle O 'riordan Valerie Stone Rosie Jones Kate Plaisted Journal of autism and developmental disorders 29 5 1999"
+    },
+    {
+      "index": 4,
+      "title": "Zhe Chen and 1 others. 2024a. Internvl: Scaling up vision foundation models and aligning for generic visual-linguistic tasks",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Zhe Chen and 1 others. 2024a. Internvl: Scaling up vision foundation models and aligning for generic visual-linguistic tasks arXiv:2312.14238 arXiv preprint"
+    },
+    {
+      "index": 5,
+      "title": "Zexuan Xiong, and 1 others. 2024b. Tombench: Benchmarking theory of mind in large language models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Zhuang Chen",
+        "Jincenzi Wu",
+        "Jinfeng Zhou",
+        "Bosi Wen",
+        "Guanqun Bi",
+        "Gongyao Jiang",
+        "Yaru Cao",
+        "Mengting Hu"
+      ],
+      "raw_text": "Zhuang Chen Jincenzi Wu Jinfeng Zhou Bosi Wen Guanqun Bi Gongyao Jiang Yaru Cao Mengting Hu Yunghwei Lai arXiv:2402.15052 Zexuan Xiong, and 1 others. 2024b. Tombench: Benchmarking theory of mind in large language models arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "A coefficient of agreement for nominal scales. Educational and psychological measurement",
+      "doi": "",
+      "year": "1960",
+      "authors": [
+        "Jacob Cohen"
+      ],
+      "raw_text": "A coefficient of agreement for nominal scales. Educational and psychological measurement Jacob Cohen 1960 20"
+    },
+    {
+      "index": 7,
+      "title": "Somitom: Evaluating multi-perspective theory of mind in embodied social interactions",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Xianzhe Fan",
+        "Xuhui Zhou",
+        "Chuanyang Jin",
+        "Kolby Nottingham",
+        "Hao Zhu",
+        "Maarten Sap"
+      ],
+      "raw_text": "Xianzhe Fan Xuhui Zhou Chuanyang Jin Kolby Nottingham Hao Zhu Maarten Sap arXiv:2506.23046 Somitom: Evaluating multi-perspective theory of mind in embodied social interactions 2025 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "Picturing perspectives: development of perspective-taking abilities in 4-to 8-year-olds",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "Andrea Frick",
+        "Wenke Möhring",
+        "Nora S Newcombe"
+      ],
+      "raw_text": "Picturing perspectives: development of perspective-taking abilities in 4-to 8-year-olds Andrea Frick Wenke Möhring Nora S Newcombe Frontiers in psychology 5 386 2014"
+    },
+    {
+      "index": 9,
+      "title": "Understanding social reasoning in language models with language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Kanishk Gandhi",
+        "Jan-Philipp Fränken",
+        "Tobias Gerstenberg",
+        "Noah D Goodman"
+      ],
+      "raw_text": "Understanding social reasoning in language models with language models Kanishk Gandhi Jan-Philipp Fränken Tobias Gerstenberg Noah D Goodman arXiv:2306.15448 2023 arXiv preprint"
+    },
+    {
+      "index": 10,
+      "title": "Annotations on a budget: Leveraging geo-data similarity to balance model performance and annotation cost",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Oana Ignat",
+        "Longju Bai",
+        "Joan C Nwatu",
+        "Rada Mihalcea"
+      ],
+      "raw_text": "Annotations on a budget: Leveraging geo-data similarity to balance model performance and annotation cost Oana Ignat Longju Bai Joan C Nwatu Rada Mihalcea Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) 2024"
+    },
+    {
+      "index": 11,
+      "title": "Finding spoken identifications: Using GPT-4 annotation for an efficient and fast dataset creation pipeline",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Maliha Jahan",
+        "Helin Wang",
+        "Thomas Thebaud",
+        "Yinglun Sun",
+        "Giang Ha Le",
+        "Zsuzsanna Fagyal",
+        "Odette Scharenborg",
+        "Mark Hasegawa-Johnson"
+      ],
+      "raw_text": "Finding spoken identifications: Using GPT-4 annotation for an efficient and fast dataset creation pipeline Maliha Jahan Helin Wang Thomas Thebaud Yinglun Sun Giang Ha Le Zsuzsanna Fagyal Odette Scharenborg Mark Hasegawa-Johnson Laureano Moro Velazquez Najim Dehak Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024) Torino, Italia ELRA and ICCL 2024"
+    },
+    {
+      "index": 12,
+      "title": "Meganno+: A human-llm collaborative annotation system",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Hannah Kim",
+        "Kushan Mitra",
+        "Rafael Li Chen",
+        "Sajjadur Rahman",
+        "Dan Zhang"
+      ],
+      "raw_text": "Hannah Kim Kushan Mitra Rafael Li Chen Sajjadur Rahman Dan Zhang arXiv:2402.18050 Meganno+: A human-llm collaborative annotation system 2024 arXiv preprint"
+    },
+    {
+      "index": 13,
+      "title": "FANToM: A benchmark for stress-testing machine theory of mind in interactions",
+      "doi": "10.18653/v1/2023.emnlp-main.890",
+      "year": "2023",
+      "authors": [
+        "Hyunwoo Kim",
+        "Melanie Sclar",
+        "Xuhui Zhou",
+        "Ronan Bras",
+        "Gunhee Kim",
+        "Yejin Choi",
+        "Maarten Sap"
+      ],
+      "raw_text": "FANToM: A benchmark for stress-testing machine theory of mind in interactions Hyunwoo Kim Melanie Sclar Xuhui Zhou Ronan Bras Gunhee Kim Yejin Choi Maarten Sap 10.18653/v1/2023.emnlp-main.890 Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing the 2023 Conference on Empirical Methods in Natural Language Processing Singapore. Association for Computational Linguistics 2023"
+    },
+    {
+      "index": 14,
+      "title": "Fantom: A benchmark for stress-testing machine theory of mind in interactions",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Hyunwoo Kim",
+        "Melanie Sclar",
+        "Xuhui Zhou",
+        "Ronan Bras",
+        "Gunhee Kim",
+        "Yejin Choi",
+        "Maarten Sap"
+      ],
+      "raw_text": "Fantom: A benchmark for stress-testing machine theory of mind in interactions Hyunwoo Kim Melanie Sclar Xuhui Zhou Ronan Bras Gunhee Kim Yejin Choi Maarten Sap Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing the 2023 Conference on Empirical Methods in Natural Language Processing 2023"
+    },
+    {
+      "index": 15,
+      "title": "Large language models are zero-shot reasoners",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Takeshi Kojima",
+        "Shane Shixiang",
+        "Machel Gu",
+        "Yutaka Reid",
+        "Yusuke Matsuo",
+        "Iwasawa"
+      ],
+      "raw_text": "Large language models are zero-shot reasoners Takeshi Kojima Shane Shixiang Machel Gu Yutaka Reid Yusuke Matsuo Iwasawa Advances in neural information processing systems 35 2022"
+    },
+    {
+      "index": 16,
+      "title": "Theory of mind may have spontaneously emerged in large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Michal Kosinski"
+      ],
+      "raw_text": "Theory of mind may have spontaneously emerged in large language models Michal Kosinski arXiv:2302.02083 2023 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "Evaluating large language models in theory of mind tasks",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Michal Kosinski"
+      ],
+      "raw_text": "Evaluating large language models in theory of mind tasks Michal Kosinski Proceedings of the National Academy of Sciences the National Academy of Sciences 2024 121 2405460121"
+    },
+    {
+      "index": 18,
+      "title": "Qingyang Wu, and Yong Jae Lee. 2023a. Visual instruction tuning",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Haotian Liu",
+        "Chunyuan Li"
+      ],
+      "raw_text": "Qingyang Wu, and Yong Jae Lee. 2023a. Visual instruction tuning Haotian Liu Chunyuan Li Advances in neural information processing systems 36"
+    },
+    {
+      "index": 19,
+      "title": "Visual instruction tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Haotian Liu",
+        "Chunyuan Li",
+        "Qingyang Wu",
+        "Yong Jae Lee"
+      ],
+      "raw_text": "Visual instruction tuning Haotian Liu Chunyuan Li Qingyang Wu Yong Jae Lee Advances in neural information processing systems 36 2023"
+    },
+    {
+      "index": 20,
+      "title": "Culturevlm: Characterizing and improving cultural understanding of vision-language models for over 100 countries",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Shudong Liu",
+        "Yiqiao Jin",
+        "Cheng Li",
+        "Derek F Wong",
+        "Qingsong Wen",
+        "Lichao Sun",
+        "Haipeng Chen",
+        "Xing Xie"
+      ],
+      "raw_text": "Culturevlm: Characterizing and improving cultural understanding of vision-language models for over 100 countries Shudong Liu Yiqiao Jin Cheng Li Derek F Wong Qingsong Wen Lichao Sun Haipeng Chen Xing Xie Jindong Wang arXiv:2501.01282 2025 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Gpt-4 as an x data annotator: Unraveling its performance on a stance classification task",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ravi Chandreen R Liyanage",
+        "Vijay Gokani",
+        "Mago"
+      ],
+      "raw_text": "Gpt-4 as an x data annotator: Unraveling its performance on a stance classification task Ravi Chandreen R Liyanage Vijay Gokani Mago PloS one 19 8 307741 2024"
+    },
+    {
+      "index": 22,
+      "title": "Yilun Du Tenenbaum Ng, and Antonio Torralba",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Chuanyang Ma",
+        "Yucheng Shen"
+      ],
+      "raw_text": "Yilun Du Tenenbaum Ng, and Antonio Torralba Chuanyang Ma Yucheng Shen arXiv:2401.08743 Mmtom-qa: Multimodal theory of mind question answering 2024 arXiv preprint"
+    },
+    {
+      "index": 23,
+      "title": "Cultural display rules drive eye gaze during thinking",
+      "doi": "",
+      "year": "2006",
+      "authors": [
+        "Anjanie Mccarthy",
+        "Kang Lee",
+        "Shoji Itakura",
+        "Darwin W Muir"
+      ],
+      "raw_text": "Cultural display rules drive eye gaze during thinking Anjanie Mccarthy Kang Lee Shoji Itakura Darwin W Muir Journal of cross-cultural psychology 37 6 2006"
+    },
+    {
+      "index": 24,
+      "title": "Jan Van den Stock, and Joost Vennekens. 2024. Findingemo: An image dataset for emotion recognition in the wild",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Laurent Mertens",
+        "Elahe Yargholi",
+        "Hans Op De Beeck"
+      ],
+      "raw_text": "Jan Van den Stock, and Joost Vennekens. 2024. Findingemo: An image dataset for emotion recognition in the wild Laurent Mertens Elahe Yargholi Hans Op De Beeck Advances in Neural Information Processing Systems 37"
+    },
+    {
+      "index": 25,
+      "title": "Compositional chain-of-thought prompting for large multimodal models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Chancharik Mitra",
+        "Brandon Huang",
+        "Trevor Darrell",
+        "Roei Herzig"
+      ],
+      "raw_text": "Compositional chain-of-thought prompting for large multimodal models Chancharik Mitra Brandon Huang Trevor Darrell Roei Herzig Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2024"
+    },
+    {
+      "index": 26,
+      "title": "Benchmarking vision language models for cultural understanding",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shravan Nayak",
+        "Kanishk Jain",
+        "Rabiul Awal",
+        "Siva Reddy",
+        "Sjoerd Van Steenkiste",
+        "Lisa Anne Hendricks",
+        "Karolina Stanczak",
+        "Aishwarya Agrawal"
+      ],
+      "raw_text": "Benchmarking vision language models for cultural understanding Shravan Nayak Kanishk Jain Rabiul Awal Siva Reddy Sjoerd Van Steenkiste Lisa Anne Hendricks Karolina Stanczak Aishwarya Agrawal Proceedings of EMNLP EMNLP 2024"
+    },
+    {
+      "index": 27,
+      "title": "Crope: Evaluating in-context adaptation of vision and language models to culture-specific concepts",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Malvina Nikandrou",
+        "Georgios Pantazopoulos"
+      ],
+      "raw_text": "Crope: Evaluating in-context adaptation of vision and language models to culture-specific concepts Malvina Nikandrou Georgios Pantazopoulos arXiv:2410.15453 2024 arXiv preprint Nikolas Vitsakis, Ioannis Konstas, and Alessandro Suglia"
+    },
+    {
+      "index": 28,
+      "title": "Gpt-4v(ision) system card",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Openai"
+      ],
+      "raw_text": "Gpt-4v(ision) system card Openai 2023 OpenAI Technical Report"
+    },
+    {
+      "index": 29,
+      "title": "Survey of cultural awareness in language models: Text and beyond",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shreya Pawar",
+        "Oshin Agarwal",
+        "Rachel Rudinger",
+        "C H Sky",
+        "David M Carpenter",
+        "Maarten Garcia",
+        "Sap"
+      ],
+      "raw_text": "Survey of cultural awareness in language models: Text and beyond Shreya Pawar Oshin Agarwal Rachel Rudinger C H Sky David M Carpenter Maarten Garcia Sap Computational Linguistics 51 3 2024"
+    },
+    {
+      "index": 30,
+      "title": "Does the chimpanzee have a theory of mind?",
+      "doi": "",
+      "year": "1978",
+      "authors": [
+        "David Premack",
+        "Guy Woodruff"
+      ],
+      "raw_text": "Does the chimpanzee have a theory of mind? David Premack Guy Woodruff Behavioral and brain sciences 1 4 1978"
+    },
+    {
+      "index": 31,
+      "title": "Using machine learning to improve q-matrix validation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Haijiang Qin",
+        "Lei Guo"
+      ],
+      "raw_text": "Using machine learning to improve q-matrix validation Haijiang Qin Lei Guo Behavior Research Methods 56 3 2024"
+    },
+    {
+      "index": 32,
+      "title": "Jie Xue, and 1 others. 2024. Cvqa: Culturally-diverse multilingual visual question answering benchmark",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "David Romero",
+        "Chenyang Lyu",
+        "Harshit Pulugurta",
+        "Shaurya Gupta",
+        "Yongke Wen",
+        "Anna Xiong",
+        "Lingyao Hua"
+      ],
+      "raw_text": "Jie Xue, and 1 others. 2024. Cvqa: Culturally-diverse multilingual visual question answering benchmark David Romero Chenyang Lyu Harshit Pulugurta Shaurya Gupta Yongke Wen Anna Xiong Lingyao Hua Proceedings of NeurIPS Datasets and Benchmarks Track NeurIPS Datasets and Benchmarks Track"
+    },
+    {
+      "index": 33,
+      "title": "Neural theory-of-mind? on the limits of social intelligence in large lms",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Maarten Sap",
+        "Ronan Lebras",
+        "Daniel Fried",
+        "Yejin Choi"
+      ],
+      "raw_text": "Neural theory-of-mind? on the limits of social intelligence in large lms Maarten Sap Ronan Lebras Daniel Fried Yejin Choi Proceedings of EMNLP EMNLP 2022"
+    },
+    {
+      "index": 34,
+      "title": "Large language models and empathy: systematic review",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Dana Vera Sorin",
+        "Yiftach Brin",
+        "Eli Barash",
+        "Alexander Konen",
+        "Girish Charney",
+        "Eyal Nadkarni",
+        "Klang"
+      ],
+      "raw_text": "Large language models and empathy: systematic review Dana Vera Sorin Yiftach Brin Eli Barash Alexander Konen Girish Charney Eyal Nadkarni Klang Journal of medical Internet research 26 52597 2024"
+    },
+    {
+      "index": 35,
+      "title": "Testing theory of mind in large language models and humans",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Dalila James Wa Strachan",
+        "Giulia Albergo",
+        "Oriana Borghini",
+        "Eugenio Pansardi",
+        "Saurabh Scaliti",
+        "Krati Gupta",
+        "Alessandro Saxena",
+        "Stefano Rufo"
+      ],
+      "raw_text": "Testing theory of mind in large language models and humans Dalila James Wa Strachan Giulia Albergo Oriana Borghini Eugenio Pansardi Saurabh Scaliti Krati Gupta Alessandro Saxena Stefano Rufo Panzeri Guido Manzi, and 1 others 2024 8"
+    },
+    {
+      "index": 36,
+      "title": "Cultural bias and cultural alignment of large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yan Tao",
+        "Olga Viberg",
+        "Ryan S Baker",
+        "René F Kizilcec"
+      ],
+      "raw_text": "Cultural bias and cultural alignment of large language models Yan Tao Olga Viberg Ryan S Baker René F Kizilcec PNAS nexus 3 9 346 2024"
+    },
+    {
+      "index": 37,
+      "title": "Gemini Team and 1 others",
+      "doi": "",
+      "year": "2023",
+      "authors": [],
+      "raw_text": "Gemini Team and 1 others arXiv:2312.11805 Gemini: A family of highly capable multimodal models 2023 arXiv preprint"
+    },
+    {
+      "index": 38,
+      "title": "How well can vision-language models understand humans' intention? an open-ended theory of mind question evaluation benchmark",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Ximing Wen",
+        "Mallika Mainali",
+        "Anik Sen"
+      ],
+      "raw_text": "How well can vision-language models understand humans' intention? an open-ended theory of mind question evaluation benchmark Ximing Wen Mallika Mainali Anik Sen arXiv:2503.22093 2025 arXiv preprint"
+    },
+    {
+      "index": 39,
+      "title": "Think twice: Perspectivetaking improves large language models' theory-ofmind capabilities",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alex Wilf",
+        "Sihyun Lee",
+        "Paul Pu Liang",
+        "Louis-Philippe Morency"
+      ],
+      "raw_text": "Think twice: Perspectivetaking improves large language models' theory-ofmind capabilities Alex Wilf Sihyun Lee Paul Pu Liang Louis-Philippe Morency Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics the 62nd Annual Meeting of the Association for Computational Linguistics Long Papers 2024 1"
+    },
+    {
+      "index": 40,
+      "title": "Distinguishing irony from deception: Understanding the speaker's second-order intention",
+      "doi": "",
+      "year": "1991",
+      "authors": [
+        "Ellen Winner",
+        "Sue Leekam"
+      ],
+      "raw_text": "Distinguishing irony from deception: Understanding the speaker's second-order intention Ellen Winner Sue Leekam British journal of developmental psychology 9 2 1991"
+    }
+  ],
+  "section_count": 40,
+  "reference_count": 40,
+  "error": "",
+  "updated_at": "2026-04-12T03:17:27.672010+00:00"
+}

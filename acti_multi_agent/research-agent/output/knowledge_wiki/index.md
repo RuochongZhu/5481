@@ -2,31 +2,30 @@
 
 > Agent-readable graph wiki. Start here before scanning raw corpus files.
 
-**216 nodes · 933 edges · 6 communities**
+**243 nodes · 1127 edges · 5 communities**
 
 ## Communities
 
-- [[Category E]] — 75 nodes
-- [[Category G]] — 74 nodes
-- [[Category A]] — 31 nodes
-- [[Category C]] — 17 nodes
-- [[Category F]] — 14 nodes
-- [[UNICORN on RAINBOW: A Universal Commonsense Reasoning Model ]] — 5 nodes
+- [[Category F]] — 70 nodes
+- [[Category A]] — 65 nodes
+- [[Category D]] — 62 nodes
+- [[The Curse of Recursion: Training on Generated Data Makes Mod]] — 31 nodes
+- [[Category H]] — 15 nodes
 
 ## Top Hubs
 
-- openalex (layer, degree=107)
-- openalex (source, degree=98)
-- Validation Experiment (beat, degree=68)
-- arxiv (source, degree=58)
-- arxiv (layer, degree=58)
-- Category X (category, degree=52)
-- Crisis Exists (beat, degree=43)
-- Category E (category, degree=29)
-- Empirical Degradation (beat, degree=29)
-- Category D (category, degree=27)
-- Theoretical Framework (beat, degree=27)
-- Category F (category, degree=22)
-- Platform Solution (beat, degree=22)
-- Category C (category, degree=20)
-- Category A (category, degree=17)
+- Validation Experiment (beat, degree=79)
+- Crisis Exists (beat, degree=74)
+- openalex (layer, degree=68)
+- Platform Solution (beat, degree=57)
+- Empirical Degradation (beat, degree=54)
+- Category A (category, degree=41)
+- Category E (category, degree=41)
+- openalex (source, degree=40)
+- lens (layer, degree=40)
+- lens (source, degree=39)
+- Category D (category, degree=37)
+- Theoretical Framework (beat, degree=37)
+- arxiv (source, degree=32)
+- arxiv (layer, degree=32)
+- Category F (category, degree=28)

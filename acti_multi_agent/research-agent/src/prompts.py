@@ -16,6 +16,11 @@ literature analysis.
 TASK: Given a batch of paper metadata objects, classify each into the taxonomy
 below and output a valid JSON array.
 
+INPUT NOTE:
+- `retrieval_prior_category` is the Phase 1 category assigned by targeted retrieval + heuristic scoring.
+- `matched_query` shows the retrieval query that surfaced the paper.
+- Treat the retrieval prior as a strong clue, not ground truth: if the paper plausibly fits it, preserve it as the primary or at least a secondary category instead of defaulting to X.
+
 CLASSIFICATION TAXONOMY (10 categories, each mapped to a paper section):
 A. Model Collapse Theory — recursive training degradation, variance growth, tail collapse, MAD. §2.1
 B. Web Data Pollution & Scale — AI content fraction on web, CommonCrawl contamination, bot traffic. §2.2
@@ -31,8 +36,14 @@ J. Fine-tune Data Composition Ablation — LoRA/QLoRA data composition, quality 
 RULES:
 - Output ONLY a valid JSON array, no markdown fences, no explanation
 - If a paper does not fit any category, use "X"
+- Use "X" only when the paper is genuinely outside the thesis taxonomy and also inconsistent with the retrieval prior
 - For builds_on/contradicts: only reference paperIds in the current batch
 - Be conservative with connections
+- For B, prevalence/growth measurements of AI-generated content in online environments still count even if the corpus is narrower than Common Crawl
+- For H, longitudinal studies of web documents / online activity / web-text quality count if they measure temporal change in online content quality or composition
+- For G, prefer provenance / governance / contributor-data collection systems; real-world behavioral data collection platforms such as campus or smartphone sensing systems can count when they are credible precedents for collecting authentic human social signals
+- For H, large-scale web-corpus quality / curation papers (for example Common Crawl / FineWeb / RefinedWeb style work) can count when they provide measurement or selection infrastructure for assessing web-text quality, even if they overlap with E
+- Do not default known retrieval-prior anchors like Reality Mining, StudentLife, LIMA, or FineWeb to X when they plausibly fit the prior category
 
 OUTPUT FORMAT per paper:
 {"paperId": "...", "primary_category": "A", "secondary_categories": ["D"],
@@ -66,22 +77,25 @@ analysis for a research paper. You help verify that the literature corpus
 adequately supports a 5-beat argument structure.
 
 PAPER THESIS:
-Web-scraped training data is experiencing information degradation (tail collapse,
-entropy decline, diversity loss), while physically-verified authentic human social
-behavioral data provides irreplaceable training signals. CampusGo is a running
-platform designed to produce such data.
+Web-scraped training data faces contamination and recursive-reuse risks. The
+current corpus strongly supports collapse under indiscriminate synthetic reuse,
+partially supports measurable web drift, and suggests that authentic socially
+grounded human behavioral data may remain especially valuable for some tasks.
+Curated or verifier-screened synthetic data can still work in narrower settings.
+CampusGo is a proposed platform motivated by this evidence, not a proven
+inevitable solution.
 
 5-BEAT EVIDENCE CHAIN (with 10 categories A-J):
-Beat 1 (Crisis §2): Model collapse is real + web data polluted + reactive solutions fail
+Beat 1 (Crisis §2): Collapse is real, contamination risk is rising, reactive filtering is limited
   → Needs strong evidence from A (collapse theory), B (pollution scale), C (detection limits)
-Beat 2 (Empirical §4): Web content quality is measurably declining over time
-  → Needs H (temporal web quality measurement) + D (entropy/diversity metrics)
-Beat 3 (Theory §3): L_auth = λ₁·D_KL + λ₂·D_α + λ₃·(1-TTR_r) is novel and grounded
-  → Needs D (information theory tools), novelty confirmation
-Beat 4 (Validation §5): Verified social data outperforms web-scraped on social reasoning
-  → Needs I (social reasoning benchmarks) + J (fine-tune ablation methods) + F (human data value) + E (data quality)
-Beat 5 (Solution §6): CampusGo maps L_auth framework to platform design
-  → Needs G (platform design precedents) + A (Gerstgrasser accumulation principle)
+Beat 2 (Empirical §4): Web drift or contamination is partially measurable, but direct post-2022 proof is limited
+  → Needs H (temporal web quality measurement) + D (entropy/diversity metrics) + honest limits
+Beat 3 (Theory §3): L_auth is a grounded synthesis of metric ingredients, not yet proven as a novelty claim
+  → Needs D (information theory tools), component grounding, and scope honesty
+Beat 4 (Validation §5): Verified human social data appears especially valuable for socially grounded tasks, while curated synthetic data may still work in bounded settings
+  → Needs I (social reasoning benchmarks) + J (fine-tune ablation methods) + F (human data value) + E (data quality) + explicit scope limits
+Beat 5 (Solution §6): CampusGo is a motivated design proposal for authentic data accumulation, not a literature-proven platform solution
+  → Needs G (platform design precedents) + A (accumulation principle) + explicit proposal framing
 
 TASK: Given category statistics, intersection matrix, and per-category paper summaries,
 assess evidence sufficiency for each beat and identify specific weaknesses.
@@ -91,7 +105,8 @@ RULES:
   "weak" (<10 or missing key papers), "critical_gap" (cannot support the argument)
 - Identify the 3 most important missing papers (papers that SHOULD be in the corpus)
 - Identify the strongest evidence chain: which papers, in sequence, tell the story?
-- Be honest: if a beat cannot be supported, say so
+- Be honest: if a beat can only support a narrower or more cautious claim, say so explicitly
+- For Beat 2 / Beat 3 / Beat 5, do not reward forced certainty; partial support with clear scope limits is acceptable
 
 OUTPUT FORMAT (valid JSON only, no markdown):
 {"beats": [
@@ -112,6 +127,13 @@ from academic paper abstracts. You help build a deep extraction pipeline.
 
 TASK: Given a batch of paper metadata (title + abstract), extract 7 structured
 fields per paper and output a valid JSON array.
+
+INPUT PRIORITY:
+- If `full_text_sections` are present, prefer them over the abstract.
+- Use conclusion / abstract sections first for `key_claim`.
+- Use method / experiment sections first for `methodology` and `dataset_or_benchmark`.
+- Use limitation / discussion / conclusion sections first for `limitation`.
+- If full text is partial or noisy, say what the paper does not address conservatively instead of over-inferring.
 
 EXTRACTION FIELDS:
 1. method_type: one of "theoretical", "empirical", "survey", "benchmark", "system", "mixed"
@@ -146,15 +168,15 @@ for academic literature review sections. You help build a writing-ready
 literature organization pipeline.
 
 CONTEXT — 5-Beat paper structure:
-Beat 1 (§2 Crisis): Model collapse is real + web data polluted + reactive solutions fail
+Beat 1 (§2 Crisis): Collapse is real, contamination risk is rising, reactive filtering is limited
   → Categories A, B, C
-Beat 2 (§4 Empirical): Web content quality is measurably declining over time
+Beat 2 (§4 Empirical): Web drift or contamination is partially measurable, but direct proof is limited
   → Categories D, H
-Beat 3 (§3 Theory): L_auth = λ₁·D_KL + λ₂·D_α + λ₃·(1-TTR_r) is novel and grounded
+Beat 3 (§3 Theory): L_auth is a grounded synthesis of metric ingredients, not yet a proven novelty claim
   → Category D
-Beat 4 (§5 Validation): Verified social data outperforms web-scraped on social reasoning
+Beat 4 (§5 Validation): Verified human social data appears especially valuable for socially grounded tasks, with bounded synthetic exceptions
   → Categories E, F, I, J
-Beat 5 (§6 Solution): CampusGo maps L_auth framework to platform design
+Beat 5 (§6 Solution): CampusGo is a motivated design proposal, not a literature-proven inevitable solution
   → Categories A, G
 
 TASK: Given a set of papers assigned to ONE beat (with their deep extraction data
@@ -172,6 +194,11 @@ RULES:
 - Each paper appears exactly once in either spine or supporting
 - Identify the "anchor paper" — the single most important paper for this beat
 - Max 3 paragraphs per beat, each with 3-6 papers
+- Keep the spine concise: at most 6 papers
+- Keep supporting papers concise: at most 12 papers total
+- If a beat has too many candidate papers, prefer the highest-signal papers rather than exhaustively listing everything
+- Prefer explicit scope admissions over forced certainty; if evidence only supports a narrower claim, make that narrowing visible in the spine and writing_notes
+- For Beat 2 / 3 / 5, it is acceptable to end the chain on a limitation or proposal framing rather than a definitive conclusion
 - Output valid JSON only, no markdown
 
 OUTPUT FORMAT:
@@ -198,9 +225,11 @@ tensions between academic papers. You help build an intellectual honesty
 verification pipeline.
 
 CONTEXT — Our paper thesis:
-Web-scraped training data is experiencing information degradation, while
-physically-verified authentic human social behavioral data provides
-irreplaceable training signals. CampusGo is a platform designed to produce such data.
+Web-scraped training data faces contamination and recursive-reuse risks, while
+authentic socially grounded human behavioral data may provide distinctive
+signals that remain valuable for some tasks. Curated or verifier-screened
+synthetic data can still work in narrower settings. CampusGo is a proposed
+platform intended to collect such data, not a proven inevitable solution.
 
 TASK: Given a set of classified papers with their deep extraction data,
 identify pairs or groups of papers that reach opposing conclusions on the
@@ -209,7 +238,7 @@ disagreements that must be acknowledged in the Related Work section.
 
 TYPES OF CONTRADICTION:
 1. "direct_contradiction" — Paper A says X is true, Paper B says X is false
-   (e.g., "synthetic data can replace human data" vs "synthetic data causes collapse")
+   (e.g., "synthetic data can replace human data in bounded settings" vs "synthetic data causes collapse under recursive reuse")
 2. "scope_disagreement" — Both are correct but under different conditions
    (e.g., "works for code generation" vs "fails for social reasoning")
 3. "methodological_tension" — Same question, different methods, different answers
@@ -223,6 +252,8 @@ RULES:
 - Rate severity: "critical" (must address in paper), "moderate" (should mention),
   "minor" (footnote-worthy)
 - For each contradiction, suggest how to handle it in writing
+- Return only the strongest contradictions for the focus question, not an exhaustive list
+- Keep evidence strings concise and specific
 - Be honest: if a contradiction undermines our thesis, say so clearly
 - Output valid JSON only, no markdown
 
@@ -234,8 +265,8 @@ OUTPUT FORMAT:
    "question": "Can synthetic data adequately replace human-generated data?",
    "paper_a": {"paperId": "...", "claim": "...", "evidence": "..."},
    "paper_b": {"paperId": "...", "claim": "...", "evidence": "..."},
-   "relevance_to_thesis": "Directly challenges Beat 4 claim that human data is irreplaceable",
-   "suggested_handling": "Acknowledge in §5 that synthetic data works for X but not for social reasoning tasks, citing both papers",
+   "relevance_to_thesis": "Directly narrows Beat 4 by showing that synthetic substitution may work in some bounded settings",
+   "suggested_handling": "Acknowledge in §5 that synthetic data works for X under Y conditions but remains weaker for socially grounded tasks, citing both papers",
    "beat_affected": 4}
 ],
 "thesis_risk_assessment": "...",

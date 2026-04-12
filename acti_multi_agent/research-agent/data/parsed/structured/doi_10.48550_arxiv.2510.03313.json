@@ -1,0 +1,839 @@
+{
+  "paperId": "doi:10.48550/arxiv.2510.03313",
+  "title": "Scaling Laws Revisited: Modeling the Role of Data Quality in Language Model Pretraining",
+  "year": 2025,
+  "source": "s2",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2510.03313.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2510.03313.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2510.03313.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Scaling laws for language model training traditionally characterize how performance scales with model size and dataset volume. Prior work has explored architecture variants and data treatments such as dataset filtering and noise injection in language model pretraining; however, these studies have not formalized data quality within a principled scaling law. We introduce a dimensionless data-quality parameter Q, and propose a quality-aware scaling law extending the Chinchilla framework to predict loss as a joint function of model size, data volume, and data quality. The law is motivated by an effective-sample-size and informationtheoretic view of noisy or redundant corpora, and it admits two practical estimators for Q: (i) a corruption rate proxy and (ii) a deficiency measure. Through synthetic experiments in neural machine translation and autoregressive modelingwhere we systematically control data quality via multiple levels of noise injection variation-we show that loss scales predictably with data quality and that higherquality data can substantially reduce model size and hence compute requirements. Our results demonstrate a sublinear decay of effective data with quality and robustness to moderate data corruption; out-of-sample evaluations further validate the predictive form of the law. Unlike prior empirical analyses, our work establishes an explicit, generalizable law for data quality, offering concrete guidance for balancing data curation effort and model scale in large-scale pretraining.",
+      "word_count": 213
+    },
+    {
+      "index": 2,
+      "title": "INTRODUCTION",
+      "kind": "introduction",
+      "text": "It is well understood in large-language model (LLM) training that both the amount of training data and its quality influence pretraining loss. Yet most existing scaling laws are formulated solely in terms of dataset size, remaining agnostic to quality (Henighan et al., 2020; Ghorbani et al., 2021; Ivgi et al., 2022; Sorscher et al., 2022; Alabdulmohsin et al., 2022; Caballero et al., 2023; Tao et al., 2024; Wu et al., 2025) . This leaves a gap between common intuition-\"cleaner data trains better models\"-and the quantitative laws that guide large-scale training.\n\nThe importance of such a quantitative framework is especially clear in specialized domainsbusiness, scientific, or medical applications-where training corpora are limited in quantity and heterogeneous in quality. With the same compute budget, outcomes may differ drastically depending on how clean and representative the data are. There have been quite a number of studies to classify data quality among multiple \"dimensions\" (Wang and Strong, 1996; Fox et al., 1994; Sidi et al., 2012; ISO/IEC, 2008) . While the exact taxonomy varies, the core dimensions typically include: accuracy, completeness, consistency, timeliness, uniqueness, validity. The focus of these studies is usually datasets containing structured data that is clean and curated for a certain task or purpose. In contrast, when collecting data to pretrain large language models, large amounts of \"found\" data are collected and cleaned, usually by removing duplicate data and obviously \"poor\" quality data.\n\nTo reason about how such imperfect corpora affect performance, we need a simpler abstraction of quality. In this work, we introduce a single dimensionless parameter Q ∈ (0, 1] characterizing the usable information in a corpus. A value of Q = 1 represents fully clean and representative data, while smaller Q values reflect increasing corruption or redundancy. As discussed below (Section 3), Q can be estimated via corruption rates or a more general deficiency measure, and serves as a proxy for the fraction of effective samples. We incorporate this abstraction into scaling laws through a term of the form B/(D β Q γ ) (Equation 2 ), linking model performance directly to both the quantity and the quality of data.\n\nOur main contributions are:\n\n• We propose a theoretically grounded quality-aware scaling law that augments the classical Chinchilla form by introducing a dimensionless quality parameter Q. The law predicts loss as L(N, D, Q) = A/N α + B/(D β Q γ ) + E, capturing the interplay between model size, data volume, and data quality.\n\n• We derive the scaling law from an effective sample size perspective and information-theoretic arguments, and we provide two simple estimators for Q based on corruption rate and data deficiency. We show that under natural assumptions these estimators lead to the form D eff = D g(Q) with g(Q) ≈ Q γ , recovering the proposed law.\n\n• We conduct controlled experiments on neural machine translation and causal language modeling to illustrate the law's utility. These results demonstrate that loss scales predictably with our quality parameter and that higher-quality data can compensate for smaller models. This is particularly relevant for specialized models in many real-world domains, such as business, scientific or medical applications.",
+      "word_count": 521
+    },
+    {
+      "index": 3,
+      "title": "RELATED WORKS",
+      "kind": "related_work",
+      "text": "Data quality in information systems. Data quality has long been studied in information systems, where datasets are evaluated along multiple dimensions-accuracy, completeness, consistency, timeliness, uniqueness and validity-to ensure that structured records support downstream tasks. Note that what call completeness is also called coverage and closely to what is usually called diversity. A consistent finding from this literature is that diverse imperfections degrade the utility of data and therefore motivate extensive curation practices (Batini et al., 2009) . Large-scale pretraining, however, relies on corpora assembled from the web. Here, quality varies widely across sources, and subtle forms of corruption or deficiency persist despite deduplication or heuristic filtering. Nonetheless, the key insight from information systems continues to hold: the quality of training data directly influences the performance of learned models.",
+      "word_count": 128
+    },
+    {
+      "index": 4,
+      "title": "Data quality in large-scale pretraining.",
+      "kind": "body",
+      "text": "In the era of LLMs, quality has become a first-class design concern. Major corpora such as The Pile (Gao et al., 2020) , RefinedWeb (Penedo et al., 2023) , and Dolma (Soldaini et al., 2024) highlight different philosophies of data construction, from assembling diverse sources to aggressively filtering and refining web text. Deduplication strategies (Lee et al., 2022) and contamination checks (Magar and Schwartz, 2022) have been shown to substantially affect evaluation reliability. Empirical analyses further suggest that careful filtering yields performance gains comparable to scaling compute, therefore implying the nontrivial role of quality in driving LLM performance.\n\nClassical scaling laws and their limitations. Alongside these developments, foundational studies on scaling laws formalized how performance scales with model size, dataset size, and compute. Kaplan et al. (2020) showed that loss decreases predictably as models and datasets grow, while Hoffmann et al. (2022) refined these results by introducing compute-optimal training. Despite their influence, these existing scaling laws generally assume that the underlying data is of fixed quality. In real-world corpora, noise, redundancy, or domain imbalance systematically distort scaling behavior, highlighting the need to explicitly account for quality.\n\nData quality and scaling laws. Several recent works have begun to address this gap. Bansal et al. (2022) study scaling laws for neural machine translation, and show that while test loss scales predictably with dataset size, architectural choices and moderate noise primarily shift the scaling curves without changing the exponent. Goyal et al. (2024) argue that data filtering is not computeagnostic: the value of higher-quality data depends on the available compute budget, since reusing small clean datasets leads to diminishing returns. Li et al. (2024) assess data quality by comparing perplexity gaps between models of different sizes, theoretically linking their metric to inverse scaling laws. These studies highlight the importance of data quality but stop short of providing a unified predictive law that couples quality with model size and dataset size. By introducing a dimensionless quality parameter Q into scaling laws, our work formalizes the influence of data quality and offers predictive guidance for building smaller, high accuracy models in specialized domains.\n\nBeyond these empirical analyses, several recent studies refine scaling laws from complementary perspectives. Chang et al. (2024) propose parameter-constrained scaling laws that combine text diversity and syntheticity, revealing that effective training tokens depend on both data quantity and diversity. On the theoretical front, Bahri et al. (2024) present a unifying theory of neural scaling laws, distinguishing variance-limited and resolution-limited regimes and connecting scaling exponents to generalization error. Although these contributions deepen our understanding of scaling, they do not incorporate an explicit scalar quality parameter. Our work complements this literature by modeling data quality via Q, linking it to effective sample size and generalization theory, and providing a unified scaling law that accounts for quality.",
+      "word_count": 462
+    },
+    {
+      "index": 5,
+      "title": "DATA QUALITY MEASURES",
+      "kind": "body",
+      "text": "To incorporate data quality into scaling laws, we first need a formal definition of Q. In this section we introduce two approaches for mapping a dataset ω to a scalar Q(ω) ∈ (0, 1], with larger Q indicating higher quality. These definitions capture different sources of imperfection-token corruption versus more general deficiency-and will later allow us to connect Q to effective sample size and generalization theory. The precise choice of Q is application-dependent; the key requirement is that Q degrades smoothly under corruption, providing a proxy for the usable information in a dataset.",
+      "word_count": 93
+    },
+    {
+      "index": 6,
+      "title": "DATA CORRUPTION RATE",
+      "kind": "body",
+      "text": "One of the simplest measures of data quality is what is sometimes called the data corruption rate, which we will denote CR. We assume 0 ≤ CR < 1.\n\nDefinition 1. Let ω be a dataset with data corruption rate CR. We define the data corruption rate data quality by Q(ω) = 1 -CR.\n\nAs an example, if we have a dataset consisting of D tokens and 10% are corrupted, then we would say that the CR = 10% and the data quality Q is 90%. To simplify our formulas, we assume that the data corruption rate is strictly less than 1, so that Q is strictly greater than 0. Note that standard sampling methods (e.g. Deming (1966)) can be used to estimate data corruption.",
+      "word_count": 125
+    },
+    {
+      "index": 7,
+      "title": "DATA DEFICIENCY MEASURES",
+      "kind": "body",
+      "text": "We introduce a dimensionless quantity ∆ call the data deficiency, which quantifies the lack of quality in a dataset ω. We assume that the data deficiency has the following properties:\n\n1. Positivity. ∆(ω) ≥ 0, for all datasets ω 2. Continuity. ∆(ω) is a continuous function of the dataset ω 3. Additivity. If ω 1 and ω 2 are independent datasets, and ω is the union of ω 1 and ω 2 than ∆(ω) = ∆(ω 1 ) + ∆(ω 2 ).\n\nAdditive noise model. Data deficiency can be measured and quantified in many ways. One of the simplest models is to model data deficiency using an additive noise model, where each data measurement ξ i , for i = 1, . . ., has the form\n\nξ i = x i + ϵ i ,\n\nwhere ϵ i is a noise term. We assume that ϵ i ≥ 0, and that the data quality as measured by the data deficiency worsens as ϵ i increases. Note that properties (1)-( 3 ) above hold when we model data quality using the additive noise model. We now add a fourth assumption.\n\n4. Maximum quality. In the additive noise model, we assume that the noise term ϵ i captures all the noise, so that data quality is maximized when ϵ i = 0, for all i.\n\nNote that the data deficiency ∆ can grow arbitrarily large with this model, so that 0 ≤ ∆(ω) < ∞, for a dataset ω. Definition 2. We define the data quality induced by data deficiency Q(ω) of a dataset ω by Q(ω) = exp (-∆(ω)) .",
+      "word_count": 270
+    },
+    {
+      "index": 8,
+      "title": "QUALITY-AWARE SCALING LAWS",
+      "kind": "body",
+      "text": "A widely used empirical scaling law for LLMs (also known as the Chinchilla Scaling Law by Hoffmann et al. ( 2022 )) is\n\nL(N, D) = A N α + B D β + E,\n\nwhere N is the number of training parameters, D is the number of training tokens, and L(N, D) is the pretraining loss. This equation was estimated empirically from experimental studies involving over 400 LLM, with the number of parameters ranging from 70M to 16B and the number of training tokens ranging from 5B to 400B. Here A, B, E, α, and β are empirically estimated constants, with E the minimal loss.\n\nFor example, one formulation studied in Hoffmann et al. (2022) is:\n\nL(N, D) = 406.4 N -0.34 + 410.7 D -0.28 + 1.69. (1)\n\nIn large-scale training, improvements such as filtering out low-quality data or introducing better training objectives have yielded improved performance beyond what naive scaling might predict.\n\nFor instance, filtering training data to remove noise has been observed to effectively improve the scaling behavior, enabling models to achieve lower loss with the same compute. This indicates that not all tokens are equal: a billion high-quality tokens may be far more valuable than a billion noisy or redundant ones. The Chinchilla analysis already hinted that many models are undertrained given their size, pointing toward the need for either more data or better data. This motivates us to extend scaling laws with explicit parameters for data quality.",
+      "word_count": 243
+    },
+    {
+      "index": 9,
+      "title": "EFFECTIVE SAMPLE SIZE",
+      "kind": "body",
+      "text": "We now formalize when data quality Q leads to a scaling law of the form D -β Q -γ . The key idea is that poor data quality (e.g. data corruption or large data deficiency) reduces the effective sample size of the dataset. We formalize this with: Definition 3. Let g be a monotone function g : [0, 1] → R + with g(1) = 1. Then the effective sample size of D associated with the link function g is\n\nD eff := D g(Q).",
+      "word_count": 85
+    },
+    {
+      "index": 10,
+      "title": "Assumption 1 (Effective sample size factorization).",
+      "kind": "body",
+      "text": "There exists a monotone function g : [0, 1] → R + with g(1) = 1 such that the expected excess loss satisfies\n\nL N (D, Q) ≈ B D β eff = B (D • g(Q)) β .\n\nwhere L N (D, Q) denotes the loss for a given parameter size N .\n\nThis assumption is consistent with classical results: in PAC learning with random classification noise of rate η < 1/2, the sample complexity inflates by a factor (1 -2η) -2 (Angluin and Laird, 1988; Kearns, 1998) ; in regression with additive Gaussian noise of variance σ 2 , effective samples scale with the signal-to-noise ratio SNR = 1/σ 2 (Tsybakov, 2009); and in information theory, channel capacity arguments show that mutual information is reduced by a multiplicative factor depending on the corruption level (Cover and Thomas, 2006) . In the following two lemmas (proof deferred to the appendix), we show that the usable sample size can be written as D eff = D • g(Q) with g(Q) well-approximated by a power law Q γ over practical ranges of Q:\n\n• γ ≈ 1 for signal-to-noise ratio like token noise (Lemma 1)\n\n• γ ≈ 2 for symmetric label noise (Lemma 2) Lemma 1 (Effective sample size under additive Gaussian noise). Consider i.i.d. observations of the form y i = f (x i ) + ϵ i , ϵ i ∼ N (0, σ 2 ), for i = 1, . . . , D. Then the Fisher information contributed by each observation is proportional to 1/σ 2 , and the total Fisher information satisfies\n\nI D ∝ D σ 2 .\n\nEquivalently, the D noisy samples carry the same information as D eff = D • (1/σ 2 ) noise-free samples.\n\nWe define the deficiency as\n\n∆ = ln σ 2 σ 2 0 , Q = e -∆ = σ 2 0 σ 2 .\n\nwhere σ 2 0 is baseline noise (i.e. e.g. noise not modeled by ∆). Without loss of generality, we may assume σ 0 := 1. In this formulation, datasets noisier than the reference (σ 2 > σ 2 0 ) have Q < 1, while \"clean\" datasets (σ 2 = σ 2 0 ) have Q = 1. The effective sample size then scales as\n\nD eff = D • Q γ\n\nand taking γ = 1 recovers the classical D • SNR scaling.\n\nLemma 2 (Effective sample size under random classification noise). Consider binary classification with labels Y ∈ {0, 1} and i.i.d. examples (X, Y ). Suppose labels are corrupted by random classification noise (RCN) with flip rate η ∈ [0, 1/2), i.e., we observe Ỹ = Y w.p. 1 -η and Ỹ = 1 -Y w.p. η, independently of X. For any classification-calibrated surrogate loss admitting an unbiased noise-corrected estimator (e.g., logistic/hinge via the standard correction), the variance of the perexample corrected loss inflates by a factor proportional to (1 -2η) -2 . Consequently, generalization bounds and excess-risk rates scale as if the number of clean samples were\n\nD eff = D • (1 -2η) 2 ,\n\ni.e., the effective sample size is reduced by (1 -2η) 2 under RCN.\n\nLemma 2 formalizes the intuition that symmetric label noise reduces usable information multiplicatively, yielding D eff = D • g(Q) with g(Q) = (2Q -1) 2 . In other words, if we define data quality via the corruption rate as Q = 1 -η (cf. Section 3), then (1 -2η) 2 = (2Q -1) 2 . Over practical high-quality regimes Q ∈ (1/2, 1], the factor (2Q -1) 2 is well-approximated by a local power law in Q with exponent γ ≈ 2, so that an effective-sample model D eff = D • Q γ with γ ≈ 2 is justified for RCN.",
+      "word_count": 635
+    },
+    {
+      "index": 11,
+      "title": "QUALITY-AWARE SCALING LAW",
+      "kind": "body",
+      "text": "We incorporate the data quality Q and introduce the following quality-aware scaling law: Definition 4 (Quality-Aware Scaling Law).\n\nL(N, D, Q) = A N α + B D β Q γ + E, (2)\n\nwhere Q denotes data quality and γ is a empirically measured parameter.\n\nNote that for the highest quality data with Q = 1, this reduces to the standard Chinchilla scaling law, and as the quality of the data decreases, the loss increases, as is expected. On the other hand, as the quality of the data goes up, the amount of the data required to achieve the same loss goes down.\n\nThe following corollary formalizes how the proposed form arises under mild regularity conditions: Corollary 1. Suppose that g(Q) is regularly varying at Q = 1, i.e. g(Q) = c Q γ (1 + o(1)) as Q → 1. Then the quality-aware scaling law (Definition 4) holds under Assumption 1.\n\nWe next give an information-theoretic perspective that leads to the same law:\n\nProposition 1 (Information-theoretic justification). Let X denote clean tokens, X their corrupted versions produced by a memoryless channel C Q parameterized by quality Q ∈ (0, 1], and let Z be the learned representation used for prediction. Suppose corruption reduces usable information multiplicatively, I( X; Z) = ρ(Q) I(X; Z), with ρ(1) = 1, ρ(Q) monotone, and locally ρ(Q) ≈ c Q γ as Q → 1. Here I(X; Z) denotes mutual information as usual. If the data-dependent loss scales as foot_0\n\nL D ∝ 1 D • I( X; Z) β ,\n\nthen the quality-aware scaling law takes the form\n\nL(N, D, Q) ≈ A N α + B D β Q γ + E,\n\nafter reparameterization of constants.\n\nThe proof of Proposition 1 is deferred to the appendix. For a binary symmetric channel with flip rate η, ρ(Q) is proportional to the capacity 1 -H 2 (η) with Q = 1 -η; over practical ranges this is well-approximated by Q γ with γ ≈ 2. In regression with additive Gaussian noise, ρ(Q) is proportional to the signal-to-noise ratio, yielding γ ≈ 1. Both cases recover the effective sample size view D eff = D • ρ(Q).",
+      "word_count": 363
+    },
+    {
+      "index": 12,
+      "title": "COMPARISON WITH OTHER QUALITY-AWARE SCALING LAWS",
+      "kind": "body",
+      "text": "Table 1: Relating different realizations of the data deficiency term ∆(ω) to the literature",
+      "word_count": 14
+    },
+    {
+      "index": 13,
+      "title": "Definition of ∆(ω)",
+      "kind": "body",
+      "text": "Interpretation of Data Deficiency Paper\n\nµ 1 E+µ 2 1 F +µ 3 G+µ 4 H (equation 3)\n\nDecomposition into noise (E), inverse coverage (1/F ), and repeated-data measure (G), and syntheticity (S).",
+      "word_count": 33
+    },
+    {
+      "index": 14,
+      "title": "Ours µ 2 Dis(ρ)",
+      "kind": "body",
+      "text": "Cluster-based density ρ, with Dis(ρ) = -ln(1 -ρ). Small ρ →high-quality; large ρ →low-quality.",
+      "word_count": 14
+    },
+    {
+      "index": 15,
+      "title": "Chen et al. (2025)",
+      "kind": "body",
+      "text": "µ 2 DR(ω) + µ 4 S(ω) Compression-based density (compressibility as proxy for diversity) DR(ω) = CR -1 (ω) and CR = size compressed size , and data syntheticity S(ω). Higher DR, higher S →lower quality. Chang et al. (2024\n\n) µ 3 k τ\n\nDeclining marginal value of data with repeated exposure over k epochs; linear-exponential saturation depending on τ . Models over-training on repeated data. Goyal et al. (2024) To relate our data dispersion to the literature, assume that the data deficiency is of the form\n\n∆(ω) = µ 1 E + µ 2 1 F + µ 3 G + µ 4 H, (3)\n\nwhere E quantifies the noise in the data, F quantifies the coverage/diversity of the data, G quantifies the amount of repeated data, and H quantifies the loss in data quality due to synthetic data. As shown in Table 1 , by assuming particular forms for each of these terms, we recover the data quality scaling laws in Chen et al. (2025) , Goyal et al. (2024) and Chang et al. (2024) .",
+      "word_count": 179
+    },
+    {
+      "index": 16,
+      "title": "EXPERIMENTAL STUDIES",
+      "kind": "body",
+      "text": "To establish the quality aware scaling laws, we train decoder only language models across two tasks, neural machine translation (NMT) and causal language modeling (CLM). To capture the effects of quality and dataset size we train on 3 different dataset volumes and 7 degrees of quality. We use subsets of Paracrawl v8 (Bañón et al. (2020) ) and C4 (Dodge et al. (2021) ) as our training data for the translation and language tasks respectively. See Table 2 . We optimize cross-entropy loss averaged over the relevant context and report the same on held out test datasets to measure the effectiveness of our quality aware scaling law for predicting the loss on out of sample data (Table 3 . We use the parametric loss fitting approach described in Hoffmann et al. (2022) to find our parameters using two methods, Least Squares and Huber (Huber, 1992) . The full details of the experiments, and model training details can be found in the appendix.",
+      "word_count": 162
+    },
+    {
+      "index": 17,
+      "title": "TASK DESCRIPTION NEURAL MACHINE TRANSLATION",
+      "kind": "body",
+      "text": "Our first task is English to German translation using the Paracrawl v8 English to German dataset (Bañón et al., 2020) . We filter the raw data with min hash deduplication, language ID filtering with a 0.8 threshold and length filtering (≤ 258) leaving ∼ 101M sentence pairs. We use a 8L GPT Neo model with a hidden size of 1024 with approximately ∼ 133M params. We also train our own BPE tokenizer with a vocabulary size of 32000. We train 3 replicates for each combination of the 3 datasets of size 500K, 1M and 2M sentence pairs and 7 quality levels for a total of 63 experiment runs. We train using AdamW with a maximum learning rate of 5e-4 and cosine decay with a 20% warmup ratio. The full model configuration and training hyper-parameters are available in the appendix.",
+      "word_count": 139
+    },
+    {
+      "index": 18,
+      "title": "CAUSAL LANGUAGE MODELING",
+      "kind": "body",
+      "text": "For the CLM objective we train our models on a subset of C4 (en) (Dodge et al., 2021) . We run our pretraining experiments on a 8L Llama 3 (Grattafiori et al., 2024) model with a hidden size of 512 and a context length of 2048. We do not use ROPE scaling. We employ random data truncation on the base dataset to sample within the context length. We also employ the pre-trained Llama-3.2-1B tokenizer. We sample datasets of three sizes; 100M , 1B and 10B tokens and train for a single epoch using fused AdamW (Loshchilov and Hutter, 2019) with a maximum learning rate of 1e-3 with cosine decay and a 10% warm-up ratio. We duplicate our experiment setting to match a total of 63 runs. The full model configuration and training hyperparameters are available in the appendix.",
+      "word_count": 138
+    },
+    {
+      "index": 19,
+      "title": "SYNTHETIC NOISE AND DATA SAMPLING STRATEGY",
+      "kind": "body",
+      "text": "To simulate the different levels of data quality we add synthetic iid noise to the base dataset. The base dataset after pre-processing is assumed to have quality, Q = 1.0. We vary the quality of a dataset by increasing/decreasing the fraction of samples that are perturbed with synthetic noise. For example, if 25% of all samples are perturbed, then the quality of that dataset is considered to be 0.75. We use two noise models, one for each task. For NMT, we randomly set 50% of all nonspecial tokens in a selected sample to pad tokens, we do not discriminate between source and target here. For CLM, we randomly swap 50% of all non-special tokens with valid non-special tokens from the tokenizer vocabulary.",
+      "word_count": 122
+    },
+    {
+      "index": 20,
+      "title": "DATA SAMPLING STRATEGY",
+      "kind": "body",
+      "text": "We employ a nested subset sampling strategy that guarantees noise and sample monotonicity. S = {s 1 , s 2 , s 3 , . . . , s n } is the base experiment dataset with n unique samples. We draw from S thrice using different seeds to create working datasets S w1 , S w2 and S w3 . Each working dataset S wi is then sampled to produce datasets of different sizes. Each of these different sized datasets are then perturbed to various degrees to create the noised variants at that dataset size.\n\nFor example, in our CLM experiments the dataset volumes are T ={0.1, 1, 10} billion (B) tokens. We first draw thrice from C4 to get our 3 working datasets S w1 , S w2 and S w3 of size 40M samples or ≃16B tokens each (Using the Meta Llama-3.2-1B tokenizer, we find that on average the \"en\" subset of C4 has approximately 400 tokens per sample). We ensure that for each working dataset S wi , we sample subsets of the form, i.e. S 0.1B ⊆ S 1.0B ⊆ S 10.0B . At each subset level, we then compose 7 different dataset variants with η = {0, 10, 20, 25, 30, 40, 50} percent noised samples (where η denotes the noise percentage), meaning that quality Q = {1.0, 0.9, 0.8, 0.75, 0.7, 0.6, 0.5}.",
+      "word_count": 230
+    },
+    {
+      "index": 21,
+      "title": "EXPERIMENTAL SETUP",
+      "kind": "methods",
+      "text": "We make use of multiple compute sources in this work. NMT experiments upto a dataset volume of 1M sentence pairs were conducted on an A100 node with 4, 80GB GPUs. All other experiments are run on 2 Hopper nodes with 4, 141GB GPUs each. We do not use multi-node or multi-GPU training. We utilise the GPU counts to parallelize experiment runs. Fitting the quality-aware scaling law. Our main results are summarized in Table 2 , which estimates B, β, γ, and E, and Figure 1 , which shows the test loss as Q varies from 0.5 to 1.0. Pre-dictably, we find that test loss L decreases as we increase the volume of data D and increase the fraction of high quality samples Q. Table 3 shows us that using our pre-trained models to evaluate loss on unseen data also follows a scaling law similar to our fit on in distribution data, thus showing evidence for scaling generalization. To further illustrate trade-offs between D and Q, Figure 2 presents iso-loss contours, showing how data quality improvements can substitute for increased dataset size at fixed model capacity.\n\nInterestingly, the estimated exponents for data quality, γ, are significantly less than one: γ ≈ 0.173 for NMT and γ ≈ 0.401 for CLM (with Huber estimation). This indicates that the effective dataset size decays sublinearly with quality, i.e., models are more robust to moderate corruption than predicted by simple effective sample-size theories from PAC learning or channel-capacity analysis, which typically suggest γ ≥ 1. We hypothesize that this robustness arises from redundancy in natural language data, where even partially corrupted samples carry useful contextual information (e.g., syntax, alignment, or co-occurring clean tokens). The higher γ in CLM compared to NMT suggests that autoregressive language modeling is more sensitive to token corruption, whereas NMT can leverage cross-sequence redundancy to mitigate the impact of noise. Another plausible hypothesis is that in the NMT noise model (padding half the tokens in a noised sample), the corrupted samples are not completely useless: alignment and context still leak enough information. In CLM (token swaps), the corruption is harsher for distributional modeling, since the noised tokens add entropy and can mislead local dependencies. Hence a larger γ. Isolating the quality effect. To quantify the incremental loss due to degraded quality at fixed N and D, define\n\n∆L(Q) = L(N, D, Q) -L(N, D, 1). ( 4\n\n)\n\nFrom the fitted law, this difference takes the form\n\n∆L(Q) ≈ B D -β Q -γ -1 , which makes clear that ∆L(Q) should grow approximately linearly in Q -γ -1,\n\nwhere γ is the estimated γ. We therefore directly plot ∆L(Q) versus Q -γ -1, using the estimated γ from our scaling experiments.\n\nAs shown in Figure 3 , the resulting plots are close to linear across the tested quality levels, validating that the multiplicative Q -γ term accurately captures the degradation due to corruption. Furthermore, the plots show homogeneous linear functions, which suggest that the additive terms in our proposed scaling law, A N α + E, indeed do not vary with data quality Q. The stability of these plots across dataset sizes (0.1B, 1B, 10B for CLM; 0.5M, 1M, 2M pairs for NMT) (with the Huber estimation) further suggests that γ is an intrinsic task-dependent parameter rather than an artifact of optimization or dataset sampling.\n\nIn practice, the exponent γ serves as a robustness index: smaller values indicate that a model-task pair is resilient to corruption, while larger values reveal greater sensitivity to data quality. In our experiments, both tasks show γ < 1, which means loss increases more slowly than linearly with decreasing Q. In other words, the model is robust to moderate amounts of corruption -one needs a large drop in Q to see a noticeable rise in loss.",
+      "word_count": 631
+    },
+    {
+      "index": 22,
+      "title": "Robustness and generalization.",
+      "kind": "body",
+      "text": "We have included additional validations to verify the robustness of our findings (see Appendix E for full details). First, we confirmed that our synthetic noise model serves as a valid proxy for semantic degradation by observing a strictly monotonic decrease in embedding similarity with increasing noise (Figure 4 ). We performed learning rate sweeps and found that γ is stable across practical learning rate regimes (Table 9 ). We provide a practical guide for estimating Q in Section E.3.",
+      "word_count": 79
+    },
+    {
+      "index": 23,
+      "title": "SUMMARY AND CONCLUSION",
+      "kind": "conclusion",
+      "text": "This paper revisits scaling laws for large language model pretraining by introducing an explicit and dimensionless measure of data quality, alongside traditional factors like model size and dataset volume. We propose a new quality-aware scaling law that extends the widely used Chinchilla framework, predicting pretraining loss as a joint function of model size, data volume, and data quality. By systematically injecting synthetic noise in neural machine translation and causal language modeling experiments, we demonstrate that higher data quality leads to significantly lower loss for a given model size and dataset. Notably, our findings show that for high-quality datasets, smaller models and less compute are needed to achieve strong results, which is highly relevant for domain-specific applications. The study provides a formal scaling law:\n\nL(N, D, Q) = A N α + B D β Q γ + E,\n\nwhere Q measures data quality and γ is empirically estimated. This extends earlier work that primarily focused on model and data size. Our experiments on both NMT and CLM tasks, using real datasets with systematically controlled levels of data corruption, confirm the predictive power of the new scaling law and offer concrete guidance for balancing data curation versus model scale. The work establishes a unified framework that quantifies data quality's influence, enabling principled decisions for specialized LLM development in fields building smaller models over domain specific datasets, such as those that arise in business, scientific and medical applications.",
+      "word_count": 236
+    },
+    {
+      "index": 24,
+      "title": "REPRODUCIBILITY STATEMENT",
+      "kind": "body",
+      "text": "We include all results from our experimental runs, all model and training configurations and recipes and all steps taken to produce this work in the relevant sections in main and the appendix.",
+      "word_count": 32
+    },
+    {
+      "index": 25,
+      "title": "A PROOFS A.1 PROOF OF LEMMA 1",
+      "kind": "body",
+      "text": "Proof of Lemma 1. For the Gaussian location family, the log-likelihood of a single observation is ℓ(θ) = -1 2σ 2 (y -θ) 2 + const, where θ = f (x). Differentiating twice with respect to θ and taking expectation over ϵ gives the Fisher information per sample:\n\nI 1 (θ) = E - ∂ 2 ∂θ 2 ℓ(θ) = 1 σ 2 .\n\nBy additivity of Fisher information across i.i.d. samples, I D = D • I 1 = D/σ 2 . Thus, the usable information is equivalent to D eff = D • (1/σ 2 ) noise-free samples. We define the deficiency as\n\n∆ = ln σ 2 σ 2 0 , Q = e -∆ = σ 2 0 σ 2 .\n\nwhere σ 2 0 is baseline noise (i.e. noise for \"clean\" data; wlog σ 0 := 1). In this formulation, datasets noisier than the reference (σ 2 > σ 2 0 ) have Q < 1, while \"clean\" datasets (σ 2 = σ 2 0 ) have Q = 1. The effective sample size then scales as\n\nD eff = D • Q γ\n\nand taking γ = 1 recovers the classical D • SNR scaling.",
+      "word_count": 201
+    },
+    {
+      "index": 26,
+      "title": "A.2 PROOF OF LEMMA 2",
+      "kind": "body",
+      "text": "Proof of Lemma 2. For symmetric label noise with flip rate η, the unbiased loss correction constructs a per-sample estimator l(f (X), Ỹ ) whose expectation matches the clean loss: (Natarajan et al., 2013) . This divides by (1 -2η), so the variance of l inflates by a factor (1 -2η) -2 relative to the clean loss. Uniform convergence or stability-based generalization bounds then inherit a Var[ l]/D dependence, implying an excess-risk rate equivalent to having D eff = D (1 -2η) 2 clean samples. Classic PAC analyses of RCN similarly show polynomial overheads governed by (1 -2η) -2 (e.g., Angluin and Laird (1988) ).\n\nE[ l | X, Y ] = ℓ(f (X), Y ). For symmetric noise, the correction has the form l = (1-η) ℓ(f (X), Ỹ )-η ℓ(f (X),1-Ỹ ) 1-2η",
+      "word_count": 135
+    },
+    {
+      "index": 27,
+      "title": "A.3 PROOF OF PROPOSITION 1",
+      "kind": "body",
+      "text": "Proof of Proposition 1. By assumption (as in the Information Bottleneck principle (Tishby et al., 1999) ), the data-dependent loss scales as\n\nL D ∝ D • I( X; Z) -β , β > 0.\n\nSubstituting the multiplicative reduction of usable information,\n\nI( X; Z) = ρ(Q) I(X; Z), we obtain L D ∝ D -β ρ(Q) -β I(X; Z) -β . Since I(X; Z) does not depend on Q or D, we can absorb it into the constant B. By the regular- variation assumption, ρ(Q) ≈ c Q γ0 as Q → 1, so ρ(Q) -β ≈ c -β Q -βγ0 .\n\nAbsorbing c -β into B and setting γ = βγ 0 , we obtain\n\nL D ≈ B D β Q γ .\n\nAdding the standard model-size contribution A/N α and irreducible error floor E yields L(N, D, Q) ≈ A N α + B D β Q γ + E, which is the claimed quality-aware scaling law after reparameterization of constants. HuggingFace in CLM to train to easily use Flash Attention 2 (Dao, 2023) . Additionally we use weight decay of 0.01 in both cases.\n\nTable 6: Training Details TASK D(avg) Batch Size Max LR Grad Acc Steps Warmup Ratio NMT 3.6754244e+07 512 5e-4 8 0.2 NMT 7.3486728e+07 512 5e-4 8 0.2 NMT 1.4697256e+08 1024 5e-4 8 0.2 CLM 1.0317308e+08 48 1e-3 1 0.1 CLM 1.0296028e+09 48 1e-3 8 0.1 CLM 1.0294779e+10 48 1e-3 8 0.1 C.2 ADDITIONAL RESULTS\n\nIn reporting our performance we evaluate our trained models on test loss on heldout datasets. In NMT, during dataset prepartion we partition a test set of 50,000 samples and report evaluation loss on this heldout. For CLM, we partition 40,000 samples from the validation set of C4 en and use that for evaluation. The full results are shown in Table 7 and Table 8 for reference. Table 8: Causal Language Modeling Results.D is the number of tokens used for training , Q represents dataset quality and L is the test loss in nats. The horizontal lines demarcate the replicate experiments and vertical sections the different dataset sizes used.",
+      "word_count": 351
+    },
+    {
+      "index": 28,
+      "title": "D Q L",
+      "kind": "body",
+      "text": "Turning to Goyal et al. (2024) , we can define a notion of the declining value of data as the number of training epochs k increases (and hence the amount of repeated data increases). We can define an additive term in the data deficiency as follows:\n\nµ 3 k τ where k is the number of epochs. With this form, for small number of epochs, the loss decreases, but as the number of epochs increases, the loss begins to grow exponentially, and then levels out, with the rate determined by a \"decay parameter\" τ .",
+      "word_count": 95
+    },
+    {
+      "index": 29,
+      "title": "E ADDITIONAL VALIDATIONS AND PRACTICAL GUIDE",
+      "kind": "body",
+      "text": "In this section, we present additional experiments validating our noise model and scaling law stability, along with a practical guide for estimating Q.",
+      "word_count": 23
+    },
+    {
+      "index": 30,
+      "title": "E.1 VALIDATION OF SYNTHETIC NOISE MODEL",
+      "kind": "body",
+      "text": "To validate that our synthetic noise injection serves as a meaningful proxy for real-world data degradation, we measured the semantic drift of the corrupted data. We computed the average cosine similarity between the embeddings of clean samples and their synthetically corrupted counterparts using a pre-trained reference model. As shown in Figure 4 there is a strictly monotonic, near-linear increase in embedding similarity as the synthetic quality increase (noise level decrease). This confirms that our parameter Q effectively captures the loss of semantic information. E.2 SENSITIVITY TO LEARNING RATE\n\nWe performed a sensitivity analysis by retraining models at 5 different learning rates (1e-5 to 5e-3) across 3 dataset scales and 3 noise levels. As shown in Table 9 and Figure 5 , the estimated γ is highly stable (∼ 0.39) for practical learning rates near the optimal 1e-3 used in our main experiments.",
+      "word_count": 142
+    },
+    {
+      "index": 31,
+      "title": "E.3 PRACTITIONER'S GUIDE TO ESTIMATING Q",
+      "kind": "body",
+      "text": "We propose the following recipe for estimating Q in practice:\n\n1. Establish a baseline: Identify a small, high-quality reference subset (e.g., manually curated text or a trusted domain corpus) to represent Q ≈ 1. 2. Select quality proxies: Choose measurable proxies for \"deficiency\" relevant to the domain. 3. Compute deficiency (∆): Construct a composite deficiency score ∆ = j µ j ∆ j , where µ j are weights determined by importance or preliminary ablation.\n\n4. Map to Q: Calculate Q = e -∆ . This maps the unbounded deficiency metric to the (0, 1] interval.\n\n5. Sanity check: Verify that Q correlates with downstream performance or semantic drift (as in our embedding experiment) on a small validation set.\n\n6. Fit scaling law: Use the estimated Q values for different data subsets to fit the parameters (B, β, γ) of the scaling law L ≈ B/(D β Q γ ) + E (assuming N is fixed or large enough), using the robust Huber loss method described in the paper.",
+      "word_count": 169
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Revisiting neural scaling laws in language and vision",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Behnam Ibrahim M Alabdulmohsin",
+        "Xiaohua Neyshabur",
+        "Zhai"
+      ],
+      "raw_text": "Revisiting neural scaling laws in language and vision Behnam Ibrahim M Alabdulmohsin Xiaohua Neyshabur Zhai Advances in Neural Information Processing Systems 2022 35"
+    },
+    {
+      "index": 2,
+      "title": "Learning from noisy examples",
+      "doi": "",
+      "year": "1988",
+      "authors": [
+        "Dana Angluin",
+        "Philip Laird"
+      ],
+      "raw_text": "Learning from noisy examples Dana Angluin Philip Laird Machine learning 2 4 1988"
+    },
+    {
+      "index": 3,
+      "title": "Explaining neural scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yasaman Bahri",
+        "Ethan Dyer",
+        "Jared Kaplan",
+        "Jaehoon Lee",
+        "Utkarsh Sharma"
+      ],
+      "raw_text": "Explaining neural scaling laws Yasaman Bahri Ethan Dyer Jared Kaplan Jaehoon Lee Utkarsh Sharma Proceedings of the National Academy of Sciences 121 27 2311878121 2024"
+    },
+    {
+      "index": 4,
+      "title": "Paracrawl: Web-scale acquisition of parallel corpora",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Marta Bañón",
+        "Pinzhen Chen",
+        "Barry Haddow",
+        "Kenneth Heafield",
+        "Hieu Hoang",
+        "Miquel Esplà-Gomis",
+        "Mikel Forcada",
+        "Amir Kamran"
+      ],
+      "raw_text": "Paracrawl: Web-scale acquisition of parallel corpora Marta Bañón Pinzhen Chen Barry Haddow Kenneth Heafield Hieu Hoang Miquel Esplà-Gomis Mikel Forcada Amir Kamran Faheem Kirefu Philipp Koehn Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics the 58th Annual Meeting of the Association for Computational Linguistics Association for Computational Linguistics 2020. 2020"
+    },
+    {
+      "index": 5,
+      "title": "Data scaling laws in nmt: The effect of noise and architecture",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Yamini Bansal",
+        "Behrooz Ghorbani",
+        "Ankush Garg",
+        "Biao Zhang",
+        "Colin Cherry",
+        "Behnam Neyshabur",
+        "Orhan Firat"
+      ],
+      "raw_text": "Data scaling laws in nmt: The effect of noise and architecture Yamini Bansal Behrooz Ghorbani Ankush Garg Biao Zhang Colin Cherry Behnam Neyshabur Orhan Firat International Conference on Machine Learning PMLR 2022"
+    },
+    {
+      "index": 6,
+      "title": "Methodologies for data quality assessment and improvement",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "Carlo Batini",
+        "Cinzia Cappiello",
+        "Chiara Francalanci",
+        "Andrea Maurino"
+      ],
+      "raw_text": "Methodologies for data quality assessment and improvement Carlo Batini Cinzia Cappiello Chiara Francalanci Andrea Maurino ACM computing surveys (CSUR) 41 3 2009"
+    },
+    {
+      "index": 7,
+      "title": "Tightening mutual information-based bounds on generalization error",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Yuheng Bu",
+        "Shaofeng Zou",
+        "Venugopal",
+        "Veeravalli"
+      ],
+      "raw_text": "Tightening mutual information-based bounds on generalization error Yuheng Bu Shaofeng Zou Venugopal Veeravalli IEEE Journal on Selected Areas in Information Theory 1 1 2020"
+    },
+    {
+      "index": 8,
+      "title": "Broken neural scaling laws",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ethan Caballero",
+        "Kshitij Gupta",
+        "Irina Rish",
+        "David Krueger"
+      ],
+      "raw_text": "Broken neural scaling laws Ethan Caballero Kshitij Gupta Irina Rish David Krueger The Eleventh International Conference on Learning Representations 2023"
+    },
+    {
+      "index": 9,
+      "title": "Scaling parameter-constrained language models with quality data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ernie Chang",
+        "Matteo Paltenghi",
+        "Yang Li",
+        "Pin-Jie Lin",
+        "Changsheng Zhao",
+        "Patrick Huber",
+        "Zechun Liu",
+        "Rastislav Rabatin"
+      ],
+      "raw_text": "Scaling parameter-constrained language models with quality data Ernie Chang Matteo Paltenghi Yang Li Pin-Jie Lin Changsheng Zhao Patrick Huber Zechun Liu Rastislav Rabatin Yangyang Shi Vikas Chandra Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track 2024"
+    },
+    {
+      "index": 10,
+      "title": "Revisiting scaling laws for language models: The role of data quality and training strategies",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhengyu Chen",
+        "Siqi Wang",
+        "Teng Xiao",
+        "Yudong Wang",
+        "Shiqi Chen",
+        "Xunliang Cai",
+        "Junxian He",
+        "Jingang Wang"
+      ],
+      "raw_text": "Revisiting scaling laws for language models: The role of data quality and training strategies Zhengyu Chen Siqi Wang Teng Xiao Yudong Wang Shiqi Chen Xunliang Cai Junxian He Jingang Wang Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics the 63rd Annual Meeting of the Association for Computational Linguistics Long Papers 2025 1"
+    },
+    {
+      "index": 11,
+      "title": "Elements of Information Theory",
+      "doi": "10.1002/047174882X",
+      "year": "2006",
+      "authors": [
+        "Thomas M Cover",
+        "Joy A Thomas"
+      ],
+      "raw_text": "Elements of Information Theory Thomas M Cover Joy A Thomas 10.1002/047174882X 2006 Wiley-Interscience 2 edition"
+    },
+    {
+      "index": 12,
+      "title": "Flashattention-2: Faster attention with better parallelism and work partitioning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Tri Dao"
+      ],
+      "raw_text": "Flashattention-2: Faster attention with better parallelism and work partitioning Tri Dao 2023"
+    },
+    {
+      "index": 13,
+      "title": "Some theory of sampling",
+      "doi": "",
+      "year": "1966",
+      "authors": [
+        "William Edwards",
+        "Deming"
+      ],
+      "raw_text": "Some theory of sampling William Edwards Deming 1966 Courier Corporation"
+    },
+    {
+      "index": 14,
+      "title": "Documenting large webtext corpora: A case study on the colossal clean crawled corpus",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Jesse Dodge",
+        "Maarten Sap",
+        "Ana Marasović",
+        "William Agnew",
+        "Gabriel Ilharco",
+        "Dirk Groeneveld",
+        "Margaret Mitchell",
+        "Matt Gardner"
+      ],
+      "raw_text": "Documenting large webtext corpora: A case study on the colossal clean crawled corpus Jesse Dodge Maarten Sap Ana Marasović William Agnew Gabriel Ilharco Dirk Groeneveld Margaret Mitchell Matt Gardner arXiv:2104.08758 2021 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "The notion of data and its quality dimensions. Information processing & management",
+      "doi": "",
+      "year": "1994",
+      "authors": [
+        "Christopher Fox",
+        "Anany Levitin",
+        "Thomas Redman"
+      ],
+      "raw_text": "The notion of data and its quality dimensions. Information processing & management Christopher Fox Anany Levitin Thomas Redman 1994 30"
+    },
+    {
+      "index": 16,
+      "title": "The pile: An 800gb dataset of diverse text for language modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Leo Gao",
+        "Stella Biderman",
+        "Sid Black",
+        "Laurence Golding",
+        "Travis Hoppe",
+        "Charles Foster",
+        "Jason Phang",
+        "Horace He"
+      ],
+      "raw_text": "Leo Gao Stella Biderman Sid Black Laurence Golding Travis Hoppe Charles Foster Jason Phang Horace He Anish Thite Noa Nabeshima Skyler Presser Connor Leahy arXiv:2101.00027 The pile: An 800gb dataset of diverse text for language modeling 2020 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "Scaling laws for neural machine translation",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Behrooz Ghorbani",
+        "Orhan Firat",
+        "Markus Freitag",
+        "Ankur Bapna",
+        "Maxim Krikun",
+        "Xavier Garcia",
+        "Ciprian Chelba",
+        "Colin Cherry"
+      ],
+      "raw_text": "Scaling laws for neural machine translation Behrooz Ghorbani Orhan Firat Markus Freitag Ankur Bapna Maxim Krikun Xavier Garcia Ciprian Chelba Colin Cherry arXiv:2109.07740 2021 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "Scaling laws for data filtering-data curation cannot be compute agnostic",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sachin Goyal",
+        "Pratyush Maini",
+        "Zachary C Lipton",
+        "Aditi Raghunathan",
+        "J Zico Kolter"
+      ],
+      "raw_text": "Scaling laws for data filtering-data curation cannot be compute agnostic Sachin Goyal Pratyush Maini Zachary C Lipton Aditi Raghunathan J Zico Kolter Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2024"
+    },
+    {
+      "index": 19,
+      "title": "The llama 3 herd of models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Aaron Grattafiori",
+        "Abhimanyu Dubey",
+        "Abhinav Jauhri",
+        "Abhinav Pandey",
+        "Abhishek Kadian",
+        "Ahmad Al-Dahle",
+        "Aiesha Letman",
+        "Akhil Mathur"
+      ],
+      "raw_text": "The llama 3 herd of models Aaron Grattafiori Abhimanyu Dubey Abhinav Jauhri Abhinav Pandey Abhishek Kadian Ahmad Al-Dahle Aiesha Letman Akhil Mathur Alan Schelten Alex Vaughan 2024"
+    },
+    {
+      "index": 20,
+      "title": "Scaling laws for autoregressive generative modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Henighan",
+        "Jared Kaplan",
+        "Mor Katz",
+        "Mark Chen",
+        "Christopher Hesse",
+        "Jacob Jackson",
+        "Heewoo Jun",
+        "Prafulla Tom B Brown"
+      ],
+      "raw_text": "Scaling laws for autoregressive generative modeling Tom Henighan Jared Kaplan Mor Katz Mark Chen Christopher Hesse Jacob Jackson Heewoo Jun Prafulla Tom B Brown Scott Dhariwal Gray arXiv:2010.14701 2020 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Training compute-optimal large language models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jordan Hoffmann",
+        "Sebastian Borgeaud",
+        "Arthur Mensch",
+        "Elena Buchatskaya",
+        "Trevor Cai",
+        "Eliza Rutherford",
+        "Diego De Las",
+        "Lisa Anne Casas"
+      ],
+      "raw_text": "Training compute-optimal large language models Jordan Hoffmann Sebastian Borgeaud Arthur Mensch Elena Buchatskaya Trevor Cai Eliza Rutherford Diego De Las Lisa Anne Casas Johannes Hendricks Aidan Welbl Clark arXiv:2203.15556 2022 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Robust estimation of a location parameter",
+      "doi": "",
+      "year": "1992",
+      "authors": [
+        "J Peter",
+        "Huber"
+      ],
+      "raw_text": "Robust estimation of a location parameter J Peter Huber Breakthroughs in statistics: Methodology and distribution Springer 1992"
+    },
+    {
+      "index": 23,
+      "title": "Systems and software engineering -systems and software quality requirements and evaluation (square) -data quality model",
+      "doi": "",
+      "year": "2008",
+      "authors": [
+        "Iso/Iec"
+      ],
+      "raw_text": "Systems and software engineering -systems and software quality requirements and evaluation (square) -data quality model Iso/Iec ISO/IEC 25012 International Organization for Standardization 2008. 2008 Geneva, Switzerland Technical Report"
+    },
+    {
+      "index": 24,
+      "title": "Scaling laws under the microscope: Predicting transformer performance from small scale experiments",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Maor Ivgi",
+        "Yair Carmon",
+        "Jonathan Berant"
+      ],
+      "raw_text": "Scaling laws under the microscope: Predicting transformer performance from small scale experiments Maor Ivgi Yair Carmon Jonathan Berant Findings of the Association for Computational Linguistics: EMNLP 2022 2022"
+    },
+    {
+      "index": 25,
+      "title": "Bag of tricks for efficient text classification",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "Armand Joulin",
+        "Edouard Grave",
+        "Piotr Bojanowski",
+        "Tomas Mikolov"
+      ],
+      "raw_text": "Bag of tricks for efficient text classification Armand Joulin Edouard Grave Piotr Bojanowski Tomas Mikolov arXiv:1607.01759 2016 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Scaling laws for neural language models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jared Kaplan",
+        "Sam Mccandlish",
+        "Tom Henighan",
+        "Tom B Brown",
+        "Benjamin Chess",
+        "Rewon Child",
+        "Scott Gray",
+        "Alec Radford"
+      ],
+      "raw_text": "Jared Kaplan Sam Mccandlish Tom Henighan Tom B Brown Benjamin Chess Rewon Child Scott Gray Alec Radford Jeffrey Wu Dario Amodei arXiv:2001.08361 Scaling laws for neural language models 2020 arXiv preprint"
+    },
+    {
+      "index": 27,
+      "title": "Efficient noise-tolerant learning from statistical queries",
+      "doi": "",
+      "year": "1998",
+      "authors": [
+        "Michael Kearns"
+      ],
+      "raw_text": "Efficient noise-tolerant learning from statistical queries Michael Kearns Journal of the ACM (JACM) 45 6 1998"
+    },
+    {
+      "index": 28,
+      "title": "Deduplicating training data makes language models better",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Katherine Lee",
+        "Daphne Ippolito",
+        "Andrew Nystrom",
+        "Chiyuan Zhang",
+        "Douglas Eck",
+        "Chris Callison-Burch",
+        "Nicholas Carlini"
+      ],
+      "raw_text": "Deduplicating training data makes language models better Katherine Lee Daphne Ippolito Andrew Nystrom Chiyuan Zhang Douglas Eck Chris Callison-Burch Nicholas Carlini Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (ACL) the 60th Annual Meeting of the Association for Computational Linguistics (ACL) 2022"
+    },
+    {
+      "index": 29,
+      "title": "Assessing data quality through inverse utilization of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ruihang Li",
+        "Yixuan Wei",
+        "Miaosen Zhang",
+        "Nenghai Yu",
+        "Han Hu",
+        "Houwen Peng",
+        "Scalingfilter"
+      ],
+      "raw_text": "Assessing data quality through inverse utilization of scaling laws Ruihang Li Yixuan Wei Miaosen Zhang Nenghai Yu Han Hu Houwen Peng Scalingfilter Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP) the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP) Association for Computational Linguistics 2024"
+    },
+    {
+      "index": 30,
+      "title": "Decoupled weight decay regularization",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Ilya Loshchilov",
+        "Frank Hutter"
+      ],
+      "raw_text": "Decoupled weight decay regularization Ilya Loshchilov Frank Hutter 2019"
+    },
+    {
+      "index": 31,
+      "title": "Data contamination: From memorization to exploitation",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Inbal Magar",
+        "Roy Schwartz"
+      ],
+      "raw_text": "Data contamination: From memorization to exploitation Inbal Magar Roy Schwartz arXiv:2203.08242 2022 arXiv preprint"
+    },
+    {
+      "index": 32,
+      "title": "Learning with noisy labels",
+      "doi": "",
+      "year": "2013",
+      "authors": [
+        "Nagarajan Natarajan",
+        "Pradeep K Inderjit S Dhillon",
+        "Ambuj Ravikumar",
+        "Tewari"
+      ],
+      "raw_text": "Learning with noisy labels Nagarajan Natarajan Pradeep K Inderjit S Dhillon Ambuj Ravikumar Tewari Advances in neural information processing systems 26 2013"
+    },
+    {
+      "index": 33,
+      "title": "Refinedweb: A large-scale clean web corpus for pretraining large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Guilherme Penedo",
+        "Quentin Malartic",
+        "Daniel Hesslow",
+        "Ebtesam Almazrouei",
+        "Alizé Cappelli",
+        "Allal Ling",
+        "Louis Hamel",
+        "Brando Pannier"
+      ],
+      "raw_text": "Guilherme Penedo Quentin Malartic Daniel Hesslow Ebtesam Almazrouei Alizé Cappelli Allal Ling Louis Hamel Brando Pannier Timothée Lacroix Hady Elsahar Chen Nikhil Goyal arXiv:2306.01116 Refinedweb: A large-scale clean web corpus for pretraining large language models 2023 arXiv preprint"
+    },
+    {
+      "index": 34,
+      "title": "Data quality: A survey of data quality dimensions",
+      "doi": "",
+      "year": "2012",
+      "authors": [
+        "Fatimah Sidi",
+        "Payam Hassany",
+        "Shariat Panahy",
+        "Lilly Suriani Affendey",
+        "Marzanah A Jabar",
+        "Hamidah Ibrahim",
+        "Aida Mustapha"
+      ],
+      "raw_text": "Data quality: A survey of data quality dimensions Fatimah Sidi Payam Hassany Shariat Panahy Lilly Suriani Affendey Marzanah A Jabar Hamidah Ibrahim Aida Mustapha 2012 International Conference on Information Retrieval & Knowledge Management IEEE 2012"
+    },
+    {
+      "index": 35,
+      "title": "Dolma: an open corpus of three trillion tokens for language model pretraining research",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Luca Soldaini",
+        "Kyle Lo",
+        "Yi Luan",
+        "Eric Wallace",
+        "Michihiro Yasunaga",
+        "Jungo Kasai",
+        "Drahomira Herrmannova",
+        "Jesse Dodge"
+      ],
+      "raw_text": "Luca Soldaini Kyle Lo Yi Luan Eric Wallace Michihiro Yasunaga Jungo Kasai Drahomira Herrmannova Jesse Dodge David Wadden Quentin Lhoest arXiv:2402.00159 Dolma: an open corpus of three trillion tokens for language model pretraining research 2024 arXiv preprint"
+    },
+    {
+      "index": 36,
+      "title": "Beyond neural scaling laws: beating power law scaling via data pruning",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Ben Sorscher",
+        "Robert Geirhos",
+        "Shashank Shekhar",
+        "Surya Ganguli",
+        "Ari Morcos"
+      ],
+      "raw_text": "Beyond neural scaling laws: beating power law scaling via data pruning Ben Sorscher Robert Geirhos Shashank Shekhar Surya Ganguli Ari Morcos Advances in Neural Information Processing Systems 35 2022"
+    },
+    {
+      "index": 37,
+      "title": "Scaling laws with vocabulary: Larger models deserve larger vocabularies",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Chaofan Tao",
+        "Qian Liu",
+        "Longxu Dou",
+        "Niklas Muennighoff",
+        "Zhongwei Wan",
+        "Ping Luo",
+        "Min Lin",
+        "Ngai Wong"
+      ],
+      "raw_text": "Scaling laws with vocabulary: Larger models deserve larger vocabularies Chaofan Tao Qian Liu Longxu Dou Niklas Muennighoff Zhongwei Wan Ping Luo Min Lin Ngai Wong Advances in Neural Information Processing Systems 37 2024"
+    },
+    {
+      "index": 38,
+      "title": "The information bottleneck method",
+      "doi": "",
+      "year": "1999",
+      "authors": [
+        "Naftali Tishby",
+        "Fernando C Pereira",
+        "William Bialek"
+      ],
+      "raw_text": "The information bottleneck method Naftali Tishby Fernando C Pereira William Bialek Proceedings of the 37th Annual Allerton Conference on Communication, Control, and Computing the 37th Annual Allerton Conference on Communication, Control, and Computing 1999"
+    },
+    {
+      "index": 39,
+      "title": "Introduction to Nonparametric Estimation",
+      "doi": "10.1007/978-0-387-79051-5",
+      "year": "2009",
+      "authors": [
+        "B Alexandre",
+        "Tsybakov"
+      ],
+      "raw_text": "Introduction to Nonparametric Estimation B Alexandre Tsybakov 10.1007/978-0-387-79051-5 Springer Series in Statistics Springer 2009"
+    },
+    {
+      "index": 40,
+      "title": "Beyond accuracy: What data quality means to data consumers",
+      "doi": "",
+      "year": "1996",
+      "authors": [
+        "Y Richard",
+        "Diane M Wang",
+        "Strong"
+      ],
+      "raw_text": "Beyond accuracy: What data quality means to data consumers Y Richard Diane M Wang Strong Journal of management information systems 12 4 1996"
+    },
+    {
+      "index": 41,
+      "title": "Huggingface's transformers: State-of-the-art natural language processing",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Thomas Wolf",
+        "Lysandre Debut",
+        "Victor Sanh",
+        "Julien Chaumond",
+        "Clement Delangue",
+        "Anthony Moi",
+        "Pierric Cistac",
+        "Tim Rault"
+      ],
+      "raw_text": "Huggingface's transformers: State-of-the-art natural language processing Thomas Wolf Lysandre Debut Victor Sanh Julien Chaumond Clement Delangue Anthony Moi Pierric Cistac Tim Rault Rémi Louf Morgan Funtowicz 2020"
+    },
+    {
+      "index": 42,
+      "title": "Inference scaling laws: An empirical analysis of compute-optimal inference for llm problem-solving",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yangzhen Wu",
+        "Zhiqing Sun",
+        "Shanda Li",
+        "Sean Welleck",
+        "Yiming Yang"
+      ],
+      "raw_text": "Inference scaling laws: An empirical analysis of compute-optimal inference for llm problem-solving Yangzhen Wu Zhiqing Sun Shanda Li Sean Welleck Yiming Yang The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 43,
+      "title": "Information-theoretic analysis of generalization capability of learning algorithms",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Aolin Xu",
+        "Maxim Raginsky"
+      ],
+      "raw_text": "Information-theoretic analysis of generalization capability of learning algorithms Aolin Xu Maxim Raginsky Advances in neural information processing systems 2017 30"
+    }
+  ],
+  "section_count": 31,
+  "reference_count": 43,
+  "error": "",
+  "updated_at": "2026-04-12T03:14:01.660969+00:00"
+}

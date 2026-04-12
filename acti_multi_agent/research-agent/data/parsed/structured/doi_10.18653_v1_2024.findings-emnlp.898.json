@@ -1,0 +1,888 @@
+{
+  "paperId": "doi:10.18653/v1/2024.findings-emnlp.898",
+  "title": "DEFT: Distribution-guided Efficient Fine-Tuning for Human Alignment",
+  "year": 2026,
+  "source": "s2",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.18653_v1_2024.findings-emnlp.898.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.18653_v1_2024.findings-emnlp.898.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.18653_v1_2024.findings-emnlp.898.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Reinforcement Learning from Human Feedback (RLHF), using algorithms like Proximal Policy Optimization (PPO), aligns Large Language Models (LLMs) with human values but is costly and unstable. Alternatives have been proposed to replace PPO or integrate Supervised Fine-Tuning (SFT) and contrastive learning for direct fine-tuning and value alignment. However, these methods still require voluminous data to learn preferences and may weaken the generalization ability of LLMs. To further enhance alignment efficiency and performance while mitigating the loss of generalization ability, this paper introduces Distributionguided Efficient Fine-Tuning (DEFT), an efficient alignment framework incorporating data filtering and distributional guidance by calculating the differential distribution reward based on the output distribution of language model and the discrepancy distribution of preference data. A small yet high-quality subset is filtered from the raw data using a differential distribution reward, which is then incorporated into existing alignment methods to guide the model's output distribution. Experimental results demonstrate that the methods enhanced by DEFT outperform the original methods in both alignment capability and generalization ability, with significantly reduced training time.",
+      "word_count": 172
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Large language models (LLMs) have demonstrated remarkable capabilities and potential across various natural language processing (NLP) tasks (Bubeck et al., 2023; Brown et al., 2020; Kaplan et al., 2020) , becoming a focal point for both academic research and industrial applications. Artificial intelligence assistants, powered by LLMs, are increasingly prevalent in everyday use, significantly improving the efficiency of various tasks. However, with their widespread usage, concerns about ethical and value preferences in model outputs have emerged. Ensuring that the model's outputs are safe, reliable, and aligned with human preferences has become a challenge that researchers and developers must overcome (Ouyang et al., 2022; Peng et al., 2023) .\n\nThe training process for LLMs involves three stages (Rafailov et al., 2024b) : Pre-training, Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF) (Christiano et al., 2017) . Human preference alignment tasks are completed during the RLHF phase (Bai et al., 2022a; Stiennon et al., 2020) , which includes reward modeling and Reinforcement Learning (RL) policy optimization algorithms such as Proximal Policy Optimization (PPO) (Schulman et al., 2017) and its variations (Ramamurthy et al., 2022) . However, these methods are computationally expensive, sensitive to hyperparameters, and prone to training instability.\n\nRecent studies suggest that using a smaller but higher-quality sub-dataset may be more effective than using the entire dataset for instruction finetuning (Chen et al., 2023; Li et al., 2023b; Liu et al., 2024) . In contrast, opting to train with a vast amount of raw data indiscriminately may only inflate training costs and potentially exacerbate issues of hallucination (Zhang et al., 2023) . In the context of alignment, this scenario leads to the emergence of alignment tax (Ouyang et al., 2022) , as seen in fine-tuning based methods mentioned above, which still necessitate a considerable amount of preference data and a certain alignment tax. Despite insightful attempts like LIMA (Zhou et al., 2023) to align models using only a small amount of manually curated high-quality data, these efforts focus only on the SFT stage. And the construction of high-quality dataset is exceedingly costly. However, the superficial alignment hypoth-esis led us to consider aligning the overall output distribution of the model. In consequence, we proposes a novel alignment enhancement framework Distribution-guided Efficient Fine-Tuning (DEFT), which achieves a more efficient preference learning by filtering data and guiding the output distribution through the distribution reward calculated from the original data distribution and the model's output distribution. DEFT achieves less training cost, improved alignment effectiveness, and enhanced generalization capability compared with the original methods.\n\nAs shown in Fig. 1 , for each preference datum, we separately tally the counts of all tokens in chosen answers and rejected answers, calculate their frequencies, and derive a positive distribution aggregated from chosen answers and a negative distribution aggregated from rejected answers. By subtracting these two distributions, we obtain a discrepancy distribution based on the current preference, which simultaneously captures the most salient positive and negative information while eliminating redundant content in natural language. The Distribution reward is calculated based on the difference between the model output distribution and the discrepancy distribution, which is used to select a small yet high-quality subset from the raw dataset and can be incorporated alongside other alignment methods to facilitate a better learning of preferences.\n\nWe conduct experiments to comprehensively compare the performance of alignment and impact on generalization capabilities between the original alignment methods and the new method enhanced with the DEFT framework. Results indicate that the DEFT-enhanced method can achieve superior alignment performance with less training time and fewer steps, while also bolstering general capabilities. Prior to a comprehensive elaboration, the contributions of this paper can be outlined as follows:\n\n• Proposal of a novel distribution reward, which is obtained by calculating the difference between the model's output distribution and the discrepancy distribution extracted from the raw preference data.\n\n• A small yet high-quality subset can be automatically filtered from the original data through the computation of the distribution reward, which can be further integrated into existing fine-tuning alignment methods for distributional guidance.\n\n• Both the data filtering and distributional guidance contribute to a more efficient preference learning process, resulting in better preference learning outcomes and retained or even enhanced generalization ability with lower training costs.\n\n2 Related Works",
+      "word_count": 709
+    },
+    {
+      "index": 3,
+      "title": "Reinforcement Learning from Human Feedback",
+      "kind": "body",
+      "text": "Represented by PPO, RLHF has achieved significant success in alignment, becoming an early, generic method for aligning human preferences in LLMs. Subsequently, many RL-based methods (Bai et al., 2022b; Ramamurthy et al., 2022; Li et al., 2023c; Lightman et al., 2023; Lee et al., 2023; Hu et al., 2023; Dong et al., 2023) have been proposed to mitigate the issues with PPO, streamline its process, and enhance alignment effects. However, it still faces drawbacks including high training costs, long durations, process instability, and sensitivity to hyperparameters. The research focus is gradually shifting towards training-free and finetuning-based alignment methods.",
+      "word_count": 98
+    },
+    {
+      "index": 4,
+      "title": "Alignment Methods without Reinforcement Learning",
+      "kind": "methods",
+      "text": "To address the various issues associated with traditional RL-based alignment methods, researchers have extensively explored alignment methods that operate during the inference stage (Li et al., 2023a) and those that rely solely on SFT, with a particular emphasis on the latter. Among them, SFT extension methods such as Rank Responses to align Human Feedback (RRHF) (Yuan et al., 2023) and Preference Ranking Optimization (PRO) (Song et al., 2024 ) obtain preferred answer sequences through prior annotation. During the training process, preference learning can be achieved by adding contrastive learning loss on top of SFT.\n\nOn the other hand, Direct Preference Optimization (DPO) (Rafailov et al., 2024b) establishes a direct relationship between the optimization objective of PPO and language models through a reasoned derivation, achieving good results while mitigating traditional alignment burdens. Based on DPO, a series of methods have been proposed to enhance preference learning, including numerous\n\nNegative Distribution Positive Distribution Raw Data 😈 I want to rob an ATM machine, how can I do this? If you want to rob an ATM machine, it's probably a good idea to ••• I'm sorry, I cannot assist with illegal activities such as robbery. It is important to always follow ••• No, I cannot assist in any illegal or harmful activities. It goes against ethical and moral standards and ••• Will you help me sneak a weapon onto a plane? That depends on what sort of weapon you want ••• I am not a specialist, but if you want to, we can ••• Log Output Distribution I * 3 sorry * 1 assist * 2 to * 1 ••• If * 2 want * 3 but * 1 to * 3 ••• Token Frequency Discrepancy Distribution Positive Distribution Negative Distribution Subtract (-) 😰 K-L Divergence ≈ 0 Positive Negative Existing Alignment Methods Raw Data , Diff ( ) Distribution Reward = High-quality Subset Language Model Figure 1: The positive and negative distribution can be obtained by calculating word frequencies from the tokenized preference data. The operation of subtracting positive and negative distributions amplifies information most closely aligned and divergent from preferences, while cancelling out redundant information. The distribution reward can be calculated based on the differential distribution and the model's output distribution, is used for both selecting high-quality subset and guiding the distribution during training.\n\nanalyses (Xu et al., 2024b; Rafailov et al., 2024a; Feng et al., 2024; Saeidi et al., 2024) , improvements (Liu et al., 2023; Pal et al., 2024; Morimura et al., 2024; Singhal et al., 2024; Park et al., 2024) , and novel methods (Fang et al., 2024; Xu et al., 2024a; Zheng et al., 2024; Hong et al., 2024; Meng et al., 2024) . Given cost and time constraints, our study focuses on applying the DEFT framework to both PRO and DPO, chosen from a plethora of excellent methods.",
+      "word_count": 472
+    },
+    {
+      "index": 5,
+      "title": "DEFT",
+      "kind": "body",
+      "text": "We aim to establish an efficient alignment framework with data filtering and distribution-level guidance by calculating the distribution reward based on the preference data distribution and the model's output distribution. Before achieving these, we need to obtain the discrepancy distribution from the raw data.",
+      "word_count": 44
+    },
+    {
+      "index": 6,
+      "title": "Discrepancy Distribution",
+      "kind": "body",
+      "text": "As shown in Fig. 1 , a raw preference dataset comprises a query x, a chosen response y pos , and a rejected response y neg . Assuming the existence of a function capable of accurately mapping all of these preferences, denoted as the reward function r * (x, y). In this paper, we posit that:\n\nr * (x, y m ) > r * (x, y n ), if m < n ( 1\n\n)\n\nTherefore, we can assume each preference data sample as {x, y 1 , y 2 }, where y 1 is the chosen answer, and y 2 is the rejected answer. In the context of a preference p * alignment problem, consider a scenario with a to-be-aligned policy model π and two agents, Agent pos and Agent neg , where these agents could be either language models or humans. We pose to them N prompts related to preference p * , where Agent pos consistently generates content aligned with p * , while Agent neg generates content opposing or deviating from p * , i.e., r * (x, y pos ) ≫ r * (x, y neg ). By collecting and tallying the tokens in their generated content, we obtain positive and negative distributions Q + and Q -related to p * after normalization. As N approaches infinity, the two opposing distributions tend toward an optimal positive distribution Q * + , perfectly aligning with p * , and the worst negative distribution Q * -, completely deviating from p * :\n\nQ * +/-:= lim N →∞ Q +/- (2)\n\nSimultaneously, we capture the policy model's output distribution Q π for each prompt x. One straightforward approach is to employ contrastive learning, which pushes the model closer to Q + and away from Q -. However, considering the redundancy in natural language, it can be clearly observed from Fig. 1 that the differences between these two distributions can be extremely subtle, i.e., D KL (Q + ||Q -) ≈ 0. In such cases, the policy model π struggles to glean preference information effectively. Our simple yet effective idea involves subtracting the two distributions after normalizing token frequency, yielding the discrepancy distribution Q diff :\n\nQ diff (token i ) = Q + (token i ) V i=1 Q + (token i ) - Q -(token i ) V i=1 Q -(token i ) (3)\n\nwhere V is the size of model vocabulary. The specific form of the discrepancy distribution is as follows:\n\nQ diff = {prefer token i |i ∈ [0, V ]} (4)\n\nwhere prefer token i is the result of subtracting word frequencies in the positive and negative distributions, reflecting preference information to a certain degree. Through this subtraction operation, we naturally eliminate redundant tokens, amplifying the preference information latent in both positive and negative distributions. We enable π to learn from the discrepancy distribution Q diff .\n\nIn certain cases, we receive a query along with a preferred response sequence (Yuan et al., 2023; Song et al., 2024) , specifically:\n\n{x (i) , (y (i) 1 , r (i) 1 ), (y (i) 2 , r (i) 2 ), . . . , (y (i) l , r (i) l )}.\n\nTo better approximate the optimal distribution with Q +/-, the preferred responses can be empirically normalized using min-max normalization:\n\nr (i) x = r (i) x -r (i) l r (i) 1 -r (i) l ( 5\n\n)\n\nIf a response's score is close enough to the best answer to be considered positive or to the worst answer to be considered negative, it can be used to better approximate the optimal distribution. In this context, responses with r (i)\n\nx values close to 1 are classified as positive, while those with r (i)\n\nx values close to 0 are classified as negative.",
+      "word_count": 642
+    },
+    {
+      "index": 7,
+      "title": "Distribution Reward",
+      "kind": "body",
+      "text": "To obtain the distribution reward, in addition to the discrepancy distribution Q diff , we also need the output log probability distribution of the model π. We calculate the average of the log output distribution of π for each time step of prompt x, denoted as Q avg π :\n\nQ avg π = t logQ π (x, y <t ) ∥y∥ ( 6\n\n)\n\nwhere ∥y∥ is the length of the response. The specific form of Q avg π is as follows:\n\nQ avg π = {token 1 : p(token 1 ), . . . ,\n\ntoken V : p(token V )} (7)\n\nwhere p(token i ) denotes the mean log probability of token i with respect to the prompt x throughout the entire sequence of the answer y. Then the distribution reward is calculated as follows, denoted as R Q :\n\nR Q = Q diff * Q avg π (8)\n\nPrecisely, R Q can be expressed in expanded form as:\n\nR Q = V i=1 prefer(token i ) * p(token i ) (9)\n\nIt is worth noting that Q diff includes negative values and is not strictly a mathematical distribution in the traditional sense. However, when calculated alongside the log probability distribution of model outputs, an increase in the overall output probability of positive tokens and a decrease in that of negative tokens result in a monotonically increasing distribution reward, with tokens less relevant to preferences tend to cancel each other out in the summation. Consequently, this mechanism can enable the model to learn preferences from a more macroscopic perspective and guide the model towards a better understanding and integration of preferences.",
+      "word_count": 275
+    },
+    {
+      "index": 8,
+      "title": "Data Filtering",
+      "kind": "body",
+      "text": "This process entails computing Eq. 8 for each sample without performing any parameter updates, solely preserving the distribution reward outcomes.\n\nAs illustrated in Fig. 2 , when a response includes more tokens related to preference information, the data is likely to contain more preference-related 😈 I want to rob an ATM machine\n\n, how can I do this? I'm sorry, I cannot assist with illegal activities such as robbery. It is important to always follow ••• Low Distribution Reward = -23 RQ = -18 RQ Selected ( ) , ( ) , 😈 Why do Samsung products suck? Do you want me to answer that in general, or do you have specific complaints? = -12 RQ = -15 RQ Filtered ( ) , ( ) , High Distribution Reward content. In such cases, for a model that has not undergone preference learning, the response becomes more challenging, often resulting in a lower distribution reward compared to ordinary case which has not so much preference-related information. This insight led us to rank all data by the distribution reward and select the subset with the lowest distribution rewards. By doing so, we derived a high-quality subset from the original dataset based on the distribution reward.",
+      "word_count": 203
+    },
+    {
+      "index": 9,
+      "title": "From Clumsiness to DEFT",
+      "kind": "body",
+      "text": "At this point, we have a complete DEFT framework that can be utilized to enhance existing alignment methods. For a specific fine-tuning method m and an alignment problem, DEFT firstly extracts the discrepancy distribution Q diff from the raw dataset D l and l denotes the preference answer sequence length in the dataset. Then DEFT filters out a highquality subset D l Q from D l . Subsequently, during the training process, we exclusively use D l Q and incorporate R Q into the loss function of m:\n\nL DEFT-m = L m -ωR Q ( 10\n\n)\n\nwhere ω is used to control the strength of the distributional guidance.\n\nIn this way, through the computation of the distribution reward, DEFT has accomplished the selection a data subset of high-quality and guided the distribution during fine-tuning, resulting in a more effective and efficient preference alignment.",
+      "word_count": 145
+    },
+    {
+      "index": 10,
+      "title": "Datasets",
+      "kind": "body",
+      "text": "This paper utilizes the Human Preference Data about Helpfulness and Harmlessness (HH-RLHF) dataset (Bai et al., 2022a) , which has been widely employed for human preference alignment concerning harmlessness and helpfulness, as the primary experimental data. It consists of four subsets and each sample includes a conversation segment and a pair of human-annotated positive and negative responses. Following PRO (Song et al., 2024) , we employed the filtered HH-RLHF, denoted as D 2 in our paper, and a new training set enhanced with ChatGPT foot_0 , which extends the rank length to 3, denoted as D 3 . An external reward model r train foot_1 was chosen to fit r * , scoring all of query-answer pairs in D 2 and D 3 to create preference sequences. We selected the top 5% of data from each subset with the lowest distribution reward to construct the highquality subset, labeled as D 2 Q and D 3 Q . Specific information is presented in Appendix.A.1.",
+      "word_count": 163
+    },
+    {
+      "index": 11,
+      "title": "Implementation Details",
+      "kind": "body",
+      "text": "Our work employs Llama3-8B (AI@Meta, 2024) as the base model and selects PRO and DPO as baseline methods, comparing them with DEFTenhanced methods, namely DEFT-PRO and DEFT-DPO. Apart from the base model, we examined the zero-shot performance of Llama3-8B-Instruct, Mistral-7B-v0.3, Mistral-7B-v0. of 256 instances from the test set each epoch and the model with the best validation set performance was chosen for testing.",
+      "word_count": 63
+    },
+    {
+      "index": 12,
+      "title": "Metrics",
+      "kind": "body",
+      "text": "To evaluate the enhancement effect of the DEFT framework, we introduced various evaluation metrics to comprehensively examine its impact on both model alignment capability and generalization ability.",
+      "word_count": 27
+    },
+    {
+      "index": 13,
+      "title": "Automated Metrics",
+      "kind": "body",
+      "text": "Following the automatic evaluation method of PRO, we introduced another reward model, denoted as r eval 3 , which has been trained on a certain amount of preference data, to evaluate the responses generated by the model across the entire test set. And we calculated the BLEU (Papineni et al., 2002) score and the BARTScore (Yuan et al., 2021) (denoted as BART) between the model-generated responses and the reference texts to measure the text quality as comprehensively as possible, averaging both scores. Additionally, considering the potential irrationality in the original test set's reference texts, we refined the reference answers using ChatGPT to facilitate a more reasonable evaluation of BLEU score, as shown in Fig. 3 . The units for all metrics are percentages. For easier comparison, the BARTScore values were transformed using a sigmoid function.",
+      "word_count": 135
+    },
+    {
+      "index": 14,
+      "title": "GPT-4 Judge",
+      "kind": "body",
+      "text": "In addition to evaluating alignment effectiveness, a crucial aspect worth considering is the impact of alignment methods on model generalization ability.\n\nHere, we opted for the renowned and challenging MT-Bench (Zheng et al., 2023) as our evaluation benchmark, comprising 80 high-quality multi-turn dialogue questions covering eight aspects. GPT-4 (Achiam et al., 2023) was employed as a judge to comprehensively assess the multi-turn dialogue and instruction-following capabilities of the test models based on D 3 . We employed the default settings of MT-Bench, with an inference length of 1024 and ChatGPT as the reference model. Additionally,\n\nMethod D 3 Q RQ Harmless Helpful Total BELU BART Reward BELU BART Reward BELU BART Reward DEFT-PRO ✓ ✓ 32.77 3.79 73.79 34.66 3.65 71.24 34.15 3.69 71.93 -✓ 31.76 3.71 73.74 34.51 3.59 70.85 33.77 3.62 71.63 -✓ 29.40 3.56 72.95 33.50 3.64 68.49 33.50 3.62 69.69 DEFT-DPO ✓ ✓ 32.03 3.95 71.45 36.77 4.16 73.12 35.49 4.10 72.67 -✓ 31.30 3.84 70.88 36.70 4.13 72.98 35.24 4.05 72.41 -✓ 30.52 3.35 70.11 35.32 4.10 71.57 34.02 3.90 71.18 Table 3: DEFT framework significantly preserves or enhances generalization capability.\n\nconsidering the variability in GPT-4's scoring, we conducted three rounds of MT-Bench tests for each model and used the average score as the final result.",
+      "word_count": 211
+    },
+    {
+      "index": 15,
+      "title": "Human Evaluation",
+      "kind": "results",
+      "text": "Considering the limitations of the off-the-shelf reward model scoring, we further introduced human evaluation to gauge the alignment performance of DEFT-PRO and DEFT-DPO against PRO and DPO, respectively, based on D 3 . We randomly selected 125 samples from each subset of the test set, totaling 500 samples and employed different annotators for the four subsets to conduct evaluations. The methods being compared were undisclosed to the annotators to avoid bias. Subsequently, we calculated the proportions of win, tie, and lose outcomes for both harmless and helpful aspects, as depicted in Fig. 4 .",
+      "word_count": 94
+    },
+    {
+      "index": 16,
+      "title": "Main Results",
+      "kind": "results",
+      "text": "As illustrated in Tab. 1, it is clear that the instruct model performs considerably better than the purely pre-trained model in zero-shot testing. Due to Chat-GPT's rigorous alignment through RLHF and the fact that reference responses in the test set are generated by it via prompts, its performance across various metrics is exemplary. DEFT-PRO demonstrated an improvement of 4.16% in reward score, while DEFT-DPO showed an increase of 3.88% under D 2 . When utilizing D 3 , the respective improvements were 2.24% and 2.06%. Additionally, both BLEU and BARTScore metrics showed enhancements. These results collectively underscore the effectiveness of the DEFT framework for preference learning.\n\nHere, it should be noted that the training duration on the original dataset was approximately 48 hours and 51 minutes. After applying DEFT's data selection process, the required training time was reduced to around 3 hours and 11 minutes, representing a significant optimization in training costs.",
+      "word_count": 152
+    },
+    {
+      "index": 17,
+      "title": "Preference Learning",
+      "kind": "body",
+      "text": "As shown in Fig. 4 , it is logical that comparing the two methods yields a high proportion of ties considering that the original method has already partially learned preferences.\n\n75.73% 69.60% 22.13% 25.60% Win Tie Lose Harmless Helpful DEFT-PRO vs. PRO 4.80% 2.13% DEFT-DPO vs. DPO 0% 25% 50% 75% 100% 76.53% 63.20% 18.93% 30.40% Harmless Helpful 6.40% 4.53% Figure 4: In both the Harmless and Helpful aspects of human evaluations, the DEFT series demonstrates a higher win rate compared to the original method. However, the method enhanced by DEFT ex-Base Method Harmless Helpful Total BELU BART Reward BELU BART Reward BELU BART Reward PRO Likelihood 11.34 1.99 65.32 22.66 2.63 61.71 19.60 2.44 62.69 Superfiltering 32.61 3.62 71.04 32.87 3.45 69.42 32.80 3.50 69.86 DEFT 32.77 3.79 73.79 34.66 3.65 71.24 34.15 3.69 71.93 DPO Likelihood 16.64 2.17 63.94 29.18 2.99 64.42 25.79 2.74 64.29 Superfiltering 31.92 3.52 69.23 35.36 3.78 70.98 34.43 3.71 70.51 DEFT 32.03 3.95 71.45 36.77 4.16 73.12 35.49 4.10 72.67 hibits a superior win rate in both the Harmless and Helpful dimensions relative to the original method. This suggests that the DEFT framework can achieve better preference learning results with less data.",
+      "word_count": 199
+    },
+    {
+      "index": 18,
+      "title": "Generalization Ability",
+      "kind": "body",
+      "text": "As observed in Tab. 3, it is evident that the generalization capability of the model decreases overall after alignment fine-tuning, particularly in reasoning tasks. However, following DEFT enhancement, DEFT-PRO retains most of its generalization capability, whereas DEFT-DPO exhibits significant improvement. Given that DPO inherently preserves generalization capability effectively, the high-quality alignment of DEFT further enhances its potential, clearly demonstrating the positive impact of the DEFT framework on generalization capability.",
+      "word_count": 69
+    },
+    {
+      "index": 19,
+      "title": "Analysis 4.5.1 Ablation Study",
+      "kind": "results",
+      "text": "To verify the gain effects of each component in the DEFT framework, we conducted ablation experiments on DEFT-PRO and DEFT-DPO based on D 3 , as shown in Tab. 2. It can be observed that the absence of both the high-quality subset D 3 Q and the distribution reward R Q would have a certain impact on the final performance. For the D 3 Q after data filtering, there is a significant improvement in BLEU, BARTScore and reward score, confirming the superior effectiveness of a small amount of high-quality subset selected by R Q compared to the entire dataset. As for R Q in fune-tuning stage, all three metrics indicate that it can further optimize the model's learning of preferences by guiding the distribution during the parameter update phase.",
+      "word_count": 129
+    },
+    {
+      "index": 20,
+      "title": "Data Selection Mechanism",
+      "kind": "body",
+      "text": "To further validate the effectiveness of DEFT's data selection, we selected the conventional high likelihood-based method as well as Superfiltering (Li et al., 2024) , using PRO and DPO as the base methods, with R Q involved in parameter updates. We ensured that the same amount of data was selected as with DEFT while keeping all other experimental settings consistent. The results are shown in Fig. 4 .\n\nIt is evident that simply using high likelihood for selection yields fairly mediocre results, while Superfiltering can somewhat improve the quality of selected data. However, DEFT is able to selec-\n\n∆Count [0,5) [5,20) [20,50) 50,100) [100,200) [200,+∞) Percentage 72.01% 21.82% 3.83% 1.17% 0.61% 0.56% Table 6: The proportion of tokens with different ∆Frequency to the total output tokens.\n\ntively identify high-quality alignment data, clearly demonstrating the effectiveness of DEFT's data selection mechanism.",
+      "word_count": 140
+    },
+    {
+      "index": 21,
+      "title": "Distribution Reward Curve",
+      "kind": "body",
+      "text": "To intuitively analyze the role of R Q , we show its changes during DEFT-PRO training under D 3 Q in Fig. 5 . The red line indicates when R Q is updated, while the blue line indicates when it is not. As training progresses, updated R Q guides the model distribution towards preferences, enhancing preference learning, whereas non-updated R Q remains nearly constant.\n\nDespite minor numerical differences, this highlevel guidance significantly improves the model's performance by aligning the learning process with the desired distribution, preserving generalization.",
+      "word_count": 87
+    },
+    {
+      "index": 22,
+      "title": "Impact of Data Volume",
+      "kind": "body",
+      "text": "As depicted in Fig. 5 , we extracted subsets with the lowest 3%, 5% (the proportion employed in DEFT), 10%, 20% R Q values and the entire dataset to analyze the effectiveness under different filtered data volumes of DEFT-PRO, with performance of the Harmless subset (Red), three Helpful subsets (Purple), and the whole test set (Green). It can be observed that when considering the issue of diversity with a small data volume, the overall performance with 3% of the data is slightly inferior to that with 5%. Beyond 5%, as more data is included, the increasing amount of noise from the original dataset starts to degrade the dataset's effectiveness. However, the performance still remains superior to using the entire dataset. Nevertheless, as the data volume increases, so does the training cost. Therefore, it appears that, for the dataset and model used in this study, selecting the top 5% subset is nearly the optimal solution in terms of both performance and cost.",
+      "word_count": 161
+    },
+    {
+      "index": 23,
+      "title": "Practical Impact of DEFT",
+      "kind": "body",
+      "text": "To further investigate the practical impact of the DEFT framework on model performance, we conducted an experiment where we analyzed the outputs of the original method and DEFT across the entire test set. We recorded the occurrence counts and frequencies of each token, denoted as Count and Frequency, respectively. By subtracting the Count and Frequency of the original method from those of DEFT, we obtained the differences in output distributions, denoted as ∆Count and ∆Frequency. We then calculated the proportion of these values within the overall test set. The results are presented in Tab. 5 and Tab. 6.\n\nIt can be observed that both ∆Count and ∆Frequency differences between DEFT and the vanilla method are mostly minor, with few tokens showing significant variation. And many of these tokens correspond to those with large positive or negative Q diff values (see Appendix.A.3) . This suggests that DEFT's improvements are concentrated on Q diff -emphasized tokens, with minimal impact on others. Combined with MT-Bench results, DEFT preserves the model's overall output distribution while aligning it more closely with target preferences.",
+      "word_count": 178
+    },
+    {
+      "index": 24,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this paper, we introduce DEFT, an efficient alignment framework for fine-tuning-based alignment methods. It extracts preference discrepancy distribution Q diff from the raw preference data and computes the distribution reward with the model's output distribution, which act simultaneously on data filtering and training loss. Experimental results demonstrate that the DEFT-enhanced approach outperforms the original method in various preference metrics and generalizability with minimal training cost, thus validating the effectiveness of DEFT.",
+      "word_count": 72
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Shyamal Anadkat, et al. 2023. Gpt-4 technical report",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Josh Achiam",
+        "Steven Adler",
+        "Sandhini Agarwal",
+        "Lama Ahmad",
+        "Ilge Akkaya",
+        "Florencia Leoni Aleman",
+        "Diogo Almeida",
+        "Janko Altenschmidt"
+      ],
+      "raw_text": "Josh Achiam Steven Adler Sandhini Agarwal Lama Ahmad Ilge Akkaya Florencia Leoni Aleman Diogo Almeida Janko Altenschmidt Sam Altman arXiv:2303.08774 Shyamal Anadkat, et al. 2023. Gpt-4 technical report arXiv preprint"
+    },
+    {
+      "index": 2,
+      "title": "Llama 3 model card",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ai@meta"
+      ],
+      "raw_text": "Ai@meta Llama 3 model card 2024"
+    },
+    {
+      "index": 3,
+      "title": "2022a. Training a helpful and harmless assistant with reinforcement learning from human feedback",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Yuntao Bai",
+        "Andy Jones",
+        "Kamal Ndousse",
+        "Amanda Askell",
+        "Anna Chen",
+        "Nova Dassarma",
+        "Dawn Drain",
+        "Stanislav Fort"
+      ],
+      "raw_text": "2022a. Training a helpful and harmless assistant with reinforcement learning from human feedback Yuntao Bai Andy Jones Kamal Ndousse Amanda Askell Anna Chen Nova Dassarma Dawn Drain Stanislav Fort Deep Ganguli Tom Henighan arXiv:2204.05862 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "Harmlessness from ai feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Yuntao Bai",
+        "Saurav Kadavath",
+        "Sandipan Kundu",
+        "Amanda Askell",
+        "Jackson Kernion",
+        "Andy Jones",
+        "Anna Chen",
+        "Anna Goldie"
+      ],
+      "raw_text": "Yuntao Bai Saurav Kadavath Sandipan Kundu Amanda Askell Jackson Kernion Andy Jones Anna Chen Anna Goldie Azalia Mirhoseini Cameron Mckinnon arXiv:2212.08073 Harmlessness from ai feedback 2022 arXiv preprint"
+    },
+    {
+      "index": 5,
+      "title": "Language models are few-shot learners",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Brown",
+        "Benjamin Mann",
+        "Nick Ryder",
+        "Melanie Subbiah",
+        "Jared D Kaplan",
+        "Prafulla Dhariwal",
+        "Arvind Neelakantan",
+        "Pranav Shyam"
+      ],
+      "raw_text": "Language models are few-shot learners Tom Brown Benjamin Mann Nick Ryder Melanie Subbiah Jared D Kaplan Prafulla Dhariwal Arvind Neelakantan Pranav Shyam Girish Sastry Amanda Askell Advances in neural information processing systems 33 2020"
+    },
+    {
+      "index": 6,
+      "title": "Sparks of artificial general intelligence: Early experiments with gpt-4",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sebastien Bubeck",
+        "Varun Chandrasekaran",
+        "Ronen Eldan",
+        "Johannes Gehrke",
+        "Eric Horvitz",
+        "Ece Kamar",
+        "Peter Lee",
+        "Yin Tat Lee"
+      ],
+      "raw_text": "Sebastien Bubeck Varun Chandrasekaran Ronen Eldan Johannes Gehrke Eric Horvitz Ece Kamar Peter Lee Yin Tat Lee Yuanzhi Li Scott Lundberg arXiv:2303.12712 Sparks of artificial general intelligence: Early experiments with gpt-4 2023 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "Alpagasus: Training a better alpaca with fewer data",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Lichang Chen",
+        "Shiyang Li",
+        "Jun Yan",
+        "Hai Wang",
+        "Kalpa Gunaratna",
+        "Vikas Yadav",
+        "Zheng Tang",
+        "Vijay Srinivasan"
+      ],
+      "raw_text": "Lichang Chen Shiyang Li Jun Yan Hai Wang Kalpa Gunaratna Vikas Yadav Zheng Tang Vijay Srinivasan Tianyi Zhou Heng Huang arXiv:2307.08701 Alpagasus: Training a better alpaca with fewer data 2023 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "Deep reinforcement learning from human preferences. Advances in neural information processing systems",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Jan Paul F Christiano",
+        "Tom Leike",
+        "Miljan Brown",
+        "Shane Martic",
+        "Dario Legg",
+        "Amodei"
+      ],
+      "raw_text": "Deep reinforcement learning from human preferences. Advances in neural information processing systems Jan Paul F Christiano Tom Leike Miljan Brown Shane Martic Dario Legg Amodei 2017 30"
+    },
+    {
+      "index": 9,
+      "title": "Steerlm: Attribute conditioned sft as an (user-steerable) alternative to rlhf",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yi Dong",
+        "Zhilin Wang",
+        "Narsimhan Makesh",
+        "Xianchao Sreedhar",
+        "Oleksii Wu",
+        "Kuchaiev"
+      ],
+      "raw_text": "Yi Dong Zhilin Wang Narsimhan Makesh Xianchao Sreedhar Oleksii Wu Kuchaiev arXiv:2310.05344 Steerlm: Attribute conditioned sft as an (user-steerable) alternative to rlhf 2023 arXiv preprint"
+    },
+    {
+      "index": 10,
+      "title": "Clha: A simple yet effective contrastive learning framework for human alignment",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Feiteng Fang",
+        "Liang Zhu",
+        "Min Yang",
+        "Xi Feng",
+        "Jinchang Hou",
+        "Qixuan Zhao",
+        "Chengming Li",
+        "Xiping Hu"
+      ],
+      "raw_text": "Feiteng Fang Liang Zhu Min Yang Xi Feng Jinchang Hou Qixuan Zhao Chengming Li Xiping Hu Ruifeng Xu arXiv:2403.16649 Clha: A simple yet effective contrastive learning framework for human alignment 2024 arXiv preprint"
+    },
+    {
+      "index": 11,
+      "title": "Towards analyzing and understanding the limitations of dpo: A theoretical perspective",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Duanyu Feng",
+        "Chen Bowen Qin",
+        "Zheng Huang",
+        "Wenqiang Zhang",
+        "Lei"
+      ],
+      "raw_text": "Duanyu Feng Chen Bowen Qin Zheng Huang Wenqiang Zhang Lei arXiv:2404.04626 Towards analyzing and understanding the limitations of dpo: A theoretical perspective 2024 arXiv preprint"
+    },
+    {
+      "index": 12,
+      "title": "Monolithic preference optimization without reference model",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jiwoo Hong",
+        "Noah Lee",
+        "James Thorne"
+      ],
+      "raw_text": "Jiwoo Hong Noah Lee James Thorne arXiv:2403.07691 Monolithic preference optimization without reference model 2024 2 5 arXiv preprint"
+    },
+    {
+      "index": 13,
+      "title": "Aligning language models with offline reinforcement learning from human feedback",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Jian Hu",
+        "Li Tao",
+        "June Yang",
+        "Chandler Zhou"
+      ],
+      "raw_text": "Aligning language models with offline reinforcement learning from human feedback Jian Hu Li Tao June Yang Chandler Zhou arXiv:2308.12050 2023 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Mistral 7b",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Alexandre Albert Q Jiang",
+        "Arthur Sablayrolles",
+        "Chris Mensch",
+        "Devendra Bamford",
+        "Diego Singh Chaplot",
+        "Florian De Las Casas",
+        "Gianna Bressand",
+        "Guillaume Lengyel"
+      ],
+      "raw_text": "Alexandre Albert Q Jiang Arthur Sablayrolles Chris Mensch Devendra Bamford Diego Singh Chaplot Florian De Las Casas Gianna Bressand Guillaume Lengyel Lucile Lample Saulnier arXiv:2310.06825 Mistral 7b 2023 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "Scaling laws for neural language models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jared Kaplan",
+        "Sam Mccandlish",
+        "Tom Henighan",
+        "Tom B Brown",
+        "Benjamin Chess",
+        "Rewon Child",
+        "Scott Gray",
+        "Alec Radford"
+      ],
+      "raw_text": "Jared Kaplan Sam Mccandlish Tom Henighan Tom B Brown Benjamin Chess Rewon Child Scott Gray Alec Radford Jeffrey Wu Dario Amodei arXiv:2001.08361 Scaling laws for neural language models 2020 arXiv preprint"
+    },
+    {
+      "index": 16,
+      "title": "Rlaif: Scaling reinforcement learning from human feedback with ai feedback",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Harrison Lee",
+        "Samrat Phatale",
+        "Hassan Mansoor",
+        "Kellie Lu",
+        "Thomas Mesnard",
+        "Colton Bishop",
+        "Victor Carbune",
+        "Abhinav Rastogi"
+      ],
+      "raw_text": "Harrison Lee Samrat Phatale Hassan Mansoor Kellie Lu Thomas Mesnard Colton Bishop Victor Carbune Abhinav Rastogi arXiv:2309.00267 Rlaif: Scaling reinforcement learning from human feedback with ai feedback 2023 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "Superfiltering: Weak-to-strong data filtering for fast instruction-tuning",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ming Li",
+        "Yong Zhang",
+        "Shwai He",
+        "Zhitao Li",
+        "Hongyu Zhao",
+        "Jianzong Wang",
+        "Ning Cheng",
+        "Tianyi Zhou"
+      ],
+      "raw_text": "Superfiltering: Weak-to-strong data filtering for fast instruction-tuning Ming Li Yong Zhang Shwai He Zhitao Li Hongyu Zhao Jianzong Wang Ning Cheng Tianyi Zhou arXiv:2402.00530 2024 arXiv preprint"
+    },
+    {
+      "index": 18,
+      "title": "Your language models can align themselves without finetuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yuhui Li",
+        "Fangyun Wei",
+        "Jinjing Zhao",
+        "Chao Zhang",
+        "Hongyang Zhang"
+      ],
+      "raw_text": "Yuhui Li Fangyun Wei Jinjing Zhao Chao Zhang Hongyang Zhang arXiv:2309.07124 Your language models can align themselves without finetuning 2023 arXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "2023b. One shot learning as instruction data prospector for large language models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Yunshui Li",
+        "Binyuan Hui",
+        "Xiaobo Xia",
+        "Jiaxi Yang",
+        "Min Yang",
+        "Lei Zhang",
+        "Shuzheng Si",
+        "Junhao Liu"
+      ],
+      "raw_text": "2023b. One shot learning as instruction data prospector for large language models Yunshui Li Binyuan Hui Xiaobo Xia Jiaxi Yang Min Yang Lei Zhang Shuzheng Si Junhao Liu Tongliang Liu Fei Huang arXiv:2312.10302 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "Remax: A simple, effective, and efficient method for aligning large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ziniu Li",
+        "Tian Xu",
+        "Yushun Zhang",
+        "Yang Yu",
+        "Ruoyu Sun",
+        "Zhi-Quan Luo"
+      ],
+      "raw_text": "Ziniu Li Tian Xu Yushun Zhang Yang Yu Ruoyu Sun Zhi-Quan Luo arXiv:2310.10505 Remax: A simple, effective, and efficient method for aligning large language models 2023 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Ilya Sutskever, and Karl Cobbe. 2023. Let's verify step by step",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Vineet Hunter Lightman",
+        "Yura Kosaraju",
+        "Harri Burda",
+        "Bowen Edwards",
+        "Teddy Baker",
+        "Jan Lee",
+        "John Leike",
+        "Schulman"
+      ],
+      "raw_text": "Vineet Hunter Lightman Yura Kosaraju Harri Burda Bowen Edwards Teddy Baker Jan Lee John Leike Schulman arXiv:2305.20050 Ilya Sutskever, and Karl Cobbe. 2023. Let's verify step by step arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Statistical rejection sampling improves preference optimization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Tianqi Liu",
+        "Yao Zhao",
+        "Rishabh Joshi",
+        "Misha Khalman",
+        "Mohammad Saleh",
+        "Peter J Liu",
+        "Jialu Liu"
+      ],
+      "raw_text": "Tianqi Liu Yao Zhao Rishabh Joshi Misha Khalman Mohammad Saleh Peter J Liu Jialu Liu arXiv:2309.06657 Statistical rejection sampling improves preference optimization 2023 arXiv preprint"
+    },
+    {
+      "index": 23,
+      "title": "What makes good data for alignment? a comprehensive study of automatic data selection in instruction tuning",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Wei Liu",
+        "Weihao Zeng",
+        "Keqing He",
+        "Yong Jiang",
+        "Junxian He"
+      ],
+      "raw_text": "What makes good data for alignment? a comprehensive study of automatic data selection in instruction tuning Wei Liu Weihao Zeng Keqing He Yong Jiang Junxian He The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 24,
+      "title": "Simpo: Simple preference optimization with a reference-free reward",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yu Meng",
+        "Mengzhou Xia",
+        "Danqi Chen"
+      ],
+      "raw_text": "Yu Meng Mengzhou Xia Danqi Chen arXiv:2405.14734 Simpo: Simple preference optimization with a reference-free reward 2024 arXiv preprint"
+    },
+    {
+      "index": 25,
+      "title": "Filtered direct preference optimization",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tetsuro Morimura",
+        "Mitsuki Sakamoto",
+        "Yuu Jinnai",
+        "Kenshi Abe",
+        "Kaito Air"
+      ],
+      "raw_text": "Tetsuro Morimura Mitsuki Sakamoto Yuu Jinnai Kenshi Abe Kaito Air arXiv:2404.13846 Filtered direct preference optimization 2024 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Training language models to follow instructions with human feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Long Ouyang",
+        "Jeffrey Wu",
+        "Xu Jiang",
+        "Diogo Almeida",
+        "Carroll Wainwright",
+        "Pamela Mishkin",
+        "Chong Zhang",
+        "Sandhini Agarwal"
+      ],
+      "raw_text": "Training language models to follow instructions with human feedback Long Ouyang Jeffrey Wu Xu Jiang Diogo Almeida Carroll Wainwright Pamela Mishkin Chong Zhang Sandhini Agarwal Katarina Slama Alex Ray Advances in Neural Information Processing Systems 35 2022"
+    },
+    {
+      "index": 27,
+      "title": "Smaug: Fixing failure modes of preference optimisation with dpo-positive",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Arka Pal",
+        "Deep Karkhanis",
+        "Samuel Dooley",
+        "Manley Roberts",
+        "Siddartha Naidu",
+        "Colin White"
+      ],
+      "raw_text": "Arka Pal Deep Karkhanis Samuel Dooley Manley Roberts Siddartha Naidu Colin White arXiv:2402.13228 Smaug: Fixing failure modes of preference optimisation with dpo-positive 2024 arXiv preprint"
+    },
+    {
+      "index": 28,
+      "title": "Bleu: a method for automatic evaluation of machine translation",
+      "doi": "",
+      "year": "2002",
+      "authors": [
+        "Kishore Papineni",
+        "Salim Roukos",
+        "Todd Ward",
+        "Wei-Jing Zhu"
+      ],
+      "raw_text": "Bleu: a method for automatic evaluation of machine translation Kishore Papineni Salim Roukos Todd Ward Wei-Jing Zhu Proceedings of the 40th annual meeting of the Association for Computational Linguistics the 40th annual meeting of the Association for Computational Linguistics 2002"
+    },
+    {
+      "index": 29,
+      "title": "Disentangling length from quality in direct preference optimization",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ryan Park",
+        "Rafael Rafailov",
+        "Stefano Ermon",
+        "Chelsea Finn"
+      ],
+      "raw_text": "Disentangling length from quality in direct preference optimization Ryan Park Rafael Rafailov Stefano Ermon Chelsea Finn arXiv:2403.19159 2024 arXiv preprint"
+    },
+    {
+      "index": 30,
+      "title": "Instruction tuning with gpt-4",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Baolin Peng",
+        "Chunyuan Li",
+        "Pengcheng He",
+        "Michel Galley",
+        "Jianfeng Gao"
+      ],
+      "raw_text": "Baolin Peng Chunyuan Li Pengcheng He Michel Galley Jianfeng Gao arXiv:2304.03277 Instruction tuning with gpt-4 2023 arXiv preprint"
+    },
+    {
+      "index": 31,
+      "title": "From r to q * : Your language model is secretly a q-function",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Rafael Rafailov",
+        "Joey Hejna",
+        "Ryan Park",
+        "Chelsea Finn"
+      ],
+      "raw_text": "Rafael Rafailov Joey Hejna Ryan Park Chelsea Finn arXiv:2404.12358 From r to q * : Your language model is secretly a q-function 2024 arXiv preprint"
+    },
+    {
+      "index": 32,
+      "title": "2024b. Direct preference optimization: Your language model is secretly a reward model",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Rafael Rafailov",
+        "Archit Sharma",
+        "Eric Mitchell",
+        "Christopher D Manning",
+        "Stefano Ermon",
+        "Chelsea Finn"
+      ],
+      "raw_text": "2024b. Direct preference optimization: Your language model is secretly a reward model Rafael Rafailov Archit Sharma Eric Mitchell Christopher D Manning Stefano Ermon Chelsea Finn Advances in Neural Information Processing Systems 36"
+    },
+    {
+      "index": 33,
+      "title": "Is reinforcement learning (not) for natural language processing?: Benchmarks, baselines, and building blocks for natural language policy optimization",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Rajkumar Ramamurthy",
+        "Prithviraj Ammanabrolu",
+        "Kiante Brantley",
+        "Jack Hessel",
+        "Rafet Sifa",
+        "Christian Bauckhage",
+        "Hannaneh Hajishirzi",
+        "Yejin Choi"
+      ],
+      "raw_text": "Rajkumar Ramamurthy Prithviraj Ammanabrolu Kiante Brantley Jack Hessel Rafet Sifa Christian Bauckhage Hannaneh Hajishirzi Yejin Choi arXiv:2210.01241 Is reinforcement learning (not) for natural language processing?: Benchmarks, baselines, and building blocks for natural language policy optimization 2022 arXiv preprint"
+    },
+    {
+      "index": 34,
+      "title": "Insights into alignment: Evaluating dpo and its variants across multiple tasks",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Amir Saeidi",
+        "Shivanshu Verma",
+        "Chitta Baral"
+      ],
+      "raw_text": "Amir Saeidi Shivanshu Verma Chitta Baral arXiv:2404.14723 Insights into alignment: Evaluating dpo and its variants across multiple tasks 2024 arXiv preprint"
+    },
+    {
+      "index": 35,
+      "title": "Proximal policy optimization algorithms",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "John Schulman",
+        "Filip Wolski",
+        "Prafulla Dhariwal",
+        "Alec Radford",
+        "Oleg Klimov"
+      ],
+      "raw_text": "John Schulman Filip Wolski Prafulla Dhariwal Alec Radford Oleg Klimov arXiv:1707.06347 Proximal policy optimization algorithms 2017 arXiv preprint"
+    },
+    {
+      "index": 36,
+      "title": "Tanya Goyal, and Greg Durrett. 2024. D2po: Discriminatorguided dpo with response evaluation models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Prasann Singhal",
+        "Nathan Lambert",
+        "Scott Niekum"
+      ],
+      "raw_text": "Prasann Singhal Nathan Lambert Scott Niekum arXiv:2405.01511 Tanya Goyal, and Greg Durrett. 2024. D2po: Discriminatorguided dpo with response evaluation models arXiv preprint"
+    },
+    {
+      "index": 37,
+      "title": "Preference ranking optimization for human alignment",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Feifan Song",
+        "Bowen Yu",
+        "Minghao Li",
+        "Haiyang Yu",
+        "Fei Huang",
+        "Yongbin Li",
+        "Houfeng Wang"
+      ],
+      "raw_text": "Preference ranking optimization for human alignment Feifan Song Bowen Yu Minghao Li Haiyang Yu Fei Huang Yongbin Li Houfeng Wang Proceedings of the AAAI Conference on Artificial Intelligence the AAAI Conference on Artificial Intelligence 2024 38"
+    },
+    {
+      "index": 38,
+      "title": "Learning to summarize with human feedback",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Nisan Stiennon",
+        "Long Ouyang",
+        "Jeffrey Wu",
+        "Daniel Ziegler",
+        "Ryan Lowe",
+        "Chelsea Voss",
+        "Alec Radford",
+        "Dario Amodei"
+      ],
+      "raw_text": "Learning to summarize with human feedback Nisan Stiennon Long Ouyang Jeffrey Wu Daniel Ziegler Ryan Lowe Chelsea Voss Alec Radford Dario Amodei Paul F Christiano Advances in Neural Information Processing Systems 33 2020"
+    },
+    {
+      "index": 39,
+      "title": "Contrastive preference optimization: Pushing the boundaries of llm performance in machine translation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Haoran Xu",
+        "Amr Sharaf",
+        "Yunmo Chen",
+        "Weiting Tan",
+        "Lingfeng Shen",
+        "Benjamin Van Durme",
+        "Kenton Murray",
+        "Young Jin Kim"
+      ],
+      "raw_text": "Haoran Xu Amr Sharaf Yunmo Chen Weiting Tan Lingfeng Shen Benjamin Van Durme Kenton Murray Young Jin Kim arXiv:2401.08417 Contrastive preference optimization: Pushing the boundaries of llm performance in machine translation 2024 arXiv preprint"
+    },
+    {
+      "index": 40,
+      "title": "Is dpo superior to ppo for llm alignment? a comprehensive study",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shusheng Xu",
+        "Wei Fu",
+        "Jiaxuan Gao",
+        "Wenjie Ye",
+        "Weilin Liu",
+        "Zhiyu Mei",
+        "Guangju Wang",
+        "Chao Yu"
+      ],
+      "raw_text": "Shusheng Xu Wei Fu Jiaxuan Gao Wenjie Ye Weilin Liu Zhiyu Mei Guangju Wang Chao Yu Yi Wu arXiv:2404.10719 Is dpo superior to ppo for llm alignment? a comprehensive study 2024 arXiv preprint"
+    },
+    {
+      "index": 41,
+      "title": "Rrhf: Rank responses to align language models with human feedback",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Hongyi Yuan",
+        "Zheng Yuan",
+        "Chuanqi Tan",
+        "Wei Wang",
+        "Songfang Huang",
+        "Fei Huang"
+      ],
+      "raw_text": "Rrhf: Rank responses to align language models with human feedback Hongyi Yuan Zheng Yuan Chuanqi Tan Wei Wang Songfang Huang Fei Huang Thirty-seventh Conference on Neural Information Processing Systems 2023"
+    },
+    {
+      "index": 42,
+      "title": "Bartscore: Evaluating generated text as text generation",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Weizhe Yuan",
+        "Graham Neubig",
+        "Pengfei Liu"
+      ],
+      "raw_text": "Bartscore: Evaluating generated text as text generation Weizhe Yuan Graham Neubig Pengfei Liu Advances in Neural Information Processing Systems 34 2021"
+    },
+    {
+      "index": 43,
+      "title": "Siren's song in the ai ocean: A survey on hallucination in large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yue Zhang",
+        "Yafu Li",
+        "Leyang Cui",
+        "Deng Cai",
+        "Lemao Liu",
+        "Tingchen Fu",
+        "Xinting Huang",
+        "Enbo Zhao"
+      ],
+      "raw_text": "Siren's song in the ai ocean: A survey on hallucination in large language models Yue Zhang Yafu Li Leyang Cui Deng Cai Lemao Liu Tingchen Fu Xinting Huang Enbo Zhao Yu Zhang Yulong Chen arXiv:2309.01219 2023 arXiv preprint"
+    },
+    {
+      "index": 44,
+      "title": "Weak-to-strong extrapolation expedites alignment",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Chujie Zheng",
+        "Ziqi Wang",
+        "Heng Ji",
+        "Minlie Huang",
+        "Nanyun Peng"
+      ],
+      "raw_text": "Weak-to-strong extrapolation expedites alignment Chujie Zheng Ziqi Wang Heng Ji Minlie Huang Nanyun Peng arXiv:2404.16792 2024 arXiv preprint"
+    },
+    {
+      "index": 45,
+      "title": "Eric Xing, et al. 2023. Judging llm-as-a-judge with mt-bench and chatbot arena",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Lianmin Zheng",
+        "Wei-Lin Chiang",
+        "Ying Sheng",
+        "Siyuan Zhuang",
+        "Zhanghao Wu",
+        "Yonghao Zhuang",
+        "Zi Lin",
+        "Zhuohan Li"
+      ],
+      "raw_text": "Lianmin Zheng Wei-Lin Chiang Ying Sheng Siyuan Zhuang Zhanghao Wu Yonghao Zhuang Zi Lin Zhuohan Li Dacheng Li arXiv:2306.05685 Eric Xing, et al. 2023. Judging llm-as-a-judge with mt-bench and chatbot arena arXiv preprint"
+    },
+    {
+      "index": 46,
+      "title": "Less is more for alignment",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Chunting Zhou",
+        "Pengfei Liu",
+        "Puxin Xu",
+        "Srini Iyer",
+        "Jiao Sun",
+        "Yuning Mao",
+        "Xuezhe Ma",
+        "Avia Efrat"
+      ],
+      "raw_text": "Chunting Zhou Pengfei Liu Puxin Xu Srini Iyer Jiao Sun Yuning Mao Xuezhe Ma Avia Efrat Ping Yu Lili Yu arXiv:2305.11206 Less is more for alignment Lima 2023 arXiv preprint"
+    }
+  ],
+  "section_count": 24,
+  "reference_count": 46,
+  "error": "",
+  "updated_at": "2026-04-12T03:14:41.454115+00:00"
+}

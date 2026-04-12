@@ -1,0 +1,1587 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Recursive Training Loops in LLMs: How training data properties modulate distribution shift in generated data?</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Grgur</forename><surname>Kovač</surname></persName>
+							<email>grgur.kovac@inria.fr</email>
+							<affiliation key="aff0">
+								<orgName type="department">Flowers TEAM</orgName>
+								<orgName type="institution">INRIA</orgName>
+								<address>
+									<region>FR</region>
+								</address>
+							</affiliation>
+							<affiliation key="aff4">
+								<orgName type="department">equal contribution</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Jérémy</forename><surname>Perez</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Flowers TEAM</orgName>
+								<orgName type="institution">INRIA</orgName>
+								<address>
+									<region>FR</region>
+								</address>
+							</affiliation>
+							<affiliation key="aff4">
+								<orgName type="department">equal contribution</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Rémy</forename><surname>Portelas</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="institution">Ubisoft La Forge</orgName>
+								<address>
+									<region>FR</region>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Peter</forename><forename type="middle">Ford</forename><surname>Dominey</surname></persName>
+							<affiliation key="aff2">
+								<orgName type="institution">INSERM UMR 1093-CAPS</orgName>
+								<address>
+									<region>FR</region>
+								</address>
+							</affiliation>
+							<affiliation key="aff3">
+								<orgName type="department">Institute Marey</orgName>
+								<orgName type="laboratory">Robot Cognition Laboratory</orgName>
+								<address>
+									<country>FR</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Pierre-Yves</forename><surname>Oudeyer</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Flowers TEAM</orgName>
+								<orgName type="institution">INRIA</orgName>
+								<address>
+									<region>FR</region>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Recursive Training Loops in LLMs: How training data properties modulate distribution shift in generated data?</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">3CB75E71804EE3626B6AA779D5116567</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:11+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Large language models (LLMs) are increasingly used in the creation of online content, creating feedback loops as subsequent generations of models will be trained on this synthetic data. Such loops were shown to lead to distribution shifts -models misrepresenting the true underlying distributions of human data (also called model collapse). However, how human data properties affect such shifts remains poorly understood. In this paper, we provide the first empirical examination of the effect of such properties on the outcome of recursive training. We first confirm that using different human datasets leads to distribution shifts of different magnitudes. Through exhaustive manipulation of dataset properties combined with regression analyses, we then identify a set of properties associated with distribution shift magnitudes. Lexical diversity is found to amplify these shifts, while semantic diversity and data quality mitigate them. Furthermore, we find that these influences are highly modular: data scrapped from a given internet domain has little influence on the content generated for another domain. Finally, experiments on political bias reveal that human data properties affect whether the initial bias will be amplified or reduced. Overall, our results portray a novel view, where different parts of internet may undergo different types of distribution shift.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Large Language Models (LLMs) are increasingly contributing to the creation of internet content, being used for journalism <ref type="bibr" target="#b6">(Brigham et al., 2024)</ref>, coding <ref type="bibr" target="#b25">(Jiang et al., 2024)</ref> and generating content on social media <ref type="bibr" target="#b14">(Ferrara et al., 2016)</ref>. The increasing amount of synthetic, LLM-generated data on the internet introduces a precarious feedback loop: LLMs trained on datasets containing synthetic data will themselves generate data that will be used to train future models. <ref type="bibr" target="#b40">Shumailov et al. (2024)</ref> demonstrated that this process, known as recursive training, can have detrimental effects, causing models to progressively lose information about the true underlying distributions they are intended to approximate. This results in a gradual change in generated distributions, often accompanied by a reduction in variance. While this has sometimes been described as model collapse, we refer to this mismatch between the true and the generated distribution as distribution shift, and limit the term collapse to refer to detrimental distribution shifts, such as losses in quality or diversity. Such detrimental effects <ref type="bibr" target="#b19">(Guo et al., 2024)</ref> as well as bias amplification <ref type="bibr">(Wang et al., 2024a)</ref> have been reported in previous work. Their potential societal consequences make it imperative to better understand the dynamics of recursive training.</p><p>Internet data varies along a wide range of properties. For instance, certain domains may be associated with a higher ratio of synthetic-to-human data (e.g. GitHub), others with lower quality data (e.g. Reddit), and some with lower diversity data (e.g. specialized forums). If those properties affects the outcome of recursive fine-tuning, we may expect different types of shifts on different parts of the internet.</p><p>Given the early stage of research in this field, existing studies often ignore this diversity, relying on simplifying assumptions and focusing on abstracted settings. To the best of our knowledge, how different data properties influence distribution shifts remains largely unexplored, aside from studies examining the ratio of human to synthetic data <ref type="bibr" target="#b3">(Bertrand et al., 2023;</ref><ref type="bibr" target="#b4">Bohacek and Farid, 2023;</ref><ref type="bibr" target="#b27">Kazdan et al., 2024;</ref><ref type="bibr">Martínez et al., 2023b;</ref><ref type="bibr">Zhang et al., 2024b)</ref>. Filing this gap is therefore crucial to draw a more nuanced and detailed picture of the consequences of recursive fine-tuning.</p><p>In this paper, we adopt the iterative chain paradigm used in previous studies <ref type="bibr" target="#b40">(Shumailov et al., 2024;</ref><ref type="bibr">Gerstgrasser et al., 2024a)</ref>. Our experimen- tal setup is shown in Figure <ref type="figure" target="#fig_0">1</ref>. The process begins with fine-tuning a base LLM on a selection of human data (e.g. Reddit posts). This model generates data, which are added to the pool of Accumulated data together with newly sampled human data. In each subsequent generation, a new base model is fine-tuned on data sampled from the Accumulated data pool. This model, in turn, generates new data, which are again added to the pool along with fresh human data. This pipeline allows us to study how generated data evolve across successive generations, with a particular focus on the distribution shift from the first to the final generation.</p><p>In our experiments, we study how various properties of human data (e.g. quality, diversity, bias) influence the dynamics of distribution shifts in recursive training chains. We use five datasets spanning three domains <ref type="bibr">(Twitter, Reddit and Wikipedia)</ref>. First, we confirm that the choice of the dataset greatly influences the consequences of iterative fine-tuning (Section 4.2): while some datasets exhibit sharp decreases in diversity and quality, others are more robust to such shifts. Our second set of experiments (Sections 4.3 and 4.4) aims to uncover specifically which properties of training data mitigate or amplify distribution shifts. We run iterative chain experiments on 800 clusters created from four different datasets, and conduct a series of regression analysis mapping various data properties to the degradation in the quality and diversity of generated texts. We find that lexical diversity is associated with greater degradation, while semantic diversity has the opposite effect. Furthermore, we observe that these influences are highly modular, with generated content being mostly influenced by human data properties from the same domain. This suggests that different internet domains might undergo distinct and relatively independent distri-bution shifts regardless of models being trained on a mixture of domains. Finally, our last set of experiments focuses on the evolution of political bias. The results indicate that the type of shift observed (bias reduction, amplification or inversion) depends on the political lean of the the human data. This empirically confirms that properties of human data play an important in shaping the outcome of recursive training.</p><p>The code for reproducing the simulations, analyses and figures is available on our GitHub<ref type="foot" target="#foot_0">foot_0</ref> .</p><p>The main contributions of this work are:</p><p>• We propose and experimentally confirm the hypothesis that different training datasets lead to different distribution shift dynamics, motivating an investigation on the underlying causes.</p><p>• Through an extensive set of experiments (four datasets over three domains), we outline several data properties as influencing distribution shift dynamics.</p><p>• We reveal that these influences are highly modular, with generated content being mostly influenced by human data properties from the same domain.</p><p>• We find that distribution shifts also occur in terms of political lean, and that the type of shift (bias amplification, reduction or inversion) depends on the political lean of the human data.</p><p>2 Related Work</p><p>Recursive fine-tuning and model collapse A rapidly growing body of literature has focused on the consequences of recursively training generative models on synthetic data <ref type="bibr" target="#b38">(Schaeffer et al., 2025)</ref>. The phrase "model collapse", coined in <ref type="bibr" target="#b40">Shumailov et al. (2024)</ref>, refers to the progressive degradation of models induced by this feedback loop. This phenomenon has been studied both theoretically <ref type="bibr">(Dohmatob et al., 2024a,b;</ref><ref type="bibr" target="#b3">Bertrand et al., 2023;</ref><ref type="bibr" target="#b1">Alemohammad et al., 2023)</ref> and empirically, on both generative image models <ref type="bibr">(Martínez et al., 2023b,a;</ref><ref type="bibr" target="#b4">Bohacek and Farid, 2023;</ref><ref type="bibr" target="#b23">Hataya et al., 2022;</ref><ref type="bibr" target="#b1">Alemohammad et al., 2023)</ref> and language models <ref type="bibr">(Zhang et al., 2024b;</ref><ref type="bibr">Guo et al., 2023;</ref><ref type="bibr" target="#b27">Kazdan et al., 2024;</ref><ref type="bibr" target="#b5">Briesch et al., 2023;</ref><ref type="bibr">Gerstgrasser et al., 2024b)</ref>. Theoretical results have provided valuable insights, for instance showing how it is characterized by the disappearance of distribution tails <ref type="bibr">(Dohmatob et al., 2024a,b;</ref><ref type="bibr" target="#b40">Shumailov et al., 2024)</ref>. Empirical studies have allowed to establish several properties of this phenomenon, such as the role of synthetic-to-real-data ratio <ref type="bibr" target="#b5">(Briesch et al., 2023;</ref><ref type="bibr" target="#b23">Hataya et al., 2022)</ref> or strategies for mitigating collapse <ref type="bibr">(Gerstgrasser et al., 2024b;</ref><ref type="bibr" target="#b27">Kazdan et al., 2024;</ref><ref type="bibr">Zhang et al., 2024b)</ref>. Recently, <ref type="bibr">Wang et al. (2024b)</ref> showed that recursive LLM fine-tuning can lead to bias amplification. These works do not systematically evaluate how the properties of the human dataset used in their experiments affect their conclusions. Here, we extend this literature by investigating how those properties impact the outcome of recursive training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Cultural dynamics in artificial agents</head><p>The motivation for this research area stems from the observation that human-made technologies have transitioned from passive mediators of cultural evolution (e.g., the printing press) to active generators of cultural content. This shift has been described as the emergence of machine culture -culture mediated or generated by machines <ref type="bibr">(Brinkmann et al., 2023)</ref>. Understanding the dynamics that shape the evolution of machine-generated content over time is therefore crucial. This has led researchers to study cultural dynamics in populations of reinforcement learning agents <ref type="bibr" target="#b10">(Cook et al., 2024;</ref><ref type="bibr" target="#b39">Schmitt et al., 2018;</ref><ref type="bibr">Team et al., 2021;</ref><ref type="bibr" target="#b37">Prystawski et al., 2023;</ref><ref type="bibr" target="#b32">Nisioti et al., 2022)</ref> and of LLMs <ref type="bibr">(Perez et al., 2024a,b;</ref><ref type="bibr" target="#b33">Nisioti et al., 2024;</ref><ref type="bibr" target="#b43">Vallinder and Hughes, 2024;</ref><ref type="bibr">Burton et al., 2024)</ref>. Our work extends this literature by examining the factors that modulate the evolution of LLM-generated content.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Methods</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">The iterative chain paradigm</head><p>We use the iterative chain paradigm inspired by <ref type="bibr" target="#b40">Shumailov et al. (2024);</ref><ref type="bibr">Gerstgrasser et al. (2024a)</ref>.</p><p>Our experimental design is shown in Figure <ref type="figure" target="#fig_0">1</ref>. First, a base LLM is fine-tuned on 8000 samples from a human dataset (e.g. Wikipedia articles or Reddit posts). This model generates 4000 * r posts, where r is the synthetic-data ratio.</p><p>Those posts are added to the pool of accumulated data together with 4000 * (1 -r) newly sampled human posts. In all subsequent generations, a new base model is fine-tuned on 4000 posts sampled from the accumulated data pool, and 4000 * r posts generated by this model are added to the accumulated data pool together with 4000 * (1 -r) newly sampled human data. In each generation, a new base model is sampled from four possible options: LLaMa-3.2-1B (Dubey et al., 2024) (LLAMA 3.1 Community), Qwen2.5-1.5B (Team, 2024b) (Apache), SmolLM-1.7B (Allal et al., 2024) (Apache), Falcon3-1B-Base (Team, 2024a)), and fine-tuned using LoRA (Hu et al., 2021) (see appendix B.5 for details). Five seeds were used in all experiments. This pipeline enables us to study the evolution of generated data over generations, and most notably, the difference between data generated in the first and last generations.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Datasets</head><p>We conducted our experiments on five datasets: two consisting of Twitter posts, two of Reddit posts, and one of Wikipedia paragraphs. These platforms were chosen because they are likely to be increasingly populated with AI-generated content, often indistinguishable from human-written text. Additionally, they are frequently scraped to construct training dataset for language models. Finally, they cover a diverse range of topics and language styles -an essential requirement for investigating the effects of data properties on recursive training dynamics. Refer to Appendix B.2 for details.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Metrics</head><p>In this work, we study distribution shift dynamics in terms of quality, semantic diversity and political lean. Irrespective of how much content a model outputs (which varies with the synthetic-data ratio), we always evaluate those metrics on a sample of 250 generated texts.</p><p>Quality Generation Synthetic data ratio 0.0625 0.125 0.25 0.5 0.75 1.0 Diversity Generation Synthetic data ratio 0.0625 0.125 0.25 0.5 0.75 1.0 Figure 2: Evolution of quality (left) and diversity (right) over generations for different synthetic data ratios on the 100M_tweets dataset. Recursive finetuning leads to losses of data quality and diversity when the synthetic data ratio is high enough.</p><p>The Semantic Diversity of a set of texts is measured as the pairwise cosine diversity in the stella_en_1.5B_v5 model <ref type="bibr">(Zhang et al., 2024a)</ref>, as in previous studies <ref type="bibr" target="#b19">(Guo et al., 2024)</ref>. Quality and Political lean are estimated by using LLaMa-3.3-70B-Instruct <ref type="bibr">(Dubey et al., 2024)</ref> in the LLM-as-a-Judge setup. The prompt is inspired by <ref type="bibr" target="#b45">Wang et al. (2023)</ref> and <ref type="bibr" target="#b9">Chen et al. (2023)</ref>, and adapted to our task of evaluating the quality of short texts (see appendix B.3 or details and validation of that adaptation). In sections 4.3 and 4.4, we additionally rely on the following metrics. Lexical Diversity is estimated as SelfBLEU <ref type="bibr" target="#b50">(Zhu et al., 2018)</ref>, computed as the average BLEU score <ref type="bibr" target="#b34">(Papineni et al., 2002)</ref> of each text using all other texts as references, following prior work <ref type="bibr" target="#b19">(Guo et al., 2024)</ref>. Gaussianity is measured by fitting a 2D UMAP projection on embeddings from the stella_en_1.5B_v5 model, and computing the AIC <ref type="bibr" target="#b0">(Akaike, 1974)</ref> of a 2D Gaussian distribution fit to this space. Positivity is assessed using the SentimentIntensityAnalyzer tool from NLTK <ref type="bibr" target="#b22">(Hardeniya et al., 2016)</ref>, which assigns a sentiment score to each text ranging from -1.0 (highly negative) to 1.0 (highly positive).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Experiments</head><p>In this section, we study the following questions:</p><p>• Does synthetic data ratio impact distribution shift dynamics?</p><p>• Do different datasets exhibit different distribution shifts dynamics?</p><p>• Which dataset properties are associated with distribution shift dynamics?</p><p>• Does training on multiple domains influence distribution shift dynamics?</p><p>Webis Reddit 100M Twitter Reddit Submissions Senators Tweets Wikipedia Absolute metrics 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 20 30 40 50 60 Quality 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 Semantic Diversity Relative metrics 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 0.4 0.6 0.8 1.0 Quality 0.0 0.2 0.4 0.6 0.8 1.0 Synthetic data ratio 0.6 0.7 0.8 0.9 1.0 Semantic Diversity Figure 3: Effect of synthetic data ratio on absolute and relative quality (left column) and diversity (right column) at the last generation, in four different datasets. Absolute measures (top row) correspond to the value of the corresponding metric at generation 19. Relative measures (bottom row) correspond to absolute values divided by the metric value after a single fine-tuning (i.e. generation 0). Different datasets lead to different sensitivities to synthetic data ratio, with 100M_tweets (blue) and webis_reddit (orange) exhibiting greater losses in quality and diversity.</p><p>• Do datasets with different political biases lead to different shifts in political lean?</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Does synthetic data ratio impact distribution shift dynamics?</head><p>In this experiment, we aim to reproduce the effect of the synthetic data ratio <ref type="bibr" target="#b5">(Briesch et al., 2023)</ref> on the shifts toward lower quality and lower diversity induced by recursive fine-tuning. This ratio corresponds to the proportion between the AI-generated data and the freshly sampled human data that are added to the Accumulated data pool at each generation.</p><p>Figure <ref type="figure">2</ref> shows the evolution of quality and semantic diversity over consecutive generations, where human data comes from the 100M_tweets dataset. For both quality and diversity, we see that chains with larger synthetic data ratios undergo larger distribution shifts. Chains with r = 1/16 exhibit almost no shifts and chains with ratios r = 1/8 and r = 1/4 exhibit increasingly more shift. This seems to plateau at r = 1/2, with ratios r &gt;= 1/2 exhibiting shifts of similar magnitude. This experiment shows that, for the 100M_tweets dataset, synthetic data ratio has a significant impact on distribution shift dynamics, and that the loss in quality and diversity appears to plateau when half or more training data is synthetic.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Do different datasets exhibit different distribution shifts dynamics?</head><p>In this experiment, we explore how the distribution shift dynamics vary over different datasets. The experiment is methodologically identical to the one in 4.1, but we consider five datasets: 100M_tweets , senator_tweets , reddit_submissions , webis_reddit , and wikipedia .</p><p>Figure <ref type="figure">3</ref> shows the values of the metrics at the end of the iterative chain (i.e. those measured at generation 19 in Figure <ref type="figure">2</ref>) as a function of synthetic data ratio. Figure <ref type="figure">3</ref> shows both absolute (top) and relative (bottom) quality (left) and diversity (right) scores. Relative scores correspond to absolute scores divided by the score of the data generated in generation zero. This enables us to isolate the shift caused by recursive fine-tuning: we compare the distribution shift induced by several iterations of fine-tuning to the shift obtained after a single episode of fine-tuning. It also allows comparing different datasets while controlling for their "starting point", i.e. the value of quality and diversity in the human dataset. Quite naturally, the Absolute plots reveal a general tendency of datasets with higher initial quality and diversity (i.e. those observed for synthetic data ratio = 0) to remain at higher values when increasing the synthetic data ratio. Relative plots allow to control for these initial differences by normalizing the absolute values with the values obtained after a single iteration of fine-tuning, i.e. relative loss in quality and diversity. webis_reddit exhibits a relative loss both in quality and diversity. reddit_submissions and sen-ator_tweets datasets exhibit small relative losses in quality and diversity, and 100M_tweets dataset also exhibits a small relative loss in diversity. We observe an curious effect on the wikipedia dataset, where biggest drops are observed for intermediate synthetic data ratios. Our hypothesis is that this is due an particular interplay of models' biases and human data. In appendix C.3, we discuss this hypothesis in more detail and conduct a toy experiment to provide further support for this hypothesis. Overall, this experiment reveals that the choice of the dataset greatly impacts the distribution shifts' dynamics.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Which dataset properties are associated</head><p>with distribution shift dynamics?</p><p>The previous sections indicate that the extent to which recursive fine-tuning leads to distribution shifts varies greatly between datasets. This suggests that some dataset properties play an important role in modulating distribution shift dynamics.</p><p>In this section, we describe a series of regression analysis experiments aimed at uncovering which properties have such strong influence on distribution shifts. We focused on six dataset properties as relevant candidates: Semantic diversity (using pair-wise cosine diversity), Lexical diversity (using self-BLEU), Gaussianity, Quality, Positivity and Text length (see Appendix B.3.1 for details on how those were selected). We study the influence of those six properties on the detrimental distribution shifts towards lower diversity and quality (i.e. model collapse).</p><p>We extracted 200 clusters from four of the five datasets from the previous section, using the method described in appendix B.4 (the sen-ator_tweets dataset was excluded due to its insufficient size). This resulted in 800 clusters varying with respect to the six outlined properties. We used those properties as predictors in our regression analysis. For each of these clusters, we ran two iterative chain experiments, respectively with synthetic data ratios 1/4 and 1/8, using the corresponding cluster as the "true distribution". For each of the 1600 iterative chain simulations, we measured the loss in quality and semantic diversity after 20 generations (relative quality and semantic diversity). We used those values as dependent variables. This provides us with an extensive mapping (800 datapoints) between the values of the 6 properties of interest and magnitudes of shifts in quality and diversity.</p><p>By performing regression analyses, we were then able to determine which properties correlate with distribution shifts. We performed nine separate regressions: two for each of the four datasets across two synthetic data ratios (grouping chains from the same dataset and ratio), and one with all datasets and ratios. the following properties as significant. For shift in diversity: lexical diversity and gaussianity were associated with greater relative losses (red); and quality with smaller losses (blue). For shift in quality: lexical diversity, gaussianity, and text length were associated with greater relative losses; and semantic diversity, quality, and positivity with smaller losses. Comparing all regressions reveals that some of those predictors are quite robust: when significant, their directions are consistent across regressions. Lexical diversity is the most robust predictor appearing 11 times. Quality and length appear 7 times and often together. Semantic diversity appears 5 times and Gaussianity 4 times. The consistency of these effects across multiple datasets and dependent variables strongly suggests that these relationships are robust and likely to generalize beyond the specific conditions studied here.</p><p>4.4 What happens when models are trained on data from multiple domains?</p><p>So far we have considered situations in which models are trained on data from a single Internet domain. For instance, we studied the potential degradation of generated Reddit posts when a model is trained exclusively on Reddit posts (either humanwritten or AI-generated). That setup, in addition to allowing to perform highly controlled experiments presented in the previous section, captures situations in which models are trained to specialize in one specific domain. However, one can assume that models are also very often fine-tuned and used on multiple domains. In this section, we explore whether training from (and generating content for) multiple domains modifies the relationships between dataset properties and distribution shifts identified in the previous section.</p><p>On the one hand, we could expect models trained on data from multiple domains to merge internal representations, and therefore that the properties of content from a given domain (e.g. Reddit) influences the content generated in another domain (e.g. Wikipedia) (Hypothesis 1). Alternatively, models may keep the representations of different domains separate, in which case the properties of data in one domain would not influence on the generation in another domain (Hypothesis 2). This would result in different domains being independent with respect to their distribution shifts dynamics.</p><p>To explore that question, we slightly modified the experimental pipeline from the previous sections. Having already extracted 200 clusters from wikipedia , webis_reddit and 100M_tweets datasets, we merge those 600 "pure" clusters into 200 "mixed" clusters so that each "mixed" cluster consists of one "pure" cluster from each dataset (i.e. mixed i = wikipedia i ∪ webis_reddit i ∪ 100M _tweets i , i ∈ <ref type="bibr">[1,</ref><ref type="bibr">200]</ref>). We then run 200 iterative chain experiments using those clusters. At each generation, we generate an equal amount of texts for each of the three domains by prompting the model to generate Reddit posts, Twitter posts, or Wikipedia paragraphs with three distinct instructions. This enables us to measure the changes in quality and diversity for each of the three domains. We map those changes to the properties of the "pure" clusters constituting each "mixed" cluster. For instance, it links the semantic diversity of Twitter posts in the initial "pure" Twitter cluster with the loss in quality in generated Wikipedia paragraphs. This enables us to study the influence of data from one domain on the generation in that domain, as well as generation in another domain.</p><p>We performed regression analyses to estimate the effect of 18 predictors (the six properties over three domains) on 6 dependent variables (relative losses in quality and diversity in the three domains).</p><p>Figures 4 show the results of the aforementioned experiments. Columns correspond to the two dependent variables in three domains. Highlighted in gray are predictors corresponding to the same domains as the dependent variable. We can make two key observations. First, these results indicate that distribution shift dynamics are highly modular: it is very rare that features from one domain (e.g. Reddit) are significantly associated with distribution shifts in an unrelated domain (e.g. Wikipedia). Indeed, our analyses revealed 21 significant predictors, only 3 of which are inter-domain. This would suggest support for Hypothesis 2, with different domains undergoing distribution shifts independently from one another. Second, regarding intra-domain effects, when semantic diversity, quality, lexical diversity, and gaussianity are significant they are always consistent with the analyses from the pre- vious section. This consistency between different training conditions further supports the generality of the uncovered effects.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.5">Political lean</head><p>While most works on recursive fine-tuning studied detrimental distribution shifts (e.g. losses in quality or diversity) those shifts are likely to also affect other dimensions of generated data, such as political lean. In this section, we study the distribution shift of political lean as a function of human data lean on the senator_tweets dataset.</p><p>To manipulate the political lean of the human data, we annotated the political lean of the dataset (as described in Section 3.3) and split it into leftwing and right wing partitions. We then created 5 datasets by sampling 0,25,50,75 and 100% of data from the left-wing partition and the rest from the right-wing partition. We conduct experiments using each of these datasets and track the political lean of the generated data.</p><p>On Figure <ref type="figure" target="#fig_2">5a</ref>, we observe a progressive shift from the initial political lean towards more neutral content. In Appendix C.5, we observe a rise in the proportion of politically neutral tweets, as well as a marginal rise in non-political tweets. This suggests that the topic of generated tweets remains political, but that they drift towards less extreme texts.</p><p>Figure <ref type="figure" target="#fig_2">5b</ref> aims to assess the effect of political lean in human data on the dynamics of political lean shift. It shows the political lean measured at the last generation as a function of the political lean in the human dataset. Regarding the magnitude of the shift (distance to the diagonal), we observe that it is greater for more extreme values of the human data lean. Regarding the direction of the shift, we observe three different regimes: 1) bias is reduced when the human distribution's bias is extreme rightwing and extreme left-wing, 2) bias is amplified when the initial distribution's bias is moderately left-wing, and 3) bias is reversed when the initial distribution's bias is moderately right-wing. This experiment demonstrates the effect of human data political lean on both magnitude and direction of the political lean shift in generated tweets.</p><p>In the results presented above, we considered the evolution of the average political lean. To get a more detailed view of the dynamics, we consider the change of specific buckets of political lean. On Figure <ref type="figure" target="#fig_3">6</ref>, we observe that the proportion of neutral tweets tends to increase, and the proportions of extreme left and extreme right tweets tend to decrease. The proportions of more nuanced left-wing and right-wing tweets appear to remain the same. This suggests that the evolution of average political lean reported above may be due to extreme tweets (either left-wing or right-wing) being gradually replaced by neutral tweets.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Conclusion</head><p>This paper studies the effect of human data properties on distribution shift dynamics in recursive training loops with large language models (LLMs). We investigate detrimental shifts in quality and diversity, and shifts in political lean, as a function of human data properties. First, we show that distribution shift dynamics vary depending on the datasets used as the "true distribution". To uncover some of the dataset properties behind these differences, we conducted regression analyses to assess the influence of various properties on distribution shifts. This revealed significant and consistent effects: lexical diversity and gaussianity are associated with larger detrimental distribution shifts, while semantic diversity and data quality with smaller ones. We also observe a strong modularity between domains: the properties of data from a given internet domain (e.g. Reddit) has little influence on the data generated for a different domain (e.g. Wikipedia) Additionally, we study distribution shifts in terms of political bias. We find that the type of shift observed (bias amplification, reduction or inversion) is modulated by the lean in the human data. Our experiments suggest that the properties of human data greatly influence the nature of distribution shift dynamics. As online data in different domains varies in terms of those properties, these results indicate that the nature of shifts across those domains will likely vary as well. Overall, this paper highlights the importance of understanding how data properties influence distribution shift dynamics, and thus complements the emerging understanding of the consequences of recursive fine-tuning -an increasingly relevant issue given the growing role of AI in generating online content. See Appendix A for a longer discussion.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Limitations</head><p>The main limitation of this paper is that the experimental design remains significantly simplified compared to real-world settings. More specifically, recursive fine-tuning happens in networks of LLMs rather than in linear chains, and discrete generations are only an approximation of the continuous interactions that actually take place. Moreover, we considered chains of LLMs without any human intervention. In reality, humans may decide not to use a model that generates low quality text. Having humans-in-the-loop could also in some cases create bi-directional influences if human behavior is influenced by synthetic data. Furthermore, we focus only on relatively small language models (1-2B parameters) trained only with supervised fine-tuning. It would be relevant to explore how the effect of data properties varies over different training methods such as DPO, training from scratch and different model sizes. Because of the recency of this research area, such simplifications are very common in studies of recursive training. Exploring the consequences of relaxing such assumptions is undoubtedly a crucial direction for the field.</p><p>Another limitation is that we only considered English text, and our experiments with political lean were limited to tweets from US senators. This represents a small subset of online political discourse, which also includes comments from the general public, individuals across different socioeconomic backgrounds, as well as content about non-US non-Western politics. Studying texts from diverse populations, cultures and languages is a crucial future direction to ensure that our conclusions are representative and general.</p><p>While LLM-as-a-judge has been shown to correlate with human judgments, this validation was done on story generation, while we use it to evaluate social media posts, with manual inspection of quality on social media posts. Using different ways of measuring quality, or using methods directly validated on the corresponding distributions would be beneficial to further reinforce the robustness of our results about the role of text quality on distribution shifts.</p><p>Finally, although we attempted to cover a wide set of dataset properties that might affect distributions shift, this set is not exhaustive, and it's highly likely that some metrics we didn't account for are important predictors of distribution shifts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ethics Statement</head><p>The results we present reveal how the magnitude and direction of shifts in generated content can be modulated by manipulating various features of training datasets. It is then the responsibility of end-users to make an ethical use of these tools, for instance by using them to ensure that LLMs remain aligned with ethical standards even after recursive training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Broader Impact</head><p>Existing studies have allowed to characterize various consequences of recursively fine-tuning generative models, most notably showing how this process leads the learned distribution to deviate from the true distribution. However, how properties of the true distribution (such as quality, diversity) affect the magnitude and direction of this distribution shift had not yet been investigated.</p><p>In this work, we tackle this question by simulating many different "true" distributions and measuring the distributions shifts observed. This approach confirmed that distribution shifts are highly dependent on properties of the training data. For instance, we uncover the role of data quality, semantic diversity, and lexical diversity. We also show that not only the magnitude, but also the direction of these shifts depends on properties of the training data, as illustrated by studying shifts in political bias.</p><p>Those results have several implications. First, they highlight that the dynamics of distribution shifts observed when recursively training or finetuning LLMs should not be seen as an emergent property of generative models alone, but rather as emerging from the interaction between a LLM and a specific true distribution. As a consequence, this predicts that LLMs might exhibit different types of distribution shifts depending on the tasks (training data) they are meant to accomplish. For instance, LLMs trained to be coding assistants will mainly be fine-tuned on data from GitHub, while LLMs meant to be used as bots on social media will likely be trained on data from platforms like X/Twitter. The distributions underlying these two sources of data are likely to have very different properties. Our results suggest that these differing features may translate to different types of distribution shifts as these datasets start being polluted by synthetic data.</p><p>Second, one of the main motivations for studying the consequences of recursive fine-tuning is to identify strategies to mitigate the resulting undesired distribution shifts. Better understanding how features of a training distribution map to distribution shifts is therefore crucial for being able to optimally filter and clean training datasets. For instance, our results suggest that ensuring that only high-quality data is used, or that lexical diversity remains low (if not coupled with semantic diversity), may be efficient strategies for mitigating degenerative distribution shifts.</p><p>Finally, our results also have implications for future studies on recursive fine-tuning. Indeed, the current approach was generally to rely on a single or a few true distributions, and to interpret obtained distribution shifts as being a general consequence of recursive fine-tuning. Our findings suggest that one should be cautious when making such generalizations. For instance, one may conclude that recursive fine-tuning results in bias amplification or in bias reduction, depending on the specific true distribution used to conduct the experiments. What we argue here is that it is only by manipulating features of the training distribution that one can get a complete picture of this phenomenon.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Details about the methods</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.1 Computational cost</head><p>Experiments were ran mostly on H100 GPUs, as well as on A100 for a smaller part. The whole project, including pilot experiments, represented about 10.000 GPU-hours. This represents about 82kg of CO2 (approximate value based on potentially outdated estimates from 2021).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.2 Dataset details</head><p>Throughout the study we use the following five datasets. The 100M_tweets<ref type="foot" target="#foot_1">foot_1</ref> (CC-BY-4.0) dataset contains a large collection of tweets from July 2018 to April 2024. We cleaned it by removing links, filtering non-English posts using LLaMA-3.3-70B-Instruct, and excluding posts longer than 200 tokens or shorter than 20 tokens. Additionally, we removed all posts newer than June 2020 (the GPT-3 release date). The final cleaned dataset consists of 2 million posts. The senator_tweets<ref type="foot" target="#foot_2">foot_2</ref> dataset contains all tweets made by United States senators during the first year of the Biden Administration (2021). We cleaned it by removing links and posts shorter than 10 tokens. The final cleaned dataset consists of 94878 posts. The wikipedia (Foundation)<ref type="foot" target="#foot_3">foot_3</ref> (CC-BY-SA-3.0) dataset was created by compiling and cleaning articles from Wikipedia dumps<ref type="foot" target="#foot_4">foot_4</ref> in November 2023. We extracted the first paragraphs of articles in english, and kept only paragraphs between 200 and 20 tokens. The final dataset consists of 5603766 paragraphs (each extracted from a different article). The reddit_submissions<ref type="foot" target="#foot_5">foot_5</ref> (arXiv.org) dataset contains posts from 50 high-quality subreddits, extracted from the REDDIT PushShift data dumps (from 2006 to Jan 2023). We pre-processed this dataset by merging post titles with bodies, sampling 25000 posts from each Subreddit, removing those that have [deleted] or [removed] tags, and removing posts longer than 200 tokens or shorter than 20 tokens. The final cleaned dataset consists of 1243794 posts. The webis_reddit <ref type="bibr" target="#b44">(Völske et al., 2017)</ref> (CC-BY) dataset contains preprocessed posts from the Reddit dataset (Webis-TLDR-17). We pre-processed this dataset by merging titles with bodies, removing "tldr" tags, removing posts that are marked as "nsfw" or "+18", removing duplicates, and removing posts longer than 200 tokens or shorter than 20 tokens. The final cleaned dataset consists of 1458003 posts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.3 LLM-as-a-judge validation Quality</head><p>We measured text quality using LLMas-a-judge method whose performance been empirically confirmed in previous studies <ref type="bibr" target="#b9">(Chen et al., 2023)</ref>. We use LLama-3.3-70B-Instruct to annotate texts on a scale of 0 to 100 using the following prompt:</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Quality evaluation prompt</head><p>On a scale of 0 to 100, evaluate the post. A score of 0 indicates that the post is of very low quality, semantically meaningless, and contains broken-off or repetitive text, while a score of 100 means that the post is of very high quality, addressing a complex topic with advanced vocabulary, phrasing, and style. Post: &lt;text&gt; Reply ONLY with the integer score (0-100). DO NOT reply with text.</p><p>To confirm the correctness of our judge, we compare it to the judge from <ref type="bibr" target="#b9">(Chen et al., 2023)</ref>, which was shown to outperform many other quality metrics. We use the same experimental setup as in <ref type="bibr" target="#b9">Chen et al. (2023)</ref> and compare to numbers extracted from Table <ref type="table" target="#tab_0">10</ref> in <ref type="bibr" target="#b9">Chen et al. (2023)</ref>. Table <ref type="table">2</ref> shows the correlations for the two judges with human annotations of the OpenMEVA-ROC dataset <ref type="bibr" target="#b18">(Guan et al., 2021)</ref> of generated stories. We can see that our judge matches that of <ref type="bibr" target="#b9">(Chen et al., 2023)</ref> justifying its use in our experiments.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Judge</head><p>Pearson Spearman Ours 51.6 52.2 <ref type="bibr" target="#b9">Chen et al. (2023)</ref> 53.5 50.8</p><p>Table 2: Comparison of our judge to that of <ref type="bibr" target="#b9">(Chen et al., 2023)</ref> using human annotations on OpenMEVA-ROC <ref type="bibr" target="#b18">(Guan et al., 2021)</ref>. Our judge matches their performance justifying its use in this paper.</p><p>Political lean Similarly, we used LLM-as-ajudge to evaluate the political lean of texts. We asked LLaMa-3.3-70B-Instruct to annotate texts on a scale of 0 to 100, with 0 being radical left-wing and 100 being radical right-wing. Additionally, the model was asked to output -1 if it deemed the text to be non-political. We used the following prompt:</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Political Lean evaluation prompt</head><p>Score the following post on a continual scale from 0 (left-wing) to 100 (right-wing) where a score of 0 means "The post reflects radical left-wing ideology" and a score of 100 means "The post reflects radical right-wing ideology", and a score of 50 means "The post reflects a neutral ideology". Reply with -1 if the post is not political. Reply ONLY with the integer score (0-100 or -1). DO NOT reply with text. Here is the text: &lt;text&gt;</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.3.1 Data properties selection</head><p>To define the final set of data properties to study in the final experiment, we first considered a larger set of data properties on which we performed feature selection.</p><p>Here we outline all the metrics considered.</p><p>• Quality: described in Appendix B.3.</p><p>• Semantic Diversity: We compute several semantic diversity metrics as pairwise cosine diversity in the embeddings of the stella_en_1.5B_v5 model <ref type="bibr">(Zhang et al., 2024a)</ref>. Cosine diversity computes the pairwise diversity between all data points, and k-nn Cosine diversity computes the pairwise diversity for the nearest n neighbors (we use this metric with n=50 and n=1000).</p><p>• Lexial diversity: Self-BLEU <ref type="bibr" target="#b50">(Zhu et al., 2018)</ref> is a metric that computes the average BLEU <ref type="bibr" target="#b34">(Papineni et al., 2002)</ref> score for each text, with all other text taken as references.</p><p>• Word Entropy: computes the entropy using the word frequencies in the given texts</p><p>• Type Token Ratio (TTR) <ref type="bibr" target="#b26">(Johnson, 1944)</ref>: calculates the number of unique words (types) divided by the number of total word in the first 200 characters of each text.</p><p>• Text Length: average number of characters in each text.</p><p>• Positivity: uses the SentimentIntensityAnalyzer tool from NLTK <ref type="bibr" target="#b22">(Hardeniya et al., 2016)</ref>)(Apache) to assign a sentiment score for the text, ranging from -1.0 (highly negative) to 1.0 (highly positive).</p><p>• Toxicity: quantifies the presence of rude, disrespectful, or unreasonable language, using a probability score that ranges from 0.0 (benign and non-toxic) to 1.0 (highly likely to be toxic), as estimated by the classifier introduced in (Hanu and Unitary team, 2020).</p><p>• KL-Entropy: fits a 2D UMAP on the stella_en_1.5B_v5 text embeddings, and then used Kozachenko Leonenko entropy estimator <ref type="bibr" target="#b28">(Kozachenko and Leonenko, 1987)</ref> to estimate entropy. This estimator uses the volume around the k-nearest neighbor to estimate density. We create 2 kl_entropy metics, one with k=50 and one with k=1000.</p><p>• Gaussianity: uses the same UMAP representations as KL-entropy. In this space, it fits a 2D Gaussian distribution. The AIC <ref type="bibr" target="#b0">(Akaike, 1974)</ref> score of this distribution is taken as the gaussianity score.</p><p>Figure <ref type="figure" target="#fig_4">7</ref> shows Variance Inflation Factor (VIF) scores before and after predictor variable selection. In the first step, we eliminated all predictors except lexical_entropy (word_entropy), semantic_entropy (kl_entropy), quality, text_length (primarily to serve as a control for quality), lexical_diversity (diversity_selfbleu), semantic diversity (cos_diversity), Gaussianity, and Positivity. In the first step, we kept the entropy metrics despite kl_entropy having a relatively hight VIF score. With those predictors, we conduct a pilot regression analyses (alike those in section 4.3) experiment on four datasets from two domains: webis_reddit , reddit_submissions , senator_tweets , 100M_tweets . In the pilot study we observed that entropy and diversity metrics interact in unclear ways making interpretability difficult. Given that the benefit of separating entropy and diversity for interpretability is not clear, we decided to remove entropy predictors for the final experiments. To ensure the validity of our results, for the final experiments we rerun the simulation by sampling 200 new clusters for each dataset as well as by adding an additional dataset from a new domain (wikipedia )</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.4 Clustering</head><p>To obtain data to be used for regression analysis, we create a number of subsets from each of the datasets. This is done by the following procedure. A 2D UMAP is fit on the 90k text embedded with stella_en_1.5B_v5 model <ref type="bibr">(Zhang et al., 2024a)</ref>. A series of clustering methods (dbscan, hdbscan, gmm, k-means) with different hyperparameters are done separately, each annotating the 90k samples. Then the rest of the dataset is annotated by k-nn, with k=1. This is done in two ways, with and without excluding the noise cluster for the k-nn classifier. This gives us a total of 120 different clusterings of the dataset. Then for each clustering 10 clusters are taken, if there are not enough clusters over the size of 60k. The remaining clusters are constructed by merging smaller clusters, either by uniformly sampling which cluster to merge or by iteratively merging the cluster that is the furthest away from the currently merged cluster. As this results in a large number of clusters (e.g. 1088 for webis_reddit ), we then obtain the final cluster set by subsampling 200 clusters.</p><p>To clarify, from the 200 clusters created for each dataset, some are created in a straight forward way (e.g. with k-nn) which will create the nice narrow clusters as the reviewer describes. However, as discussed in this section, some clusters are created in a slightly more complex way, precisely to address this issue. Some of the used clustering methods create very small clusters (miniclusters) which are then merged to create bigger final clusters to be used in the experiments. This is sometimes done by randomly selecting the miniclusters to merge, and sometimes by iteratively adding the farthest away minicluster from the already merged miniclusters. Therefore, the final set of 200 clusters will be quite diverse.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.5 Fine-tuning procedure</head><p>We use the Unsloth library (Daniel Han and team, 2023)(Apache license) to train model suing LoRA <ref type="bibr" target="#b24">(Hu et al., 2021)</ref>. The hyperparameters used are the default ones given by Unsloth, i.e. rank = 16, alpha = 16 batch size = 16, leaning rate = 2e-4, we use a linear schedules with 5 steps of warm-up. For generation with use a temperature of 1.5 with min_p <ref type="bibr" target="#b31">(Nguyen et al., 2024)</ref> of 0.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.6 Iterative chain pseudocode</head><p>Figure <ref type="figure" target="#fig_5">8</ref> shows the pseudocode describing the iterative chain experiment used. Each iteration a fresh base model is selected and finetuned.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.7 Discussion on corrections for multiple comparisons</head><p>We report uncorrected p-values in our regression analyses as our goal is not to test specific hypotheses about individual coefficients, but rather to identify general patterns of robust influence across datasets and conditions. On a related note, variable selection was conducted prior to these analyses and applied to newly collected data (last sentence in VIF scores before variable selection VIF scores after variable selection 1 function iterative_chain(human_data, ai_ratio): 2 base_models = [llama-3.2-1B, Qwen2.5-1.5B, SmolLM-1.7B, Falcon3-1B-Base]</p><p>3 accumulated_data_pool = []</p><p>4 for i in 20: Appendix B.3.1). We therefore believe that the risk of multiple testing bias is minimal.</p><p>In other words, we address the issue of Type I errors in the way we interpret our results and make conclusions (i.e. in a way that is robust to potential Type I errors): the fact that we consistently find the same predictors to be significant across different experiments gives a high confidence that those are not statistical artifacts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Additional results</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.1 Increasing the number of models per generation</head><p>In the main text, we adopted the same experimental design as previous studies, where at each generation a single model is fine-tuned and used to generate new data. However, this may be unrealistic compared to real-life situations, where many new models are trained of the outputs of many pre-existing models. To ensure that using a single model per generation approximates well these reallife situations, we ran an experiment manipulating the number of models per generation from 1 to 20. In Figure <ref type="figure" target="#fig_6">9</ref>), we observe that increasing the number of models per generation does not qualitatively change the conclusion about the effect of synthetic data ratio on distribution shifts with respect to quality and diversity. This confirms that the simplified setting we use is relevant for making predictions about real-life situations.</p><p>As a note, this pilot experiment was conducted with a slightly different quality metric, which ranks quality as either 0, 1 or 2. Although we ended using a different quality metric for the main experiments, we did not re-run the experiment on the number of models per generation with this new quality metric. This was motivated by the significant computational cost of running this experiment.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Quality Diversity Number of models per generation</head><p>Number of models per generation </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2 The effect of manipulating dataset quality on the distribution shift dynamics</head><p>In this experiment, we explore the hypothesis that data quality is one of the potential factors influencing distribution shifts. To test this hypothesis, we split the datasets into four mutually exclusive subsets with different quality levels <ref type="bibr">(20,</ref><ref type="bibr">40,</ref><ref type="bibr">60,</ref><ref type="bibr">80)</ref>. The exception is the senator_tweets dataset, for which we merged the quality levels of 40 and 60 due to smaller dataset size. Likewise, due to lack of data, the experiments for this dataset were conducted only for higher ratios (r &gt;= 3/4). Similarly, low quality subset (20) for the reddit_submission dataset was also conducted only on ratios r &gt;= 1/2. We conduct this experiment of four datasets: webis_reddit , 100M_tweets , senator_tweets , and reddit_submissions .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2.1 Effect on quality</head><p>Figure <ref type="figure" target="#fig_0">10</ref> shows the quality values of iterative chains for different quality levels. As in section 4.2, we show the final absolute and relative quality levels as a function of synthetic data ratio. Looking at absolute quality levels (top row), we observe that, as expected, higher quality datasets also end with higher quality in the final generations. More interestingly, looking at the relative quality levels of twitter datasets (bottom row), we observe that higher quality datasets lead to lower rate of quality loss (distribution shift). That is, not only does higher input data quality increase the quality of the final generated dataset, it also decreases the percentage of original quality lost due to recursive training. Furthermore, focusing on lower ratios (&lt; 1/4) of the 100M_tweets dataset, we observe that the higher quality dataset are more robust to increasing synthetic data ratio. For the quality of 80, major quality losses are observed only at r = 1/4, while for lower qualities it is observed already at r = 1/8. Finally, it should also be noted that the 100M_tweets dataset with quality 20 does not appear to lead to significant shifts with higher synthetic data ratios. Given that the very low starting quality of this dataset, we believe that this is likely due to a floor effect (i.e. there are no losses in quality because the initial dataset was already close to the lower bound. Curiously, on both Reddit datasets, we do not observe strong differences when manipulating quality, implying that there are other factors than quality influencing collapse. A similar study focusing on losses of diversity is presented in Appendix C.2.2, where an effect is observed only on the senator_tweets dataset. Overall, this experiment shows that, in some conditions, high-quality datasets lead to increased robustness to distribution shifts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2.2 Effect on diversity</head><p>Figure <ref type="figure" target="#fig_0">11</ref> shows the semantic diversity values of iterative chains for different quality levels. We do not observe any clear effects, except on the senator_tweets dataset. On this dataset, it appears that low-quality dataset lead to more pronounced distribution shifts towards lower diversity.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Iterative chain In each generation, a fresh base model is fine-tuned on texts sampled from the Accumulated data pool (except generation 0, where it's trained only on human posts). The model generates posts, which are added to the pool alongside some newly sampled human posts.</figDesc><graphic coords="2,93.55,70.86,408.17,115.16" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 4 :</head><label>4</label><figDesc>Figure4: Regression coefficients for distribution shifts in semantic diversity and quality in multi-domain experiments. Blue and red colors mark positive and negative effects, respectively, non-shaded bars mark statistically significant effects, highlighted bars denote in-domain effects. Most effects are in-domain implying that different domains to not significantly interact. The in-domain predictors are consistent with those in single domains experiments: semantic diversity and quality (as positive) are associated with more detrimental shifts (collapse), lexical diversity and gaussianity (as negative) with less detrimental shifts (collapse).</figDesc><graphic coords="7,120.95,97.37,64.45,174.94" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Effect of recursive fine-tuning on political lean (a) Evolution of political lean over generations, for initial distributions with varying degrees of political polarization. We observe a general tendency for political bias to be reduced over generations. (b) Average political lean at the last generation as a function of political lean in the true distribution. We observe three different regimes: bias is reduced when the initial distribution's bias is extreme right-wing and extreme left-wing; bias is amplified when the initial distribution's bias is moderately left-wing; and bias is reversed when the initial distribution's bias is moderately right-wing.</figDesc><graphic coords="7,320.63,379.57,85.81,65.98" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 6 :</head><label>6</label><figDesc>Figure 6: Proportion of tweets with different degrees of political bias over generation We partition the generated tweets in eight bins according to their political lean. The proportion of neutral tweets tends to increase, while the proportions of extreme left and extreme right tweets decrease. The proportions of more nuanced left and right tweets appear to stay the same.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 7 :</head><label>7</label><figDesc>Figure 7: Variable Inflation Factor (VIF) scores before (left) and after (right) predictor variable selection</figDesc><graphic coords="15,317.85,79.37,208.58,163.23" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 8 :</head><label>8</label><figDesc>Figure 8: Iterative chain pseudocode</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 9 :</head><label>9</label><figDesc>Figure9: The effect of synthetic data ratio on shifts in diversity and quality holds when increasing the number of models per generation.</figDesc><graphic coords="16,83.88,70.87,220.07,165.09" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Table1show the results, with columns corresponding to different regression analyses. Statistically significant coefficients (p &lt; 0.05) are shown in bold. Blue cells indicate properties associated with less detrimental shift (positive), while red cells indicate properties associated with more severe degradation (negative).Regression analyses conducted on all data outlinedRegression coefficients for distribution shifts in semantic diversity and quality. Bold values indicate statistical significance. Blue and red background colors mark significant positive and negative effects, respectively. Lexical diversity, Gaussianity, and Text Length (as negative) are associated with more detrimental shifts (collapse), while Semantic diversity and Quality (as positive) with less detrimental shifts (collapse).</figDesc><table><row><cell>Coefficient</cell><cell>All</cell><cell cols="2">webis_reddit</cell><cell cols="2">100M_tweets</cell><cell cols="2">reddit_submissions</cell><cell cols="2">wikipedia</cell></row><row><cell>Synthetic data ratio</cell><cell></cell><cell>1/8</cell><cell>1/4</cell><cell>1/8</cell><cell>1/4</cell><cell>1/8</cell><cell>1/4</cell><cell>1/8</cell><cell>1/4</cell></row><row><cell>Semantic Diversity</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">Semantic diversity -0.0007</cell><cell>0.0075</cell><cell>0.0117</cell><cell>0.0087</cell><cell>0.0291</cell><cell>0.0003</cell><cell>0.0057</cell><cell>0.0152</cell><cell>0.0181</cell></row><row><cell>Lexical diversity</cell><cell cols="9">-0.0126 -0.0155 -0.0487 -0.0012 -0.0051 -0.0026 -0.0098 -0.0306 -0.0091</cell></row><row><cell>Gaussianity</cell><cell cols="6">-0.0092 -0.0001 -0.0006 -0.0042 -0.0121 0.0016</cell><cell cols="3">-0.0025 -0.0325 -0.0170</cell></row><row><cell>Quality</cell><cell cols="4">0.0187 -0.0003 -0.0021 -0.0006</cell><cell>0.0105</cell><cell>0.0027</cell><cell>0.0040</cell><cell>0.0410</cell><cell>0.0283</cell></row><row><cell>Positivity</cell><cell cols="4">-0.0031 -0.0037 -0.0071 0.0007</cell><cell>0.0004</cell><cell cols="4">-0.0050 -0.0153 -0.0050 0.0094</cell></row><row><cell>Text length</cell><cell cols="2">-0.0015 0.0005</cell><cell>0.0114</cell><cell cols="6">-0.0015 -0.0214 -0.0049 -0.0154 -0.0356 -0.0407</cell></row><row><cell>Quality</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">Semantic diversity 0.0105</cell><cell>0.0410</cell><cell>0.0185</cell><cell>0.0140</cell><cell>0.0316</cell><cell>0.0129</cell><cell>0.0058</cell><cell>-0.0177</cell><cell>0.0219</cell></row><row><cell>Lexical diversity</cell><cell cols="6">-0.0603 -0.0892 -0.0478 -0.0043 -0.0275 0.0080</cell><cell>0.0107</cell><cell cols="2">-0.0240 -0.0719</cell></row><row><cell>Gaussianity</cell><cell cols="6">-0.0158 0.0012 -0.0095 -0.0102 -0.0139 -0.0026</cell><cell>0.0033</cell><cell cols="2">-0.0159 -0.0122</cell></row><row><cell>Quality</cell><cell>0.0616</cell><cell cols="3">0.0335 -0.0018 -0.0044</cell><cell>0.0547</cell><cell>0.0113</cell><cell>0.0055</cell><cell>0.0297</cell><cell>0.1023</cell></row><row><cell>Positivity</cell><cell cols="4">0.0074 -0.0055 -0.0097 0.0304</cell><cell>0.0380</cell><cell>0.0070</cell><cell cols="3">-0.0431 -0.0073 0.0106</cell></row><row><cell>Text length</cell><cell cols="3">-0.1327 -0.1029 0.0037</cell><cell cols="6">0.0157 -0.0554 -0.0244 -0.0181 -0.0414 -0.1218</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell>p &lt; 0.05</cell><cell>p &lt; 0.01</cell><cell>p &lt; 0.001</cell><cell>p &lt; 0.05</cell><cell>p &lt; 0.01</cell><cell>p &lt; 0.001</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>https://anonymous.4open.science/r/ce_llms-9068</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_1"><p>https://huggingface.co/datasets/enryu43/twitter 100m_tweets</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_2"><p>https://huggingface.co/datasets/m-newhauser/senatortweets</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_3"><p>https://huggingface.co/datasets/wikimedia/wikipedia</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_4"><p>https://dumps.wikimedia.org/</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="6" xml:id="foot_5"><p>https://huggingface.co/datasets/HuggingFaceGECLM /REDDIT_submissions</p></note>
+		</body>
+		<back>
+
+			
+			<div type="acknowledgement">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Acknowledgments</head><p>ChatGPT was used to help with coding and polishing the writing.</p></div>
+			</div>
+
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>On the top row, we see that chains with higher quality human data end with higher generation quality in all datasets. On the bottom row, for the two Reddit datasets (third and fourth columns), we see that high quality chains also exhibit lower rates of quality degradation and lower sensitivity to synthetic data (drops occur at higher synthetic data ratios).</p><p>Absolute diversity Relative diversity Synthetic data ratio Synthetic data ratio Synthetic data ratio Synthetic data ratio webis_reddit reddit_submissions 100M_twitter senators_tweets </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.3 Toy model exploring the causes of the non-linear relationship between diversity loss and synthetic-data ratio</head><p>In section 4.2, we observed that for the Wikipedia dataset, the relationship between diversity loss and synthetic-data ratio was non-linear. Indeed, the greatest drops in diversity are observed for intermediate synthetic-data ratios, rather than for high values as in other datasets and previous works <ref type="bibr" target="#b3">(Bertrand et al., 2023;</ref><ref type="bibr" target="#b4">Bohacek and Farid, 2023;</ref><ref type="bibr" target="#b27">Kazdan et al., 2024)</ref>. While at first surprising, we believe this pattern can be explained if we assume that synthetic data aligns more with the models' priors. This is not a strong assumption given that that data was generated by other fine-tuned versions of the same base models. The intuition, which we experimentally confirm below, is that those datapoints aligned with the model's priors, have a stronger effect on the training process. And this then leads to the intermediate synthetic data ratios to essen-tially learn from less data. Let us consider the three different synthetic-data ratios:</p><p>• When synthetic-data ratio is low: While the model preferentially learns from synthetic data, most of its training data is human generated. Therefore, the model learns a distribution that resembles the human data despite this bias.</p><p>• When synthetic-data ratio is high: the model preferentially learns from synthetic data, but anyway most of the training data is synthetic. This bias thus does not have a large effect.</p><p>• When synthetic-data ratio is intermediate: the model preferentially learns from synthetic data, and receives human data and synthetic in comparable proportion. However, the bias will lead the model to essentially discard human data, and to learn only from the synthetic data, just like for high synthetic-data ratios.</p><p>The difference is that the pool of synthetic data to learn from is here lower than in the high synthetic-data ratio.</p><p>To test this hypothesis, we develop a toy example where we could manipulate whether learning from synthetic data aligned with models' priors is favored. In this model, the true (human) distribution is a uniform distribution over integers in [0, N ]. The model is implemented as a normalized histogram over training datapoints, which are a combination of true and synthetic datapoints from the previous generations. We sample N points from the true distribution, and normalize the resulting histogram to get the first model. Then, we sample r * N points from this model, and (1 -r) * N points from the true distribution. We again derive a probability distribution from this sample to get the new model. We repeat this process for 20 time steps.</p><p>To introduce the bias mentioned in our hypothesis, we assume that the models have a prior to sample multiples of 2. We thus multiply the histogram by a corresponding bias vector before normalizing. Additionally, we can manipulate whether the human data overlaps with this bias: we can modify the true distribution so that it does not contain multiples of 2.</p><p>We then ran 50 simulations for different values of synthetic-data ratio, manipulating whether learning is biased and whether the true distribution overlaps with this bias. As show in Figure <ref type="figure" target="#fig_10">12</ref>, we observe that when learning is biased and the true distribution does not overlap (right column), we can reproduce the U-shape found for the Wikipedia dataset. This non-linear relationship disappears when we remove this bias (left column) or when the true distribution overlaps with this bias. We were able to observe this pattern both in the Accumulation (top-row) and no-Accumulation (bottom row) settings. This is therefore consistent with our hypothesis for explaining the observed U-shape relationship.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.4 Regression models' explained variances</head><p>Here we provides r 2 measures for the linear regression models used in experiments in sections 4.3 and 4.4. Table <ref type="table" target="#tab_2">3</ref> corresponds to table 1 from section 4.3. Table <ref type="table" target="#tab_4">4</ref> corresponds to Figure <ref type="figure">4</ref> from section 4.4. We can see that the considered properties can partially account for observed effect, many more effects remain to be uncovered (in particular in the 100M tweets and wikipedia datasets).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.5 Additional experiments on the distribution shift of political lean</head><p>We provide here the additional figures that are discussed in section 4.5. On Figure <ref type="figure">13a</ref> we observe a steady increase in the proportion of "perfectly neutral" tweets (with assigned a score of exactly 50).</p><p>On Figure <ref type="figure">13b</ref> while we observe a slight increase in the number of non-political tweets, those remain marginal, indicating that the models are able to maintain the focus on political topics (Figure <ref type="figure">13a</ref>). This suggests that generated tweets remain in the topic of politics, but drift from strong partisanship. Figure <ref type="figure">13a</ref> revealed that the shift is partly driven by an increase in politically neutral content. To isolate the different mechanisms at play, we performed the same analysis, but without taking politically neutral tweets into account (Figure <ref type="figure" target="#fig_12">14</ref>). The consequence of this manipulation was to accentuate the observed asymmetry, as the political lean that minimizes shift magnitude moves even more toward the left. This suggests that there might two interacting mechanisms influencing political lean evolution: first, a tendency to generate politically-neutral content; and a tendency to shift the distribution toward left-wing content.</p><p>Experiments in the paper were conducted with mixed-model iterative chains -each generation a fresh base model is sampled out of four possible models options (LLama-3.2-1B, Qwen2.5-1.5B, SmolLM-1.7B, Falcon3-1B-Base). As different</p><p>When learning is unbiased When learning is biased and human data overlaps with bias When learning is biased and human data does not overlaps with bias With accumulation Without accumulation Synthetic data ratio Synthetic data ratio Synthetic data ratio Synthetic data ratio Synthetic data ratio Synthetic data ratio    Domain R 2 (Diversity) R 2 (Quality) Webis 0.340 0.591 100M Tweets 0.532 0.611 Wikipedia 0.241 0.363  </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 10 :</head><label>10</label><figDesc>Effect of human data quality on the rate of degradation and sensitivity to synthetic data Absolute measures (top row) correspond to the value of the corresponding metric at generation 19. Relative measures (bottom row) correspond to absolute values divided by the metric value after a single fine-tuning episode (i.e. generation 0).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 11 :</head><label>11</label><figDesc>Effect of manipulating dataset quality on sensitivity to synthetic data ratio, for four different datasets. Absolute measures correspond to the value of the corresponding metric at generation 19. Relative measure correspond to absolute values divided by the metric value after a single fine-tuning episode (i.e. generation 0).No clear effect is observed, except potentially on the senator_tweets dataset.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><head>Figure 12 :</head><label>12</label><figDesc>Simulation results of the toy model. Under specific conditions, a non-linear u-shaped relationship between diversity loss and synthetic-data ratio emerges.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><figDesc>(a) Proportion of politically neutral tweets increases, implying that models tend to avoid strong political statements. (b) Proportion of non-political tweets marginally increases, implying that the models stay on the topic of politics.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head>Figure 14 :</head><label>14</label><figDesc>Average political lean at the last generation as a function of political lean in the true distribution after excluding political tweets</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>Figure 15 :</head><label>15</label><figDesc>Average political lean at the last generation as a function of political lean in the human distribution with homogeneous transmission chains. We observe slight differences between chain: for instance, Falcon3-1B chain appears to have a stronger left-wing bias than others, while it is weaker for Llama-3.2-1B</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 :</head><label>3</label><figDesc>R 2 results corresponding to Table1.</figDesc><table><row><cell>r 2</cell><cell>All</cell><cell cols="2">Webis</cell><cell cols="2">100M Tweets</cell><cell cols="2">Reddit Submissions</cell><cell cols="2">Wikipedia</cell></row><row><cell>Synthetic data ratio</cell><cell></cell><cell>1/8</cell><cell>1/4</cell><cell>1/8</cell><cell>1/4</cell><cell>1/8</cell><cell>1/4</cell><cell>1/8</cell><cell>1/4</cell></row><row><cell>Semantic Diversity</cell><cell cols="6">0.293 0.244 0.541 0.043 0.188 0.109</cell><cell>0.502</cell><cell cols="2">0.147 0.105</cell></row><row><cell>Quality</cell><cell cols="6">0.737 0.482 0.353 0.193 0.324 0.143</cell><cell>0.564</cell><cell cols="2">0.249 0.276</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 4 :</head><label>4</label><figDesc>R 2 results corresponding to Figure4. a pretrained model, e.g. over 20 generations we will initialize 20 separate LLama-3.2-1B instances. Figure 15 compares homogenous chains corresponding to the four considered models. We observe little variation between the chains, although Falcon3-1B seem to display slightly more pronounced left-wing bias, while this bias is weaker for Llama-3.2-1B.</figDesc><table><row><cell>Right-wing</cell><cell></cell><cell></cell></row><row><cell>Final political lean score</cell><cell></cell><cell></cell></row><row><cell>Left-wing</cell><cell></cell><cell></cell></row><row><cell>Left-wing</cell><cell>Initial political lean score</cell><cell>Right-wing</cell></row></table><note><p>models may display different biases with respect to political lean, we also ran an experiment with homogeneous chains, where the same base model is used in each generation. To clarify, in each generation the training still starts from a new instance of</p></note></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">A new look at the statistical model identification</title>
+		<author>
+			<persName><forename type="first">Hirotugu</forename><surname>Akaike</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE transactions on automatic control</title>
+		<imprint>
+			<biblScope unit="volume">19</biblScope>
+			<biblScope unit="issue">6</biblScope>
+			<biblScope unit="page" from="716" to="723" />
+			<date type="published" when="1974">1974</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">Sina</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josue</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorenzo</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmed</forename><surname>Imtiaz Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hossein</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><forename type="middle">G</forename><surname>Baraniuk</surname></persName>
+		</author>
+		<title level="m">Self-consuming generative models go mad</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">Loubna</forename><surname>Ben Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elie</forename><surname>Bakouch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<title level="m">Smollmblazingly fast and remarkably powerful</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<title level="m" type="main">On the stability of iterative retraining of generative models on their own data</title>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joey</forename><surname>Avishek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexandre</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marco</forename><surname>Duplessis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gauthier</forename><surname>Jiralerspong</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Gidel</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Nepotistically trained generative-ai models collapse</title>
+		<author>
+			<persName><forename type="first">Matyas</forename><surname>Bohacek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hany</forename><surname>Farid</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Large language models suffer from their own output: An analysis of the self-consuming training loop</title>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Briesch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Sobania</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Franz</forename><surname>Rothlauf</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">Breaking news: Case studies of generative ai&apos;s use in journalism</title>
+		<author>
+			<persName><forename type="first">Natalie</forename><forename type="middle">Grace</forename><surname>Brigham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chongjiu</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tadayoshi</forename><surname>Kohno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Franziska</forename><surname>Roesner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niloofar</forename><surname>Mireshghallah</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.13706</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">others. 2023. Machine culture</title>
+		<author>
+			<persName><forename type="first">Levin</forename><surname>Brinkmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fabian</forename><surname>Baumann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jean-François</forename><surname>Bonnefon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxime</forename><surname>Derex</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><forename type="middle">F</forename><surname>Müller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anne-Marie</forename><surname>Nussberger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Agnieszka</forename><surname>Czaplicka</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alberto</forename><surname>Acerbi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><forename type="middle">L</forename><surname>Griffiths</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joseph</forename><surname>Henrich</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature Human Behaviour</title>
+		<imprint>
+			<biblScope unit="volume">7</biblScope>
+			<biblScope unit="issue">11</biblScope>
+			<biblScope unit="page" from="1855" to="1868" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Levin Brinkmann, and 1 others. 2024. How large language models can reshape collective intelligence</title>
+		<author>
+			<persName><forename type="first">Jason</forename><forename type="middle">W</forename><surname>Burton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ezequiel</forename><surname>Lopez-Lopez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shahar</forename><surname>Hechtlinger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zoe</forename><surname>Rahwan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Samuel</forename><surname>Aeschbach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Michiel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><forename type="middle">A</forename><surname>Bakker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aleks</forename><surname>Becker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julian</forename><surname>Berditchevskaia</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Berger</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature human behaviour</title>
+		<imprint>
+			<biblScope unit="volume">8</biblScope>
+			<biblScope unit="issue">9</biblScope>
+			<biblScope unit="page" from="1643" to="1655" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Exploring the use of large language models for reference-free text quality evaluation: An empirical study</title>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rui</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haiyun</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuming</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruifeng</forename><surname>Xu</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2023.findings-ijcnlp.32</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: IJCNLP-AACL 2023 (Findings)</title>
+		<imprint>
+			<publisher>Nusa Dua, Bali. Association for Computational Linguistics</publisher>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="361" to="374" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Cook</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edward</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joel</forename><forename type="middle">Z</forename><surname>Leibo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Foerster</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2406.00392</idno>
+		<idno>ArXiv:2406.00392</idno>
+		<title level="m">Artificial Generational Intelligence: Cultural Accumulation in Reinforcement Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<title level="m">Yunzhen Feng, and Julia Kempe. 2024a. Model collapse demystified: The case of regression</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pu</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francois</forename><surname>Charton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.07043</idno>
+		<title level="m">A tale of tails: Model collapse as a change of scaling laws</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<author>
+			<persName><forename type="first">Abhimanyu</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhishek</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmad</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aiesha</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akhil</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alan</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amy</forename><surname>Yang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.21783</idno>
+		<title level="m">Angela Fan, and 1 others. 2024. The llama 3 herd of models</title>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">The rise of social bots</title>
+		<author>
+			<persName><forename type="first">Emilio</forename><surname>Ferrara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Onur</forename><surname>Varol</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clayton</forename><surname>Davis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Filippo</forename><surname>Menczer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Flammini</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/2818717</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Commun. ACM</title>
+		<imprint>
+			<biblScope unit="volume">59</biblScope>
+			<biblScope unit="issue">7</biblScope>
+			<biblScope unit="page" from="96" to="104" />
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m">Wikimedia Foundation. Wikimedia downloads</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">2024a. Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data</title>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Apratim</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafael</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomasz</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Henry</forename><surname>Sleight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rajashree</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dhruv Bhandarkar</forename><surname>Pai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrey</forename><surname>Gromov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diyi</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sanmi</forename><surname>Koyejo</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">First Conference on Language Modeling</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<title level="m" type="main">2024b. Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data</title>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Apratim</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafael</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Henry</forename><surname>Sleight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dhruv</forename><surname>Pai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrey</forename><surname>Stanford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">A</forename><surname>Gromov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diyi</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sanmi</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Koyejo</surname></persName>
+		</author>
+		<imprint/>
+	</monogr>
+	<note type="report_type">Technical report</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">OpenMEVA: A benchmark for evaluating open-ended story generation metrics</title>
+		<author>
+			<persName><forename type="first">Jian</forename><surname>Guan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhexin</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhuoer</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zitao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenbiao</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoxi</forename><surname>Mao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Changjie</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minlie</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.acl-long.500</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing</title>
+		<meeting>the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="6394" to="6407" />
+		</imprint>
+	</monogr>
+	<note>Long Papers)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">The curious decline of linguistic diversity: Training language models on synthetic text</title>
+		<author>
+			<persName><forename type="first">Yanzhu</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guokan</forename><surname>Shang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michalis</forename><surname>Vazirgiannis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chloé</forename><surname>Clavel</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2024.findings-naacl.228</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: NAACL 2024</title>
+		<meeting><address><addrLine>Mexico City, Mexico</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="3589" to="3604" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yanzhu</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guokan</forename><surname>Shang</surname></persName>
+		</author>
+		<title level="m">Michalis Vazirgiannis, and Chloé Clavel. 2023. The curious decline of linguistic diversity: Training language models on synthetic text</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Laura Hanu and Unitary team</title>
+		<ptr target="https://github.com/unitaryai/detoxify" />
+	</analytic>
+	<monogr>
+		<title level="j">Detoxify. Github</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Natural language processing: python and NLTK</title>
+		<author>
+			<persName><forename type="first">Nitin</forename><surname>Hardeniya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Perkins</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deepti</forename><surname>Chopra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nisheeth</forename><surname>Joshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iti</forename><surname>Mathur</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+			<publisher>Packt Publishing Ltd</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title level="m" type="main">Will large-scale generative models corrupt future datasets?</title>
+		<author>
+			<persName><forename type="first">Ryuichiro</forename><surname>Hataya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Han</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hiromi</forename><surname>Arai</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Edward</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yelong</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Phillip</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zeyuan</forename><surname>Wallis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhi</forename><surname>Allen-Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shean</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weizhu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2106.09685</idno>
+		<title level="m">Lora: Low-rank adaptation of large language models</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">Juyong</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiasi</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sungju</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sunghun</forename><surname>Kim</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.00515</idno>
+		<title level="m">A survey on large language models for code generation</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Studies in language behavior: A program of research</title>
+		<author>
+			<persName><forename type="first">Wendell</forename><surname>Johnson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Psychological Monographs</title>
+		<imprint>
+			<biblScope unit="volume">56</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page" from="1" to="15" />
+			<date type="published" when="1944">1944</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<title level="m" type="main">Collapse or thrive? perils and promises of synthetic data in a self-generating world</title>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Kazdan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Apratim</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafael</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sanmi</forename><surname>Koyejo</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Sample estimate of the entropy of a random vector</title>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">F</forename><surname>Kozachenko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">N</forename><surname>Leonenko</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Problems of Information Transmission</title>
+		<imprint>
+			<biblScope unit="volume">23</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page" from="9" to="16" />
+			<date type="published" when="1987">1987. 1987</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">2023a. Combining generative artificial intelligence (ai) and the internet: Heading towards evolution or degradation?</title>
+		<author>
+			<persName><forename type="first">Gonzalo</forename><surname>Martínez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lauren</forename><surname>Watson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pedro</forename><surname>Reviriego</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alberto</forename><surname>José</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marc</forename><surname>Hernández</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rik</forename><surname>Juarez</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sarkar</surname></persName>
+		</author>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<author>
+			<persName><forename type="first">Gonzalo</forename><surname>Martínez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lauren</forename><surname>Watson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pedro</forename><surname>Reviriego</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alberto</forename><surname>José</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marc</forename><surname>Hernández</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rik</forename><surname>Juarez</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sarkar</surname></persName>
+		</author>
+		<title level="m">Towards understanding the interplay of generative artificial intelligence and the internet</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Turning up the heat: Min-p sampling for creative and coherent llm outputs</title>
+		<author>
+			<persName><forename type="first">Minh</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Baker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clement</forename><surname>Neo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allen</forename><surname>Roush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andreas</forename><surname>Kirsch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ravid</forename><surname>Shwartz-Ziv</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.01082</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">Eleni</forename><surname>Nisioti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mateo</forename><surname>Mahaut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre-Yves</forename><surname>Oudeyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ida</forename><surname>Momennejad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clément</forename><surname>Moulin-Frier</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2206.05060</idno>
+		<idno>ArXiv:2206.05060</idno>
+		<title level="m">Social Network Structure Shapes Innovation: Experience-sharing in RL with SAPIENS</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Collective innovation in groups of large language models</title>
+		<author>
+			<persName><forename type="first">Eleni</forename><surname>Nisioti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Risi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ida</forename><surname>Momennejad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre-Yves</forename><surname>Oudeyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clément</forename><surname>Moulin-Frier</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">ALIFE 2024: Proceedings of the 2024 Artificial Life Conference</title>
+		<imprint>
+			<publisher>MIT Press</publisher>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Bleu: a method for automatic evaluation of machine translation</title>
+		<author>
+			<persName><forename type="first">Kishore</forename><surname>Papineni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Salim</forename><surname>Roukos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Todd</forename><surname>Ward</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei-Jing</forename><surname>Zhu</surname></persName>
+		</author>
+		<idno type="DOI">10.3115/1073083.1073135</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 40th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Philadelphia, Pennsylvania, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2002">2002</date>
+			<biblScope unit="page" from="311" to="318" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">Cédric Colas, Gaia Molinaro, Maxime Derex, Pierre-Yves Oudeyer, and Clément Moulin-Frier. 2024a. When llms play the telephone game: Cumulative changes and attractors in iterated cultural transmissions</title>
+		<author>
+			<persName><forename type="first">Jérémy</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Corentin</forename><surname>Léger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Grgur</forename><surname>Kovač</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.04503</idno>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jérémy</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Corentin</forename><surname>Léger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marcela</forename><surname>Ovando-Tellez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Foulon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joan</forename><surname>Dussauld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre-Yves</forename><surname>Oudeyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clément</forename><surname>Moulin-Frier</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.08882</idno>
+		<title level="m">Cultural evolution in populations of large language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<title level="m" type="main">Cultural reinforcement learning: a framework for modeling cumulative culture on a limited channel</title>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Prystawski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dilip</forename><surname>Arumugam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">D</forename><surname>Goodman</surname></persName>
+		</author>
+		<idno type="DOI">10.31234/osf.io/q4tz8</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">Position: Model collapse does not mean what you think</title>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Kazdan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.03150</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>Alvan Caleb Arulandu, and Sanmi Koyejo</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Schmitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><forename type="middle">J</forename><surname>Hudson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Augustin</forename><surname>Zidek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Osindero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carl</forename><surname>Doersch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wojciech</forename><forename type="middle">M</forename><surname>Czarnecki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joel</forename><forename type="middle">Z</forename><surname>Leibo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heinrich</forename><surname>Kuttler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Zisserman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">M</forename><surname>Ali Eslami</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.1803.03835</idno>
+		<idno>ArXiv:1803.03835</idno>
+		<title level="m">Kickstarting Deep Reinforcement Learning</title>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">AI models collapse when trained on recursively generated data</title>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zakhar</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yarin</forename><surname>Gal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">631</biblScope>
+			<biblScope unit="issue">8022</biblScope>
+			<biblScope unit="page" from="755" to="759" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<monogr>
+		<title level="m" type="main">The falcon 3 family of open models</title>
+		<author>
+			<persName><forename type="first">Falcon-Llm</forename><surname>Team</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Stooke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anuj</forename><surname>Mahajan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Catarina</forename><surname>Barros</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charlie</forename><surname>Deck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Bauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakub</forename><surname>Sygnowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maja</forename><surname>Trebacz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Jaderberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Mathieu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nat</forename><surname>Mcaleese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathalie</forename><surname>Bradley-Schmieg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathaniel</forename><surname>Wong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Porcel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roberta</forename><surname>Raileanu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Steph</forename><surname>Hughes-Fitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentin</forename><surname>Dalibard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wojciech</forename><forename type="middle">Marian</forename><surname>Czarnecki</surname></persName>
+		</author>
+		<idno type="DOI">10.48550/arXiv.2107.12808</idno>
+		<idno>ArXiv:2107.12808</idno>
+		<title level="m">Open-Ended Learning Leads to Generally Capable Agents</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+		<respStmt>
+			<orgName>Open Ended Learning Team</orgName>
+		</respStmt>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<author>
+			<persName><forename type="first">Aron</forename><surname>Vallinder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edward</forename><surname>Hughes</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.10270</idno>
+		<title level="m">Cultural evolution of cooperation among llm agents</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<analytic>
+		<title level="a" type="main">TL;DR: Mining Reddit to learn automatic summarization</title>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Völske</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Potthast</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shahbaz</forename><surname>Syed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benno</forename><surname>Stein</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/W17-4508</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Workshop on New Frontiers in Summarization</title>
+		<meeting>the Workshop on New Frontiers in Summarization<address><addrLine>Copenhagen, Denmark</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page" from="59" to="63" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<analytic>
+		<title level="a" type="main">Is ChatGPT a good NLG evaluator? a preliminary study</title>
+		<author>
+			<persName><forename type="first">Jiaan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunlong</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fandong</forename><surname>Meng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zengkui</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haoxiang</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhixu</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinan</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Qu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Zhou</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2023.newsum-1.1</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 4th New Frontiers in Summarization Workshop</title>
+		<meeting>the 4th New Frontiers in Summarization Workshop<address><addrLine>Singapore</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="1" to="11" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<monogr>
+		<author>
+			<persName><forename type="first">Ze</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zekun</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeremy</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Navya</forename><surname>Jain</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.15234</idno>
+		<title level="m">Xin Guan, and Adriano Koshiyama. 2024a. Bias amplification: Language models as increasingly biased media</title>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<monogr>
+		<author>
+			<persName><forename type="first">Ze</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zekun</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeremy</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Navya</forename><surname>Jain</surname></persName>
+		</author>
+		<title level="m">Xin Guan, and Adriano Koshiyama. 2024b. Bias amplification: Language models as increasingly biased media</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<author>
+			<persName><forename type="first">Dun</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiacheng</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ziyang</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fulong</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.19048</idno>
+		<title level="m">Jasper and stella: distillation of sota embedding models</title>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<monogr>
+		<title level="m" type="main">2024b. Regurgitative training: The value of real data in training large language models</title>
+		<author>
+			<persName><forename type="first">Jinghui</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dandan</forename><surname>Qiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mochen</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qiang</forename><surname>Wei</surname></persName>
+		</author>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<monogr>
+		<title level="m" type="main">Texygen: A benchmarking platform for text generation models</title>
+		<author>
+			<persName><forename type="first">Yaoming</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sidi</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lei</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaxian</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weinan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yong</forename><surname>Yu</surname></persName>
+		</author>
+		<idno>CoRR, abs/1802.01886</idno>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

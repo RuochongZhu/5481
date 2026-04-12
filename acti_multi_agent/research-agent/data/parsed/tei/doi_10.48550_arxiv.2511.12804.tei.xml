@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">The Alignment Game: A Theory of Long-Horizon Alignment Through Recursive Curation</title>
+				<funder>
+					<orgName type="full">Natural Sciences and Engineering Research Council of Canada</orgName>
+				</funder>
+				<funder>
+					<orgName type="full">University of Waterloo José Blakeley Scholarship</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Ali</forename><surname>Falahati</surname></persName>
+							<email>afalahati@uwaterloo.ca</email>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Waterloo</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Mohammad</forename><forename type="middle">Mohammadi</forename><surname>Amiri</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="institution">Rensselaer Polytechnic Institute</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Kate</forename><surname>Larson</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Waterloo</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Lukasz</forename><surname>Golab</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Waterloo</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">The Alignment Game: A Theory of Long-Horizon Alignment Through Recursive Curation</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">EAB61D24DE2DF206B1C19B261195075D</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:11+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>In self-consuming generative models that train on their own outputs, alignment with user preferences becomes a recursive rather than one-time process. We provide the first formal foundation for analyzing the long-term effects of such recursive retraining on alignment. Under a two-stage curation mechanism based on the Bradley-Terry (BT) model, we model alignment as an interaction between two factions: the Model Owner, who filters which outputs should be learned by the model, and the Public User, who determines which outputs are ultimately shared and retained through interactions with the model. Our analysis reveals three structural convergence regimes depending on the degree of preference alignment: consensus collapse, compromise on shared optima, and asymmetric refinement. We prove a fundamental impossibility theorem: no recursive BT-based curation mechanism can simultaneously preserve diversity, ensure symmetric influence, and eliminate dependence on initialization. Framing the process as dynamic social choice, we show that alignment is not a static goal but an evolving equilibrium, shaped both by power asymmetries and path dependence.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Introduction</head><p>Reinforcement Learning from Human Feedback (RLHF) <ref type="bibr" target="#b10">(Ouyang et al. 2022</ref>) has become the de facto method for aligning large language models with human preferences. Its appeal lies in a simple loop: broadcast model outputs to annotators, collect pairwise preferences, and update the policy through reward modeling. Among the many instantiations of this loop, the Bradley-Terry (BT) comparison model <ref type="bibr" target="#b2">(Bradley and Terry 1952)</ref> is widely used, powering early alignment successes such as InstructGPT and many subsequent fine-tuning pipelines. At the same time, BT has been criticized for strong independence assumptions of annotating samples, a tendency to reward extremely probable rather than diverse outputs, and vulnerability to noisy feedback <ref type="bibr" target="#b6">(Ge et al. 2024;</ref><ref type="bibr" target="#b15">Xiao et al. 2024)</ref>.</p><p>Most analyses of BT ask whether a single round of collecting human preferences yields an aligned model. In prac-tice, however, modern generative systems are updated recursively: synthetic outputs are added to the corpus, new models are trained on these added data, and the cycle repeats across model generations. Recent work shows that this selfconsuming regime can drift away from human values or collapse onto degenerate equilibria <ref type="bibr" target="#b5">(Ferbach et al. 2024;</ref><ref type="bibr" target="#b12">Shumailov et al. 2023;</ref><ref type="bibr" target="#b7">Gerstgrasser et al. 2024;</ref><ref type="bibr" target="#b0">Alemohammad et al. 2023)</ref>. A long-horizon view demands a formalism that tracks how preference aggregation compounds across successive rounds.</p><p>To fill this gap, we study the long-term alignment dynamics under recursive retraining. We focus on the simplest yet already rich scenario with two factions: the Model Owner, representing the incentives of developers or platform providers, and the Public, representing the aggregated preferences of society interacting with the model. At each iteration, the Owner curates samples via a mechanism based on BT, the model is trained on the selected outputs, the Public interacts with the released model and preserves a subset of model outputs through various actions such as upvoting, sharing, and other forms of engagement, and these data flow into the next training set. Our central question is: if this BT curation loop continues indefinitely, what distribution of content survives in the limit?</p><p>We model this loop as a dynamic social choice mechanism, which allows us to reason about fairness, incentive compatibility, and power asymmetries in a multi-agent setting. Our analysis is structured around three core alignment scenarios, each motivated by real-world tensions. First, we explore Perfect Alignment, where the Owner and Public preferences are identical. This represents the idealized "fully-aligned" goal that many systems implicitly strive for, and analyzing it is critical to understanding the consequences of perfect agreement. Second, we examine Partial Alignment, the most realistic scenario where preferences overlap but do not perfectly coincide: for instance, a platform's commercial goals overlapping with, but not fully capturing, public interests. This case allows us to study the dynamics of compromise. Finally, we analyze Disjoint Alignment, which models a critical conflict where developer and user values are in direct opposition. This scenario reveals the system's inherent power dynamics and who ultimately controls the output when values diverge. By understanding the long-run trajectory of each regime, we can expose the structural trade-offs between diversity, fairness, and stability, establishing a foundation for alternative mechanisms and richer multi-agent systems.</p><p>In summary, our contributions are threefold: (i) a formal model of recursive BT-based RLHF involving a model owner and a public user; (ii) a complete characterization of its long-run behavior, including an impossibility result that generalizes classic social choice tensions to the dynamic setting; and (iii) empirical evidence that these theoretical dynamics surface in practice. This work aims to lay the groundwork for a broader theory of long-term alignment, extending beyond single-step fine-tuning to account for the recursive and evolutionary nature of generative models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Related Work</head><p>Generative AI systems face fundamental challenges arising from recursive training dynamics and the cumulative effects of self-generated data. <ref type="bibr" target="#b12">(Shumailov et al. 2023</ref>) and <ref type="bibr" target="#b5">(Ferbach et al. 2024</ref>) demonstrated that training models on their own generated content leads to irreversible "model collapse," where output diversity diminishes through recursive iterations. These limitations are compounded by recursive training dynamics, as <ref type="bibr" target="#b4">(Dohmatob 2024)</ref> demonstrates clear crossover points between stable and collapse regimes <ref type="bibr" target="#b16">(Xu, He, and Cheng 2025)</ref>. <ref type="bibr" target="#b7">(Gerstgrasser et al. 2024)</ref> showed that data accumulation strategies can prevent collapse while replacement accelerates it.</p><p>The multi-stakeholder dimension of RLHF has been explored by <ref type="bibr" target="#b13">(Tewolde et al. 2024)</ref>, who propose Reinforcement Learning from Collective Human Feedback using social choice theory, while <ref type="bibr" target="#b9">(Mishra 2023</ref>) proves that universal AI alignment using RLHF is impossible under democratic constraints. The BT model, widely used in preferencebased reward modeling, faces significant limitations in multi-stakeholder scenarios. (Sun, Shen, and Ton 2024) provides the first theoretical critique, arguing these models are unnecessary for downstream optimization and proposing classification-based alternatives focused on "order consistency." <ref type="bibr" target="#b16">(Zhang et al. 2024)</ref> demonstrate that BT models "fall short in expressiveness, particularly in addressing intransitive preferences" that arise naturally in multi-stakeholder scenarios. <ref type="bibr" target="#b14">(Wu, Niezink, and Junker 2022)</ref> shows that these models violate the independence assumptions when multiple stakeholders are involved, leading to systematic marginalization of the preferences of minorities. <ref type="bibr" target="#b5">(Eckersley 2019)</ref> demonstrates that Arrow's impossibility theorem applies to AI alignment, showing that no satisfactory method exists to aggregate multiple human preferences without violating fairness criteria. <ref type="bibr" target="#b11">(Qiu 2024)</ref> extends this with Arrow-like impossibility theorems for representative social choice settings. The convergence of theoretical impossibility results with empirical evidence of model collapse establishes the foundation for understanding AI alignment as an inherently conflicted game between competing stakeholder interests. Additional insights from social choice theory highlight its role in guiding AI alignment, particularly in handling diverse human feedback and avoiding preference aggregation pitfalls <ref type="bibr" target="#b3">(Conitzer et al. 2024)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Problem Definition</head><p>We study iterative retraining of generative models, where synthetic outputs recursively influence future training data through a two-agent curation process. This analysis captures the alignment challenges that emerge when two stakeholders jointly shape the evolution of AI systems.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Model Components</head><p>Consider a generative modeling system with the following components:</p><p>• State Space: A compact metric space (X , d) representing the content domain.</p><p>• Agents: Two curators, the Owner (model developer) and the Public (user community), with continuous reward functions r O , r P : X → R encoding their respective preferences.</p><p>• Data Evolution: A sequence of public datasets {D t } t≥1 where D t ⊂ X .</p><p>• Model Sequence: Generative models {M t } t≥1 with output distributions p t ∈ P(X ) where P(X ) denote the set of all Borel probability measures on X .</p><p>• Sampling Pool: We define a pool of size K as a collection of i.i.d. samples {x 1 , . . . , x K } ∼ p. The integer K is the pool size and represents the number of alternatives available for pairwise comparison under BT.</p><p>Definition 1. For a probability measure p on X , a pool size K ≥ 2, and a reward function r, define the BT weight as <ref type="bibr" target="#b5">(Ferbach et al. 2024)</ref>: Yj )   .</p><formula xml:id="formula_0">H p K,r (x) := E Y1,...,Y K-1 ∼p K e r(x) e r(x) + K-1 j=1 e r(</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Alignment Game Framework</head><p>The system recursively evolves as follows. Start with initial dataset D 1 and initial model distribution p 0 .</p><p>Recursive loop (for t = 1, 2, . . .):</p><p>(1) Owner Curation: At iteration t, the Owner samples a pool {x 1 , . . . , x K } ∼ p t (the pool is a subset of D t , i.e., {x i } ∼ q t with q t ≈ p t ) and selects outputs via BT selection with reward r O , yielding:</p><formula xml:id="formula_1">pt (x) = p t (x) • H pt K,r O (x)<label>(1)</label></formula><p>(2) Model Update: Train M t+1 on data drawn from pt , producing the updated model distribution:</p><formula xml:id="formula_2">p t+1 (x) ≈ pt (x)<label>(2)</label></formula><p>(3) Public Curation: The Public samples a pool {x 1 , . . . , xM } ∼ p t+1 and applies BT selection with reward r P , yielding:</p><formula xml:id="formula_3">pt (x) = p t+1 (x) • H pt+1 M,r P (x)<label>(3)</label></formula><p>(4) Dataset Evolution:</p><formula xml:id="formula_4">Update D t+1 = D t ∪ O * t where O * t ∼ pt .</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Alignment Regimes</head><p>The interaction between curator preferences determines the system's long-term behavior. Let A O = arg max x∈X r O (x) and A P = arg max x∈X r P (x) denote the optimal sets for each curator.</p><p>Definition 2. We categorize value alignment between the Owner and the Public as:</p><formula xml:id="formula_5">• Perfect Alignment: A O = A P (complete agree- ment) • Partial Alignment: A O ∩ A P ̸ = ∅ with A O ̸ = A P (overlapping preferences) • Disjoint Alignment: A O ∩A P = ∅ (conflicting pref- erences)</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Assumptions</head><p>Our analysis relies on the following assumptions:</p><p>1. The recursive curation mechanism is explicitly defined by the BT model. The convergence properties and the impossibility theorem are direct consequences of the mathematical properties of this specific pairwise comparison model. 2. We analyze the idealized dynamic p t+1 (x) = pt (x),</p><p>where the model distribution at the next step perfectly matches the target distribution from the current step's curation. This abstracts away optimization error, noise, or catastrophic forgetting from practical training. 3. The reward functions r O : X → R and r P : X → R are assumed to be fixed and continuous over a compact metric space X . This ensures the optimal sets A O and A P are well-defined and non-empty.</p><p>Throughout the analysis, we consider open neighborhoods around maximizer sets. For any set A ⊂ X and radius η &gt; 0,</p><formula xml:id="formula_6">B η (A) := {x ∈ X : inf y∈A d(x, y) &lt; η}.<label>(4)</label></formula><p>where d : X × X → R ≥0 is the metric on X .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Core Recursive Alignment Challenges</head><p>We assume as t → ∞, the public dataset becomes dominated by curated synthetic data:</p><formula xml:id="formula_7">lim t→∞ |D 1 | |D t | = 0.<label>(5)</label></formula><p>This self-consuming regime, where models train predominantly on their own filtered outputs, is a critical challenge for maintaining alignment with diverse human values while avoiding mode collapse or value lock-in. This setting enables us to investigate fundamental questions about recursive alignment:</p><p>• Convergence: Under what conditions does the system converge to a stable distribution? Does it collapse to point masses or preserve diversity? • Influence Dynamics: How do the sequential curation mechanisms affect the relative influence of each curator?</p><p>• Alignment Impact: How does the degree of preference alignment between curators shape the evolution and final state of the generative model?</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Theoretical Results</head><p>We now analyze the long-term behavior of our two-stage curation mechanism under varying degrees of alignment between curators<ref type="foot" target="#foot_0">foot_0</ref> . We begin with the idealized case where both the Owner and the Public share identical preferences.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Perfect Alignment: The Consensus Trap</head><p>Theorem 1. Let the Owner and Public have perfectly aligned preferences: A O = A P =: A ⋆ ̸ = ∅ and {p t } t≥0 be the sequence of distributions generated by this mechanism. Then, the system reaches complete consensus: for any η &gt; 0, there exist constants C, c &gt; 0 such that p t (X \ B η (A ⋆ )) ≤ Ce -ct for all t ≥ 0. Moreover, p t converges weakly to the renormalized initial distribution on A ⋆ :</p><formula xml:id="formula_8">p ∞ (x) = p 0 (x) A⋆ p 0 (z) dz 1 A⋆ (x).</formula><p>Our first result uncovers that greater alignment does not preserve diversity, but speeds up its collapse. When preferences are perfectly aligned, the model concentrates on the shared maximizers, leading to a sharply reduced outcome space. Perfect alignment produces an impoverished limiting distribution. The exponential decay rate e -ct reflects the speed of this convergence, highlighting how quickly diversity is lost under alignment. In the limit, the only remaining variation arises from the initial distribution p 0 restricted to A ⋆ .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Corollary 2 (Mode Collapse for Unique Maximizers).</head><p>When both curators agree on a unique optimal point A O = A P = {x ⋆ }, system undergoes mode collapse: p t → δ x ⋆ , where δ x represents the Dirac delta function at x.</p><p>This corollary represents the most extreme form of homogenization and highlights a fundamental risk in alignmentdriven curation: as agreement increases, the support of the distribution contracts. Thus, systems designed to maximize agreement between developers and users may unintentionally collapse into echo chambers. This consensus trap suggests that some degree of preference misalignment may be necessary to sustain a healthy generative ecosystem. Our result complements prior findings such as (Ferbach et al. 2024), which show that recursive training on curated outputs can lead to long-term degeneracy. Thus, before pursuing perfect agreement, we should ask whether we are engineering an echo chamber that eliminates diversity.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Partial Alignment: The Compromise Equilibrium</head><p>Next, we consider the case where curators share some common ground while maintaining distinct preferences, a setting that better reflects the relationship between model owners and diverse user communities. </p><formula xml:id="formula_9">p ∞ (x) = p 0 (x) A shared p 0 (z)dz 1 A shared (x).</formula><p>Our findings reveal a key dynamic of partial alignment: the recursive process filters out content valued exclusively by one curator, preserving only what lies in the intersection. This "lowest common denominator" effect eliminates curator-specific signals, including potentially novel or specialized contributions. Although diversity is maintained within A shared , it remains limited to areas of mutual agreement. For AI systems, this suggests that iterative training with multiple stakeholders may progressively reduce the breadth of the model to only the jointly endorsed features.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Disjoint Alignment: Asymmetric Power Dynamics</head><p>The most adversarial situation arises when curators hold entirely disjoint preferences. In such cases, the question becomes: who ultimately defines the output space of the generative model when both sides embody incompatible values? This result exposes the inherent power asymmetry in the recursive alignment game. The Owner's first-mover advantage allows it to determine the feasible region, while the Public can only optimize within these constraints. This "best of the worst" dynamic mirrors real-world scenarios where users must select from options pre-filtered by platform algorithms. The Owner's preferences shape the system quickly, while the Public's influence manifests gradually as a refinement. This temporal divide reveals a deeper governance dilemma: once early alignment choices solidify into norms, user feedback becomes more about adaptation than agency.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>The Fundamental Impossibility Result</head><p>After exploring the range of alignment scenarios, we turn to a deeper limitation of recursive BT-based curation. Even under ideal conditions, certain properties that appear simultaneously desirable cannot all be achieved at once. Theorem 5. For any non-trivial preference misalignment (A O ̸ = A P ), it is impossible to simultaneously satisfy:</p><p>(1) Full Coverage: (2) Symmetric Influence: There exists a permutationinvariant functional Φ such that p ∞ = Φ(r O , r P , p 0 ) = Φ(r P , r O , p 0 ) (3) Initial Distribution Independence: For any two initial distributions p 0 , q 0 ∈ P(X ) with supp(p</p><formula xml:id="formula_10">0 ) = supp(q 0 ) = X , p (p0) ∞ = p (q0) ∞</formula><p>This impossibility result states that no recursive BT-based curation mechanism can simultaneously maintain content diversity across disagreement regions (Full Coverage), treat both curators equally (Symmetric Influence), and produce outcomes independent of initial conditions (Initial Distribution Independence). Each of these properties captures a fundamental value tension in alignment systems. Full Coverage represents the epistemic goal of preserving the full spectrum of ideas, ensuring that minority or dissenting content is not prematurely filtered out. Symmetric Influence encodes fairness: both curators should exert comparable control over the generative process, preventing dominance by either side. Initial Distribution Independence embodies stability, guaranteeing that the system's long-term behavior does not hinge on arbitrary starting points or early biases. The theorem's implications extend beyond our specific model: it formalizes the intuition that these goals pull in incompatible directions. The tradeoffs observed in recursive BT-based curation systems are therefore not artifacts of design but mathematical necessities. Designers must decide which virtue to compromise: accepting homogenization, embracing asymmetry, or tolerating historical lock-in.</p><p>Remark 1. Across all alignment regimes, the support of the limiting distribution shrinks as follows:</p><formula xml:id="formula_11">• supp(p ∞ ) ⊆ A O ∩A P when the intersection is non- empty • supp(p ∞ ) ⊆ A P |O ⊆ A O when A O ∩ A P = ∅</formula><p>This demonstrates that recursive BT-based curation inevitably reduces diversity, concentrating mass on increasingly narrow regions of agreement. These structural constraints raise a deeper question: what kind of decisionmaking process is recursive curation, and how should we reason about its limitations? To answer this, we now reinterpret the recursive BT-based curation mechanism using social choice theory.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>The Curation Mechanism as Social Choice</head><p>The recursive BT-based curation process can be viewed as a form of collective decision-making, where two agents jointly shape the long-term distribution of model outputs. To examine its properties, fairness, efficiency, and the preservation of diversity, we draw from social choice theory and mechanism design. We formalize recursive BT-based curation as a dynamic preference aggregation mechanism in which the Owner and the Public iteratively express preferences over a shared alternative space X through a two-stage influence process analogous to voting. 0 20 40 60 80 100 Iteration 10 0 6 × 10 1 2 × 10 0 Mean Distance (log scale) Perfect Alignment Distance Convergence Owner Public 0 20 40 60 80 100 Iteration 10 0 8 × 10 1 9 × 10 1 Mean Distance (log scale) Partial Alignment Distance Convergence Owner Public 0 20 40 60 80 100 Iteration 10 0 1.2 × 10 0 1.4 × 10 0 1.6 × 10 0 1.8 × 10 0 2 × 10 0 Mean Distance (log scale) Disjoint Alignment Distance Convergence Owner Public 0 20 40 60 80 100 Iteration 0.0 0.2 0.4 0.6 0.8 1.0 Satisfaction (Fraction in Circle) Perfect Alignment Satisfaction Owner Satisfaction Public Satisfaction 0 20 40 60 80 100 Iteration 0.4 0.5 0.6 0.7 0.8 0.9 1.0 Satisfaction (Fraction in Circle) Partial Alignment Satisfaction Owner Satisfaction Public Satisfaction 0 20 40 60 80 100 Iteration 0.0 0.2 0.4 0.6 0.8 1.0 Satisfaction (Fraction in Circle) Disjoint Alignment Satisfaction Owner Satisfaction Public Satisfaction Figure 2: (Top) Convergence of the mean distance to the owner and public centers over iterations for three alignment scenarios: perfect alignment, partial alignment, and disjoint alignment.(Bottom) The fraction of points within the owner and public preferred regions ("satisfaction") as the alignment process progresses.</p><p>Definition 3. A dynamic social choice mechanism for the alignment game consists of: (1) A set of alternatives X (the content space).</p><p>(2) Two agents N = {O, P } (Owner and Public).</p><p>(3) Preferences, captured by reward functions r i : X → R, for i ∈ N . (4) A social choice correspondence F : R 2 × P(X ) → P(X ) that maps preference profiles and current distributions to updated distributions. (5) A limit social choice function f ∞ : R 2 → P(X ) representing the long-run outcome.</p><p>The mechanism implements a sequential decision process in which agents express preferences via pairwise (binary) comparisons over alternatives. The Owner selects an alternative x ∈ X first, based on their reward function, and the Public responds by evaluating this choice using their own reward function. The final distribution over alternatives is updated based on these sequential comparisons, reflecting the asymmetric influence of each agent.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Strategic Voting and Incentive Compatibility</head><p>In the social choice literature, a central property is strategyproofness: agents should not have an incentive to misrepresent their preferences.</p><p>Theorem 6. For any reported pair (r ′ O , r ′ P ), let p ∞ (r ′ O , r ′ P ) denote the weak limit of {p t }. Define each agent's utility by <ref type="bibr">x)</ref> ]. Then, truthful reporting is weakly dominant for both agents:</p><formula xml:id="formula_12">U O (r ′ O , r ′ P ) := E x∼p∞(r ′ O ,r ′ P ) [ r O (x) ], U P (r ′ O , r ′ P ) := E x∼p∞(r ′ O ,r ′ P ) [ r P (</formula><formula xml:id="formula_13">U O (r O , r ′ P ) ≥ U O (r O , r ′ P ), U P (r ′ O , r P ) ≥ U P (r ′ O ,<label>rP</label></formula><p>) for all (r O , rP ), and for all (r ′ O , r ′ P ). In particular, (r ′ O , r ′ P ) = (r O , r P ) is a Nash equilibrium.</p><p>The theorem ensures truthful elicitation: for both agents, truthful reporting weakly dominates any misreport, regardless of the other report. Manipulating reports is therefore ineffective; influence instead comes from the dynamics. The result addresses incentives over reports only, and the broader questions of fairness, symmetric influence, and coverage are taken up in the next theorem, which formalizes their mutual incompatibility.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Fairness and Representation in Dynamic Voting</head><p>Beyond strategyproofness, social choice theory provides principled ways of thinking about fairness criteria, such as equal treatment of agents. We formalize this notion through the concept of influence parity. Theorem 7. No asymmetric sequential preference aggregation mechanism can simultaneously satisfy: (EQ) Influence parity: the outcome is order symmetric, that is</p><formula xml:id="formula_14">p OF ∞ (r O , r P ) = p PF ∞ (r O , r P ). Here p OF</formula><p>∞ is the limiting distribution when the Owner acts first, and p PF ∞ when the Public acts first. (PO) Pareto optimality: there is no distribution q on X with</p><formula xml:id="formula_15">E q [r O ] ≥ E p∞ [r O ], E q [r P ] ≥ E p∞ [r P ], (UC) Uniqueness: for each (r O , r P ) the outcome is unique, in-</formula><p>dependent of initialization and of any tie breaking. The sequential nature of voting creates a first-mover advantage that conflicts with equal treatment. Unlike static voting where ties can be broken symmetrically, the recursive dynamics amplify initial asymmetries, making true voter equality impossible while maintaining uniqueness.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Experiments</head><p>We validate our analysis through two experimental frameworks: a synthetic alignment game that directly implements our mathematical framework, and a text-based alignment game based on a realistic language modeling setting.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Synthetic Alignment Game</head><p>Experimental Setup. We implement a synthetic alignment game in R 2 where the Owner and Public preferences are defined by circular reward regions. The reward function for agent i ∈ {O, P } with center c i and radius r is:</p><formula xml:id="formula_16">r i (x) = 1.0 if ∥x -c i ∥ ≤ r -2.0 • (∥x -c i ∥ -r) if ∥x -c i ∥ &gt; r<label>(6)</label></formula><p>This creates a sharp preference boundary where points inside the circle receive maximum reward and points outside receive penalties proportional to their distance.</p><p>Alignment Scenarios. The system converges to a concentrated distribution within the shared optimal region, with exponential suppression outside the circle. The final distribution shows high density within the preferred region and negligible mass elsewhere, confirming Theorem 1. Partial Alignment: The system concentrates on the intersection of the two circles, preserving diversity only where preferences align. Points outside the intersection are exponentially suppressed, while the shared region maintains substantial density. This validates Theorem 3.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Disjoint Alignment:</head><p>The system converges to the Public's preferred subset within the Owner's optimal region. The Owner's first-mover advantage determines the support, while the Public refines the distribution within that support. This confirms Theorem 4. Figure <ref type="figure">2</ref> (top) tracks the mean distance to each agent's preferred center over iterations. All scenarios show exponential convergence, with the rate depending on the degree of alignment. Perfect alignment achieves the fastest convergence, while disjoint alignment shows a two-stage process, first converging to the Owner's region, then refining within it. Figure <ref type="figure">2</ref> (bottom) shows the fraction of points satisfying each agent's preferences ("satisfaction rate"). In perfect alignment, both agents achieve near-universal satisfaction. In partial alignment, satisfaction is limited to the intersection region. In disjoint alignment, the Owner maintains high satisfaction, while the Public's satisfaction is constrained by the Owner's preferences.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Text-Based Alignment Game</head><p>Experimental Setup. We implement a realistic text generation scenario using GPT-2 models ( <ref type="formula">Radford et al. 2019</ref> 2 4 6 8 10 12 14 16 18 20 Iteration 0 1 2 3 4 5 6 7 8 Average Word Count Perfect Alignment Owner: 4-4, Public: 4-4 Owner Training Public Training Owner Target (4-4) Public Target (4-4) 2 4 6 8 10 12 14 16 18 20 Iteration 0 1 2 3 4 5 6 7 8 Average Word Count Partial Alignment Owner: 1-4, Public: 3-6 Owner Training Public Training Owner Target (1-4) Public Target (3-6) 2 4 6 8 10 12 14 16 18 20 Iteration 0 1 2 3 4 5 6 7 8 Average Word Count Disjoint Alignment Owner: 3-4, Public: 5-6 Owner Training Public Training Owner Target (3-4) Public Target (5-6)</p><p>Figure <ref type="figure">3</ref>: Word count evolution across three alignment scenarios: perfect alignment (agents target 4 words), partial alignment (owner targets 1-3 words, public targets 3-5 words), and disjoint alignment (owner targets 3-4 words, public targets 5-6 words).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Results and Analysis.</head><p>Figure <ref type="figure">3</ref> shows the evolution of average word count across iterations for all three scenarios. The results demonstrate the same convergence patterns as the synthetic experiments. Perfect Alignment: Both training stages converge to the shared target of 4 words within 10 iterations, achieving near-perfect alignment with minimal variance. Partial Alignment: The system converges to the intersection of preferences (around 3-4 words), with the Owner's training showing slightly lower word counts and the Public's training showing slightly higher counts, but both remaining within the overlapping range. Disjoint Alignment: The system shows a two-stage convergence process. Initially, both training stages converge toward the Owner's preferred range (3-4 words). However, the Public's training gradually shifts toward longer responses, eventually settling around 4 words, demonstrating the Public's ability to refine within the Owner's preferred domain. Key Findings. Our experiments validate several theoretical predictions. All scenarios show exponential convergence to equilibrium distributions, with convergence rates inversely proportional to the degree of alignment. In all cases, the final distribution concentrates on a subset of the original support, confirming the shrinking support principle (Remark 1). In disjoint alignment scenarios, the Owner's preferences dominate the support selection, while the Public refines within that support. Partial alignment scenarios preserve diversity only within the intersection of preferred regions, with exponential suppression elsewhere. These phenomena persist across different domains (continuous vs. discrete text) and different model architectures (GMM vs. transformer).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Conclusion</head><p>Alignment is not a one-time setting. In recursive curation, even well-intended preference aggregation can reduce diversity, confer first mover power, and lock models into narrow equilibria. We identified three convergence regimes, consensus collapse, lowest common denominator compromise, and owner-led refinement, showing how small preference gaps can redirect the long-run trajectory of generative systems. Implications for AI alignment. Our findings suggest that we must reconceptualize alignment itself. First, it moves the problem from one-time preference-matching to dynamic mechanism design. The paper demonstrates that the structure of the alignment process, the sequential curation, the power dynamics, is a value-driven system that actively shapes outcomes, privileging owner-defined constraints over public refinement. Second, the impossibility theorem is not a failure but a clarification. It suggests that the goal of a single, stable, and diverse alignment may be a contradiction in terms. This should force the field to pivot from designing for consensus to designing for pluralism. The challenge is not to eliminate disagreement but to build systems that can productively manage it, treating "lowest common denominator" outcomes as a failure state of the mechanism, not an acceptable compromise. Finally, this work implies that the true alignment "meta-problem" is not just aligning a model, but aligning the recursive alignment process itself. We must design the feedback loop, the "game", to be transparent, contestable, and fair. Instead of a one-time setting, alignment becomes a continuous process of governing the system that governs the models. Limitations and Future Work. This analysis is based on a model with key simplifying assumptions. First, the analysis rests on the BT model, which assumes that preferences are independent and transitive. Future work must extend this analysis to more complex preference models. Second, the two-agent "Owner-Public" game is a simplification of a complex ecosystem. The next step is to model this as an n-agent game with heterogeneous agents. Third, the model assumes static preferences. A more realistic analysis would treat preferences and model outputs as co-evolving. Future research should explore this co-evolutionary dynamic, where the outputs of one generation's model actively shape the preferences of the agents who curate the next. Finally, this paper is descriptive; it explains what will happen. The next step is normative mechanism design. Given the impossibility theorem, how can we design new curation systems that explicitly and transparently choose which property to sacrifice? This moves the alignment challenge beyond the realm of optimization and into the domain of political and social governance. The task is no longer to discover a single, mathematically "correct" alignment, but to engineer a process that is perceived as legitimate, transparent, and fair by all stakeholders.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><figDesc>Theorem 3. Suppose the curators have overlapping but distinct preferences, with shared optima A shared := A O ∩ A P ̸ = ∅ while A O ̸ = A P . Under the two-stage curation mechanism, only the intersection survives: the mass outside B η (A shared ) decays exponentially as p t (X \ B η (A shared )) ≤ Ce -ct . The limiting distribution p ∞ concentrates entirely on A shared with density proportional to the initial distribution:</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><figDesc>Theorem 4. When curator preferences are completely disjoint (A O ∩ A P = ∅), the Owner determines the support while the Public refines within it. Define the Public's preferred subset within Owner optima as A P |O := arg max x∈A O r P (x). The system exhibits two-stage exponential suppression. First, content outside the Owner's optima vanishes with p t (X \ B η (A O )) ≤ C 1 e -c1t , then within A O , mass concentrates on the Public's preferred subset with p t (A O \ B η (A P |O )) ≤ C 2 e -c2t . The limiting distribution is p ∞ (x) = p 0 (x) A P |O p 0 (z)dz 1 A P |O (x).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>lim inf t→∞ p t (A O \A P ) &gt; 0 and lim inf t→∞ p t (A P \A O ) &gt; 0</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 1 :Figure 2 :</head><label>12</label><figDesc>Figure 1: KDE plots showing point distributions in three alignment scenarios: perfect alignment (same circles), partial alignment (overlapping circles), and disjoint alignment (non-overlapping circles). Red circles indicate owner preferred regions, blue dashed circles show public preferred regions.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><figDesc>(i) Perfect alignment: c O = c P = (0, 0), r = 1.0, i.e., both agents prefer the same circular region; (ii) Partial alignment: c O = (0, 0), c P = (1.5, 0), r = 1.0, i.e., overlapping circles with shared optima; (iii) Disjoint alignment: c O = (0, 0), c P = (3, 0), r = 1.0, i.e., nonoverlapping circles with no shared optima. Experimental Parameters. Each experiment runs for 100 iterations with the following parameters: (i) Initial dataset: 1000 points sampled uniformly from [-5, 5] × [-5, 5]; (ii) Owner curation: Select 100 points using the BT mechanism with temperature τ = 0.5; (iii) Generation: Train a Gaussian Mixture Model (GMM) (Bishop 2006) on curated data, generate 200 new samples; (iv) Public curation: Select 50 points from generated samples using the BT mechanism; (v) Dataset update: Add public-curated samples to the training. Results and Analysis.Figure (1) (top) shows the final distribution of points after 100 iterations for each alignment scenario. The KDE plots reveal convergence patterns that validate our theoretical predictions. Perfect Alignment:</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><figDesc>) where the Owner and Public have different preferences for response length. The system operates on the WikiText-2 (Merity et al. 2016) dataset, with agents preferring different word count ranges for generated responses. Alignment Scenarios. We test three text-based alignment scenarios: (i) Perfect Alignment: Both agents prefer exactly 4 words (Owner: 4-4, Public: 4-4); (ii) Partial Alignment: Owner prefers 2-4 words, Public prefers 4-6 words (overlapping range); Disjoint Alignment: Owner prefers 1-3 words, Public prefers 5-6 words (non-overlapping ranges). Experimental Parameters. (i) Initial dataset: 10000 sentences from WikiText-2 filtered by word count; (ii) Owner curation: Select 1000 sentences using the BT mechanism (iii) Generation: Fine-tune the model for 2 epochs, generate 2000 responses with temperature 0.8; (iv) Public curation: Select 1000 responses using the BT mechanism (v) Training: Learning rate 5 × 10 -5 , batch size 8.</figDesc></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>Proofs are in Section A of Appendix in the extended version.</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgements</head><p>The authors thank the <rs type="funder">Natural Sciences and Engineering Research Council of Canada</rs>, the <rs type="funder">University of Waterloo José Blakeley Scholarship</rs> for financial support. We are also grateful to the reviewers for their valued feedback on the paper.</p></div>
+			</div>
+			<listOrg type="funding">
+			</listOrg>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Self-consuming generative models go mad</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">I</forename><surname>Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Baraniuk</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">M</forename><surname>Bishop</surname></persName>
+		</author>
+		<title level="m">Pattern Recognition and Machine Learning</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2006">2006</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Rank analysis of incomplete block designs: I. The method of paired comparisons</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">A</forename><surname>Bradley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">E</forename><surname>Terry</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Biometrika</title>
+		<imprint>
+			<biblScope unit="volume">39</biblScope>
+			<biblScope unit="issue">3/4</biblScope>
+			<biblScope unit="page" from="324" to="345" />
+			<date type="published" when="1952">1952</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<author>
+			<persName><forename type="first">V</forename><surname>Conitzer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Freedman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Heitzig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">H</forename><surname>Holliday</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><forename type="middle">M</forename><surname>Jacobs</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mossé</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Pacuit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Russell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Schoelkopf</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.10271</idno>
+		<title level="m">Social choice should guide ai alignment in dealing with diverse human feedback</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<author>
+			<persName><surname>Dohmatob</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.07712</idno>
+		<title level="m">Model Collapse Demystified: The Case of Regression</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Impossibility and Uncertainty Theorems in AI Value Alignment (or why your AGI should not have a utility function)</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Eckersley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Ferbach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">J</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Gidel</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1901.00064</idno>
+		<idno>arXiv:2407.09499</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences</title>
+		<imprint>
+			<date type="published" when="2019">2019. 2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Axioms for ai alignment from human feedback</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Halpern</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Micha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">D</forename><surname>Procaccia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shapira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Vorobeychik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="80439" to="80465" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Sleight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Pai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gromov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">A</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Koyejo</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.01413</idno>
+		<title level="m">Is Model Collapse Inevitable? Breaking the Curse of Recursion by Accumulating Real and Synthetic Data</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Merity</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Bradbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Socher</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1609.07843</idno>
+		<title level="m">Pointer Sentinel Mixture Models</title>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mishra</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.16048</idno>
+		<title level="m">AI Alignment and Social Choice: Fundamental Limitations and Policy Implications</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Training language models to follow instructions with human feedback. Advances in neural information processing systems</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ray</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="27730" to="27744" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Language Models are Unsupervised Multitask Learners</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.23953</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Representative Social Choice: From Learning Theory to AI Alignment</title>
+		<imprint>
+			<publisher>OpenAI</publisher>
+			<date type="published" when="2019">2024. 2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J.-F</forename><surname>Ton</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.17493</idno>
+		<idno>arXiv:2411.04991</idno>
+		<title level="m">Rethinking bradley-terry models in preference-based reward modeling: Foundations, theory, and alternatives</title>
+		<meeting><address><addrLine>Sun, H</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2023">2023. 2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>The Curse of Recursion: Training on Generated Data Makes Models Forget</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tewolde</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Conitzer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Freedman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Heitzig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">H</forename><surname>Holliday</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><forename type="middle">M</forename><surname>Jacobs</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mossé</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Pacuit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Russell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Schoelkopf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">S</forename><surname>Zwicker</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.10271</idno>
+		<title level="m">Social Choice Should Guide AI Alignment in Dealing with Diverse Human Feedback</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">A diagnostic framework for the Bradley-Terry model</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Niezink</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Junker</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of the Royal Statistical Society: Series A (Statistics in Society)</title>
+		<imprint>
+			<biblScope unit="volume">185</biblScope>
+			<biblScope unit="page" from="461" to="S484" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Getzen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Long</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">J</forename><surname>Su</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.16455</idno>
+		<title level="m">On the algorithmic bias of aligning large language models with RLHF: Preference collapse and matching regularization</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.13947</idno>
+		<idno>arXiv:2410.02197</idno>
+		<title level="m">Beyond Bradley-Terry Models: A General Preference Model for Language Model Alignment</title>
+		<imprint>
+			<date type="published" when="2024">2025. 2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>A Probabilistic Perspective on Model Collapse</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

@@ -1,0 +1,1629 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Aligning Modalities in Vision Large Language Models via Preference Fine-tuning</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2024-02-18">18 Feb 2024</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Yiyang</forename><surname>Zhou</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Chenhang</forename><surname>Cui</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Rafael</forename><surname>Rafailov</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Chelsea</forename><surname>Finn</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Huaxiu</forename><surname>Yao</surname></persName>
+						</author>
+						<title level="a" type="main">Aligning Modalities in Vision Large Language Models via Preference Fine-tuning</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2024-02-18">18 Feb 2024</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">FE4FD9EB6297E30F9F5C645F31667C7A</idno>
+					<idno type="arXiv">arXiv:2402.11411v1[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:14+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Instruction-following Vision Large Language Models (VLLMs) have achieved significant progress recently on a variety of tasks. These approaches merge strong pre-trained vision models and large language models (LLMs). Since these components are trained separately, the learned representations need to be aligned with joint training on additional image-language pairs. This procedure is not perfect and can cause the model to hallucinate -provide answers that do not accurately reflect the image, even when the core LLM is highly factual and the vision backbone has sufficiently complete representations. In this work, we frame the hallucination problem as an alignment issue, tackle it with preference tuning. Specifically, we propose POVID to generate feedback data with AI models. We use ground-truth instructions as the preferred response and a two-stage approach to generate dispreferred data. First, we prompt GPT-4V to inject plausible hallucinations into the correct answer. Second, we distort the image to trigger the inherent hallucination behavior of the VLLM. This is an automated approach, which does not rely on human data generation or require a perfect expert, which makes it easily scalable. Finally, both of these generation strategies are integrated into an RLHF pipeline via Direct Preference Optimization. In experiments across broad benchmarks, we show that we can not only reduce hallucinations, but improve model performance across standard benchmarks, outperforming prior approaches. Our data and code are available at <ref type="url" target="https://github.com/YiyangZhou/POVID">https://github.com/  YiyangZhou/POVID</ref>.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>Vision Large Language Models (VLLMs) have achieved significant success in various vision understanding tasks, such as image captioning <ref type="bibr" target="#b36">(Vinyals et al., 2015;</ref><ref type="bibr" target="#b18">Li et al., 2022;</ref><ref type="bibr">2023c)</ref> and vision question answering <ref type="bibr" target="#b38">(Ye et al., 2023;</ref><ref type="bibr" target="#b0">Antol et al., 2015)</ref>. These VLLM models fuse larger-scale pre-trained vision models into the representation space of a large language models (LLM), allowing the LLM access to the visual representations. However, such VLLMs are not perfect and even suffer from "hallucinations", a phenomenon in which the language model generates content that is not grounded in the image, such as imagined objects and even scenes, wrong spatial relationships or categories, etc. Such artifacts are present even when both the vision backbone produces high-quality visual features and the language model itself is factual and accurate. These issues can pose significant risks when VLLMs are deployed in high-stakes scenarios, such as medical domains <ref type="bibr">(Li et al., 2023b)</ref> or autonomous driving <ref type="bibr" target="#b9">(Dewangan et al., 2023)</ref>.</p><p>As discussed by <ref type="bibr" target="#b7">Cui et al. (2023)</ref>, the potential reason for hallucinations in VLLMs lies in their tendency to prioritize common sense or stereotypes present in the training language data, often disregarding the actual visual input information. In this paper, we attribute this issue to the lack of alignment between the image and text modalities, resulting in a reduced focus on input image information. Recent research efforts have sought to enhance the alignment between modalities through preference fine-tuning techniques, such as reinforcement learning from human feedback (RLHF) <ref type="bibr" target="#b31">(Sun et al., 2023)</ref>. Concurrent works <ref type="bibr">(Li et al., 2023d;</ref><ref type="bibr" target="#b43">Zhao et al., 2023)</ref> also use the Direct Preference Optimization (DPO) framework, but they rely on the traditional preference data generation process in LLMs, where both preferred and dispreferred responses may potentially be incorrect. However, in VLLMs, the produced responses are centered around the image data rather than being generated freely like in LLMs. When comparing two responses, both of which may be incorrect for the given task, the model may struggle to accurately align the image with the correct generated response. In <ref type="bibr">(Yu et al., 2023a)</ref> the authors propose to solve this issue by collection corrective feedback, which shows strong results, but relies on costly human data gathering.</p><p>Unlike prior works that generate both preferred and dispreferred data, we propose Preference Optimization in VLLM with AI-Generated Dispreferences (POVID) framework, aiming to exclusively generate dispreferred feedback data using AI models. In POVID we employ a high-quality ground truth multi-modal instruction as the preferred answer and employ two strategies to generate dispreferred responses. First, we utilize GPT-4V to introduce plausible hallucinations into the answer, which we then use as the dispreferred response. Second, we aim to provoke inherent hallucination patterns and subsequently correct them within the target VLLM that requires fine-tuning. We achieve this goal by introducing noise, triggering inherent hallucination patterns within the VLLMs. The introduction of noise disrupts the VLLM's comprehension of the image, leading it to generate uncertain responses that rely more on textual context or the knowledge it has acquired from the training data. Given that the inherent hallucination patterns of the target VLLM evolve during the training process, the response generation with the noisy image occurs in real-time during training, and this is treated as dispreference. Finally, we integrate both forms of dispreference into the DPO optimization framework, specifically targeting the alignment of language generation with the image.</p><p>The primary contribution of this paper is POVID, which utilizes AI-generated dispreference to align the image and text modalities in VLLMs. This approach explicitly contrasts a hallucinatory answer with a truthful one, eliminating the need for gathering human feedback and making it easily deployable at scale. Our empirical results demonstrate the promise of our framework in reducing hallucinations and enhancing other VLLM-related tasks. In particular, as shown in Figure <ref type="figure" target="#fig_0">1</ref>, our approach significantly improves performance compared to other preference tuning methods in VLLMs, achieving an average improvement of 12.4% improvements on average. Additionally, we demonstrate that POVID can redirect the attention of VLLMs towards the image modality, resulting in better modality alignment.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Preliminaries</head><p>Our approach aims to fine-tune VLLMs for better aligning the image and text modalities uses the framework of prefer-ence tuning from preferences over responses. In this section, we will provide some notations of VLLMs and an overview of direct preference optimization <ref type="bibr" target="#b28">(Rafailov et al., 2023)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Vision Large Language Models.</head><p>VLLMs is an multimodal extension of large language models, which can generate sentences in an autoregressive manner, aiming to progressively predict the probability distribution of the next token. Here, the input prompt x contains both images and text prompts, and the output contains text response y. A typical application scenario for VLLMs is image captioning and Vision Question Answering (VQA).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Direct Preference Optimization.</head><p>Reinforcement learning (RL) has shown its effectiveness in fine-tuning LLMs and align the LLMs behavior with human behavior. Typically, give an input x and an output text response y, a language model policy π θ can produce a conditional distribution π θ (y | x). RL aims to maximize the average reward of outputs generated by the policy, where the reward function is defined as r(x, y). To further avoid overoptimization <ref type="bibr" target="#b11">(Gao et al., 2023)</ref> happens when directly optimizing the reward function, the objective loss typically contains a KL-divergence term to control the divergence between the language model policy and its reference policy π ref (y | x) (e.g., the result after performing some supervised fine-tuning on LLMs). Thus, the overall objective is formulated as:</p><formula xml:id="formula_0">max π θ E x∼D,y∼π θ (y|x) r(x, y) -α log π θ (y | x) π ref (y | x) (<label>1</label></formula><formula xml:id="formula_1">)</formula><p>where D is a dataset of prompts and β is a coefficient to control both terms. However, optimizing the above loss term with common strategies like proximal policy optimization (PPO) <ref type="bibr" target="#b30">(Schulman et al., 2017)</ref> is complex to tune.</p><p>Recently, direct preference optimization (DPO) <ref type="bibr" target="#b28">(Rafailov et al., 2023)</ref> simplifies the above process by leveraging preference data for optimization. Here, the preference data is defined as D = {x (i) , y</p><p>w , y</p><p>l } N i=1 , where y</p><p>w and y (i) l represent preferred and dispreferred responses given an input prompt x. Following a Bradley-Terry model <ref type="bibr" target="#b3">(Bradley &amp; Terry, 1952)</ref>, the probably of obtaining each preference pair is:</p><formula xml:id="formula_5">p(y w ≻ y l ) = σ(r(x, y w ) -r(x, y l )),<label>(2)</label></formula><p>where we omit the superscript (i) for simplicity and σ(•) is defined as a sigmoid function. In DPO, the optimization of Eqn. (1) can be formulated as classification loss over the preference data as:</p><formula xml:id="formula_6">L DPO (π θ ; π ref ) = -E (x,yw,y l )∼D log σ α log π θ (y w |x) π ref (y w |x) -α log π θ (y l |x) π ref (y l |x) .<label>(3)</label></formula><p>DPO enables learning π θ from a fixed dataset of preferences, which is lightweight. However, the key challenge lies in gen-</p><p>Prompt: Describe this image. Answer: The picture shows a table with ….. The sun is shining in from outside and everything is peaceful. Prompt: Describe this image. Answer: The picture shows a table with a fruit knife (hallucinatory entity) …twenty oranges (entity attributes)... The moon (logical relationship) is shining in from outside and everything is peaceful.</p><p>Preferred data Injected dis-preferred response 𝑦 ! " Image Distorted image Hallucination Injection Step 1: Hallucinating Textual Responses Step 2: Mitigating Inherent Hallucination Patterns 𝑦 ! " Triggered dis-preferred response A fruit knife, apples (internal hallucination). … Real-time triggering process 𝑦 ! " 𝑦 𝑤 &gt; 𝑦 ! # LLaVA-1.5 Preference optimization erating effective preference data for fine-tuning and aligning image and text modalities in VLLMs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Constructing Preferences to Aligning Modalities in VLLMs</head><p>While preference learning approaches (e.g., DPO) facilitate the lightweight and stable training of VLLMs, they require data in the form of preferences. In contrast to LLMs, which support more freestyle generation in many scenarios, VLLMs used in various applications, such as VQA or image captioning, produce responses linked to input images. This inherent image-centricity presents distinct challenges in the preference data generation process for VLLMs, setting it apart from the process in LLMs. Specifically, in VLLMs, when comparing two responses, neither of which is correct for the required task (e.g., image captioning), the model may not be able to accurately align the image with the response.</p><p>To address this challenge, we propose Preference Optimization in VLLM with AI-Generated Dispreferences (POVID), a novel approach aimed at better aligning image and text modalities. As illustrated in Figure <ref type="figure" target="#fig_1">2</ref>, POVID leverages AI models to generate dispreferred responses without the need for human labeling efforts. These generated dispreferred responses, when combined with groundtruth image descriptions (treated as preferred responses), form the preference data pairs. Specifically, we employ two strategies to generate the dispreferred response: (1) Firstly, we manipulate the groundtruth text response by transforming the groundtruth response into hallucinated response, which serves as the dispreferred response;</p><p>(2) Secondly, we in-troduce distortion to the image input during the training process, intending to trigger inherent hallucination patterns within the VLLMs. These patterns are then formalized as the dispreferred response, motivating the model to correct its inherent dispreferred patterns. In the remainder of this section, we will provide detailed explanations of both strategies and demonstrate how to integrate them into the preference training framework.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">Hallucinating Textual Responses</head><p>In our first strategy, we aim to generate dispreferred hallucinatory responses by hallucinating the groundtruth correct response. We construct the hallucinatory response based on a subset with 17K examples that are randomly sampled from LLaVA-Instruct-150K <ref type="bibr">(Liu et al., 2023b)</ref> dataset. Here, the LLaVA-Instruct-150K datasets is used to train LLaVA LLaVA with supervised fine-tuning. The 17K examples includes various task types, including image captioning, simple VQA and logical reasoning.</p><p>To construct the preferences, we treat the original answers in the 17K examples as preferred responses. In terms of constructing dispreferred responses, we hallucinate the original answers using GPT-4V (OpenAI, 2023). Here, we adopt two hallucinating approaches tailored to different tasks: I. Hallucinating Image Captioning Tasks. First, we hallucinate the image captioning tasks by considering three fundamental causes of hallucination in VLLMs: (1) Object Co-occurrence: This phenomenon arises when the training data contains spurious co-occurring patterns between objects, leading VLLMs to generate objects based on these</p><p>The image shows two men in a small boat on the water. One man is standing near the center of the boat, while the other is seated and rowing. The man wearing a headscarf is watching television, which is placed on the boat, adding an interesting element to the scene. There are a few other boats visible in the background, indicating that they might be in a city river or a busy waterway. The presence of the television in the boat adds a unique touch to their leisurely activity.</p><p>The image shows two men in a small boat on the water, equipped with fishing poles (hallucinatory entity) for their leisurely activity. One man is sitting near the center of the boat (entity attributes), fishing with his fishing pole (hallucinatory entity) , while the other is seated and rowing. They are both watching a television (logical relationship), which is placed on the boat, adding an interesting element to the scene. There are a few other boats visible in the background, indicating that they might be in a city river or a busy waterway. The presence of the fishing poles and the television in the boat adds a unique touch to their relaxing day on the water.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Preferred response Dis-preferred response</head><p>Prompt: Describe this image.</p><p>Reasoning: The picture depicts a sunset scene in which I see a lake and open sky. Answer: Yes, there is a person standing next to some blue water in the image.</p><p>Reasoning: The image depicts a sunset scene with a man standing on an open ice field (false reasoning, hallucinatory entities) with what appears to be a few buildings visible in the distance.</p><p>Answer: No, the person is standing next to a vast snowy field, not water (incorrect answer).</p><p>Prompt: Is there a person standing next to water in the image? learned spurious correlations. In this context, we aim to leverage GPT-4V to deduce object co-occurrence within the given image and subsequently revise the original responses accordingly; (2) Logical Relationships Between Entities: This involves using GPT-4V to modify the relationships between the original objects; (3) Incorrect Attributes: In this case, we employ GPT-4V to alter the attributes of various objects, such as changing their colors. We illustrate these three distinct hallucination scenarios with an example provided in Figure <ref type="figure" target="#fig_2">3(a)</ref>. In addition, the prompt we used to generate the dispreferred response is in Appendix A.2. II. Hallucinating Reasoning Tasks. Secondly, when dealing with tasks involving reasoning, such as VQA and logical reasoning, we task GPT-4V with modifying the reasoning process. This entails introducing errors related to logical relationships, entity information, entity attributes, and more. Additionally, we recommend that GPT-4V attempts to make subtle changes to the reasoning process, ensuring it remains independent of factual reasoning results, meaning that an incorrect reasoning process may still yield correct results. However, if the introduction of errors necessitates alterations to the reasoning results, we instruct GPT-4V to adjust the results accordingly. Likewise, in Figure <ref type="figure" target="#fig_2">3</ref>(b), we provide an example to demonstrate both the original and the generated dispreferred responses. The prompt we used is detailed in Appendix A.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2.">Mitigating Inherent Hallucination Patterns</head><p>In addition to generating the dispreferred response using powerful external AI models like GPT-4V, we also aim to provoke inherent hallucination patterns within the VLLM to be finetuned. Our second strategy introduces noise into the image to trigger inherent hallucination patterns in the VLLMs. This noise disrupts the VLLM's understanding of the image, leading it to produce uncertain responses that rely more on textual context or acquired knowledge from the training data. This occurs because, in the presence of noisy images, the model tends to prioritize inherent object associations over visual information. Notably, the noise step should remain within a reasonable range, ensuring that the image remains easily recognizable by humans. For example, as depicted in Figure <ref type="figure" target="#fig_3">4</ref>, when presented with the context "There are a knife and ", under specific noisy conditions, the likelihood of "fork" surpasses that of "plate" (ground truth). This may occur because "plate" is more likely to co-occur with "fork" in the training data. With an increase in noise steps, the term "pixel" becomes predominant, owing to the noticeable noise patterns within the image. Consequently, establishing an appropriate noise step to activate inherent hallucination patterns is a reasonable approach.</p><p>To achieve this goal, we introduce diffusion noise into the original image. We define the noise step as k, and the noised image with step k can be expressed as follows:</p><formula xml:id="formula_7">x(k) = ξk • x + 1 -ξk • ϵ,<label>(4)</label></formula><p>where ξt = k i=0 ξ i and ξ k ∈ (0, 1) is a hyperparameter chosen prior to model training. Detailed settings can be found in Appendix A.1. After obtaining the noised image, in order to more effectively capture changes in inherent hallucination patterns during the fine-tuning process of the VLLM, we integrate the image noising process into the DPO fine-tuning process. Specifically, for each input prompt x, we take into account the dispreferred responses from both the hallucinated text responses discussed in Section 3.1 and the responses triggered by distorted images. We then reformulate the DPO loss as follows:</p><formula xml:id="formula_8">LPOVID(π θ ; πref) = -E (x,yw ,y l )∼D log σ α log π θ (yw|x) πref(yw|x) -β1 log π θ (y t l |x) πref(y t l |x) + β2 log π θ (y n l |x n ) πref(y n l |x n ) ,<label>(5)</label></formula><p>where α, β 1 and β 2 are coefficients that balance preferred and dispreferred terms. y g l represents the dispreferred response generated using the approach outlined in Section 3.1. Additionally, x n represents the noisy image, which triggers the generation of the dispreferred response y n l . It's important to note that for each token i in the sequence y n l , the value of y n l,i is determined by selecting the maximum probability from the set π θ (• | x n , y w,&lt;i ). Here, each generated token in the dispreferred response y n l,i is conditioned on the prior tokens from the preferred response y w,&lt;i . This conditioning allows us to control the reliability of the triggered dispreferred response. As a result, we aim to capture the most significant changes between the preferred and dispre-ferred responses, since a substantial portion of dispreferred response overlaps with preferred response. The training process of our method is detailed in Algorithm 1. for k = 0 to T do 7:</p><p>x(k) ← AddNoiseToImage(x, k)</p><p>8: end for 9: Update π θ through Eqn. (5) 10: end for 11: end for</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Experiment</head><p>In this section, we empirically investigate the effectiveness of POVID in aligning image and text modalities in VLLMs and reducing hallucination. We aim to answer the following questions: (1) Can POVID effectively reduce hallucination in VLLMs compared to other preference fine-tuning strategies? (2) Does POVID improve performance compared to other benchmarks and tasks like VQA? (3) Can hallucinating textual responses and image distortion benefit performance? (4) How does POVID change attention weights to align image and text modalities?</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.">Experimental Setups</head><p>In this section, we briefly introduce the implementation details, baselines, and evaluation settings.</p><p>Implementation Details. Following concurrent VLLM preference tuning studies <ref type="bibr">(Yu et al., 2023b;</ref><ref type="bibr">Li et al., 2023d)</ref>, we have chosen LLaVA-1.5 (7B) as our backbone model for all experiments and have applied POVID to fine-tune LLaVA-1.5 (7B). The overall training process is divided into two stages. In the first stage, we exclusively utilize the preferences generated through the hallucinating textual responses, as discussed in Section 3.1, to fine-tune LLaVA-1.5 using DPO. In the second stage, we employ image distortion to rectify the model's inherent hallucinatory behaviors using the loss defined in Eqn. (5). The first stage involves training for 3 epochs, and the second stage for 1 epoch. The entire training process requires a single A100 80GB GPU and takes approximately 6 hours. For a more detailed description, please refer to Appendix A.1.</p><p>Baseline Approaches. We first compare the proposed approach with other VLLM preference tuning methods, which include Silkie <ref type="bibr">(Li et al., 2023d)</ref>, LLaVA-RLHF <ref type="bibr" target="#b31">(Sun et al., 2023)</ref>, and RLHF-V <ref type="bibr">(Yu et al., 2023b)</ref>. These methods share a common goal of enhancing model performance by creating curated datasets and subsequently applying preference tuning techniques to fine-tune the model based on these datasets. To ensure a fair and equitable comparison, we utilize the same curated datasets employed by these approaches and apply DPO to fine-tune LLaVA-1.5 (7B).</p><p>Furthermore, we compare the performance with other open source VLLMs, including InstructBLIP <ref type="bibr" target="#b8">(Dai et al., 2023)</ref>, Qwen-VL-Chat <ref type="bibr" target="#b1">(Bai et al., 2023)</ref> and mPLUG-Owl2 <ref type="bibr" target="#b38">(Ye et al., 2023)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Evaluation Benchmark.</head><p>To evaluate the performance of POVID and other baselines, we first adopt VLLM hallucination evaluation benchmarks, including CHAIR <ref type="bibr" target="#b29">(Rohrbach et al., 2018)</ref>, POPE <ref type="bibr">(Li et al., 2023f)</ref>, and MMHal <ref type="bibr" target="#b31">(Sun et al., 2023)</ref>. Here, CHAIR, including CHAIR S and CHAIR I , is a metric used in image captioning tasks to evaluate the accuracy of object descriptions in captions. It compares the objects mentioned in a caption with those present in the image. MMHal <ref type="bibr" target="#b31">(Sun et al., 2023)</ref> assesses hallucinations and response informativeness by utilizing GPT-4V to compare model output with human responses and various object labels, determining the scores accordingly. POPE <ref type="bibr">(Li et al., 2023f)</ref> uses a set of binary classification tasks, prompting VLLMs with simple Yes-or-No questions about the existence of certain objects in images.</p><p>We further evaluate all approaches on comprehensive VLLM evaluation benchmarks, including SciQA-IMG <ref type="bibr">(Lu et al., 2022)</ref>, MME <ref type="bibr" target="#b10">(Fu et al., 2023)</ref>, MMbench <ref type="bibr">(Liu et al., 2023c)</ref>, MM-Vet <ref type="bibr">(Yu et al., 2023c)</ref> and LLaVA-bench <ref type="bibr">(Liu et al., 2023b)</ref>. Each benchmark contains tasks to evaluate perception, cognition, and reasoning abilities of VLLMs. More detailed descriptions of these baselines are in Appendix B.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.">Results</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Comparison with Different Preferences in VLLMs.</head><p>In Table <ref type="table" target="#tab_0">1</ref>, we present the results of a comparison between various VLLM preferences, evaluating both hallucination and comprehensive benchmarks. Firstly, in the hallucination benchmarks, POVID effectively enhances performance by creating dispreferred preferences through textual data manipulation and image distortion. We achieve a significant improvement of 31.78% across all hallucination bench- marks, effectively reducing hallucinations in the generated responses. This outcome aligns with our expectations, as constructing dispreferences from the ground-truth correct responses maximally enables the model to discern differences between correct and incorrect responses while optimizing alignment between the image and text modalities within the model. Moreover, in more comprehensive evaluation benchmarks, which encompass not only factuality and hallucination assessment but also other aspects, POVID continues to demonstrate superior performance when compared to other preference data collection methods. This further indicates our model's capacity to enhance VLLM performance through improved modality alignment.</p><p>Comparison with Open-Sourced VLLMs Models. We present a comparison between POVID and other opensourced VLLMs in Table <ref type="table" target="#tab_1">2</ref>. Although various approaches utilize different image and text encoders, POVID outperforms other popular VLLMs in five out of eight benchmarks. In contrast, the second-best baseline, Qwen-VL-Chat, achieves the best performance in only two out of eight benchmarks. This underscores the superiority of POVID and further corroborates its effectiveness in aligning image and text modalities to improve the performance of VLLMs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3.">Analysis</head><p>In this section, we provide a comprehensive analysis to demonstrate how different components contribute to the performance of POVID and illustrate how POVID enhances overall performance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ablation Studies.</head><p>To further demonstrate the essential role of the key components of POVID in contributing to performance improvement, we conducted ablation experiments on both hallucination and comprehensive benchmarks, and present the results in Table <ref type="table" target="#tab_2">3</ref>. In this ablation study, we evaluate the effectiveness of two aspects: (1) hallucinating groundtruth responses and (2) image distortion. According to the results, we initially observe that image distortion can enhance performance across all benchmarks. This indicates its effectiveness in aligning multimodalities by compelling the model to rectify inherent hallucination patterns. Additionally, generating dispreference from groundtruth responses significantly enhances performance, underscoring the effectiveness of the AI-generated dispreference strategy.</p><p>Finally, when combining both strategies, POVID achieves the best performance, further affirming its effectiveness in enhancing VLLMs through improved modality alignment.</p><p>Fine-grained Performance Analysis.</p><p>Table 4 presents a fine-grained performance analysis of different preference collection strategies on the LLaVA-Bench benchmark. This analysis encompasses a spectrum of multi-modal reasoning and perception dimensions, such as Conversation, Detail Description, and Complex Reasoning. According to Table 4, it is evident that, when compared with other preference data collection approaches, POVID excels in image captioning and providing detailed descriptions for a given image. This outcome aligns with our expectations, as our training data includes various long-form captions, and such comprehensive preference comparisons result in improved alignment and stronger image captioning results. Moreover, across other categories, our approach consistently outperforms alternative preference collection strategies, underscoring its effectiveness across various tasks. Modality Alignment Analysis. We assess the impact of POVID on modality alignment by comparing the attention maps generated by POVID with those of the original LLaVA-1.5 model, with a specific focus on image captioning and VQA tasks. We illustrate two cases in Figure <ref type="figure" target="#fig_5">5</ref>, where these attention maps reveal the distribution of attention scores assigned to generated textual tokens within the input imagetext sequence throughout the VLLM's output generation phase. Our findings reveal that the original LLaVA-1.5 model tends to overemphasize the context of the text, which can result in hallucinations. In contrast, POVID increasingly prioritizes attention towards the image, indicating a strong alignment between image and text modalities. One potential explanation for this phenomenon is that, through</p><p>The image shows a man sitting down and brushing the teeth of a cat with his fingers. The cat appears to be reacting to or accepting the tooth brushing process. The man and the cat are the main focus of the scene.</p><p>The setting appears to be indoors, as there is a person visible in the image along with the close interaction between the man and the cat. The cat is located near the center of the scene, while the man is positioned on the left side of the image.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Visual tokens Textual tokens Textual tokens</head><p>LLaVA-1.5 POVID (Ours)</p><p>LLaVA 1.5</p><p>Prompt: Describe this image.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Visual tokens</head><p>The image features a person brushing an open mouth cat's teeth with a small electric toothbrush. They are in a kitchen (hallucinatory entity) setting, focused on maintaining good oral hygiene. An oven (hallucinatory entity) is visible in the background, adding to the cozy kitchen environment entity attributes.</p><p>There is also a tie (hallucinatory entity) in the scene, likely placed on or hung up nearby, possibly indicating that someone's clothing is being attended to or is hanging out to be worn.</p><p>No, there is no fruit knife in the picture. There are oranges and a glass of orange juice in the image.</p><p>Yes (incorrect answer), there is a fruit knife(hallucinatory entities) in the picture. a comparison between the ground truth and the generated dispreferred data, along with the mitigation of internal hallucination patterns, POVID redirects the VLLM's attention, leading to a greater focus on the image tokens.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Related Work</head><p>VLLMs and VLLM Hallucination. The advent of autoregressive large-scale language models (LLMs), highlighted in works by <ref type="bibr">(Touvron et al., 2023a;</ref><ref type="bibr">b;</ref><ref type="bibr" target="#b32">Taori et al., 2023)</ref>, has led to the development of Vision-Large Language Models (VLLMs). To align the image and text modalities, recent research has concentrated on instruction tuning <ref type="bibr">(Li et al., 2023a)</ref>, scaling up training dataset <ref type="bibr" target="#b13">(Jia et al., 2021)</ref>, and better alignment between image and text with local feature enhancement <ref type="bibr" target="#b4">(Cha et al., 2023)</ref>. These advancements have successfully combined LLMs with image inputs and excel in image comprehension. However, such VLLMs are not perfect and even suffer from "hallucinations", generating outputs that may not accurately or faithfully represent the content of a user-provided image. There are various sources of hallucinations in VLLMs, including biased data <ref type="bibr" target="#b6">(Chuang et al., 2023;</ref><ref type="bibr" target="#b35">Tu et al., 2023)</ref>, insufficient training <ref type="bibr" target="#b5">(Chen et al., 2023)</ref>, and imperfect inference <ref type="bibr" target="#b12">(Huang et al., 2023)</ref>. Recently, addressing hallucination in LVLMs is primarily achieved through various techniques such as decoding approaches <ref type="bibr" target="#b15">(Leng et al., 2023;</ref><ref type="bibr" target="#b12">Huang et al., 2023)</ref>, post-processing <ref type="bibr" target="#b44">(Zhou et al., 2023;</ref><ref type="bibr" target="#b39">Yin et al., 2023)</ref> and the construction of higher-quality dataset <ref type="bibr">(Liu et al., 2023a;</ref><ref type="bibr">Li et al., 2023e)</ref>. While these approaches can mitigate hallucination to some extent, they often fail to directly guide VLLMs to align image and text modalities.</p><p>Preference Alignment Aligning with human preferences for large models has emerged as a critical issue due to the limitations imposed by safety and ethical considerations in real-world applications. Preference alignment can be broadly categorized into two main approaches: alignment through feedback, which encompasses both human <ref type="bibr" target="#b2">(Bai et al., 2022;</ref><ref type="bibr" target="#b28">Rafailov et al., 2023)</ref> and AI-generated feedback <ref type="bibr" target="#b14">(Lee et al., 2023)</ref> and alignment via prompt guidance <ref type="bibr" target="#b37">(Wei et al., 2022)</ref>. Initial investigations into preference alignment for VLLMs have recently been conducted. Sun et al. (2023) introduced LLaVA-RLHF, which utilizes a preference dataset annotated by humans to decrease hallucinations in LLaVA. Li et al. (2023d) proposed a method for distilling preferences into VLLMs to enhance their ability to generate relevant and accurate responses based on visual context. Yu et al. (2023b) collected human preferences in the form of segment-level corrections to hallucinatory content and optimizing the model's behavior based on dense, direct feedback. While these initial results are promising, these works heavily rely on the traditional preference data generation process in LLMs, which generate both preferred and dispreferred responses, but none of them are guaranteed to be correct. In VLLMs, when both responses prove incorrect for the given task, accurately aligning the image with the correct generated response becomes challenging. In contrast, POVID directly generates dispreferred responses, effectively addressing this challenge.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">Conclusion</head><p>In this work, we introduce a novel approach, Preference Optimization in VLLM with AI-Generated Dispreferences (POVID) to address the challenges in modality alignment for large vision-language models. In POVID, we adopt two strategies to generate disprefered responses: first, we use synthetic data from GPT-4V to inject plausible hallucinations into the correct answer. Second, we use distorted images to trigger the inherent hallucination behavior of the VLLM. Then both of these answers are integrated into an RLHF framework via Direct Preference Optimization. Empirical evaluations across multiple benchmarks reveal that POVID not only mitigates hallucination effectively but boosts the overall performance of model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Broader Impact Statement</head><p>This paper presents work whose goal is to advance the field of machine learning and multimodal learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here. </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>*Figure 1 .</head><label>1</label><figDesc>Figure 1. An overall performance comparison between POVID and other VLLM preference learning approaches.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 .</head><label>2</label><figDesc>Figure 2. The framework of POVID. The preference generation process is divided into two steps: hallucinating textual responses and trigger dispreference during training. Here, different types of triggered hallucinations are labeled in (types of hallucinations).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 3 .</head><label>3</label><figDesc>Figure 3. Two examples extracted from hallucinated image captioning tasks and reasoning tasks. Different types of hallucinations are labeled in (types of hallucinations).</figDesc><graphic coords="4,81.31,238.63,95.10,63.30" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. Illustration of logits for the next token generation with "In the image, there are knife and ". This figure shows the predictive uncertainty in token generation, emphasizing the influence of visual cues from objects identified as "knife" and "plate".</figDesc><graphic coords="5,86.60,213.14,165.70,107.70" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Algorithm 1</head><label>1</label><figDesc>POVID Training Process Require: D: Dataset of paired images and text context. π θ : Parameters of the VLLM. π ref : Parameters of the reference model. α, β 1 , β 2 : Hyperparameters. ξ k : Noise hyperparameter for each timestep. T : Noise Steps 1: AddNoiseToImage(x 0 , k) ϵ ∼ N(0, 1) x(k) ← ξk • x 0 + 1 -ξk • ϵ 2: Generate disprefered data and place it in D 3: Initialize reference policy π θ 4: for epochs do 5:for (x, y w , y t l ) ∈ D do 6:</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5. Comparison of attention map between POVID and LLaVA-1.5 at different tasks. The red box region is labeled with the image attentions that can be significantly improved by POVID.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Comparison between POVID and other preferences construction approaches in both hallucination and comprehensive evaluation benchmarks. We bold the best results and underline the second best results.CHAIRi ↓ POPE ↑ MMHal ↑ SciQA-IMG ↑ MM-Vet ↑ MMBench ↑ LLaVA-Bench ↑</figDesc><table><row><cell></cell><cell cols="3">Hallucination Benchmark</cell><cell></cell><cell></cell><cell cols="2">Comprehensive Benchmark</cell><cell></cell></row><row><cell cols="2">Method CHAIRS ↓ LLaVA-1.5 66.8</cell><cell>12.7</cell><cell>85.90</cell><cell>2.42</cell><cell>66.8</cell><cell>30.5</cell><cell>63.0</cell><cell>63.4</cell></row><row><cell>+ Vlfeedback</cell><cell>56.3</cell><cell>11.4</cell><cell>83.72</cell><cell>2.62</cell><cell>66.2</cell><cell>31.2</cell><cell>63.9</cell><cell>62.1</cell></row><row><cell>+ Human-Preference</cell><cell>54.0</cell><cell>9.3</cell><cell>81.50</cell><cell>2.53</cell><cell>65.8</cell><cell>31.1</cell><cell>60.4</cell><cell>63.7</cell></row><row><cell>+ RLHF-V</cell><cell>44.6</cell><cell>7.9</cell><cell>86.20</cell><cell>2.59</cell><cell>67.1</cell><cell>30.9</cell><cell>63.6</cell><cell>65.4</cell></row><row><cell>POVID (ours)</cell><cell>31.8</cell><cell>5.4</cell><cell>86.90</cell><cell>2.69</cell><cell>68.8</cell><cell>31.8</cell><cell>64.9</cell><cell>68.7</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>Comparison between POVID and other state-of-the-art VLLMs across both hallucination and comprehensive evaluation benchmarks. We bold the best results and underline the second best results.</figDesc><table><row><cell>Method</cell><cell cols="2">Vision Encoder Language Model</cell><cell>CHAIRS ↓</cell><cell>CHAIRi ↓</cell><cell>POPE ↑</cell><cell>MMHal ↑</cell><cell>Avg. ranking ↓</cell></row><row><cell>InstructBLIP</cell><cell>ViT-g (1.3B)</cell><cell>Vicuna (7B)</cell><cell>40.0</cell><cell>8.0</cell><cell>77.83</cell><cell>2.10</cell><cell>3.00</cell></row><row><cell cols="2">Qwen-VL-Chat ViT-G (1.9B)</cell><cell>Qwen (7B)</cell><cell>48.2</cell><cell>9.1</cell><cell>87.07</cell><cell>2.89</cell><cell>2.50</cell></row><row><cell>mPLUG-Owl2</cell><cell>ViT-L (0.3B)</cell><cell>LLaMA (7B)</cell><cell>54.4</cell><cell>12.0</cell><cell>86.20</cell><cell>2.17</cell><cell>4.00</cell></row><row><cell>POVID (ours)</cell><cell>ViT-L (0.3B)</cell><cell>Vicuna (7B)</cell><cell>31.8</cell><cell>5.4</cell><cell>86.29</cell><cell>2.69</cell><cell>1.50</cell></row><row><cell>InstructBLIP</cell><cell>ViT-g (1.3B)</cell><cell>Vicuna (7B)</cell><cell>60.5</cell><cell>26.2</cell><cell>36.0</cell><cell>60.9</cell><cell>4.00</cell></row><row><cell cols="2">Qwen-VL-Chat ViT-G (1.9B)</cell><cell>Qwen (7B)</cell><cell>68.2</cell><cell>41.2</cell><cell>60.6</cell><cell>67.7</cell><cell>2.25</cell></row><row><cell>mPLUG-Owl2</cell><cell>ViT-L (0.3B)</cell><cell>LLaMA (7B)</cell><cell>64.5</cell><cell>36.2</cell><cell>64.5</cell><cell>59.9</cell><cell>3.00</cell></row><row><cell>POVID (ours)</cell><cell>ViT-L (0.3B)</cell><cell>Vicuna (7B)</cell><cell>68.8</cell><cell>31.8</cell><cell>64.9</cell><cell>68.7</cell><cell>1.75</cell></row></table><note><p>Method</p><p>Vision Encoder Language Model SciQA-IMG ↑ MM-Vet ↑ MMBench ↑ LLaVA-Bench ↑ Avg. ranking ↓</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 .</head><label>3</label><figDesc>Results of ablation study. Text disprefer means we only using hallucinated textual response to train DPO. Image distortion means that we use distorted images to trigger inherent hallucination patterns.CHAIRi ↓ POPE ↑ MMHal ↑ SciQA-IMG ↑ MM-Vet ↑ MMBench ↑ LLaVA-Bench ↑</figDesc><table><row><cell></cell><cell></cell><cell cols="3">Hallucination Benchmarks</cell><cell></cell><cell></cell><cell cols="2">Comprehensive Benchmarks</cell><cell></cell></row><row><cell cols="3">Text disprefer Image distortion CHAIRS ↓ × × 66.8</cell><cell>12.7</cell><cell>85.90</cell><cell>2.42</cell><cell>66.2</cell><cell>31.2</cell><cell>63.9</cell><cell>62.1</cell></row><row><cell>✓</cell><cell>×</cell><cell>39.6</cell><cell>6.3</cell><cell>86.04</cell><cell>2.65</cell><cell>67.2</cell><cell>30.9</cell><cell>64.7</cell><cell>67.5</cell></row><row><cell>×</cell><cell>✓</cell><cell>50.4</cell><cell>9.6</cell><cell>85.19</cell><cell>2.54</cell><cell>66.9</cell><cell>30.7</cell><cell>64.3</cell><cell>66.9</cell></row><row><cell>✓</cell><cell>✓</cell><cell>31.8</cell><cell>5.4</cell><cell>86.90</cell><cell>2.69</cell><cell>68.8</cell><cell>31.8</cell><cell>64.9</cell><cell>68.7</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 4 .</head><label>4</label><figDesc>Fine</figDesc><table><row><cell cols="5">-grained performance comparison of various models</cell></row><row><cell cols="5">on LLaVA-Bench, where we adopt the following abbreviation:</cell></row><row><cell cols="5">Convo for Conversation, Captioning for Detail description, Rea-</cell></row><row><cell cols="2">soning for Complex reasoning.</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Method</cell><cell cols="4">Convo Captioning Reasoning Overall</cell></row><row><cell>LLaVA-1.5</cell><cell>53.3</cell><cell>53.4</cell><cell>79.6</cell><cell>63.4</cell></row><row><cell>+ Vlfeedback</cell><cell>51.3</cell><cell>49.3</cell><cell>78.5</cell><cell>62.1</cell></row><row><cell cols="2">+ Human-Preference 49.6</cell><cell>43.3</cell><cell>81.3</cell><cell>63.7</cell></row><row><cell>+ RLHF-V</cell><cell>55.8</cell><cell>56.1</cell><cell>80.3</cell><cell>65.4</cell></row><row><cell>POVID (ours)</cell><cell>55.9</cell><cell>60.1</cell><cell>81.5</cell><cell>68.7</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 6 .</head><label>6</label><figDesc>Two types of prompts to GPT4V (The format of the obtained data is {image, prefer data, disprefer data}).Prompts for hallucinating image captioning tasks: Help me generate one highly confusing response based on the image and the standard caption in the Question-Answer The generated caption is generally similar to the given A, with the same main meaning; (2) You can refer to the following errors to generate the wrong caption (1. The wrong caption can contain some co-occurring objects, which are prone to appear in such scenarios but do not appear in the image; 2. The wrong caption can be an error in the number of entities or the logical relationships between entities; 3. The attributes of entities in the caption can also be modified, such as color, appearance, etc.) (3) Compared to the original caption A, the caption you modified is incorrect based on the provided image. Now, please help me generate new answers with hallucination errors based on the image, question, and answer provided. There are two cases now: 1. If the given question and answer are short and do not require logical reasoning, then modify the answer to a hallucination error answer, such as some quantity errors or entity and property errors. 2. If the entire question requires logical reasoning, then help me reorganize the answers based on the given image, questions, and answers into the format "Reason: xxx, Result: xxx" (Answer 1). Modify the reasons by introducing errors related to logical relationships, entity information, entity attributes, etc. If the error in the reason would lead to a new result, modify the result accordingly. If the error does not lead to a new result, keep the original result. Similarly, organize it in the format "Reason: xxx, Result: xxx" (Answer 2).</figDesc><table><row><cell>Pair.</cell></row><row><cell>*****************************************</cell></row><row><cell>Question-answer Pair:</cell></row><row><cell>Q: {question}</cell></row><row><cell>A: {answer}</cell></row><row><cell>Requirements:</cell></row><row><cell>(1)</cell></row></table><note><p>***************************************** Output Format: Answer: your answer Prompts for hallucinating reasoning tasks: ***************************************</p></note></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgement</head><p>We thank the <rs type="institution">Center for AI Safety</rs> for supporting our computing needs.</p></div>
+			</div>			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>A. Appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1. Training Setup</head><p>Training hyperparameters are shown in Table <ref type="table" target="#tab_5">5</ref>. For the first phase, we trained for 3 epochs, and for the second phase, the training was conducted for 1 epoch. Training for 20 hours on one A100 80G GPU. For the second phase, we adjust the diffusion noise level, symbolized by ξ through a specific formula: ξ = Sigmoid(l t ) × (0.5 × 10 -2 -10 -5 ) + 10 -5 , where ϵ is drawn from a normal distribution.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2. Construction of the Dispreference Dataset</head><p>This section details the prompts utilized to compile the dataset focusing on dispreferences, specifically within the realms of image captioning and reasoning tasks. The prompts are designed to elicit responses that reveal dispreference patterns, categorized into two main types: image captioning tasks intended to provoke imaginative descriptions, and reasoning tasks aimed at stimulating inferential thought processes. These prompts, central to our methodology, are enumerated in Table <ref type="table">6</ref>, offering a comprehensive view of the data generation framework. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B. Details about baselines</head><p>For the assessment of multitasking, MME <ref type="bibr" target="#b10">(Fu et al., 2023)</ref> is a comprehensive evaluation tool for MLLMs, which is designed to measure both perception and cognition abilities across 14 sub-tasks. MMBench <ref type="bibr">(Liu et al., 2023c)</ref> is characterized by its approach to assessing both perception and reasoning abilities, categorized into top-level dimensions in the ability taxonomy. This benchmark includes different levels of abilities, each including specific aspects of perception and reasoning. MM-Vet <ref type="bibr">(Yu et al., 2023c)</ref> focuses on six core capabilities for evaluation: recognition, knowledge, optical character recognition (OCR), spatial awareness, language generation, and math. These capabilities cover a wide range of functions from general visual recognition to specific tasks like arithmetic problem-solving. LLaVA-Bench <ref type="bibr">(Liu et al., 2023b)</ref> assesses models in more complex tasks and their adaptability to new domains. It consists of 24 diverse images, encompassing a variety of scenes like indoor and outdoor settings, memes, paintings, and sketches. Each image in LLaVA-Bench is paired with a detailed, manually crafted description and a carefully chosen set of questions, totaling 60 questions. This setup aims to provide a thorough and varied evaluation of the models' capabilities.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 5 .</head><label>5</label><figDesc>Training hyperparameters.</figDesc><table><row><cell>Hyperparameters</cell><cell></cell></row><row><cell>lora r</cell><cell>128</cell></row><row><cell>lora alpha</cell><cell>256</cell></row><row><cell>lora target</cell><cell>all</cell></row><row><cell>mm projector lr</cell><cell>2e-5</cell></row><row><cell>Batch size</cell><cell>1</cell></row><row><cell>Learning rate</cell><cell>1e-7</cell></row><row><cell>model max length</cell><cell>1024</cell></row><row><cell cols="2">noise step (only for internal preference optimization) 500</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Vqa: Visual question answering</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Antol</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Batra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">L</forename><surname>Zitnick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Parikh</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE international conference on computer vision</title>
+		<meeting>the IEEE international conference on computer vision</meeting>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+			<biblScope unit="page" from="2425" to="2433" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhou</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2308.12966</idno>
+		<title level="m">Qwen-vl: A frontier large visionlanguage model with versatile abilities</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">Training a helpful and harmless assistant with reinforcement learning from human feedback</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Das-Sarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Fort</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Henighan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2204.05862</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Rank analysis of incomplete block designs: I. the method of paired comparisons</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">A</forename><surname>Bradley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">E</forename><surname>Terry</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Biometrika</title>
+		<imprint>
+			<biblScope unit="volume">39</biblScope>
+			<biblScope unit="issue">3/4</biblScope>
+			<biblScope unit="page" from="324" to="345" />
+			<date type="published" when="1952">1952</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Cha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Mun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Roh</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Honeybee</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2312.06742</idno>
+		<title level="m">Localityenhanced projector for multimodal llm</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<author>
+			<persName><forename type="first">G</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Nie</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Lion</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.11860</idno>
+		<title level="m">Empowering multimodal large language model with duallevel visual knowledge</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">Debiasing vision-language models via biased prompts</title>
+		<author>
+			<persName><forename type="first">C.-Y</forename><surname>Chuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Jampani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Torralba</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Jegelka</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.00070</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">C</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Yao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.03287</idno>
+		<title level="m">Holistic analysis of hallucination in gpt-4v (ision): Bias and interference challenges</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title level="m" type="main">Instructblip: Towards general-purpose vision-language models with instruction tuning</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">M H</forename><surname>Tiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Fung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hoi</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Talk2bev: Language-enhanced bird&apos;s-eye view maps for autonomous driving</title>
+		<author>
+			<persName><forename type="first">V</forename><surname>Dewangan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Choudhary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Chandhok</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Priyadarshan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">K</forename><surname>Singh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Srivastava</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">M</forename><surname>Jatavallabhula</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">M</forename><surname>Krishna</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.02251</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">C</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Qin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Sun</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.13394</idno>
+		<title level="m">A comprehensive evaluation benchmark for multimodal large language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Scaling laws for reward model overoptimization</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hilton</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Alleviating hallucination in multi-modal large language models via over-trust penalty and retrospection-allocation</title>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Opera</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.17911</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Scaling up visual and vision-language representation learning with noisy text supervision</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y.-T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Parekh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Pham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y.-H</forename><surname>Sung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Duerig</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International conference on machine learning</title>
+		<imprint>
+			<publisher>PMLR</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="4904" to="4916" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">H</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Phatale</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Mansoor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Mesnard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Bishop</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Carbune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Rastogi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Rlaif</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.00267</idno>
+		<title level="m">Scaling reinforcement learning from human feedback with ai feedback</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m" type="main">Mitigating object hallucinations in large visionlanguage models through visual contrastive decoding</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Leng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Miao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bing</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.16922</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<title level="m" type="main">Vision-language instruction tuning: A review and analysis</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Shan</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Usuyama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Naumann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Poon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Gao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.00890</idno>
+		<title level="m">Llava-med: Training a large language-and-vision assistant for biomedicine in one day</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Bootstrapping language-image pre-training for unified vision-language understanding and generation</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hoi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Blip</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="12888" to="12900" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title level="m" type="main">Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Savarese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hoi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2301.12597</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Kong</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Silkie</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2312.10665</idno>
+		<title level="m">Preference distillation for large visual language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Sun</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.04387</idno>
+		<title level="m">M 3 it: A large-scale dataset towards multi-modal multilingual instruction tuning</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">X</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J.-R</forename><surname>Wen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.10355</idno>
+		<title level="m">Evaluating object hallucination in large visionlanguage models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title level="m" type="main">Aligning large multi-modal model with robust instruction tuning</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yacoob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.14565</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<author>
+			<persName><forename type="first">H</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><forename type="middle">J</forename><surname>Lee</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2304.08485</idno>
+		<title level="m">Visual instruction tuning</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.06281</idno>
+		<title level="m">Is your multi-modal model an all-around player? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Learn to explain: Multimodal reasoning via thought chains for science question answering</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K.-W</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S.-C</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Tafjord</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kalyan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The 36th Conference on Neural Information Processing Systems (NeurIPS)</title>
+		<imprint>
+			<biblScope unit="page">2022</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<title level="m" type="main">Gpt-4 technical report</title>
+		<idno>ArXiv, abs/2303.08774</idno>
+		<ptr target="https://arxiv.org/abs/2303.08774" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+		<respStmt>
+			<orgName>OpenAI</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Direct preference optimization: Your language model is secretly a reward model</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">D</forename><surname>Manning</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Finn</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2305.18290" />
+	</analytic>
+	<monogr>
+		<title level="m">Thirtyseventh Conference on Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Rohrbach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">A</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Darrell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Saenko</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1809.02156</idno>
+		<title level="m">Object hallucination in image captioning</title>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wolski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Klimov</surname></persName>
+		</author>
+		<title level="m">Proximal policy optimization algorithms</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Aligning large multimodal models with factually augmented rlhf</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L.-Y</forename><surname>Gui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y.-X</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.14525</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">R</forename><surname>Taori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Gulrajani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Dubois</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Guestrin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<ptr target="https://github.com/tatsu-lab/stanford_alpaca" />
+		<title level="m">Stanford alpaca: An instruction-following llama model</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<author>
+			<persName><forename type="first">H</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M.-A</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Hambro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Azhar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.13971</idno>
+		<title level="m">Open and efficient foundation language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<title level="m" type="main">Llama 2: Open foundation and finetuned chat models</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Martin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Stone</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Albert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Almahairi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Bashlykov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Batra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Bhargava</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bhosale</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.09288</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">How many unicorns are in this image? a safety evaluation benchmark for vision llms</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Tu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Xie</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.16101</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">Show and tell: A neural image caption generator</title>
+		<author>
+			<persName><forename type="first">O</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Toshev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bengio</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Erhan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE conference on computer vision and pattern recognition</title>
+		<meeting>the IEEE conference on computer vision and pattern recognition</meeting>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+			<biblScope unit="page" from="3156" to="3164" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">Chain-of-thought prompting elicits reasoning in large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Schuurmans</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Chi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><forename type="middle">V</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Zhou</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="24824" to="24837" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Shi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2304.14178</idno>
+		<title level="m">mplug-owl: Modularization empowers large language models with multimodality</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Sui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Woodpecker</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.16045</idno>
+		<title level="m">Hallucination correction for multimodal large language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Rlhf-v: Towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H.-T</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T.-S</forename><surname>Chua</surname></persName>
+		</author>
+		<idno>arxiv</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<monogr>
+		<title level="m" type="main">Rlhf-v: Towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H.-T</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sun</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2312.00849</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<author>
+			<persName><forename type="first">W</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2308.02490</idno>
+		<title level="m">Mm-vet: Evaluating large multimodal models for integrated capabilities</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title level="m" type="main">Beyond hallucinations: Enhancing lvlms through hallucination-aware direct preference optimization</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>He</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.16839</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Yoon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Finn</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Yao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.00754</idno>
+		<title level="m">Analyzing and mitigating object hallucination in large vision-language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

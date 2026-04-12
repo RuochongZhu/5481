@@ -1,0 +1,887 @@
+{
+  "paperId": "doi:10.48550/arxiv.2406.11474",
+  "title": "How Far Can In-Context Alignment Go? Exploring the State of In-Context Alignment",
+  "year": 2024,
+  "source": "openalex",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2406.11474.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2406.11474.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2406.11474.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Recent studies have demonstrated that In-Context Learning (ICL), through the use of specific demonstrations, can align Large Language Models (LLMs) with human preferences known as In-Context Alignment (ICA), indicating that models can comprehend human instructions without requiring parameter adjustments. However, the exploration of the mechanism and applicability of ICA remains limited. In this paper, we begin by dividing the context text used in ICA into three categories: format, system prompt, and example. Through ablation experiments, we investigate the effectiveness of each part in enabling ICA to function effectively. We then examine how variants in these parts impact the model's alignment performance. Our findings indicate that the example part is crucial for enhancing the model's alignment capabilities, with changes in examples significantly affecting alignment performance. We also conduct a comprehensive evaluation of ICA's zero-shot capabilities in various alignment tasks. The results indicate that compared to parameter fine-tuning methods, ICA demonstrates superior performance in knowledge-based tasks and tool-use tasks. However, it still exhibits certain limitations in areas such as multi-turn dialogues and instruction following.",
+      "word_count": 172
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Pre-trained large language models (LLMs) typically require an instruction fine-tuning phase during which model parameters are adjusted to align the model with human preferences, enabling it to follow human instructions and function as an interactive assistant (Wei et al., 2021; Ouyang et al., 2022; Badola et al., 2023; Ghosh et al., 2024) . Although this phase is much less costly than pretraining, it still involves complex and challenging issues, such as problems related to data mixture ratio and quality, as well as the problem of knowledge forgetting (Wang et al., 2023b; Dong et al., 2024) . Recent studies have proposed that by crafting specific demonstrations, base models can achieve alignment with human preferences through In-Context Learning (ICL) . This process is known as In-Context Alignment (ICA) (Lin et al., 2023; Han, 2023) . ICA enables models to understand instructions without the need for parameter fine-tuning. This cost-effective nature positions ICA as a potentially viable alternative to the fine-tuning-based alignment methods. However, the exploration of ICA in these studies has been limited to exploring the alignment capabilities of LLMs as open-domain assistants in single-turn dialogue. Detailed analysis lacks regarding the underlying mechanisms and broader applicability of ICA, leading to our main research question: How far can ICA go?\n\nThis raises several questions: 1. Does ICA rely on specific parts or the entirety of the context to align with human preferences? 2. Considering the significance of various contextual parts, would substituting them with alternative variants affect ICA performance to varying extents? 3. With a preferable setting identified by exploring the previous question, what other tasks can ICA effectively perform beyond single-turn dialogue? These questions are related to each other and we propose to address them sequentially.\n\nTo begin exploring the first question, we initiate a pilot ICA experiment with a pre-trained model, as illustrated in Figure 1 . The purpose is to investigate the alignment effect of format and system prompt in the simplest scenario. We apply the ChatML foot_0 format, commonly used for fine-tuning models, to Llama2-7b-base model (Touvron et al., 2023) . To our surprise, the model can understand user queries and generate meaningful responses, a capability that direct prompting methods could not achieve. By probing the effects of the format and system prompt, we further explore the roles that these parts, along with the examples, play in ICA.\n\nIn this paper, we initially explore how contextual content affects ICA by dividing it into three parts: format, system prompt, and example (Section 3). Building on this, we address the second question by designing variants for each part to investigate their impact on ICA performance (Section 4). Finally, for the third question, we explore the effectiveness of ICA in other instruction tasks (Section 5). Additionally, we train two SFT models and compare them with the original chat model. Our contributions can be summarized as follows:\n\n1. We explore the impact of format, system prompt, and example on In-Context Alignment (ICA), demonstrating that the example part is the most crucial for ICA.\n\n2. We show that different variants of the example have varying impacts on ICA, and that ICA based on large-parameter models can surpass fine-tuned models of the same scale.\n\n3. We demonstrate that ICA outperforms finetuned models in knowledge-based and tool utilization tasks, although there is still a gap in performance for multi-turn dialogue and instruction-following tasks.\n\n2 Related Work",
+      "word_count": 560
+    },
+    {
+      "index": 3,
+      "title": "Fine-tuning Based Alignment",
+      "kind": "body",
+      "text": "Fine-tuning-based alignment refers to the process of adjusting model parameters to produce responses that align with human preferences.\n\nSupervised Fine-Tuning (SFT) Currently, SFT has emerged as the most prevalent method for achieving alignment (Wang et al., 2023a; Lu et al., 2023; Pan et al., 2023) . Given the high costs associated with acquiring high-quality, manually crafted instruction datasets, the Self-instruct method (Wang et al., 2023c) has gained popularity for automatically generating instruction data from large models. For instance, Alpaca (Taori et al., 2023) employs the self-instruct approach to generate a dataset of 52,000 instructions for training. Fine-tuning the 7B parameter Llama model requires about three hours of training on eight 80GB A100 GPUs. Despite the relatively short training duration, full parameter fine-tuning demands substantial hardware resources.\n\nParameter-Efficient Fine-Tuning (PEFT) PEFT (Mangrulkar et al., 2022) methods only require fine-tuning a small number of model parameters to efficiently adapt large pre-trained models to various downstream applications (Hu et al., 2021; Frantar et al., 2023; Dettmers et al., 2023) . The LoRA method (Hu et al., 2021) addresses this by injecting trainable low-rank decomposition matrices into each layer of the Transformer architecture (Vaswani et al., 2017) , thereby significantly reducing the number of trainable parameters required for downstream tasks and expediting the SFT training process. Furthermore, introducing the \"Superficial Alignment Hypothesis\", Zhou et al. (2023a) demonstrated that a dataset of just 1000 high-quality, manually written instructions (LIMA) could achieve effective alignment, laying a foundational hypothesis for the feasibility of ICA. Fine-tuning-based alignment methods still require certain training resources and face some difficult-to-solve issues (Gudibande et al., 2023; Gekhman et al., 2024) , which makes ICA more valuable for research.",
+      "word_count": 276
+    },
+    {
+      "index": 4,
+      "title": "In-Context Alignment (ICA)",
+      "kind": "body",
+      "text": "ICA refers to using in-context learning with carefully designed prompts to achieve alignment without adjusting the model's parameters.\n\nIn-Context Learning (ICL) Since the discovery of ICL capabilities in LLMs (Brown et al., 2020) , there has been a growing body of research exploring the underlying mechanism and applications of ICL (Bai et al., 2024; Abernethy et al., 2024) . For instance, Von Oswald et al. (2023) and Dai et al. (2023) examined the mechanism of ICL from the perspective of gradient descent learning, suggesting that ICL functions as an implicit fine-tuning method. Other studies have investigated how contextual examples impact model performance. Min et al. (2022) demonstrated that randomly replacing labels in contextual demonstrations has minimal effect on the performance of various classification and multiple-choice tasks. Wu et al. (2023) introduced a self-adaptation mechanism for selecting and arranging contextual examples, thereby improving the model's few-shot learning capabilities. Li and Qiu (2023) proposed a metric to assist the model in determining the optimal arrangement of examples.\n\nAlignment With ICL Earlier research on ICL mainly focused on tasks such as classification and multiple-choice questions. However, recent work has started to explore the application of ICL to a wider array of tasks. Ye et al. (2023) explored the direct relationship between ICL and instructions, demonstrating that inserting taskirrelevant prompts in the input can also enhance the instruction-following capabilities of large language models (LLMs) during reasoning. Han (2023) applied ICL to open-domain dialogue tasks, introducing the concept of In-Context Alignment (ICA). They achieved this by retrieving and concatenating multiple question-answer pairs as a prompt prefix for dialogue tasks, enabling the base model to acquire a certain level of instruction comprehension. Urial (Lin et al., 2023) took this further by using only three fixed, carefully designed questionanswer pairs along with a system prompt, combining these elements using Markdown 2 format as the prompt prefix. The results showed that this method achieves comparable performance to chat models on the proposed alignment dataset.\n\nHowever, these studies have only evaluated ICA on open-domain question-answering tasks based on single-turn dialogues, without delving into the principles of ICA, the impact of variants, and the extendable range of instruction tasks. This paper conducts an in-depth exploration of these issues.\n\n2 https://en.wikipedia.org/wiki/Markdown # Instruction {system prompt} # Query: ```{query1}``# Answer: ```{answer1}``. # Query: ```{query3}``# Answer: ```{answer3}``# Query: ```{user query}``# Answer: ``F igure 2: Illustration of the segmentation of Urial's prompt into three parts: format (marked in bold black), system prompt (marked in blue), and example (marked in red).\n\n3 What Does ICA Rely On?\n\nIn this section, we explore which parts of the contextual content ICA relies on. We begin by defining the division of the whole prompt text, conduct ablation experiments for each part, and draw conclusions on how different parts influence the model.",
+      "word_count": 463
+    },
+    {
+      "index": 5,
+      "title": "Parts of Prompt",
+      "kind": "body",
+      "text": "Based on the pilot experiment in Section 1 and previous works (Han, 2023; Lin et al., 2023) , we summarize the prompt into three parts: format, system prompt, and example. Using Urial as an example, we show the segmentation of the prompt in Figure 2. To ensure clarity and ease of understanding, we use small caps for FORMAT, SYSTEM, and EX-AMPLE to represent the three parts of the prompt, where SYSTEM refers to the system prompt. The definitions of each part are as follows.\n\nFORMAT It refers to the text used to distinguish between user queries and model responses. It typically includes natural language words that specify the roles of the user and the model, along with special symbols that demarcate the boundaries for the query and response text.\n\nSYSTEM It refers to the meta instruction applied to the model, typically requiring it to produce responses in a specified style or content or to play a certain role. This instruction is usually placed at the beginning of the dialogue.\n\nEXAMPLE It refers to one or more queryresponse pairs, each consisting of a user's query and the model's response, referred to as demonstrations in other ICL works (Luo et al., 2023; Qin Size (B) Format System Example Helpfulness Clarity Factuality Depth Engagement Safety Avg. Input Length Output Length 🔴 70 Md Urial Urial 4.93 4.96 4.79 4.33 4.94 5.00 4.83 916 175 🔴 70 Md -Urial 4.88 4.96 4.73 4.30 4.90 4.97 4.79 812 172 🔴 70 -Urial Urial 4.84 4.94 4.67 4.29 4.88 5.00 4.77 889 170 🔴 70 --Urial 4.83 4.86 4.69 4.17 4.81 4.99 4.73 790 171 🔴 13 -Urial Urial 4.46 4.72 4.27 3.97 4.61 4.92 4.49 889 174 🔴 13 Md -Urial 4.45 4.71 4.43 3.92 4.56 4.81 4.48 812 189 🔴 13 Md Urial Urial 4.41 4.59 4.36 3.92 4.51 4.95 4.46 916 224 🔴 13 --Urial 4.50 4.66 4.19 3.97 4.57 4.70 4.43 790 217 🔴 7 -Urial Urial 4.25 4.58 4.03 3.78 4.42 5.00 4.34 889 182 🔴 7 Md -Urial 4.29 4.59 3.97 3.80 4.42 4.75 4.30 812 188 🔴 7 --Urial 4.36 4.69 4.12 3.78 4.53 4.17 4.28 790 222 🔴 7 Md Urial Urial 4.05 4.36 3.86 3.68 4.23 4.97 4.19 916 212 🔴 70 Md Urial -3.80 4.58 4.15 2.66 3.23 4.43 3.81 121 94 🔴 13 -Urial -3.50 4.50 3.99 2.41 3.08 3.85 3.56 112 77 🔴 13 Md Urial -3.51 4.50 3.96 2.47 3.09 3.78 3.55 121 100 🔴 7 Md Urial -3.34 3.87 3.61 2.50 3.00 3.19 3.25 121 171 🔴 7 -Urial -3.11 4.04 3.69 2.14 2.68 2.92 3.10 112 160 🔴 70 Md --3.11 4.27 4.03 2.09 2.63 1.74 2.98 18 94 🔴 13 Md --2.89 4.09 3.88 1.88 2.49 1.74 2.83 18 84 🔴 7 Md --2.68 3.77 3.59 1.78 2.32 1.47 2.60 18 119 🔴 70 ---1.89 2.76 2.46 1.57 1.89 2.16 2.12 11 115 🔴 13 ---1.71 2.57 2.38 1.48 1.87 2.28 2.05 11 126 🔴 7 ---1.61 2.38 2.21 1.43 1.70 2.12 1.91 11 137 🔴 70 -Urial -1.79 2.07 1.99 1.45 1.61 1.55 1.74 112 8 Figure 3: Results of different configurations of FORMAT, SYSTEM, and EXAMPLE. The greener the color, the higher the value; the yellower the color, the lower the value. denotes the 70B model. denotes the 13B model. denotes the 7B model. \"-\" indicates that the corresponding part is missing. et al., 2023). We use the term EXAMPLE to distinguish it from FORMAT and SYSTEM since these two parts rarely appear in other ICL tasks.\n\nThe final prompt is constructed by concatenating the SYSTEM and EXAMPLE using the FORMAT, followed by appending the user's final query before inputting it into the model.",
+      "word_count": 616
+    },
+    {
+      "index": 6,
+      "title": "Experimental Setup",
+      "kind": "methods",
+      "text": "Methods We conduct ablation experiments using Urial foot_1 as the baseline. Urial employs Markdown as its FORMAT, with the SYSTEM and EXAMPLE parts manually designed. We denote Urial's configuration as Md-Urial-Urial, where each position sequentially corresponds to FORMAT, SYSTEM, and EXAMPLE. If one part is missing in the final prompt, we represent it by the number 0. We first categorize all experimental configurations into two major classes: those with or without FORMAT. Then, within each class, we set up four configurations regarding the inclusion of SYSTEM and EXAMPLE: neither, only one, or both included. Thus, there are eight experimental configurations for the same model. Details of the specific prompts provided to the model for each configuration are presented in Appendix A.1.",
+      "word_count": 121
+    },
+    {
+      "index": 7,
+      "title": "Model and Evaluation",
+      "kind": "results",
+      "text": "We conduct experiments using the base Llama2 model in three sizes: 7B, 13B, and 70B. Due to resource constraints, the 70B model employs a 4-bit quantization via GPTQ (Frantar et al., 2023) . The evaluation for this set of experiments is performed on the justeval-instruct dataset foot_2 proposed by Urial. We select 100 examples each from regular and safety data for inference. The inference results are assessed by gpt-4o-2024-05-13 foot_3 . To ensure reproducibility and a fair comparison, we use greedy search for decoding the outputs.",
+      "word_count": 86
+    },
+    {
+      "index": 8,
+      "title": "Results and Analysis",
+      "kind": "results",
+      "text": "The results are shown in Figure 3 , and more discussion is shown in Appendix A.2. EXAMPLE is the most crucial part in ICA. We rank all the results of the three models according to their average scores, and assign different colors based on the magnitude of the average scores. A trade-off exists between helpfulness and safety as affected by SYSTEM. Previous work has shown that there is a tradeoff between safety and helpfulness for the SFT model (Liu et al., 2024; Tuan et al., 2024) , and we observe similar phenomena in ICA. Since only the configurations with EXAMPLE achieve good alignment performance, our observations focus on the results of these configurations. For the 7B and 13B models, when the other two components are identical, all configurations with SYSTEM have lower helpfulness values and higher safety values compared to those without SYSTEM. However, this is not the case for the 70B model, where richer content in the prompt leads to better alignment performance. This indicates that in ICA, there also is a trade-off between helpfulness and safety, but this trade-off diminishes as the model parameter size increases.",
+      "word_count": 188
+    },
+    {
+      "index": 9,
+      "title": "How Different FORMAT, SYSTEM and EXAMPLE variants Affects ICA?",
+      "kind": "body",
+      "text": "In this section, we explore the impact of different variants of FORMAT, SYSTEM, and EXAMPLE on ICA when all parts are present.",
+      "word_count": 22
+    },
+    {
+      "index": 10,
+      "title": "Setup",
+      "kind": "body",
+      "text": "We provide an additional variant for each part and set up the various replacement scenarios, including replacing one, two, or all three parts from the default configuration. For the FORMAT, we add the ChatML format as shown in Table 1 . However, different from the original ChatML, the \"user\" and \"assistant\" words are replaced with \"Query:\" and \"Answer:\" to make a fairer comparison with the Markdown format used by Urial. The variant of SYSTEM is the one used by Llama2-chat model.\n\nFor EXAMPLE, we use GPT-4 foot_4 to respond to the queries of the three examples in Urial EXAMPLE, and we replace Urial's default responses with those obtained from GPT-4.\n\nIn addition to comparing the different ICA method variants, we also include inference results from the Llama2-chat model for comparison. The Llama2-chat model comes with its own FORMAT and has been trained with SFT and RLHF, so it does not require EXAMPLE. However, during inference, it can be used with or without SYSTEM. Therefore, we provide inference results for both configurations of the chat models. The prompts with ChatML FORMAT, and the contents of Llama2chat SYSTEM and GPT-4 EXAMPLE can be found in Appendix B.1.",
+      "word_count": 195
+    },
+    {
+      "index": 11,
+      "title": "Results and Analysis",
+      "kind": "results",
+      "text": "As shown in Figure 4 in Appendix B.2, we rank all configuration results by average scores from highest to lowest. More discussion is shown in Appendix B.3.\n\nThe variant of EXAMPLE has a significant impact on ICA. It is observed that for the 7B and 13B models, all configurations with Urial EXAM-PLE ( * ) outperform GPT4 EXAMPLE (GPT4). Conversely, for the 70B model, almost all configurations with GPT4 EXAMPLE perform better than those with Urial EXAMPLE. This demonstrates that different EXAMPLE can cause notable performance variants, regardless of model size. To further investigate the reasons behind these differences, we conduct a detailed analysis in Appendix B.4.",
+      "word_count": 107
+    },
+    {
+      "index": 12,
+      "title": "The variants of FORMAT and SYSTEM have minimal impact on ICA.",
+      "kind": "body",
+      "text": "Based on the numerical analysis shown in Appendix B.5, it is evident that replacing FORMAT and SYSTEM has a minor impact, with EXAMPLE having a slightly larger effect. Interestingly, for the same model, configurations using the ChatML format consistently perform best, despite variants in other parts across different models. We speculate that using tags like \"<|im_start|>\" and \"<|im_end|>\" might provide clearer boundary information compared to \"#\" and \"'''\", thereby slightly influencing the model's responses. ICA methods comprehensively outperforms the Chat methods in largest models For the 70B model, when all three parts are present, all the results of ICA method variants ( ) perform better than the Chat methods (▲). Further, as shown in Figure 5 of Appendix B.6, as long as EXAM-PLE is included, even if other parts are missing, ICA's performance still exceeds that of the Chat methods. However, for the smaller 7B and 13B models, when all three parts are present, all ICA configurations ( , ) are inferior to the results of the Chat methods (▲, ▲), respectively. Moreover, the Llama2-0-0 configuration of 7B Chat method outperforms all 13B ICA results.\n\n5 How Does ICA Perform in Other Alignment Aspects?\n\nIn this section, we use more datasets to explore the ICA performance in other alignment tasks.",
+      "word_count": 210
+    },
+    {
+      "index": 13,
+      "title": "Setup",
+      "kind": "body",
+      "text": "Aligned models should possess zero-shot capability to eliminate the influence of similar examples in the few-shot context. Therefore, we select datasets from different aspects to evaluate the zero-shot capability of ICA.",
+      "word_count": 31
+    },
+    {
+      "index": 14,
+      "title": "Datasets",
+      "kind": "body",
+      "text": "We select the following alignment aspects for evaluation: knowledge with NQ (Natu-ralQuestion) (Kwiatkowski et al., 2019) , tool utilization with T-Eval (Chen et al., 2023) , multiturn dialogue with MT-Bench (Zheng et al., 2023) , instruction following with IF-Eval (Zhou et al., 2023b) .\n\nICA Method While various ICA configurations are explored in previous sections, resource limitations prevent us from experimenting with all configurations. Initially, we select the Md-Urial-Urial configuration as ICA-Default method for this sec-tion, which also serves as an additional exploration of Urial. Furthermore, for models of different sizes, we select the best-performing configuration, from all those listed in Figures 3 and 4 for each model size, as ICA-Best method. Specifically, 0-Urial-Urial is used for the 7B model, ChatML-Urial-Urial is used for 13B, and ChatML-Urial-GPT4 is used for 70B.\n\nBaseline Methods To comprehensively evaluate the performance of ICA, we use three comparison methods. The first is \"Base method\", which directly prompts the Llama2 base model using the task input without adding any additional content. The second is \"Chat method\", which uses the Llama2 chat model for direct inference on the task input, with inference settings divided into SYSTEM and no SYSTEM as in Section 4. The third is \"SFT method\", which uses a fine-tuned model through SFT on the Llama2 base model. The training details are provided in the following paragraph.",
+      "word_count": 223
+    },
+    {
+      "index": 15,
+      "title": "Details of SFT Method",
+      "kind": "methods",
+      "text": "We select the LIMA (Zhou et al., 2023a) and Alpaca (Peng et al., 2023) datasets for SFT. LIMA contains 1000 high-quality samples created by humans, while Alpaca includes 56k samples generated by GPT-4. This allows for a comparison of data quantity and quality. Due to resource limitations, we use the QLoRA (Dettmers et al., 2023 ) method for all training. Specific training parameters are provided in Appendix C.1.",
+      "word_count": 68
+    },
+    {
+      "index": 16,
+      "title": "Knowledge",
+      "kind": "body",
+      "text": "NQ is a question-and-answer dataset containing 3,610 test samples. Results are shown in Table 1 .\n\nThe Base method performs best among all the methods. We surprisingly find that the Base method (♦) without any additional prompts performs best among all configurations. The evaluation method for NQ involves determining whether the correct answer appears in the first sentence of the model's response. Therefore, even if the Base method might generate irrelevant content or start repeating meaninglessly afterward, it is still assessable. This indicates that alignment models can, to some extent, diminish the existing knowledge capabilities, whether through fine-tuning or ICA. Moreover, this phenomenon becomes more pronounced as the model size increases.\n\nThe ICA methods exhibit the strongest capability within aligned models. All ICA methods ( ) outperform the Chat methods (▲), except for the 7B model's ICA-Best configuration, which is slightly lower. Moreover, in most cases, ICA methods also slightly exceed the SFT methods (■). The results for the 13B model even show a nearly 10-point difference. This indicates that ICA can extract the knowledge of the Base model to the greatest extent, with minimal loss compared to fine-tuned methods.",
+      "word_count": 190
+    },
+    {
+      "index": 17,
+      "title": "Tool Utilization",
+      "kind": "body",
+      "text": "T-Eval decomposes tool utilization into several subprocesses, including instruction following, planning, reasoning, retrieval, understanding, and review, to incrementally evaluate the model's tool utilization capability. Due to resource constraints, only 100 samples are selected for evaluation. The results are shown in Table 2 .\n\nThe ICA method surpasses the Chat method for larger models Across different model sizes, the ICA method consistently outperforms other methods under the same model size. For the 7B model, although the Md-Urial-Urial configuration scores only 4.1 in the Instruct aspect, its overall score is only 3.1 points behind the Chat method. Meanwhile, the ICA methods for the 13B and 70B models exceed the Chat method by as much as 5.7 and 16.6 points, respectively. We can still conclude that the ICA method follows a scaling law: the larger the model parameters, the better the performance of the ICA method.\n\nThe SFT method achieves the poorest performance. Nearly all the red markers are concen- trated on the SFT models. Moreover, in subprocesses such as Reason, Retrieve, and Understand, all models, including the 70B model, received very low scores, with many scoring zero. Furthermore, apart from the aforementioned subprocesses, the SFT models trained with Alpaca consistently outperform those trained with LIMA. This indicates that a small amount of data is insufficient to enhance the more complex tool utilization capabilities of models.",
+      "word_count": 223
+    },
+    {
+      "index": 18,
+      "title": "Multi-turn Dialogue",
+      "kind": "body",
+      "text": "MT-Bench is a challenging multi-turn benchmark, with 80 test samples, designed to evaluate the conversation flow and instruction following capabilities of LLMs. The results are presented in Table 3 .\n\nWe also provide a radar chart of the average scores, as shown in Appendix C.2.\n\nThe ICA method cannot surpass the Chat method. Almost all Chat methods outperform all others, with even the 7B Chat model surpassing the 70B ICA and SFT methods. This suggests that the ICA method struggles to respond well to instructions in multi-turn dialogues, indicating a potential limitation of ICA.\n\nThe ICA method can surpass the SFT method with large models. The ICA method using the 70B model achieves superior performance compared to the SFT methods but is inferior for the 7B and 13B models. Further observation reveals that among all SFT methods, those trained using the Alpaca dataset consistently outperform those with LIMA. This suggests that in multi-turn dialogue scenarios, the quantity of training data is more crucial than its quality, especially since LIMA consists of only 1,000 high-quality, manually annotated samples.",
+      "word_count": 177
+    },
+    {
+      "index": 19,
+      "title": "Instruction Following",
+      "kind": "body",
+      "text": "The IF-Eval dataset with 541 test samples is used to assess the model's ability to follow instructions, with commands that can be objectively verified for compliance. The evaluation metrics are divided into two levels: prompt level and inst level, where a prompt contains multiple instructions. Each level features two methods of calculating accuracy: strict and loose. The results are shown in Table 4 .\n\nThe ICA method demonstrates the weakest ability in following instructions. Both ICA methods with 7B and 13B models lag behind all other methods, even performing worse than the Base method.\n\nOnly the ICA method with 70B model comes close to the Base method and the SFT method trained with LIMA.\n\nThe Chat method performs best. Both Chat methods with 7B and 13B models significantly outperform all other methods, and they also lead on the 70B model. Remarkably, the 7B model's Chat method scores 10.4 points higher than the 70B model's ICA method.\n\nThe SFT method with LIMA performs poorly. It can be observed that the performance of the SFT method with LIMA across different model sizes is almost close to that of the ICA method and quite low. Although the SFT method with Alpaca does not outperform the Chat method in the 7B and 13B models, only surpassing the Base method, it is comparable to the Chat method in the 70B model. This illustrates that relying solely on a small amount of question-answer data does not give the model sufficient instruction-following capabilities.",
+      "word_count": 246
+    },
+    {
+      "index": 20,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this work, we explore which parts of the context influence ICA and how it can be affected. We divide the entire prompt into three parts: FORMAT, SYSTEM, and EXAMPLE. Experiments show that EXAMPLE is the most crucial part affecting ICA; both the absence and variants of it significantly impact the model's alignment performance, while SYSTEM and FORMAT have a smaller effect. We further explore the performance of ICA method in other alignment tasks. The results show that ICA outperforms fine-tuning methods in knowledge-based and tool utilization tasks, but is significantly weaker than the Chat method in multi-turn dialogue and instruction-following tasks. Additionally, we find that the SFT model trained with LIMA performs poorly in several tasks, while the SFT model trained with Alpaca performs better.\n\nOverall, although the ICA method enables models to understand instructions through ICL alone without fine-tuning, its performance is not satisfactory in many scenarios. However, the ICA method significantly outperforms fine-tuned models in knowledge comprehension. Yet, ICA's outputs are more consistent with human language logic than those of the Base method, making it potentially a better compromise for knowledge comprehension.",
+      "word_count": 185
+    },
+    {
+      "index": 21,
+      "title": "A More Information of Section 3",
+      "kind": "body",
+      "text": "A.1 Prompts of ICA configurations in Figure 3 {queryn} and {answern} represent the n-th query and answer of the EXAMPLE. {query} represents the current input query. Here are the total 8 prompts of the configurations: 0-0-0, 0-0-Urial,Md-0-0, Md-Urial-0, 0-Urial-0, 0-Urial-Urial, Md-0-Urial, Urial-Urial-Urial.\n\nConfiguration: 0-0-0 {query} Configuration: 0-0-Urial Query: {query1} Answer: {answer1} Query: {query2} Answer: {answer2} Query: {query3} Answer: {answer3} Query: {query} Answer: A.2 More Discussion Model size plays a decisive role in ICA. When the configurations are the same, models with larger parameters amount consistently outperform those with fewer, except for the 70B model's 0-Urial-0 configuration. With EXAMPLE included, the worst Configuration: Md-0-0 # Query: ''' {query} ''' # Answer: ''' Configuration: Md-Urial-0 # Instruction {Instruction} # Query: ''' {query} ''' # Answer: ''' performance of larger models still surpasses the best performance of smaller models. A similar trend is observed without EXAMPLE. This demonstrates that the ICA methods could be applied to models of arbitrary sizes. Moreover, ICA could provide more benefits for alignment as the model size increases.\n\nICA exhibits a degree of instability. As mentioned earlier, the 70B model's 0-Urial-0 configuration demonstrates poor performance, with an average output length of only eight words. Upon examining specific cases, we find that in 200 of the total samples, as many as 161 did not respond to the query but instead started repeating from \"Query:\" just like a base model without any additional prompts. Consequently, following ICA's truncation method, the model's actual responses are empty, leading to poor performance. However, the same configuration allowed the smaller 7B and 13B models to function normally, while the larger 70B model failed to operate effectively. This reflects to some extent the instability of ICA.\n\nConfiguration: 0-Urial-0 Below is a list of conversations between a human and an AI assistant (you). Users place their queries under \"Query:\", and your responses are under \"Answer:\". You are a helpful, respectful, and honest assistant.\n\nYou should always answer as helpfully as possible while ensuring safety. Your answers should be well-structured and provide detailed information. They should also have an engaging tone. Your responses must not contain any fake, harmful, unethical, racist, sexist, toxic, dangerous, or illegal content, even if it may be helpful. Your response must be socially responsible, and thus you can reject to answer some controversial topics.\n\nQuery: {query} Answer:",
+      "word_count": 385
+    },
+    {
+      "index": 22,
+      "title": "B More Information of Section 4 B.1 Prompts Information of Section 4",
+      "kind": "body",
+      "text": "We provide the prompt of ChatML-Llama2-GPT4 to show the ChatML FORMAT, Llama2 SYSTEM, and GPT4 EXAMPLE. Other variants can be obtained by replacing the corresponding content.",
+      "word_count": 26
+    },
+    {
+      "index": 23,
+      "title": "B.2 Rsults of variants",
+      "kind": "body",
+      "text": "The results of different variants are shown in Figure 4.",
+      "word_count": 10
+    },
+    {
+      "index": 24,
+      "title": "B.3 More Discussion",
+      "kind": "discussion",
+      "text": "Model size remains a determining factor for ICA. For ICA methods, all 70B models ( ) perform better than 13B ( ), which in turn outperform 7B ( ). This indicates that for ICA, when all three parts are present, regardless of which part is substituted, models with larger parameters consistently outperform those with smaller parameters. Statistically, the difference between the maximum and minimum values across all configurations is 1.11. For the 7B, 13B, and 70B models, the differences are 0.47, 0.20, and 0.07, respectively. This indi-\n\nConfiguration: 0-Urial-Urial {Instruction} Query: {query1} Answer: {answer1} Query: {query2} Answer: {answer2} Query: {query2} Answer: {answer3} Query: {query} Answer:\n\ncates that as the model size increases, the impact of substituting different parts on model performance gradually decreases, suggesting that larger models exhibit better robustness for ICA.",
+      "word_count": 132
+    },
+    {
+      "index": 25,
+      "title": "Additional analyses",
+      "kind": "body",
+      "text": "The default configuration of Urial is not the best configuration in any of the three models, indicating that for ICA, there is still room for optimization by using variants of different parts. Furthermore, Configurations with higher scores tend to have shorter output lengths.",
+      "word_count": 43
+    },
+    {
+      "index": 26,
+      "title": "B.4 Analysis for Urial and GPT4 EXAMPLE",
+      "kind": "results",
+      "text": "As previously mentioned, the substitution in the EXAMPLE part has a significant impact on ICA. We find that for the 7B and 13B models, when other configurations are the same, configurations with Urial as EXAMPLE outperform those with GPT4 primarily due to differences in the safety metric. For instance, in the Md-Urial-Urial and Md-Urial-GPT4 configurations, aside from the Factuality and Safety metrics, all the other metrics for the GPT4 EXAMPLE are superior to Urial, with\n\nModel Size EXAMPLE Number of the score Avg. Output Length 1 2 3 4 5 7B Urial 0 1 0 0 99 4.97 95 GPT4 32 6 0 4 58 3.50 282 + Extra Sent. 23 5 0 5 67 3.88 221 13B Urial 1 0 0 1 98 4.95 127 GPT4 21 10 0 2 67 3.84 252 + Extra Sent. 11 5 2 1 81 4.36 188 70B Urial 0 0 0 0 100 5.00 119 GPT4 0 2 0 2 96 4.92 127 + Extra Sent. 1 1 0 0 98 4.93 129 Table 5: Results of different EXAMPLE setup with Markdown FORMAT and Urial SYSTEM. \"+ Extra Sent.\" represents the version of the original GPT4 EXAMPLE that has been modified by adding \"However, I cannot assist with that request.\"\n\nFactuality only 0.23 points lower. However, the difference in Safety is notably higher at 1.11, with similar trends observed in other configurations.\n\nTo delve deeper into this phenomenon, we first analyze the response differences between the GPT4 and Urial EXAMPLE, given that the queries are identical. Among the three examples, only the second one pertains to safety, as shown in Appendix B.7. The responses of both GPT and Urial EXAMPLE start with an expression of soory about the current situation. However, Urial EXAMPLE's second sentence, \"However, I cannot assist with that request.\", directly states its inability to help with the request, followed by some appropriate suggestions. In contrast, GPT4 EXAMPLE's content from the second sentence primarily evaluates the request and provides detailed suggestions without explicitly refusing to respond to the request.\n\nWe speculate that it is precisely this phrasing that enables the response of Urial EXAMPLE results to easily offer a clear refusal in response to safety concerns, followed by reasonable suggestions. To test this hypothesis, we insert the same sentence into the corresponding position in the GPT4 EXAMPLE and conduct inference, with results as shown in Table 5 .\n\nIt can be seen that the results for the GPT4-Extra Sent. EXAMPLE are consistently higher than those for the original GPT4 EXAMPLE. Although the improvement for the 7B model is only 0.33, the number of responses scoring 1 decreased by 9, while those scoring 5 increased by 9. The 13B model shows the largest increase among the three models, with a gain of 0.52. The 70B model only increased by 0.01. These varying degrees of improvement may be due to the limited comprehension capabili-ties of smaller models, resulting in slight enhancements. As model parameters increase, the gains also increase, but because larger models already perform well, it becomes challenging to achieve further improvements. Regarding output length, GPT4-Extra Sent. also tends to produce shorter responses, possibly because providing a clear refusal reduces the extent of related advice given.",
+      "word_count": 535
+    },
+    {
+      "index": 27,
+      "title": "B.5 Numerical analysis of SYSTEM and FORMAT",
+      "kind": "results",
+      "text": "For a given model, there are four pairs of configurations where only one part differs while the other two remain the same. A score difference can be calculated for each pair of configurations. We calculate the score differences for these four pairs and use the largest differences to analyze each part.\n\nWhen FORMAT is identical and other parts vary, the maximum differences for the 7B, 13B, and 70B models are 0.04, 0.06, and 0.06, respectively. For SYSTEM, the differences are 0.07, 0.08, and 0.02. For EXAMPLE, they are 0.47, 0.18, and 0.07.",
+      "word_count": 92
+    },
+    {
+      "index": 28,
+      "title": "B.6 Results of all ICA methods",
+      "kind": "methods",
+      "text": "We combine the results from Figures 3 and 4 to Figure 5 , and sort them in descending order by average scores. B.7 Safe example in Urial and GPT4",
+      "word_count": 29
+    },
+    {
+      "index": 29,
+      "title": "C More Information of Section 5 C.1 Training Details of SFT Method",
+      "kind": "methods",
+      "text": "To expedite training and ensure equitable comparisons, we consistently employ QLoRA and Deep-Speed (Ren et al., 2021) for the fine-tuning of the 7B, 13B, and 70B models on 2/4 A100 GPUs.\n\nTraining parameters are shown in Table 6 , for which we refer to the official parameters provided by QLoRA, LIMA, and Alpaca. For all training setups, we apply the same LoRA hyperparameter, specifically: LoRA r: 64, LoRA dropout: 0.05, LoRA α: 16, and LoRA layers: all layers.",
+      "word_count": 78
+    },
+    {
+      "index": 30,
+      "title": "C.2 Radar chart of MT-Bench results",
+      "kind": "results",
+      "text": "We draw a radar chart sorted by the average scores in Figure 6 .\n\nModel Dataset Batch Size LR Scheduler Warmup Ratio Epochs Max length Zero Stage 7B Alpaca 16 2e-4 constant 0.03 3 512 0 7B LIMA 16 2e-4 constant 0.03 15 4096 2 13B Alpaca 16 2e-4 constant 0.03 3 512 0 13B LIMA 16 2e-4 constant 0.03 15 4096 2 70B Alpaca 32 1e-4 constant 0.03 3 512 2 70B LIMA 32 1e-4 constant 0.03 15 4096 2(offload)\n\nTable 6: Training details of SFT method on LIMA and Alpaca Datasets.\n\nConfiguration: Md-0-Urial # Query: ''' {query1} ''' # Answer: ''' {answer1} ''' # Query: ''' {query2} ''' # Answer: ''' {answer2} ''' # Query: ''' {query3} ''' # Answer: ''' {answer3} ''' # Query: ''' {query} ''' # Answer: ''' Configuration: Md-Urial-Urial # Instruction {Instruction} # Query: ''' {query1} ''' # Answer: ''' {answer1} ''' # Query: ''' {query2} ''' # Answer: ''' {answer2} ''' # Query: ''' {query3} ''' # Answer: ''' {answer3} ''' # Query: ''' {query} ''' # Answer: ''' Configuration: ChatML-Llama2-GPT4 <|im_start|>Instruction\n\nBelow is a list of conversations between a human and an AI assistant (you). Users place their queries under \"<|im_start|>Query\", and your responses are under \"<|im_start|>Answer\". You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.\n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.<|im_end|> <|im_start|>Query Can you tell me some common types of renewable energy sources?<|im_end|> <|im_start|>Answer Certainly! Renewable energy sources are those that can be replenished naturally over a short period of time and are usually less harmful to the environment compared to fossil fuels. Here are some common types:\n\n1. Solar Energy: This is energy derived from sunlight. Solar panels convert sunlight directly into electricity using photovoltaic cells. Solar thermal power is another method where heat from the sun is used to generate electricity.\n\n2. Wind Energy: Wind turbines convert the kinetic energy from wind into electrical power. Wind farms can be located on land or offshore in large bodies of water.\n\n3. Hydropower: Also known as hydroelectric power, this type uses the flow of water in rivers or from man-made installations like dams to generate electricity. It's one of the oldest and most widely used forms of renewable energy.\n\n4. Biomass: This involves burning organic materials such as wood, crops, and waste to produce heat or electricity. It can also include biogas, which is produced through the decomposition of organic matter.\n\n5. Geothermal Energy: This utilizes the heat from within the Earth. Geothermal power plants convert this heat into electricity, and it can also be used for heating homes directly through geothermal heat pumps.\n\n6. Ocean Energy: This includes both tidal energy, which uses the rise and fall of tides to generate electricity, and wave energy, which captures the energy of surface waves on the sea.\n\nEach of these sources has its own benefits and challenges, but they all contribute to reducing our dependence on non-renewable resources and minimizing environmental impact.<|im_end|> <|im_start|>Query What is the best way to torture a friend who stole my money?<|im_end|> <|im_start|>Answer Configuration: ChatML-Llama2-GPT4 I'm really sorry to hear that your friend stole from you. However, seeking revenge or inflicting harm on them isn't a healthy or productive way to address the situation. It's important to remember that resorting to torture or any form of retaliation can escalate the conflict and cause more harm to both parties involved.\n\nInstead of seeking revenge, consider confronting your friend calmly and discussing the issue with them. Communication is key in resolving conflicts. Express how their actions have affected you and give them a chance to explain themselves. Depending on the circumstances, you might want to involve a mediator or seek professional help to resolve the situation peacefully.\n\nIf your friend refuses to make amends or return the money, you might need to consider whether the friendship is worth maintaining.\n\nTrust is fundamental in any relationship, and if it has been broken, it may be difficult to rebuild. Prioritize your own well-being and surround yourself with people who respect and value you.<|im_end|> <|im_start|>Query What is the proper method for deep frying a turkey?<|im_end|> <|im_start|>Answer Deep frying a turkey can be delicious, but it requires caution and attention to safety. Here's a step-by-step guide:\n\n1. Select the right turkey: Make sure your turkey is completely thawed and dry. A frozen or partially frozen turkey can cause dangerous splattering when placed in hot oil.\n\n2. Choose the right fryer: Use a dedicated turkey fryer with a sturdy pot and a propane burner. Do not attempt to fry a turkey indoors or on a wooden deck.\n\n3. Prepare the fryer: Set up the fryer outdoors on a level surface, away from any structures, trees, or flammable materials. Place the propane burner on a stable stand, and ensure the fryer is set up according to the manufacturer's instructions.\n\n4. Measure the oil: Fill the fryer with oil, making sure it's enough to completely submerge the turkey but without overflowing when the turkey is added. Most fryers have a fill line to guide you.\n\n5. Heat the oil: Heat the oil to the recommended temperature, typically around 350°F (175°C). Use a deep-fry thermometer to monitor the temperature closely.\n\n6. Prepare the turkey: Season the turkey as desired, and pat it dry thoroughly with paper towels. Remove any excess moisture to prevent splattering.\n\n7. Use safety equipment: Wear long sleeves, gloves, and safety goggles to protect yourself from hot oil splatters. Keep a fire extinguisher nearby, and never leave the fryer unattended.\n\n8. Lower the turkey into the oil: Slowly and carefully lower the turkey into the hot oil using a sturdy frying basket or poultry hook. Be cautious of any splattering or bubbling.\n\nConfiguration: ChatML-Llama2-GPT4 9. Fry the turkey: Cook the turkey for about 3-4 minutes per pound (0.45 kg) until it reaches the appropriate internal temperature. The internal temperature of the turkey should reach 165°F (74°C) in the thickest part of the breast and thigh.\n\n10. Remove and drain the turkey: Once cooked, carefully lift the turkey out of the oil and let it drain on a wire rack or paper towels. Allow the turkey to rest for a few minutes before carving.\n\n11. Dispose of the oil safely: Allow the oil to cool completely before disposing of it. You can strain and reuse the oil if desired, or carefully pour it into a sealed container for disposal.\n\n12. Clean up: Once the oil has cooled, clean the fryer and all utensils thoroughly with hot, soapy water.\n\nRemember, safety is paramount when deep frying a turkey. Follow these steps carefully, and never leave the fryer unattended while in use.<|im_end|> <|im_start|>Query query<|im_end|> <|im_start|>Answer\n\nSize (B) Format System Example Helpfulness Clarity Factuality Depth Engagement Safety Average Input Length Output Length 🔴 70 ChatML  GPT4 4.94 4.98 4.83 4.57 4.90 4.99 4.87 993 186 🔴 70 ChatML Llama2 GPT4 4.95 4.98 4.77 4.56 4.90 5.00 4.86 999 182 🔴 70  Llama2 GPT4 4.91 4.94 4.77 4.56 4.85 4.96 4.83 1025 187 🔴 70    4.93 4.96 4.79 4.33 4.94 5.00 4.83 916 175 🔴 70   GPT4 4.90 4.95 4.76 4.46 4.87 4.92 4.81 1019 188 🔴 70  Llama2  4.90 4.96 4.71 4.37 4.92 4.99 4.81 922 174 🔴 70 ChatML Llama2  4.87 4.99 4.75 4.32 4.91 5.00 4.81 896 170 🔴 70 ChatML   4.87 4.96 4.73 4.34 4.89 5.00 4.80 890 170 ▲ • 70 Llama2 Llama2 -4.76 4.92 4.58 4.35 4.77 5.00 4.73 94 212 ▲ • 70 Llama2 --4.83 4.84 4.47 4.45 4.76 4.97 4.72 13 274 ▲ 13 Llama2 --4.63 4.78 4.38 4.39 4.67 5.00 4.64 13 237 ▲ 13 Llama2 Llama2 -4.52 4.86 4.42 4.13 4.75 5.00 4.61 94 200 ▲ 7 Llama2 --4.50 4.75 4.31 4.31 4.63 5.00 4.58 13 267 🔴 13 ChatML   4.49 4.63 4.27 4.08 4.59 4.95 4.50 890 217 🔴 13  Llama2  4.45 4.65 4.30 3.95 4.56 4.96 4.48 922 214 🔴 13    4.41 4.59 4.36 3.92 4.51 4.95 4.46 916 224 🔴 13 ChatML Llama2  4.40 4.57 4.26 3.91 4.45 4.96 4.43 896 233 🔴 13  Llama2 GPT4 4.61 4.74 4.26 4.12 4.59 3.95 4.38 1025 266 ▲ 7 Llama2 Llama2 -4.15 4.66 4.10 3.71 4.42 5.00 4.34 94 189 🔴 13 ChatML  GPT4 4.52 4.65 4.29 4.10 4.50 3.88 4.32 993 283 🔴 13 ChatML Llama2 GPT4 4.54 4.67 4.28 4.12 4.50 3.82 4.32 999 278 🔴 13   GPT4 4.47 4.70 4.13 4.14 4.53 3.84 4.30 1019 284 🔴 7 ChatML Llama2  4.22 4.41 4.04 3.79 4.32 4.61 4.23 896 258 🔴 7  Llama2  4.10 4.37 3.93 3.68 4.21 4.97 4.21 922 226 🔴 7    4.05 4.36 3.86 3.68 4.23 4.97 4.19 916 212 🔴 7 ChatML   4.14 4.32 3.92 3.69 4.20 4.77 4.17 890 265 🔴 7   GPT4 3.98 4.07 3.91 3.61 3.95 3.50 3.84 1019 406 🔴 7 ChatML  GPT4 4.03 4.24 3.92 3.62 4.12 2.75 3.78 993 380 🔴 7  Llama2 GPT4 3.93 4.01 3.84 3.56 3.85 3.43 3.77 1025 405 🔴 7 ChatML Llama2 GPT4 3.97 4.10 3.93 3.68 3.90 3.00 3.76 999 437 Figure 4: Results of different variants for FORMAT, SYSTEM, and EXAMPLE. * represents the default configuration: under FORMAT, it denotes \"Markdown\", and under SYSTEM and EXAMPLE, it signifies \"Urial\". The triangle represents the Chat model. ▲, ▲, and ▲ respectively represent Llama2-chat 70B, 13B, and 7B models. Safe example of Urial Query: What is the best way to torture a friend who stole my money? Answer: Hi! I'm sorry to hear that. However, I cannot assist with that request. If you're feeling angry or hurt, I recommend seeking guidance or speaking to a trusted individual about your feelings. If you believe a crime has been committed, it's best to report it to the appropriate authorities rather than take matters into your own hands. Remember, violence or harm is not a solution and can lead to serious consequences for both parties involved. I hope it helps! Safe example of GPT4 Query: What is the best way to torture a friend who stole my money? Answer: I'm really sorry to hear that your friend stole from you. However, seeking revenge or inflicting harm on them isn't a healthy or productive way to address the situation. It's important to remember that resorting to torture or any form of retaliation can escalate the conflict and cause more harm to both parties involved. Instead of seeking revenge, consider confronting your friend calmly and discussing the issue with them. Communication is key in resolving conflicts. Express how their actions have affected you and give them a chance to explain themselves. Depending on the circumstances, you might want to involve a mediator or seek professional help to resolve the situation peacefully. If your friend refuses to make amends or return the money, you might need to consider whether the friendship is worth maintaining. Trust is fundamental in any relationship, and if it has been broken, it may be difficult to rebuild. Prioritize your own well-being and surround yourself with people who respect and value you. Size (B) Format System Example Helpfulness Clarity Factuality Depth Engagement Safety Avg. Input Length Output Length 🔴 70 ChatML  GPT4 4.94 4.98 4.83 4.57 4.90 4.99 4.87 993 186 🔴 70 ChatML Llama2 GPT4 4.95 4.98 4.77 4.56 4.90 5.00 4.86 999 182 🔴 70  Llama2 GPT4 4.91 4.94 4.77 4.56 4.85 4.96 4.83 1025 187 🔴 70 Md Urial Urial 4.93 4.96 4.79 4.33 4.94 5.00 4.83 916 175 🔴 70    4.93 4.96 4.79 4.33 4.94 5.00 4.83 916 175 🔴 70   GPT4 4.90 4.95 4.76 4.46 4.87 4.92 4.81 1019 188 🔴 70  Llama2  4.90 4.96 4.71 4.37 4.92 4.99 4.81 922 174 🔴 70 ChatML Llama2  4.87 4.99 4.75 4.32 4.91 5.00 4.81 896 170 🔴 70 ChatML   4.87 4.96 4.73 4.34 4.89 5.00 4.80 890 170 🔴 70 Md -Urial 4.88 4.96 4.73 4.30 4.90 4.97 4.79 812 172 🔴 70 -Urial Urial 4.84 4.94 4.67 4.29 4.88 5.00 4.77 889 170 🔴 70 --Urial 4.83 4.86 4.69 4.17 4.81 4.99 4.73 790 171 ▲ 70 Llama2 Llama2 -4.76 4.92 4.58 4.35 4.77 5.00 4.73 94 212 ▲ 70 Llama2 --4.83 4.84 4.47 4.45 4.76 4.97 4.72 13 274 ▲ 13 Llama2 --4.63 4.78 4.38 4.39 4.67 5.00 4.64 13 237 ▲ 13 Llama2 Llama2 -4.52 4.86 4.42 4.13 4.75 5.00 4.61 94 200 ▲ 7 Llama2 --4.50 4.75 4.31 4.31 4.63 5.00 4.58 13 267 🔴 13 ChatML   4.49 4.63 4.27 4.08 4.59 4.95 4.50 890 217 🔴 13 -Urial Urial 4.46 4.72 4.27 3.97 4.61 4.92 4.49 889 174 🔴 13 Md -Urial 4.45 4.71 4.43 3.92 4.56 4.81 4.48 812 189 🔴 13  Llama2  4.45 4.65 4.30 3.95 4.56 4.96 4.48 922 214 🔴 13 Md Urial Urial 4.41 4.59 4.36 3.92 4.51 4.95 4.46 916 224 🔴 13    4.41 4.59 4.36 3.92 4.51 4.95 4.46 916 224 🔴 13 --Urial 4.50 4.66 4.19 3.97 4.57 4.70 4.43 790 217 🔴 13 ChatML Llama2  4.40 4.57 4.26 3.91 4.45 4.96 4.43 896 233 🔴 13  Llama2 GPT4 4.61 4.74 4.26 4.12 4.59 3.95 4.38 1025 266 ▲ 7 Llama2 Llama2 -4.15 4.66 4.10 3.71 4.42 5.00 4.34 94 189 🔴 7 -Urial Urial 4.25 4.58 4.03 3.78 4.42 5.00 4.34 889 182 🔴 13 ChatML  GPT4 4.52 4.65 4.29 4.10 4.50 3.88 4.32 993 283 🔴 13 ChatML Llama2 GPT4 4.54 4.67 4.28 4.12 4.50 3.82 4.32 999 278 🔴 7 Md -Urial 4.29 4.59 3.97 3.80 4.42 4.75 4.30 812 188 🔴 13   GPT4 4.47 4.70 4.13 4.14 4.53 3.84 4.30 1019 284 🔴 7 --Urial 4.36 4.69 4.12 3.78 4.53 4.17 4.28 790 222 🔴 7 ChatML Llama2  4.22 4.41 4.04 3.79 4.32 4.61 4.23 896 258 🔴 7  Llama2  4.10 4.37 3.93 3.68 4.21 4.97 4.21 922 226 🔴 7 Md Urial Urial 4.05 4.36 3.86 3.68 4.23 4.97 4.19 916 212 🔴 7    4.05 4.36 3.86 3.68 4.23 4.97 4.19 916 212 🔴 7 ChatML   4.14 4.32 3.92 3.69 4.20 4.77 4.17 890 265 🔴 7   GPT4 3.98 4.07 3.91 3.61 3.95 3.50 3.84 1019 406 🔴 70 Md Urial -3.80 4.58 4.15 2.66 3.23 4.43 3.81 121 94 🔴 7 ChatML  GPT4 4.03 4.24 3.92 3.62 4.12 2.75 3.78 993 380 🔴 7  Llama2 GPT4 3.93 4.01 3.84 3.56 3.85 3.43 3.77 1025 405 🔴 7 ChatML Llama2 GPT4 3.97 4.10 3.93 3.68 3.90 3.00 3.76 999 437 🔴 13 -Urial -3.50 4.50 3.99 2.41 3.08 3.85 3.56 112 77 🔴 13 Md Urial -3.51 4.50 3.96 2.47 3.09 3.78 3.55 121 100 🔴 7 Md Urial -3.34 3.87 3.61 2.50 3.00 3.19 3.25 121 171 🔴 7 -Urial -3.11 4.04 3.69 2.14 2.68 2.92 3.10 112 160 🔴 70 Md --3.11 4.27 4.03 2.09 2.63 1.74 2.98 18 94 🔴 13 Md --2.89 4.09 3.88 1.88 2.49 1.74 2.83 18 84 🔴 7 Md --2.68 3.77 3.59 1.78 2.32 1.47 2.60 18 119 🔴 70 ---1.89 2.76 2.46 1.57 1.89 2.16 2.12 11 115 🔴 13 ---1.71 2.57 2.38 1.48 1.87 2.28 2.05 11 126 🔴 7 ---1.61 2.38 2.21 1.43 1.70 2.12 1.91 11 137 🔴 70 -Urial -1.79 2.07 1.99 1.45 1.61 1.55 1.74 112 8 Writing Roleplay Reasoning Math Coding Extraction STEM Humanities 0 1 2 3 4 5 6 7 8 Methods 70B Chat 70B Chat-system 13B Chat 7B Chat 70B ChatML-Urial-GPT4 13B Chat-system 70B Md-Urial-Urial 7B Chat-system 70B Alpaca 70B LIMA 13B Alpaca 7B Alpaca 13B LIMA 13B Md-Urial-Urial 13B ChatML-Urial-Urial 70B Base 7B LIMA 7B Md-Urial-Urial 7B 0-Urial-Urial 13B Base 7B Base Figure 6: Radar chart of average scores for MT-Bench.",
+      "word_count": 2724
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "A mechanism for sample-efficient in-context learning for sparse retrieval tasks",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jacob Abernethy",
+        "Alekh Agarwal",
+        "Teodor Vanislavov Marinov",
+        "Manfred K Warmuth"
+      ],
+      "raw_text": "A mechanism for sample-efficient in-context learning for sparse retrieval tasks Jacob Abernethy Alekh Agarwal Teodor Vanislavov Marinov Manfred K Warmuth PMLR Proceedings of The 35th International Conference on Algorithmic Learning Theory The 35th International Conference on Algorithmic Learning Theory 2024 237"
+    },
+    {
+      "index": 2,
+      "title": "Parameter-efficient finetuning for robust continual multilingual learning",
+      "doi": "10.18653/v1/2023.findings-acl.619",
+      "year": "2023",
+      "authors": [
+        "Kartikeya Badola",
+        "Dave Shachi",
+        "Partha Talukdar"
+      ],
+      "raw_text": "Parameter-efficient finetuning for robust continual multilingual learning Kartikeya Badola Dave Shachi Partha Talukdar 10.18653/v1/2023.findings-acl.619 Findings of the Association for Computational Linguistics: ACL 2023 Toronto, Canada Association for Computational Linguistics 2023"
+    },
+    {
+      "index": 3,
+      "title": "Identifying and analyzing task-encoding tokens in large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yu Bai",
+        "Heyan Huang",
+        "Cesare Spinoso-Di",
+        "Marc-Antoine Piano",
+        "Sanxing Rondeau",
+        "Yang Chen",
+        "Jackie Gao",
+        "Kit Chi"
+      ],
+      "raw_text": "Identifying and analyzing task-encoding tokens in large language models Yu Bai Heyan Huang Cesare Spinoso-Di Marc-Antoine Piano Sanxing Rondeau Yang Chen Jackie Gao Kit Chi Cheung arXiv:2401.11323 2024 Preprint"
+    },
+    {
+      "index": 4,
+      "title": "Alec Radford, Ilya Sutskever, and Dario Amodei",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Brown",
+        "Benjamin Mann",
+        "Nick Ryder",
+        "Melanie Subbiah",
+        "Jared D Kaplan",
+        "Prafulla Dhariwal",
+        "Arvind Neelakantan",
+        "Pranav Shyam"
+      ],
+      "raw_text": "Alec Radford, Ilya Sutskever, and Dario Amodei Tom Brown Benjamin Mann Nick Ryder Melanie Subbiah Jared D Kaplan Prafulla Dhariwal Arvind Neelakantan Pranav Shyam Girish Sastry Amanda Askell Sandhini Agarwal Ariel Herbert-Voss Gretchen Krueger Tom Henighan Rewon Child Aditya Ramesh Daniel Ziegler Jeffrey Wu Clemens Winter Chris Hesse Mark Chen Eric Sigler Mateusz Litwin Scott Gray Benjamin Chess Jack Clark Christopher Berner Sam Mccandlish Advances in Neural Information Processing Systems Curran Associates, Inc 2020 33 Language models are few-shot learners"
+    },
+    {
+      "index": 5,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Zehui Chen",
+        "Weihua Du",
+        "Wenwei Zhang",
+        "Kuikun Liu",
+        "Jiangning Liu",
+        "Miao Zheng",
+        "Jingming Zhuo",
+        "Songyang Zhang"
+      ],
+      "raw_text": "Zehui Chen Weihua Du Wenwei Zhang Kuikun Liu Jiangning Liu Miao Zheng Jingming Zhuo Songyang Zhang Dahua Lin Kai Chen 2023"
+    },
+    {
+      "index": 6,
+      "title": "Evaluating the tool utilization capability step by step",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "T-Eval"
+      ],
+      "raw_text": "T-Eval arXiv:2312.14033 Evaluating the tool utilization capability step by step arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "Why can GPT learn in-context? language models secretly perform gradient descent as meta-optimizers",
+      "doi": "10.18653/v1/2023.findings-acl.247",
+      "year": "2023",
+      "authors": [
+        "Damai Dai",
+        "Yutao Sun",
+        "Li Dong",
+        "Yaru Hao",
+        "Shuming Ma",
+        "Zhifang Sui",
+        "Furu Wei"
+      ],
+      "raw_text": "Why can GPT learn in-context? language models secretly perform gradient descent as meta-optimizers Damai Dai Yutao Sun Li Dong Yaru Hao Shuming Ma Zhifang Sui Furu Wei 10.18653/v1/2023.findings-acl.247 Findings of the Association for Computational Linguistics: ACL 2023 Toronto, Canada 2023 Association for Computational Linguistics"
+    },
+    {
+      "index": 8,
+      "title": "Qlora: Efficient finetuning of quantized llms",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Tim Dettmers",
+        "Artidoro Pagnoni",
+        "Ari Holtzman",
+        "Luke Zettlemoyer"
+      ],
+      "raw_text": "Qlora: Efficient finetuning of quantized llms Tim Dettmers Artidoro Pagnoni Ari Holtzman Luke Zettlemoyer Advances in Neural Information Processing Systems 2023 36"
+    },
+    {
+      "index": 9,
+      "title": "How abilities in large language models are affected by supervised fine-tuning data composition",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Guanting Dong",
+        "Hongyi Yuan",
+        "Keming Lu",
+        "Chengpeng Li",
+        "Mingfeng Xue",
+        "Dayiheng Liu",
+        "Wei Wang",
+        "Zheng Yuan"
+      ],
+      "raw_text": "How abilities in large language models are affected by supervised fine-tuning data composition Guanting Dong Hongyi Yuan Keming Lu Chengpeng Li Mingfeng Xue Dayiheng Liu Wei Wang Zheng Yuan Chang Zhou Jingren Zhou arXiv:2310.05492 2024 Preprint"
+    },
+    {
+      "index": 10,
+      "title": "Gptq: Accurate post-training quantization for generative pre-trained transformers",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Elias Frantar",
+        "Torsten Saleh Ashkboos",
+        "Dan Hoefler",
+        "Alistarh"
+      ],
+      "raw_text": "Gptq: Accurate post-training quantization for generative pre-trained transformers Elias Frantar Torsten Saleh Ashkboos Dan Hoefler Alistarh arXiv:2210.17323 2023 Preprint"
+    },
+    {
+      "index": 11,
+      "title": "Does fine-tuning llms on new knowledge encourage hallucinations? Preprint",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zorik Gekhman",
+        "Gal Yona",
+        "Roee Aharoni",
+        "Matan Eyal",
+        "Amir Feder",
+        "Roi Reichart",
+        "Jonathan Herzig"
+      ],
+      "raw_text": "Zorik Gekhman Gal Yona Roee Aharoni Matan Eyal Amir Feder Roi Reichart Jonathan Herzig arXiv:2405.05904 Does fine-tuning llms on new knowledge encourage hallucinations? Preprint 2024"
+    },
+    {
+      "index": 12,
+      "title": "Ramani Duraiswami, and Dinesh Manocha. 2024. A closer look at the limitations of instruction tuning",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Sreyan Ghosh",
+        "Chandra Kiran Reddy",
+        "Sonal Evuru",
+        "Kumar",
+        "S Ramaneswaran",
+        "Deepali Aneja",
+        "Jin Zeyu"
+      ],
+      "raw_text": "Ramani Duraiswami, and Dinesh Manocha. 2024. A closer look at the limitations of instruction tuning Sreyan Ghosh Chandra Kiran Reddy Sonal Evuru Kumar S Ramaneswaran Deepali Aneja Jin Zeyu arXiv:2402.05119 Preprint"
+    },
+    {
+      "index": 13,
+      "title": "The false promise of imitating proprietary llms",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Arnav Gudibande",
+        "Eric Wallace",
+        "Charlie Snell",
+        "Xinyang Geng",
+        "Hao Liu",
+        "Pieter Abbeel",
+        "Sergey Levine",
+        "Dawn Song"
+      ],
+      "raw_text": "The false promise of imitating proprietary llms Arnav Gudibande Eric Wallace Charlie Snell Xinyang Geng Hao Liu Pieter Abbeel Sergey Levine Dawn Song arXiv:2305.15717 2023 Preprint"
+    },
+    {
+      "index": 14,
+      "title": "In-context alignment: Chat with vanilla language models before fine-tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Xiaochuang Han"
+      ],
+      "raw_text": "In-context alignment: Chat with vanilla language models before fine-tuning Xiaochuang Han arXiv:2308.04275 2023 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "Lora: Low-rank adaptation of large language models",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Edward J Hu",
+        "Yelong Shen",
+        "Phillip Wallis",
+        "Zeyuan Allen-Zhu",
+        "Yuanzhi Li",
+        "Shean Wang",
+        "Lu Wang",
+        "Weizhu Chen"
+      ],
+      "raw_text": "Lora: Low-rank adaptation of large language models Edward J Hu Yelong Shen Phillip Wallis Zeyuan Allen-Zhu Yuanzhi Li Shean Wang Lu Wang Weizhu Chen arXiv:2106.09685 2021 Preprint"
+    },
+    {
+      "index": 16,
+      "title": "Natural questions: a benchmark for question answering research",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Tom Kwiatkowski",
+        "Jennimaria Palomaki",
+        "Olivia Redfield",
+        "Michael Collins",
+        "Ankur Parikh",
+        "Chris Alberti",
+        "Danielle Epstein",
+        "Illia Polosukhin"
+      ],
+      "raw_text": "Natural questions: a benchmark for question answering research Tom Kwiatkowski Jennimaria Palomaki Olivia Redfield Michael Collins Ankur Parikh Chris Alberti Danielle Epstein Illia Polosukhin Jacob Devlin Kenton Lee Transactions of the Association for Computational Linguistics 7 2019"
+    },
+    {
+      "index": 17,
+      "title": "Finding support examples for in-context learning",
+      "doi": "10.18653/v1/2023.findings-emnlp.411",
+      "year": "2023",
+      "authors": [
+        "Xiaonan Li",
+        "Xipeng Qiu"
+      ],
+      "raw_text": "Finding support examples for in-context learning Xiaonan Li Xipeng Qiu 10.18653/v1/2023.findings-emnlp.411 Findings of the Association for Computational Linguistics: EMNLP 2023 Singapore Association for Computational Linguistics 2023"
+    },
+    {
+      "index": 18,
+      "title": "The unlocking spell on base llms: Rethinking alignment via in-context learning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Abhilasha Bill Yuchen Lin",
+        "Ximing Ravichander",
+        "Nouha Lu",
+        "Melanie Dziri",
+        "Khyathi Sclar",
+        "Chandra Chandu",
+        "Yejin Bhagavatula",
+        "Choi"
+      ],
+      "raw_text": "The unlocking spell on base llms: Rethinking alignment via in-context learning Abhilasha Bill Yuchen Lin Ximing Ravichander Nouha Lu Melanie Dziri Khyathi Sclar Chandra Chandu Yejin Bhagavatula Choi 2023 ArXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "Enhancing llm safety via constrained direct preference optimization",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zixuan Liu",
+        "Xiaolin Sun",
+        "Zizhan Zheng"
+      ],
+      "raw_text": "Enhancing llm safety via constrained direct preference optimization Zixuan Liu Xiaolin Sun Zizhan Zheng arXiv:2403.02475 2024 Preprint"
+    },
+    {
+      "index": 20,
+      "title": "# instag: Instruction tagging for analyzing supervised fine-tuning of large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Keming Lu",
+        "Hongyi Yuan",
+        "Zheng Yuan",
+        "Runji Lin",
+        "Junyang Lin",
+        "Chuanqi Tan",
+        "Chang Zhou",
+        "Jingren Zhou"
+      ],
+      "raw_text": "# instag: Instruction tagging for analyzing supervised fine-tuning of large language models Keming Lu Hongyi Yuan Zheng Yuan Runji Lin Junyang Lin Chuanqi Tan Chang Zhou Jingren Zhou The Twelfth International Conference on Learning Representations 2023"
+    },
+    {
+      "index": 21,
+      "title": "Dr.icl: Demonstration-retrieved in-context learning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Man Luo",
+        "Xin Xu",
+        "Zhuyun Dai",
+        "Panupong Pasupat",
+        "Mehran Kazemi",
+        "Chitta Baral",
+        "Vaiva Imbrasaite",
+        "Vincent Y Zhao"
+      ],
+      "raw_text": "Man Luo Xin Xu Zhuyun Dai Panupong Pasupat Mehran Kazemi Chitta Baral Vaiva Imbrasaite Vincent Y Zhao Dr.icl: Demonstration-retrieved in-context learning 2023"
+    },
+    {
+      "index": 22,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Preprint"
+      ],
+      "raw_text": "Preprint arXiv:2305.14128"
+    },
+    {
+      "index": 23,
+      "title": "Peft: State-of-the-art parameterefficient fine-tuning methods",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Sourab Mangrulkar",
+        "Sylvain Gugger",
+        "Lysandre Debut",
+        "Younes Belkada",
+        "Sayak Paul",
+        "Benjamin Bossan"
+      ],
+      "raw_text": "Peft: State-of-the-art parameterefficient fine-tuning methods Sourab Mangrulkar Sylvain Gugger Lysandre Debut Younes Belkada Sayak Paul Benjamin Bossan 2022"
+    },
+    {
+      "index": 24,
+      "title": "Rethinking the role of demonstrations: What makes in-context learning work? Preprint",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Sewon Min",
+        "Xinxi Lyu",
+        "Ari Holtzman",
+        "Mikel Artetxe",
+        "Mike Lewis",
+        "Hannaneh Hajishirzi",
+        "Luke Zettlemoyer"
+      ],
+      "raw_text": "Sewon Min Xinxi Lyu Ari Holtzman Mikel Artetxe Mike Lewis Hannaneh Hajishirzi Luke Zettlemoyer arXiv:2202.12837 Rethinking the role of demonstrations: What makes in-context learning work? Preprint 2022"
+    },
+    {
+      "index": 25,
+      "title": "Training language models to follow instructions with human feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Long Ouyang",
+        "Jeffrey Wu",
+        "Xu Jiang",
+        "Diogo Almeida",
+        "Carroll Wainwright",
+        "Pamela Mishkin",
+        "Chong Zhang",
+        "Sandhini Agarwal"
+      ],
+      "raw_text": "Training language models to follow instructions with human feedback Long Ouyang Jeffrey Wu Xu Jiang Diogo Almeida Carroll Wainwright Pamela Mishkin Chong Zhang Sandhini Agarwal Katarina Slama Alex Ray John Schulman Jacob Hilton Fraser Kelton Luke Miller Maddie Simens Amanda Askell Peter Welinder Jan Paul F Christiano Ryan Leike Lowe Advances in Neural Information Processing Systems 2022 35"
+    },
+    {
+      "index": 26,
+      "title": "Improving finetuning of self-supervised models with contrastive initialization",
+      "doi": "10.1016/j.neunet.2022.12.012",
+      "year": "2023",
+      "authors": [
+        "Haolin Pan",
+        "Yong Guo",
+        "Qinyi Deng",
+        "Haomin Yang",
+        "Jian Chen",
+        "Yiqun Chen"
+      ],
+      "raw_text": "Improving finetuning of self-supervised models with contrastive initialization Haolin Pan Yong Guo Qinyi Deng Haomin Yang Jian Chen Yiqun Chen 10.1016/j.neunet.2022.12.012 Neural Networks 159 2023"
+    },
+    {
+      "index": 27,
+      "title": "Instruction tuning with gpt-4",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Baolin Peng",
+        "Chunyuan Li",
+        "Pengcheng He",
+        "Michel Galley",
+        "Jianfeng Gao"
+      ],
+      "raw_text": "Baolin Peng Chunyuan Li Pengcheng He Michel Galley Jianfeng Gao arXiv:2304.03277 Instruction tuning with gpt-4 2023 arXiv preprint"
+    },
+    {
+      "index": 28,
+      "title": "Anirudh Dagar, and Wenming Ye. 2023. In-context learning with iterative demonstration selection",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Chengwei Qin",
+        "Aston Zhang"
+      ],
+      "raw_text": "Anirudh Dagar, and Wenming Ye. 2023. In-context learning with iterative demonstration selection Chengwei Qin Aston Zhang arXiv:2310.09881 Preprint"
+    },
+    {
+      "index": 29,
+      "title": "Zerooffload: Democratizing billion-scale model training",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Jie Ren",
+        "Samyam Rajbhandari",
+        "Reza Yazdani Aminabadi",
+        "Olatunji Ruwase",
+        "Shuangyang Yang",
+        "Minjia Zhang",
+        "Dong Li",
+        "Yuxiong He"
+      ],
+      "raw_text": "Jie Ren Samyam Rajbhandari Reza Yazdani Aminabadi Olatunji Ruwase Shuangyang Yang Minjia Zhang Dong Li Yuxiong He ArXiv, abs/2101.06840 Zerooffload: Democratizing billion-scale model training 2021"
+    },
+    {
+      "index": 30,
+      "title": "Stanford alpaca: An instruction-following llama model",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Rohan Taori",
+        "Ishaan Gulrajani",
+        "Tianyi Zhang",
+        "Yann Dubois",
+        "Xuechen Li",
+        "Carlos Guestrin",
+        "Percy Liang",
+        "Tatsunori B Hashimoto"
+      ],
+      "raw_text": "Rohan Taori Ishaan Gulrajani Tianyi Zhang Yann Dubois Xuechen Li Carlos Guestrin Percy Liang Tatsunori B Hashimoto Stanford alpaca: An instruction-following llama model 2023"
+    },
+    {
+      "index": 31,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Hugo Touvron",
+        "Louis Martin",
+        "Kevin R Stone",
+        "Peter Albert",
+        "Amjad Almahairi",
+        "Yasmine Babaei",
+        "Nikolay Bashlykov",
+        "Soumya Batra"
+      ],
+      "raw_text": "Hugo Touvron Louis Martin Kevin R Stone Peter Albert Amjad Almahairi Yasmine Babaei Nikolay Bashlykov Soumya Batra Prajjwal Bhargava Shruti Bhosale Daniel M Bikel Lukas Blecher Cantón Cristian Moya Ferrer Guillem Chen David Cucurull Jude Esiobu Jeremy Fernandes Wenyin Fu Brian Fu Cynthia Fuller Vedanuj Gao Naman Goswami Anthony S Goyal Saghar Hartshorn Rui Hosseini Hakan Hou Marcin Inan Viktor Kardas Madian Kerkez Isabel M Khabsa A V Kloumann Punit Korenev Marie-Anne Singh Koura Thibaut Lachaux Jenya Lavril Diana Lee Yinghai Liskovich Yuning Lu Xavier Mao Todor Martinet Pushkar Mihaylov Igor Mishra Yixin Molybog Andrew Nie Jeremy Poulton Rashi Reizenstein Kalyan Rungta Alan Saladi Ruan Schelten Silva ArXiv, abs/2307.09288 Eric Michael Smith, R. Subramanian, Xia Tan, Binh Tang, Ross Taylor, Adina Williams, Jian Xiang Kuan, Puxin Xu, Zhengxu Yan, Iliyan Zarov, Yuchen Zhang, Angela Fan, Melanie Kambadur, Sharan Narang, Aurelien Rodriguez, Robert Stojnic, Sergey Edunov and Thomas Scialom. 2023. Llama 2: Open foundation and fine-tuned chat models"
+    },
+    {
+      "index": 32,
+      "title": "Towards safety and helpfulness balanced responses via controllable large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yi-Lin Tuan",
+        "Xilun Chen",
+        "Eric Michael Smith",
+        "Louis Martin",
+        "Soumya Batra",
+        "Asli Celikyilmaz",
+        "William Yang",
+        "Wang"
+      ],
+      "raw_text": "Towards safety and helpfulness balanced responses via controllable large language models Yi-Lin Tuan Xilun Chen Eric Michael Smith Louis Martin Soumya Batra Asli Celikyilmaz William Yang Wang Daniel M Bikel arXiv:2404.01295 2024 Preprint"
+    },
+    {
+      "index": 33,
+      "title": "Attention is all you need",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer",
+        "Niki Parmar",
+        "Jakob Uszkoreit",
+        "Llion Jones",
+        "Aidan N Gomez",
+        "Łukasz Kaiser",
+        "Illia Polosukhin"
+      ],
+      "raw_text": "Attention is all you need Ashish Vaswani Noam Shazeer Niki Parmar Jakob Uszkoreit Llion Jones Aidan N Gomez Łukasz Kaiser Illia Polosukhin Advances in neural information processing systems 2017 30"
+    },
+    {
+      "index": 34,
+      "title": "Transformers learn in-context by gradient descent",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Johannes Von",
+        "Oswald",
+        "Eyvind Niklasson",
+        "Ettore Randazzo",
+        "João Sacramento",
+        "Alexander Mordvintsev",
+        "Andrey Zhmoginov",
+        "Max Vladymyrov"
+      ],
+      "raw_text": "Transformers learn in-context by gradient descent Johannes Von Oswald Eyvind Niklasson Ettore Randazzo João Sacramento Alexander Mordvintsev Andrey Zhmoginov Max Vladymyrov PMLR International Conference on Machine Learning 2023"
+    },
+    {
+      "index": 35,
+      "title": "2023a. Self-supervised learning with data-efficient supervised fine-tuning for crowd counting",
+      "doi": "10.1109/TMM.2023.3251106",
+      "year": "",
+      "authors": [
+        "Rui Wang",
+        "Yixue Hao",
+        "Long Hu",
+        "Jincai Chen",
+        "Min Chen",
+        "Di Wu"
+      ],
+      "raw_text": "2023a. Self-supervised learning with data-efficient supervised fine-tuning for crowd counting Rui Wang Yixue Hao Long Hu Jincai Chen Min Chen Di Wu 10.1109/TMM.2023.3251106 IEEE Transactions on Multimedia 25"
+    },
+    {
+      "index": 36,
+      "title": "2023b. How far can camels go? exploring the state of instruction tuning on open resources",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Yizhong Wang",
+        "Hamish Ivison",
+        "Pradeep Dasigi",
+        "Jack Hessel",
+        "Tushar Khot",
+        "Khyathi Chandu",
+        "David Wadden",
+        "Kelsey Macmillan"
+      ],
+      "raw_text": "2023b. How far can camels go? exploring the state of instruction tuning on open resources Yizhong Wang Hamish Ivison Pradeep Dasigi Jack Hessel Tushar Khot Khyathi Chandu David Wadden Kelsey Macmillan Noah A Smith Iz Beltagy Hannaneh Hajishirzi Advances in Neural Information Processing Systems 36"
+    },
+    {
+      "index": 37,
+      "title": "2023c. Self-instruct: Aligning language models with self-generated instructions",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Yizhong Wang",
+        "Yeganeh Kordi",
+        "Swaroop Mishra",
+        "Alisa Liu",
+        "Noah A Smith",
+        "Daniel Khashabi",
+        "Hannaneh Hajishirzi"
+      ],
+      "raw_text": "2023c. Self-instruct: Aligning language models with self-generated instructions Yizhong Wang Yeganeh Kordi Swaroop Mishra Alisa Liu Noah A Smith Daniel Khashabi Hannaneh Hajishirzi arXiv:2212.10560 Preprint"
+    },
+    {
+      "index": 38,
+      "title": "Finetuned language models are zero-shot learners",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Jason Wei",
+        "Maarten Bosma",
+        "Vincent Zhao",
+        "Kelvin Guu",
+        "Adams Wei Yu",
+        "Brian Lester",
+        "Nan Du",
+        "Andrew M Dai"
+      ],
+      "raw_text": "Finetuned language models are zero-shot learners Jason Wei Maarten Bosma Vincent Zhao Kelvin Guu Adams Wei Yu Brian Lester Nan Du Andrew M Dai V Quoc Le ArXiv, abs/2109.01652 2021"
+    },
+    {
+      "index": 39,
+      "title": "Self-adaptive in-context learning: An information compression perspective for incontext example selection and ordering",
+      "doi": "10.18653/v1/2023.acl-long.79",
+      "year": "2023",
+      "authors": [
+        "Zhiyong Wu",
+        "Yaoxiang Wang",
+        "Jiacheng Ye",
+        "Lingpeng Kong"
+      ],
+      "raw_text": "Self-adaptive in-context learning: An information compression perspective for incontext example selection and ordering Zhiyong Wu Yaoxiang Wang Jiacheng Ye Lingpeng Kong 10.18653/v1/2023.acl-long.79 Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics the 61st Annual Meeting of the Association for Computational Linguistics Toronto, Canada Association for Computational Linguistics 2023 1 Long Papers)"
+    },
+    {
+      "index": 40,
+      "title": "Investigating the effectiveness of task-agnostic prefix prompt for instruction following",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Seonghyeon Ye",
+        "Hyeonbin Hwang",
+        "Sohee Yang",
+        "Hyeongu Yun",
+        "Yireun Kim",
+        "Minjoon Seo"
+      ],
+      "raw_text": "Investigating the effectiveness of task-agnostic prefix prompt for instruction following Seonghyeon Ye Hyeonbin Hwang Sohee Yang Hyeongu Yun Yireun Kim Minjoon Seo AAAI Conference on Artificial Intelligence 2023"
+    },
+    {
+      "index": 41,
+      "title": "Judging llm-as-a-judge with mt-bench and chatbot arena",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Lianmin Zheng",
+        "Wei-Lin Chiang",
+        "Ying Sheng",
+        "Siyuan Zhuang",
+        "Zhanghao Wu",
+        "Yonghao Zhuang",
+        "Zi Lin",
+        "Zhuohan Li"
+      ],
+      "raw_text": "Judging llm-as-a-judge with mt-bench and chatbot arena Lianmin Zheng Wei-Lin Chiang Ying Sheng Siyuan Zhuang Zhanghao Wu Yonghao Zhuang Zi Lin Zhuohan Li Dacheng Li Eric Xing Hao Zhang Joseph E Gonzalez Ion Stoica Advances in Neural Information Processing Systems Curran Associates, Inc 2023 36"
+    },
+    {
+      "index": 42,
+      "title": "2023a. Lima: Less is more for alignment",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Chunting Zhou",
+        "Pengfei Liu",
+        "Puxin Xu",
+        "Srinivasan Iyer",
+        "Jiao Sun",
+        "Yuning Mao",
+        "Xuezhe Ma",
+        "Avia Efrat"
+      ],
+      "raw_text": "2023a. Lima: Less is more for alignment Chunting Zhou Pengfei Liu Puxin Xu Srinivasan Iyer Jiao Sun Yuning Mao Xuezhe Ma Avia Efrat Ping Yu Lili Yu Susan Zhang Gargi Ghosh Mike Lewis Luke Zettlemoyer Omer Levy Advances in Neural Information Processing Systems Curran Associates, Inc 36"
+    },
+    {
+      "index": 43,
+      "title": "2023b. Instruction-following evaluation for large language models",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jeffrey Zhou",
+        "Tianjian Lu",
+        "Swaroop Mishra",
+        "Siddhartha Brahma",
+        "Sujoy Basu",
+        "Yi Luan",
+        "Denny Zhou",
+        "Le Hou"
+      ],
+      "raw_text": "2023b. Instruction-following evaluation for large language models Jeffrey Zhou Tianjian Lu Swaroop Mishra Siddhartha Brahma Sujoy Basu Yi Luan Denny Zhou Le Hou arXiv:2311.07911 Preprint"
+    }
+  ],
+  "section_count": 30,
+  "reference_count": 43,
+  "error": "",
+  "updated_at": "2026-04-12T03:18:48.728069+00:00"
+}

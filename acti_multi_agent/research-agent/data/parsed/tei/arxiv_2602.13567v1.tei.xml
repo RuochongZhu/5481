@@ -1,0 +1,1222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">DISTILLLENS: Symmetric Knowledge Distillation Through Logit Lens</title>
+				<funder ref="#_7kN9Cy4">
+					<orgName type="full">Army Research Laboratory</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-02-14">14 Feb 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Manish</forename><surname>Dhakal</surname></persName>
+							<email>&lt;mdhakal3@gsu.edu&gt;</email>
+							<affiliation key="aff0">
+								<orgName type="institution">Georgia State University</orgName>
+								<address>
+									<region>GA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Uthman</forename><surname>Jinadu</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Georgia State University</orgName>
+								<address>
+									<region>GA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Anjila</forename><surname>Budathoki</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Georgia State University</orgName>
+								<address>
+									<region>GA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Rajshekhar</forename><surname>Sunderraman</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Georgia State University</orgName>
+								<address>
+									<region>GA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yi</forename><surname>Ding</surname></persName>
+							<email>&lt;yiding@auburn.edu&gt;.</email>
+							<affiliation key="aff1">
+								<orgName type="institution">Auburn University</orgName>
+								<address>
+									<region>AL</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<affiliation key="aff2">
+								<orgName type="institution">Yi Ding</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">DISTILLLENS: Symmetric Knowledge Distillation Through Logit Lens</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-02-14">14 Feb 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">BDB6847DE638B21EC7A02BA519F6AFB5</idno>
+					<idno type="arXiv">arXiv:2602.13567v1[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Standard Knowledge Distillation (KD) compresses Large Language Models (LLMs) by optimizing final outputs, yet it typically treats the teacher's intermediate layer's thought process as a black box. While feature-based distillation attempts to bridge this gap, existing methods (e.g., MSE and asymmetric KL divergence) ignore the rich uncertainty profiles required for the final output. In this paper, we introduce DISTILLLENS, a framework that symmetrically aligns the evolving thought processes of student and teacher models. By projecting intermediate hidden states into the vocabulary space via the Logit Lens, we enforce structural alignment using a symmetric divergence objective. Our analysis proves that this constraint imposes a dual-sided penalty, preventing both overconfidence and underconfidence while preserving the high-entropy information conduits essential for final deduction. Extensive experiments on GPT-2 and Llama architectures demonstrate that DISTILLLENS consistently outperforms standard KD and feature-transfer baselines on diverse instruction-following benchmarks. The code is available at <ref type="url" target="https://github.com/manishdhakal/DistillLens">https://github.com/  manishdhakal/DistillLens</ref>.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>Recent studies have shown that the intermediate layers of language models encode richer information, contributing to the model's final predictions and enhancing performance on downstream tasks <ref type="bibr" target="#b23">(Skean et al., 2025;</ref><ref type="bibr" target="#b25">Van Aken et al., 2019;</ref><ref type="bibr" target="#b32">Zhang et al., 2024)</ref>. We refer to these depth-wise representations as evolving thought processes that transform across layers to yield the final outputs. Traditional Knowledge Distillation (KD) <ref type="bibr" target="#b9">(Hinton et al., 2015)</ref> ignores the evolving thought processes by fundamentally treating the teacher model as a "black box" instructor, transferring Average KL-Div Figure <ref type="figure">1</ref>. The distilled student (GPT2-120M) notably diverges from the teacher model for the hidden layers, except for the final layer.</p><p>knowledge solely through the final output distribution. Consequently, the thought process of the student model diverges notably from teacher model, despite converging at the final layer, as illustrated in Figure <ref type="figure">1</ref>. By restricting supervision to the final logits, standard KD forces the student to reverseengineer the teacher's complex reasoning process from a sparse signal, effectively hiding the thought process that occurs across the teacher's depth. This approach is analogous to a student memorizing the final answer to a complex mathematical proof without understanding the derivation steps, which often leads to a failure in generalization and an inferior-performing model.</p><p>The thought processes of Large Language Models (LLMs) have been explained by the recent literature in mechanistic interpretability with tools like the logit lens (nostalgebraist, 2020):</p><formula xml:id="formula_0">p (l) (y|x) = LogitLens(h (l) , W U )<label>(1)</label></formula><formula xml:id="formula_1">= softmax(W U h (l) ),<label>(2)</label></formula><p>where hidden state h (l) ∈ R d for the l th intermediate layer, and W U ∈ R V ×d is the unembedding matrix.</p><p>While some distillation methods attempt to transfer intermediate features, they face two critical limitations. (1) Typical methods rely on minimizing Mean Squared Error (MSE), L M SE = ∥W s h p -h q θ ∥ 2 , where W s projects the teacher hidden state h p to the space of student hidden state h q θ <ref type="bibr" target="#b20">(Romero et al., 2014;</ref><ref type="bibr" target="#b13">Jiao et al., 2021)</ref>. We argue that this approach is divergence insensitive, as MSE assumes an isotropic embedding space where all error directions are equal. However, high-dimensional language embedding spaces are highly anisotropic <ref type="bibr" target="#b4">(Ethayarajh, 2019)</ref>; identi-cal MSE values can yield vastly different probability divergences depending on whether the error projects onto high-probability or low-probability tokens at p (l) (y|x). (2) To address this semantic mismatch, direct minimization of asymmetric Kullback-Leibler divergence L KL (p∥q θ ) has been proposed <ref type="bibr" target="#b24">(Sun et al., 2019;</ref><ref type="bibr" target="#b6">Gong et al., 2025)</ref>. However, the asymmetric nature of this metric creates a new alignment issue. By definition, L KL (p∥q θ ) heavily penalizes underestimation of the teacher's high-probability tokens while potentially ignoring the overestimation of lowerprobability tails, which is a "mean-seeking" behavior <ref type="bibr" target="#b30">(Wu et al., 2024)</ref>.</p><p>To address these issues, we propose DISTILLLENS, a distillation framework that leverages symmetric divergence objectives, such as Jensen-Shannon Divergence (JSD), to align the evolving thought processes of the student and teacher. First, we project the hidden layers to the vocabulary space by using logit lens, as in Equation ( <ref type="formula" target="#formula_1">2</ref>). Then, we use symmetric objective to match token distribution of that space. Unlike asymmetric objectives that prioritize either mode-seeking or mean-seeking behavior, our approach recognizes intermediate layers as uncertainty information conduits. Symmetric objectives penalize the student model for both underestimating and overestimating the teacher's probability distribution which reduces the distribution mismatch for all probabilities (see Section 3.1.2).</p><p>In summary, our main findings form this work are as follows:</p><p>• We introduce DISTILLLENS, a novel framework that symmetrically distills the evolving thought process of LLMs by supervising intermediate layer distributions projected through the Logit Lens.</p><p>• We provide a theoretical derivation of the symmetric loss landscape, proving it enforces a dual-sided penalty that prevents both overconfident and underconfident output probability sides.</p><p>• We show through extensive experiments that DISTILL-LENS consistently outperforms standard KD baselines and existing feature-transfer methods across diverse language modeling datasets.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Related Works</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.">Knowledge Distillation (KD)</head><p>Knowledge distillation approaches can be broadly categorized into off-policy and on-policy distillations. Standard methods generally operate via off-policy distillation, where the student learns from the teacher's logits on fixed, groundtruth datasets <ref type="bibr" target="#b9">(Hinton et al., 2015;</ref><ref type="bibr" target="#b21">Sanh et al., 2019;</ref><ref type="bibr" target="#b30">Wu et al., 2024;</ref><ref type="bibr" target="#b14">Kim &amp; Rush, 2016;</ref><ref type="bibr" target="#b29">Wen et al., 2023)</ref>. While efficient, this setup suffers from exposure bias <ref type="bibr" target="#b1">(Arora et al., 2022)</ref>, as the student never comes across its own incorrect generation during training. Conversely, on-policy approaches <ref type="bibr" target="#b0">(Agarwal et al., 2024;</ref><ref type="bibr" target="#b7">Gu et al., 2024;</ref><ref type="bibr" target="#b15">Ko et al., 2024;</ref><ref type="bibr">2025)</ref> mitigate this training-inference mismatch by fine-tuning the student-generated output (SGO) sequences, but these methods suffer from self-generative inefficiency during training. None of these distillation approach concern about the intermediate features distillation. Thus, we propose DISTILLLENS as a novel modular intermediate matching that can be applied to any of the distillation approaches.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.">Interpretability &amp; Logit Lens</head><p>Understanding the internal information flow of transformers has been a focal point of recent mechanistic interpretability research. The logit lens technique, popularized by nostalgebraist (2020), posits that intermediate hidden states can be interpreted by projecting them onto the model's pre-trained unembedding matrix. Subsequent studies have verified that transformers refine their predictions iteratively across layers <ref type="bibr" target="#b5">(Geva et al., 2021;</ref><ref type="bibr" target="#b3">Elhage et al., 2021)</ref>, acting as an evolving belief state. <ref type="bibr" target="#b2">Belrose et al. (2023)</ref> and <ref type="bibr" target="#b8">Halawi et al. (2024)</ref> have utilized these insights to probe layer-wise confidence and dynamic halting mechanisms. While these tools have primarily been used for post-hoc interpretability, DIS-TILLLENS repurposes the logit lens to be used for active supervision during training, ensuring the student's internal trajectory aligns semantically with the teacher's.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3.">Feature-based Distillation</head><p>Feature-based KD attempts to align the intermediate representations of the student and teacher directly. <ref type="bibr" target="#b20">Romero et al. (2014)</ref> introduced FitNets, which utilize regression losses to match the hidden states of intermediate layers. Subsequent works have proposed aligning attention maps <ref type="bibr" target="#b31">(Zagoruyko &amp; Komodakis, 2017;</ref><ref type="bibr" target="#b26">Wang et al., 2020)</ref>. Recently, <ref type="bibr" target="#b24">Sun et al. (2019)</ref> and <ref type="bibr" target="#b6">Gong et al. (2025)</ref> proposed to distill the intermediate features from teacher to student using the asymmetric Kullback-Leibler divergence L KL (p||q θ ) metric, which undervalues the matching of low-probability regions. DISTIL-LLENS overcomes this by using a symmetric loss function that values both low and high probability regions.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">DISTILLLENS</head><p>The core principle of DISTILLLENS is to move beyond finallayer supervision by aligning the internal thought process of the student with that of the teacher. As outlined in Algorithm 1 and Figure <ref type="figure">2</ref>, our method functions as a modular objective L inter that can be integrated with any task-specific L task . The process involves projecting hidden states into a shared vocabulary space, calculating layer-wise divergence</p><p>Model Depth Model Depth Knowledge Disitillation DistillLens (Ours) LogitLens LogitLens Figure 2. The DISTILLLENS Framework. Comparison between standard Knowledge Distillation (left) and our proposed DISTILLLENS approach (right). Unlike standard KD, which restricts supervision solely to the final output logits, DISTILLLENS aligns the intermediate thought processes of the student and teacher. By projecting intermediate hidden states into the vocabulary space using the Logit Lens, we compute the symmetric divergence loss (LJSD), which is optimized jointly with the standard task loss (L task ) Algorithm 1 DISTILLLENS Training (with JSD) Input: Dataset D, teacher p, student q θ , layer mapping (l, l ′ ) ∈ M from q θ → p , scaling factor λ = 1.0. Output: Trained student parameters θ N for training step t = 1 to N do Sample batch of prompts x from D Get intermediate states {h p } and {h q θ }. q (l)</p><formula xml:id="formula_2">θ = LogitLens(h (l) q θ ) p (l ′ ) = LogitLens(h (l ′ ) p ) L inter = 1 |M| (l,l ′ )∈M L JSD (p (l ′ ) , q (l) θ )</formula><p>Compute Task Loss L task (e.g., standard KD) L total ← L task + λ • L inter Update θ by descending ∇ θ L total end for via symmetric distillation, and backpropagating a weighted combination of task and intermediate alignment losses.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">Theoretical Framework</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.1.">THE NECESSITY OF SYMMETRIC ALIGNMENT</head><p>The final layers of LLMs generally ignore lower probabilities as noise for clean argmax prediction or sampling over the top-k tokens. In contrast, for the hidden layers, we consider these probabilities a richer source of semantic uncertainty information that contributes to the evolving thought process required for final-layer prediction. Consequently, accurately mapping these regions is essential for replicating the teacher's thought process.</p><p>However, with standard asymmetric objectives, smaller student models struggle to achieve precise alignment in these areas due to their opposing alignment behaviors. Standard Forward KL (FKL) exhibits a "pull-up" effect <ref type="bibr" target="#b30">(Wu et al., 2024;</ref><ref type="bibr" target="#b16">Ko et al., 2025)</ref>: its mean-seeking nature forces the student to cover all teacher possibilities, drifting toward overestimation and resulting in an over-smoothed high-entropy state. Conversely, Reverse KL (RKL) exerts a "push-down" effect <ref type="bibr" target="#b30">(Wu et al., 2024;</ref><ref type="bibr" target="#b16">Ko et al., 2025)</ref>: its mode-seeking nature aggressively penalizes the assignment of probability to lower-probability signals, drifting toward underestimation and suppression of nuance. Symmetric distillation resolves this by balancing these opposing forces to drive the student toward perfect alignment, as we analyze in the next section.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.2.">ANALYSIS OF THE LOSS LANDSCAPE</head><p>To supervise the projected distributions of hidden states, we introduce the loss L inter , which is the average of symmetric divergences of the states. DISTILLLENS primarily utilizes JSD as its symmetric objective, though other symmetric metrics like Jeffreys Divergence (JD) <ref type="bibr" target="#b12">(Jeffreys, 1948)</ref> are possible variants.</p><p>Definition 3.1 (Confidence Score). Let p(y|x) and q θ (y|x) be the output distributions of the teacher and student models, respectively, for input prompts x. We define the confidence score c θ (y|x) as the ratio of the student's probability to the teacher's probability:</p><formula xml:id="formula_3">c θ (y|x) = q θ (y|x) p(y|x)<label>(3)</label></formula><p>We use the score to evaluate the loss at two extremities: overconfidence (c θ → ∞) and underconfidence (c θ → 0). Both of these are undesired cases for the teacher-to-student alignment.</p><p>Definition 3.2 (JSD). We use the standard definition of L JSD as a symmetric objective, measuring the average Kullback-Leibler divergence from teacher p and student q θ to their mixed distribution m(y|x) = 1 2 (p(y|x) + q θ (y|x)):</p><formula xml:id="formula_4">L JSD (p, q θ ) = 1 2 [L KL (p∥m) + L KL (q θ ∥m)] .<label>(4)</label></formula><p>Proposition 3.3 (Dual-sided Alignment). The Jensen-Shannon Divergence objective L JSD aligns distributions via a dual-sided loss landscape. It linearly penalizes overconfidence (c θ → ∞) and applies a bounded penalty for underconfidence (c θ → 0), effectively trying to align with the teacher's supervision (c θ → 1).</p><p>Proof. For brevity, we omit the conditioning on the input x and output y. Substituting the definition of c θ and the mixture distribution m = 1 2 (p + q θ ) into the expanded form of L JSD , we derive:</p><formula xml:id="formula_5">L JSD (p, q θ ) = 1 2 E p c θ log c θ -(1 + c θ ) log 1 + c θ 2 g(c θ )<label>(5)</label></formula><p>The complete derivation is provided in Appendix Section A.1.</p><p>To analyze the optimization landscape, we decompose the objective into the per-class objective g(c θ ). We treat the teacher probability p of E p as a static scaling factor and analyze the behavior of g(c θ ) in three distinct cases:</p><p>Case 1: Overconfidence (c θ → ∞). As the student assigns excessive probability mass relative to the teacher, the term behaves linearly. JSD applies a controlled linear penalty:</p><formula xml:id="formula_6">lim c θ →∞ g(c θ ) ≈ c θ log 2 (Linear Hallucination Penalty)</formula><p>Case 2: Underconfidence (c θ → 0). As the student fails to capture the teacher's probability mass, the term approaches a finite constant (since lim c→0 c log c = 0). JSD imposes a saturated ceiling on the penalty:</p><formula xml:id="formula_7">lim c θ →0 g(c θ ) = log 2 (Bounded Missed Recalls Penalty)</formula><p>Case 3: Perfect Alignment (c θ = 1). When the student perfectly matches the teacher (q θ = p), the loss vanishes, confirming c θ = 1 as the global minimum:</p><formula xml:id="formula_8">g(1) = 1 • log 1 -(2) log 1 = 0</formula><p>Thus, L JSD enforces a convex, dual-sided optimization path that drives c θ → 1.</p><p>However, earlier works <ref type="bibr" target="#b15">(Ko et al., 2024;</ref><ref type="bibr" target="#b30">Wu et al., 2024)</ref> have shown that models are penalized by L KL (p∥q θ ) for being underconfident only in high target probabilities and by reverse L (R)KL (q θ ∥p) for being overconfident only in low target probabilities.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2.">Framework Implementation</head><p>Building on the theoretical properties of symmetric divergence, we formulate the practical training objective for DIS-TILLLENS. We consider a teacher model p with L T layers and a student model q θ with L S layers, where typically L S &lt; L T .</p><p>Layer Mapping. To align the thought trajectory effectively, we employ a uniform mapping strategy M that associates student layers with teacher layers at regular intervals. We select a subset of K intermediate layers to distill for the student model. For each selected student layer index l ∈ {1, . . . , L S }, the corresponding teacher layer index l ′ is determined by maintaining a proportional depth ratio:</p><formula xml:id="formula_9">l ′ = Round l × L T L S .<label>(6)</label></formula><p>This uniform stride ensures that DISTILLLENS captures the evolution of hidden states across the model's full depth, preventing the student from skipping critical deduction steps. For each pair (l, l ′ ) ∈ M, we project the hidden states h Optimization Objective. We treat the intermediate alignment as a regularization term that constrains the student's internal state. The intermediate loss is computed as the average JSD across all mapped layers:</p><formula xml:id="formula_10">L inter = 1 |M| (l,l ′ )∈M L JSD p (l ′ ) (y|x), q (l) θ (y|x) . (7)</formula><p>The total training objective combines the standard task loss, typically KL divergence on the final logits, L KD ) with our structure-aware intermediate loss:</p><formula xml:id="formula_11">L total = L task + λ • L inter ,<label>(8)</label></formula><p>where λ is a scalar hyperparameter controlling the strength of the intermediate supervision. This formulation forces the student to not only match the final prediction but to arrive at it through a sequence of probability distributions that mirror the teacher's thought process, as detailed in Algorithm 1.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Experiments</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Models and Architecture.</head><p>To analyze the efficacy of DIS-TILLLENS across different scales, we conduct knowledge distillation strictly within model families. We employ GPT-2-1.5B (XL) as the teacher for GPT-2-120M (base) and GPT-2-340M (medium) students, and Llama-7B as the teacher for the TinyLlama-1.1B student.</p><p>Implementation Details. We perform knowledge distillation using the databricks-dolly-15k dataset <ref type="bibr" target="#b7">(Gu et al., 2024)</ref>. For the layer mapping M, we specifically map student layers {2, 4, 6, 8, 10} to teacher layers {8, 16, 24, 32, 40} for GPT-2 (120M), and {4, 8, 12, 16, 20} to {8, 16, 24, 32, 40} for GPT-2 (340M). For the TinyLlama experiments, we map student layers {4, 7, 11, 15, 18} to teacher layers {5, 10, 16, 21, 26}. To optimize training efficiency, we utilize BF16 mixed precision on 4 NVIDIA A100 GPUs. The maximum sequence length is set to 512 tokens. Model-specific hyperparameters are given in Section B.1 of the Appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Distillation Configuration.</head><p>For DISTILLLENS, we align the student's intermediate thought process by mapping 6 equally spaced student layers (including the final layer) to their corresponding teacher layers based on depth proportions. We employ the symmetric L JSD as the minimization objective for these intermediate projections. Earlier works <ref type="bibr" target="#b7">(Gu et al., 2024;</ref><ref type="bibr" target="#b30">Wu et al., 2024)</ref> have shown that reverse L (R)KL (q θ ∥p) favours instruction following tasks; thus, we use it as L task for our experimentation. The loss coefficients for the L inter is set to λ = 1.0 after ablation ( Section B.2).</p><p>Evaluation Benchmarks. For generation during evaluation, we use standard sampling parameters with temperature T = 1.0 and top-p = 1.0 and with seed ∈ {10, 20, 30, 40, 50}. Our evaluation spans five diverse benchmarks: a held-out DollyEval set (500 samples), the user-centric SelfInst <ref type="bibr" target="#b28">(Wang et al., 2023)</ref>, and the reasoningfocused VicunaEval <ref type="bibr" target="#b33">(Zheng et al., 2023)</ref>. Additionally, we evaluate long-form generation capabilities using the response subsets of S-NI <ref type="bibr" target="#b27">(Wang et al., 2022)</ref> and UnNI (Honovich et al., 2023).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Metrics.</head><p>We assess the quality of model-generated responses using Rouge-L (R-L) <ref type="bibr" target="#b17">(Lin, 2004)</ref>. Prior studies <ref type="bibr" target="#b27">(Wang et al., 2022)</ref> have demonstrated that Rouge-L correlates well with human evaluation for large-scale instruction-following tasks, making it a suitable proxy for measuring generation precision and recall against ground truth references. We estimate the semantic similarity with the ground truth using GPT-4o-mini <ref type="bibr" target="#b11">(Hurst et al., 2024)</ref> as the judge and the SBERT score using Sentence-BERT models <ref type="bibr" target="#b19">(Reimers &amp; Gurevych, 2019)</ref>. The GPT-4o-mini evaluation prompts are modified from <ref type="bibr" target="#b33">(Zheng et al., 2023)</ref> (further explained in Section B.5 of the Appendix) . Due to page limitation constraint, we have included the SBERT evaluation in the Appendix Section B.4.</p><p>Baselines. We evaluate DISTILLLENS against seven baselines using a teacher fine-tuned on databricks-dolly-15k as the reference. Our comparison spans standard approaches that employ final layer distillation, including Supervised Fine-Tuning (SFT) and Standard KD (Forward KL) <ref type="bibr" target="#b9">(Hinton et al., 2015)</ref>, alongside Sequence-Level KD (SeqKD) <ref type="bibr" target="#b14">(Kim &amp; Rush, 2016)</ref>. To analyze the impact of additional loss formulation, we also benchmark against advanced divergence objectives: the mode-seeking Reverse KL (RKL), symmetric metrics like Jeffreys Divergence (JD) <ref type="bibr" target="#b12">(Jeffreys, 1948)</ref> and Jensen-Shannon Divergence (JSD), and the hybrid Adaptive KL (AKL) <ref type="bibr" target="#b30">(Wu et al., 2024)</ref>, which dynamically balances mean-and mode-seeking behaviors.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Results &amp; Analysis</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1.">Main Results</head><p>Since DISTILLLENS is modular, we test it in combination with standard KD baselines (see Figure <ref type="figure">4</ref>). It consistently improves all of the baselines, but we observe that RKL is favoured the most; thus, we employ L (R)KL as the L task . Table <ref type="table" target="#tab_0">1</ref> presents the superrior performance of DISTILL-LENS against state-of-the-art (SOTA) baselines across three student model architectures. Our method consistently outperforms all baseline approaches, including standard KD and advanced divergence-based methods like AKL. For the GPT-2-340M student, DISTILLLENS achieves an average Rouge-L score of 23.72, marginally surpassing the teacher model's performance of 23.52. In the GPT-2-120M experiments, our approach yields a substantial improvement, raising the average score to 21.12 compared to 17.74 for standard KD and 16.56 for SFT. We observe consistent gains in the Llama family as well; when distilling Llama-7B into the TinyLlama-1.1B student, DISTILLLENS reaches an average score of 25.48. This performance surpasses the standard KD baseline of 23.82 by over 1.6 points and outperforms the strongest competitive baseline (FKL+RKL) at 24.56, validating that aligning intermediate thought trajectories provides a robust supervision signal across diverse architectures.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2.">On-policy Distillation</head><p>The main results reported above rely on off-policy distillation using fixed teacher-generated outputs. By optimizing on static sequences, these methods inherently suffer from exposure bias <ref type="bibr" target="#b1">(Arora et al., 2022)</ref>: a distribution mismatch arises because the model is trained on ground-truth sequences but  evaluated on its own autoregressive generations <ref type="bibr" target="#b7">(Gu et al., 2024)</ref>. This increased exposure bias directly degrades the generation capabilities of language models <ref type="bibr" target="#b1">(Arora et al., 2022)</ref>. In contrast, on-policy distillation <ref type="bibr" target="#b7">(Gu et al., 2024;</ref><ref type="bibr" target="#b0">Agarwal et al., 2024)</ref> mitigates this by training the student model q θ on its own self-generated responses y for given prompts x. However, this effectiveness comes at a high computational cost; the generation process introduces sig-</p><p>Table 2. Comparison against on-policy methods (R-L score).</p><p>While on-policy methods give better results than off-policy, they usually suffer from slower training speed (see Figure <ref type="figure">5</ref>). DISTILL-LENS achieves competitive results efficiently, and further improves performance when combined with MiniLLM (Hybrid).</p><p>Method Policy Dolly SelfInst Vicuna S-NI UnNI Avg KD (FKL) Off 23.5 10.3 14.7 16.6 20.9 17.20 GKD On 24.4 10.4 15.7 17.2 19.9 17.51 DistiLLM 24.1 10.8 17.1 17.6 19.8 17.88 MiniLLM 24.6 13.2 16.9 25.3 26.6 21.32 DISTILLLENS Off 25.2 12.4 15.8 24.3 27.9 21.12 + MiniLLM Hybrid 25.1 13.3 17.8 26.1 27.2 21.86</p><p>nificant GPU overhead and slows down training <ref type="bibr" target="#b15">(Ko et al., 2024;</ref><ref type="bibr">2025)</ref>.</p><p>DISTILLLENS addresses this trade-off effectively. As illustrated in Figure <ref type="figure" target="#fig_1">3</ref>, our approach significantly reduces exposure bias compared to standard KD without incurring the sampling overhead of self-generation. Consequently, DIS-TILLLENS achieves training times significantly faster than on-policy baselines while maintaining competitive performance with state-of-the-art (SOTA) methods (see Table <ref type="table">2</ref>). Furthermore, to demonstrate modularity, we integrate DIS-TILLLENS with MiniLLM <ref type="bibr" target="#b7">(Gu et al., 2024)</ref>, a leading on- policy method. The resulting combination outperforms all existing baselines, confirming that our approach can effectively boost the performance of on-policy techniques.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3.">Intermediate Feature Transfers</head><p>The most common approach to transfer intermediate features is the minimization of Mean Squared Error, <ref type="bibr" target="#b6">Gong et al. (2025)</ref> proposed FDD, a method that aligns feature dynamics using asymmetric KL-divergence. We employ these two established methods as our primary baselines.</p><formula xml:id="formula_12">L M SE = ∥W s h p -h q θ ∥ 2 . Recently,</formula><p>As shown in Table <ref type="table" target="#tab_1">3</ref>, DISTILLLENS consistently outperforms both MSE and FDD across multiple model sizes and benchmarks. For instance, on GPT-2-120M, our method achieves an average R-L score of 21.12, surpassing MSE (20.38) and FDD (17.94). This confirms that projecting features into the vocabulary space and enforcing symmetric alignment is superior to direct vector regression or asymmetric divergence.</p><p>We explicitly explore two variants of symmetric divergence: JSD and JD (FKL + RKL). Both metrics effectively align intermediate features and surpass existing baselines. This further strengthens our argument for the need for symmetric divergence for the features. Performance varies marginally between JD and JSD, exchanging the lead across different benchmarks. For theoretical analysis of JD similar to JSD, please refer to Appendix Section A.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4.">Ablation Study</head><p>To determine the most effective layer selection pattern for the logit lens, we ablate the DISTILLLENS framework. The study primarily distills to GPT-2-120M with L (R)KL as the L task , unless specified otherwise. Additional ablation on the scaling factor λ is provided in the Appendix Section B.2</p><p>Number of Logit Lens Layers. We initiate our study with a naive selection strategy, utilizing interleaved intermediate layers separated by a uniform gap. As detailed in Table <ref type="table" target="#tab_2">4</ref>, applying DISTILLLENS to a single intermediate layer (the  Layers Selection Pattern. We further assess the sensitivity of our method to the topology of layer selection by comparing interleaved versus consecutive configurations.</p><p>With a fixed budget of 5 layers, we evaluate consecutive blocks at both model extremities: the first 5 layers and the last 5 layers (excluding the final layer covered by L task ). As shown in Table <ref type="table" target="#tab_1">3</ref>, all selection patterns yield substantial improvements over the RKL baseline. This universal gain underscores the robustness of symmetric divergence matching, demonstrating its efficacy regardless of the specific layers targeted. However, because the interleaved configuration consistently achieves the highest performance, we adopt it for all subsequent experiments.</p><p>Combining with Standard KDs. To validate the modularity of DISTILLLENS, we integrate it with existing standard distillation baselines, including FKL, RKL, JSD, and AKL. As illustrated in Figure <ref type="figure">4</ref>, DISTILLLENS consistently enhances the performance of existing KD baselines. Notably, the improvement is most pronounced when combined with mode-seeking objectives. While the performance gain for standard FKL is modest, integrating it with RKL and JSD yields substantial improvements, increasing the average R-L On-Policy Distillation Off-Policy Distillation Figure 5. Training Speed Comparison (per GPU): We distill from GPT-2-1.5B to GPT-2-120M using A100 GPUs. Training with DISTILLLENS is slower among the off-policy KDs, but faster when compared against on-policy methods.</p><p>score from approximately 17.56 to 21.12 for RKL. This suggests that our symmetric intermediate alignment is particularly effective at complementing objectives that utilize L (R)KL , providing the structural regularization needed to maximize their effectiveness.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.5.">Further Discussions</head><p>Training Overhead vs. Inference Efficiency. Although projecting intermediate hidden states via W U introduces additional training computational costs, this overhead does not affect inference. The student model retains its original architecture, ensuring that deployment latency remains unchanged. In terms of training throughput (Figure <ref type="figure">5</ref>), DIS-TILLLENS is more computationally intensive than standard off-policy baselines, but it delivers significantly better results (see Table <ref type="table" target="#tab_0">1</ref>). However, it is faster than on-policy approaches while delivering comparable performance (see Table <ref type="table">2</ref>). Effectively, our method shifts the alignment cost entirely to the pre-deployment training phase, yielding a robust student model without compromising inference efficiency.</p><p>Reasoning Capabilities. On-policy approaches <ref type="bibr" target="#b18">(Ouyang et al., 2022;</ref><ref type="bibr" target="#b22">Shao et al., 2024;</ref><ref type="bibr" target="#b7">Gu et al., 2024)</ref> generally ex-hibit superior reasoning capabilities by conditioning models on self-generated tokens, a process that inherently reduces exposure bias but severely bottlenecks training speed. Our results indicate that DISTILLLENS similarly mitigates exposure bias, suggesting a strong link between the alignment of internal "thought processes" and the model's external reasoning capabilities. Consequently, our framework provides a computationally efficient pathway for fine-tuning reasoning models, bridging the gap between fast off-policy training and the robustness typically associated with onpolicy methods.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">Conclusion</head><p>In this work, we introduce DISTILLLENS, a novel distillation framework that aligns the intermediate thought trajectories of student and teacher models. By projecting hidden states into the vocabulary space via the Logit Lens and enforcing alignment via symmetric divergence objectives (e.g., JSD), we enable the student to faithfully mirror the teacher's internal deduction steps rather than merely replicating the final output. Empirical evaluations across GPT-2 and Llama architectures demonstrate that DISTILLLENS consistently outperforms standard KD and existing feature-transfer methods.</p><p>Limitations and Future Directions. The primary limitation of our approach is the computational overhead incurred during training. Projecting multiple intermediate layers through the unembedding matrix W U scales with O(K • V • d), increasing memory usage and training time relative to standard KD. We will work to make the training process more efficient in the future. Future work will focus on leveraging DISTILLLENS to inject complex reasoning capabilities into significantly smaller architectures. Additionally, we aim to extend this framework to cross-architecture (inter-family) distillation. While currently constrained by vocabulary mismatches between heterogeneous models, future advances in cross-tokenizer alignment or the adoption of universal vocabularies could allow DISTILLLENS to distill knowledge from the largest available foundation models regardless of architecture.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A. Additional Theoretical Analysis</head><p>A.1. Derivation of L JSD in terms of c θ For brevity, we omit the conditioning input x and predicted output y in the following (e.g., denoting p(y|x) as p). Substituting the definition of confidence score c θ (y|x) = q θ (y|x) p(y|x) and the mixture distribution m(y|x) = 1 2 (p(y|x) + q θ (y|x)) into the expanded form of L JSD , we derive:</p><formula xml:id="formula_13">L JSD (p, q θ ) = 1 2 [L KL (p∥m) + L KL (q θ ∥m)]<label>(9)</label></formula><formula xml:id="formula_14">= 1 2 E y∼p(•|x) log p(y|x) m(y|x) + E y∼q θ (•|x) log q θ (y|x) m(y|x) (<label>10</label></formula><formula xml:id="formula_15">) = 1 2   E y∼p(•|x) log p(y|x) m(y|x) + |V| i=1 q θ (y i |x) p(y i |x) p(y i |x) log q θ (y i |x) m(y i |x)   (11) = 1 2 E y∼p(•|x) log p(y|x) m(y|x) + E y∼p(•|x) q θ (y|x) p(y|x) log q θ (y|x) m(y|x) (<label>12</label></formula><formula xml:id="formula_16">) = 1 2 E p log 2p p + q θ + q θ p log 2q θ p + q θ (<label>13</label></formula><formula xml:id="formula_17">) = 1 2 E p log 2 1 + c θ + c θ log 2c θ 1 + c θ (<label>14</label></formula><formula xml:id="formula_18">) = 1 2 E p c θ log c θ -(1 + c θ ) log 1 + c θ 2<label>(15)</label></formula><p>A.2. Theoretical Analysis of L JD Definition A.1 <ref type="bibr">(Jeffreys Divergence)</ref>. We define the symmetric objective function L JD (θ) as the sum of the Forward and Reverse Kullback-Leibler divergences <ref type="bibr" target="#b12">(Jeffreys, 1948)</ref>:  Proof. For brevity, we omit the conditioning on the input x and output y. Substituting the definition of confidence score c θ (y|x) = q θ (y|x) p(y|x) into the expanded form of L JD , we derive:</p><formula xml:id="formula_19">L JD (p, q θ ) = L KL (p||q θ ) + L (R)KL (q θ ||p) (<label>16</label></formula><formula xml:id="formula_20">)</formula><formula xml:id="formula_21">L JD (p, q θ ) = L KL (p∥q θ ) + L KL (q θ ∥p) (<label>17</label></formula><formula xml:id="formula_22">) = E y∼p(•|x) log p(y|x) q θ (y|x) + E y∼q θ (•|x) log q θ (y|x) p(y|x) (<label>18</label></formula><formula xml:id="formula_23">) = E y∼p(•|x) log p(y|x) q θ (y|x) + |V| i=1 q θ (y i |x) p(y i |x) p(y i |x) log q θ (y i |x) p(y i |x) (<label>19</label></formula><formula xml:id="formula_24">) = E y∼p(•|x) log p(y|x) q θ (y|x) + q θ (y|x) p(y|x) log q θ (y|x) p(y|x) (<label>20</label></formula><formula xml:id="formula_25">) = E p log 1 c θ + c θ log c θ (<label>21</label></formula><formula xml:id="formula_26">) = E p (c θ -1) log c θ g(c θ )<label>(22)</label></formula><p>To analyze the optimization landscape, we decompose the objective into the per-class loss function g(c θ ). We treat the teacher probability p as a static scaling factor and analyze the behavior of g(c θ ) in three distinct regimes:</p><p>Case 1: Overconfidence (c θ → ∞). As the student assigns excessive probability mass relative to the teacher, the term is dominated by c θ log c θ . Unlike JSD (which is linear), JD applies a severe penalty to hallucinations:</p><formula xml:id="formula_27">lim c θ →∞ g(c θ ) ≈ c θ log c θ (Super-Linear Penalty)</formula><p>Case 2: Underconfidence (c θ → 0). As the student fails to capture the teacher's probability mass, the term is dominated by -log c θ . Unlike JSD (which is bounded), JD enforces an infinite penalty for missed recall:</p><formula xml:id="formula_28">lim c θ →0 g(c θ ) ≈ ∞ (Unbounded Tail Sensitivity)</formula><p>Case 3: Perfect Alignment (c θ = 1). When the student perfectly matches the teacher (q θ = p), the loss vanishes, confirming c θ = 1 as the global minimum: g(1) = (1 -1) log 1 = 0</p><p>Thus, L JD enforces a convex basin that prevents the student from drifting into extreme regions, strictly driving the confidence score towards the equilibrium at c θ = 1.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B. Experiments</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.1. Training Details</head><p>We conduct all knowledge distillation experiments using PyTorch on a computational node equipped with 4 NVIDIA A100 (40GB) GPUs. To maximize training throughput while maintaining numerical stability, we utilize Brain Floating Point (BF16) mixed precision. Additional details are provided in the Table <ref type="table" target="#tab_4">6</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.2. Ablation Study</head><p>Scaling Factor λ. We investigate the sensitivity of DISTILLLENS to the scaling factor λ, which balances the intermediate alignment loss with the primary task objective. As shown in Table <ref type="table" target="#tab_5">7</ref>, performance generally improves as λ increases from 0.1, peaking at λ = 1.0 where the student achieves the highest scores on Dolly (25.2) and Un-NI (27.9). However, further increasing the weight to λ = 5.0 leads to performance degradation, suggesting that excessive intermediate regularization can overwhelm the final task supervision. Consequently, we adopt λ = 1.0 as the optimal setting for all main experiments, as it provides robust structural guidance without distracting from the generation task.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.3. Quantifying Exposure Bias</head><p>To rigorously measure the impact of exposure bias on generation quality, we adopt the Excess Accumulated Error (ExAccErr) metric proposed by <ref type="bibr" target="#b1">Arora et al. (2022)</ref> and modified by <ref type="bibr" target="#b7">Gu et al. (2024)</ref>. This metric isolates the performance degradation caused specifically by the student's own generated history (exposure bias) from its intrinsic modeling error.</p><p>We first define the Accumulated Regret, R(l), which measures the student q θ 's divergence from the teacher p when generating a sequence of length l autoregressively (free-run generation):</p><formula xml:id="formula_29">R(l) = l t=1 E y&lt;t∼q θ (•|x) yt∼p(•|y&lt;t,x) log p(y t |y &lt;t , x) q θ (y t |y &lt;t , x) .<label>(23)</label></formula><p>Next, we define the Oracle Error Rate, ϵ(l), which serves as a baseline. It measures the average per-step divergence when the student is provided with the perfect context (sampled from the teacher) at every step:</p><formula xml:id="formula_30">ϵ(l) = 1 l l t=1 E y&lt;t∼p(•|x) yt∼p(•|y&lt;t,x) log p(y t |y &lt;t , x) q θ (y t |y &lt;t , x) .<label>(24)</label></formula><p>The term lϵ(l) represents the total error expected if no exposure bias existed. The difference R(l) -lϵ(l) therefore captures the excess error attributable solely to the drift caused by the student's self-generated prefixes. The final metric normalizes this excess error as a percentage:</p><formula xml:id="formula_31">ExAccErr(l) = R(l) -lϵ(l) lϵ(l) × 100%.<label>(25)</label></formula><p>A lower ExAccErr indicates that the model is more robust to its own generation errors, effectively maintaining alignment with the teacher even as the sequence length increases.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.4. SBERT Similarity Score</head><p>To evaluate the semantic quality of the generated responses, we employ a semantic textual similarity metric based on Sentence-BERT (SBERT) <ref type="bibr" target="#b19">(Reimers &amp; Gurevych, 2019)</ref>. While n-gram metrics like BLEU or ROUGE focus on surface-level</p><p>Performance Superiority: Across all tested models and datasets, DISTILLLENS consistently achieves the highest semantic similarity scores. For instance, on the TinyLlama-1.1B model, DISTILLLENS outperforms the standard SFT baseline by an average of 2.62 points (63.52 vs. 60.90) and the standard Forward KL (FKL) distillation by roughly 3 points. This trend is maintained in the smaller GPT-2 120M model, where our method achieves a score of 55.52 compared to 47.90 for SFT, indicating that our approach is particularly effective at compressing knowledge into smaller architectures.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Scalability:</head><p>The results also validate that the distillation gains scale with model size. While the move from GPT-2 120M to 340M yields a performance jump of approximately 4-6 points on average, the transition to the TinyLlama-1.1B architecture further pushes the ceiling. Crucially, DISTILLLENS allows the GPT-2 340M model (Avg 59.96) to approach the performance of the significantly larger TinyLlama-1.1B SFT baseline (Avg 60.90), suggesting that our distillation technique effectively bridges the gap between varying model capacities.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.5. GPT-4o-mini as Judge</head><p>To evaluate the semantic quality and instruction-following capabilities of the finetuned models, we employ a model-based evaluation approach using gpt-4o-mini <ref type="bibr" target="#b11">(Hurst et al., 2024)</ref> as a judge. While traditional metrics like ROUGE provide a measure of lexical overlap, they often fail to capture semantic nuances, logical consistency, and adherence to complex instructions. A strong LLM judge correlates better with human judgment for open-ended generation tasks <ref type="bibr" target="#b33">(Zheng et al., 2023)</ref>.</p><p>We design a rigorous evaluation prompt, shown in Figure <ref type="figure" target="#fig_5">8</ref>, which instructs the judge to assess the predicted response against a ground truth reference based on four key criteria: Accuracy, Completeness, Hallucination, and Tone/Format. The judge assigns a score on a Likert scale from 1 to 10, accompanied by a brief reasoning statement to ensure interpretability.</p><p>To align the evaluation metrics with a standard percentage scale, we normalize the raw GPT-4 scores (S raw ∈ <ref type="bibr" target="#b33">[1,</ref><ref type="bibr">10]</ref>) by zero-indexing the value and scaling it by the maximum possible range:</p><formula xml:id="formula_32">S norm = S raw -1 9 × 100%<label>(27)</label></formula><p>This transformation results in a final score range of S norm ∈ [0, 100], ensuring that the lowest qualitative rating (1) corresponds to 0% and a perfect rating (10) corresponds to 100%. This normalization facilitates direct comparison with other percentage-based metrics and simplifies the interpretation of relative performance gains.</p><p>For every test sample, we query gpt-4o-mini with the instruction, the ground truth reference, and the model's generated output. We set the judge's sampling temperature to 0.7. The final reported score for each model is the average S norm across the entire test set.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>GPT-4o-mini Evaluation Prompt ### System Prompt:</head><p>You are an intelligent and impartial evaluator. Your task is to rate the quality of a generated response by comparing it to a ground truth reference answer, based on a specific user instruction.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>### Evaluation Criteria:</head><p>1. Accuracy: Does the predicted response contain the same factual information as the ground truth? 2. Completeness: Does it miss any crucial details present in the ground truth? 3. Hallucination: Does it include false information not supported by the ground truth or general knowledge? 4. Tone/Format: Does it follow the constraints of the instruction?</p><p>### Scoring Scale (1-10) 1: Completely Incorrect The response is unrelated, incoherent, or factually contradictory to the ground truth.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>2-3: Severe Issues</head><p>The response is on topic but misses the majority of key points, contains significant hallucinations, or completely fails the formatting constraints.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>4-5: Mediocre</head><p>The response captures the general gist but misses important nuances, adds significant fluff, or contains minor factual errors.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>6-7: Acceptable/Good</head><p>The response is accurate and captures the main idea. It may have minor omissions, slight formatting issues, or awkward phrasing, but the core information is correct.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>8-9: Very Good/Excellent</head><p>The response is semantically similar to the ground truth, highly accurate, and follows instructions well. Only very minor stylistic differences exist.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>10: Perfect</head><p>The response is semantically equivalent to the ground truth (or better); it captures all key information perfectly with optimal phrasing and strict adherence to formatting.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>### Output Format</head><p>First, provide a brief explanation of your reasoning (2-3 sentences). Then, end your response with the score in this format: Score: X ### Input Data Instruction: {instruction}</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ground Truth: {ground truth}</head><p>Predicted Response: {prediction} ### Output </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>p</head><figDesc>into the vocabulary probability space by utilizing their corresponding unembedding matrices W Uq θ and W Up , yielding q (l) θ and p (l ′ ) .</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 3 .</head><label>3</label><figDesc>Figure3. Exposure bias vs. generated sequence length. Lower bias indicates that the model is more robust to its own generation errors. Please refer to Appendix Section B.3 for calculating the bias.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 4 .Figure 5 .</head><label>45</label><figDesc>Figure 4. DISTILLLENS incorporated with existing KD baselines. DISTILLLENS improves the existing baselines.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 6 .</head><label>6</label><figDesc>Figure 6. The loss landscape LJD vs. the confidence score c θ (y|x).</figDesc><graphic coords="11,201.24,467.57,194.39,126.60" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><figDesc>Proposition A.2 (Dual-sided Confidence Penalization). The Jeffreys Divergence objective L JD minimizes divergence through a strict, convex symmetric loss landscape. It penalizes overconfidence (c θ → ∞) super-linearly while enforcing an unbounded barrier penalty for underconfidence (c θ → 0), effectively trying to perfectly align with the teacher's supervision (c θ → 1).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 8 .</head><label>8</label><figDesc>Figure 8. The exact prompt template used for the GPT-4o-mini judge evaluation.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Evaluation results. Average Rouge-L (R-L) and GPT-4o (mini) feedback scores across 5 random seeds across {10, 20, 30, 40, 50}. The best scores of each model size are boldfaced and the second best are underlined.</figDesc><table><row><cell></cell><cell cols="3">Model #Params Method</cell><cell></cell><cell>Dolly</cell><cell cols="2">SelfInst</cell><cell cols="2">Vicuna</cell><cell cols="2">S-NI UnNI</cell><cell>Avg</cell></row><row><cell></cell><cell></cell><cell></cell><cell></cell><cell cols="6">R-L GPT-4o R-L GPT-4o R-L GPT-4o</cell><cell>R-L</cell><cell>R-L</cell><cell>R-L</cell></row><row><cell></cell><cell></cell><cell cols="2">1.5B Teacher</cell><cell>27.6</cell><cell>23.9</cell><cell>14.3</cell><cell>12.5</cell><cell>16.3</cell><cell>16.0</cell><cell>27.6</cell><cell>31.8</cell><cell>23.52</cell></row><row><cell></cell><cell></cell><cell></cell><cell>SFT</cell><cell>23.3</cell><cell>13.4</cell><cell>10.0</cell><cell>4.9</cell><cell>14.7</cell><cell>6.7</cell><cell>16.3</cell><cell>18.5</cell><cell>16.56</cell></row><row><cell></cell><cell></cell><cell></cell><cell>KD (FKL)</cell><cell>23.5</cell><cell>14.3</cell><cell>10.3</cell><cell>5.7</cell><cell>14.7</cell><cell>6.7</cell><cell>16.6</cell><cell>20.9</cell><cell>17.20</cell></row><row><cell></cell><cell></cell><cell></cell><cell>SeqKD</cell><cell>22.7</cell><cell>13.9</cell><cell>10.1</cell><cell>4.8</cell><cell>14.3</cell><cell>6.8</cell><cell>16.4</cell><cell>18.8</cell><cell>16.64</cell></row><row><cell></cell><cell></cell><cell>120M</cell><cell>RKL FKL + RKL</cell><cell>23.2 23.5</cell><cell>14.4 14.5</cell><cell>10.6 10.4</cell><cell>5.9 6.1</cell><cell>14.7 15.0</cell><cell>6.8 7.4</cell><cell>17.9 17.6</cell><cell>21.4 21.0</cell><cell>17.56 17.50</cell></row><row><cell></cell><cell></cell><cell></cell><cell>JSD</cell><cell>23.4</cell><cell>14.6</cell><cell>10.4</cell><cell>6.2</cell><cell>14.5</cell><cell>7.0</cell><cell>17.1</cell><cell>20.6</cell><cell>17.20</cell></row><row><cell></cell><cell></cell><cell></cell><cell>AKL</cell><cell>23.7</cell><cell>14.3</cell><cell>10.4</cell><cell>6.4</cell><cell>15.3</cell><cell>6.9</cell><cell>17.6</cell><cell>21.2</cell><cell>17.64</cell></row><row><cell></cell><cell></cell><cell></cell><cell cols="2">DISTILLLENS 25.2</cell><cell>15.0</cell><cell>12.4</cell><cell>7.0</cell><cell>15.8</cell><cell>7.3</cell><cell>24.3</cell><cell>27.9</cell><cell>21.12</cell></row><row><cell></cell><cell>GPT-2</cell><cell></cell><cell>SFT</cell><cell>25.3</cell><cell>19.8</cell><cell>12.3</cell><cell>9.2</cell><cell>16.0</cell><cell>12.5</cell><cell>22.7</cell><cell>26.6</cell><cell>20.58</cell></row><row><cell></cell><cell></cell><cell></cell><cell>KD (FKL)</cell><cell>25.5</cell><cell>19.6</cell><cell>12.1</cell><cell>8.5</cell><cell>16.1</cell><cell>12.3</cell><cell>21.9</cell><cell>26.5</cell><cell>20.42</cell></row><row><cell></cell><cell></cell><cell></cell><cell>SeqKD</cell><cell>25.2</cell><cell>19.6</cell><cell>12.1</cell><cell>8.9</cell><cell>16.2</cell><cell>12.6</cell><cell>23.9</cell><cell>27.8</cell><cell>21.04</cell></row><row><cell></cell><cell></cell><cell>340M</cell><cell>RKL FKL + RKL</cell><cell>24.9 24.9</cell><cell>19.5 19.6</cell><cell>13.3 12.9</cell><cell>9.4 10.0</cell><cell>16.0 16.1</cell><cell>12.4 12.8</cell><cell>23.4 23.2</cell><cell>27.5 27.0</cell><cell>21.02 20.82</cell></row><row><cell></cell><cell></cell><cell></cell><cell>JSD</cell><cell>25.1</cell><cell>19.6</cell><cell>12.0</cell><cell>9.3</cell><cell>15.8</cell><cell>11.7</cell><cell>23.2</cell><cell>27.0</cell><cell>20.62</cell></row><row><cell></cell><cell></cell><cell></cell><cell>AKL</cell><cell>24.8</cell><cell>19.3</cell><cell>12.7</cell><cell>9.1</cell><cell>15.2</cell><cell>12.7</cell><cell>23.2</cell><cell>27.3</cell><cell>20.64</cell></row><row><cell></cell><cell></cell><cell></cell><cell cols="2">DISTILLLENS 26.4</cell><cell>20.1</cell><cell>14.6</cell><cell>10.3</cell><cell>16.5</cell><cell>13.0</cell><cell>28.1</cell><cell>33.0</cell><cell>23.72</cell></row><row><cell></cell><cell></cell><cell cols="2">6.7B Teacher</cell><cell>26.3</cell><cell>33.1</cell><cell>20.8</cell><cell>25.1</cell><cell>17.5</cell><cell>26.1</cell><cell>32.4</cell><cell>35.8</cell><cell>26.56</cell></row><row><cell></cell><cell></cell><cell></cell><cell>SFT</cell><cell>25.5</cell><cell>23.1</cell><cell>17.1</cell><cell>15.7</cell><cell>16.9</cell><cell>16.1</cell><cell>29.5</cell><cell>31.8</cell><cell>24.16</cell></row><row><cell></cell><cell></cell><cell></cell><cell>KD (FKL)</cell><cell>25.3</cell><cell>22.9</cell><cell>17.0</cell><cell>16.8</cell><cell>16.9</cell><cell>16.4</cell><cell>28.8</cell><cell>31.1</cell><cell>23.82</cell></row><row><cell></cell><cell>Llama</cell><cell>1.1B</cell><cell>SeqKD RKL FKL + RKL</cell><cell>24.9 25.6 25.5</cell><cell>22.3 23.3 23.0</cell><cell>16.2 16.3 17.5</cell><cell>14.8 16.0 17.2</cell><cell>16.5 17.7 17.1</cell><cell>15.6 17.8 17.3</cell><cell>27.7 28.4 29.9</cell><cell>30.6 32.0 32.8</cell><cell>23.18 24.00 24.56</cell></row><row><cell></cell><cell></cell><cell></cell><cell>JSD</cell><cell>25.4</cell><cell>23.7</cell><cell>16.9</cell><cell>16.9</cell><cell>17.4</cell><cell>16.3</cell><cell>30.0</cell><cell>32.5</cell><cell>24.44</cell></row><row><cell></cell><cell></cell><cell></cell><cell>AKL</cell><cell>25.3</cell><cell>23.7</cell><cell>17.4</cell><cell>16.9</cell><cell>17.3</cell><cell>17.3</cell><cell>29.5</cell><cell>32.1</cell><cell>24.32</cell></row><row><cell></cell><cell></cell><cell></cell><cell cols="2">DISTILLLENS 25.9</cell><cell>24.5</cell><cell>18.2</cell><cell>19.0</cell><cell>18.2</cell><cell>20.8</cell><cell>30.8</cell><cell>34.3</cell><cell>25.48</cell></row><row><cell></cell><cell>30</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Exposure Bias</cell><cell>10 0 10 20</cell><cell></cell><cell></cell><cell cols="2">AKL JSD RKL FKL MiniLLM DistillLens DistillLens + MiniLLM</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell></cell><cell>0</cell><cell>50</cell><cell>100 Generation Length 150</cell><cell>200</cell><cell>250</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 3 .</head><label>3</label><figDesc>Comparison against baseline intermediate feature transfers (R-L score). DISTILLLENS (Ours ) consistently outperforms standard feature distillation baselines. Between the two symmetric variants, JSD marginally outperforms JD.</figDesc><table><row><cell>Model</cell><cell>Method</cell><cell cols="5">Dolly SelfInst Vicuna S-NI UnNI</cell><cell>Avg</cell></row><row><cell></cell><cell>MSE</cell><cell>24.3</cell><cell>12.3</cell><cell>15.7</cell><cell>23.2</cell><cell>26.4</cell><cell>20.38</cell></row><row><cell>GPT-2-120M</cell><cell>FDD</cell><cell>23.9</cell><cell>10.8</cell><cell>15.1</cell><cell>17.9</cell><cell>22.0</cell><cell>17.94</cell></row><row><cell></cell><cell>Ours (JD)</cell><cell>25.3</cell><cell>12.0</cell><cell>15.4</cell><cell>24.2</cell><cell>27.5</cell><cell>20.88</cell></row><row><cell></cell><cell cols="2">Ours (JSD) 25.2</cell><cell>12.4</cell><cell>15.8</cell><cell>24.3</cell><cell>27.9</cell><cell>21.12</cell></row><row><cell></cell><cell>MSE</cell><cell>25.6</cell><cell>13.0</cell><cell>16.5</cell><cell>22.8</cell><cell>28.4</cell><cell>21.26</cell></row><row><cell>GPT-2-340M</cell><cell>FDD</cell><cell>24.9</cell><cell>13.3</cell><cell>15.7</cell><cell>23.6</cell><cell>27.4</cell><cell>20.98</cell></row><row><cell></cell><cell>Ours (JD)</cell><cell>26.5</cell><cell>14.7</cell><cell>17.4</cell><cell>27.7</cell><cell>31.3</cell><cell>23.52</cell></row><row><cell></cell><cell cols="2">Ours (JSD) 26.4</cell><cell>14.6</cell><cell>16.5</cell><cell>28.1</cell><cell>33.0</cell><cell>23.72</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 4 .</head><label>4</label><figDesc>Number of intermediate layers for DISTILLLENS optimization. "0" intermediate layers means a baseline with no intermediate layers matching. DISTILLLENS peaks at 5 layers.</figDesc><table><row><cell></cell><cell></cell><cell cols="3">Number of Logit Lens Layers</cell><cell></cell><cell></cell></row><row><cell>0</cell><cell>1</cell><cell>2</cell><cell>3</cell><cell>4</cell><cell>5</cell><cell>6</cell></row><row><cell cols="7">Avg R-L 17.56 20.62 20.20 20.00 20.04 21.12 20.60</cell></row><row><cell cols="7">∆ R-L +0.00 +3.06 +2.64 +2.44 +2.48 +3.56 3.04</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 5 .</head><label>5</label><figDesc>R-L Score. DISTILLLENS performs better with an interleaved layers selection pattern than consecutive.</figDesc><table><row><cell>Pattern</cell><cell cols="3">Dolly S-NI Un-NI</cell></row><row><cell cols="2">RKL (baseline) 23.2</cell><cell>17.9</cell><cell>21.4</cell></row><row><cell>First-5</cell><cell>24.9</cell><cell>23.8</cell><cell>26.0</cell></row><row><cell>Last-5</cell><cell>25.1</cell><cell>23.8</cell><cell>26.8</cell></row><row><cell>Interleaved</cell><cell>25.2</cell><cell>24.3</cell><cell>27.9</cell></row><row><cell cols="4">mid-point) yields an immediate improvement of +3.06 in</cell></row><row><cell cols="4">the Rouge-L score. Interestingly, this gain does not scale</cell></row><row><cell cols="4">linearly; performance plateaus and slightly regresses be-</cell></row><row><cell cols="4">tween 2 and 4 layers, hovering near 20.00. However, the</cell></row><row><cell cols="4">performance rebounds significantly at 5 layers, achieving</cell></row><row><cell cols="4">a peak score of 21.12 (+3.56 over baseline). Extending</cell></row><row><cell cols="4">the configuration to 6 layers exceeded the memory capacity</cell></row><row><cell cols="4">of our 40GB A100 GPUs. Although we employed gradient</cell></row><row><cell cols="4">accumulation to mitigate this specific overload, no further</cell></row><row><cell cols="4">performance gains were observed. Consequently, we fix the</cell></row><row><cell cols="4">number of intermediate layers at 5 for the remainder of our</cell></row><row><cell>experiments.</cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 6 .</head><label>6</label><figDesc>Hyperparameter settings. Comparison of training configurations across different student model sizes.</figDesc><table><row><cell>Hyperparameter</cell><cell>GPT-2 (120M)</cell><cell>GPT-2 (340M)</cell><cell>TinyLlama (1.1B)</cell></row><row><cell>Batch Size (per GPU)</cell><cell>4</cell><cell>4</cell><cell>1</cell></row><row><cell>Initial Learning Rate (LR)</cell><cell>2.0 × 10 -4</cell><cell>5.0 × 10 -5</cell><cell>5.0 × 10 -6</cell></row><row><cell>LR Decay Style</cell><cell>Cosine</cell><cell>Cosine</cell><cell>Cosine</cell></row><row><cell>Final Learning Rate</cell><cell>1.0 × 10 -7</cell><cell>1.0 × 10 -7</cell><cell>1.0 × 10 -7</cell></row><row><cell>Optimizer</cell><cell>AdamW</cell><cell>AdamW</cell><cell>AdamW</cell></row><row><cell>Weight Decay</cell><cell>0.01</cell><cell>0.01</cell><cell>0.01</cell></row><row><cell>Parallel Strategy</cell><cell>DDP</cell><cell>DDP</cell><cell>DDP</cell></row><row><cell cols="4">Teacher Logit Lens Layers {8, 16, 24, 32, 40} {8, 16, 24, 32, 40} {5, 10, 16, 21, 26}</cell></row><row><cell>Student Logit Lens Layers</cell><cell>{2, 4, 6, 8, 10}</cell><cell>{4, 8, 12, 16, 20}</cell><cell>{4, 7, 11, 15, 18}</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 7 .</head><label>7</label><figDesc>R-L Score. DISTILLLENS performs best in average with scaling factor λ = 1.0.</figDesc><table><row><cell>λ</cell><cell cols="3">Dolly S-NI Un-NI</cell></row><row><cell>0.1</cell><cell>24.9</cell><cell>22.7</cell><cell>26.3</cell></row><row><cell>0.5</cell><cell>24.7</cell><cell>25.5</cell><cell>27.1</cell></row><row><cell>1.0</cell><cell>25.2</cell><cell>24.3</cell><cell>27.9</cell></row><row><cell>5.0</cell><cell>24.7</cell><cell>22.8</cell><cell>26.9</cell></row><row><cell cols="2">10.0 25.0</cell><cell>23.7</cell><cell>26.7</cell></row></table></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgements</head><p>Research was sponsored by the <rs type="funder">Army Research Laboratory</rs> and was accomplished under Cooperative Agreement Number <rs type="grantNumber">W911NF-23-2-0224</rs>. The views and conclusions contained in this document are those of the authors and should not be interpreted as representing the official policies, either expressed or implied, of the <rs type="institution">Army Research Laboratory</rs> or the <rs type="institution">U.S. Government</rs>. The U.S. Government is authorized to reproduce and distribute reprints for Government purposes notwithstanding any copyright notation</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_7kN9Cy4">
+					<idno type="grant-number">W911NF-23-2-0224</idno>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>lexical overlap, SBERT allows us to measure the semantic proximity of the generated instructions to the ground truth references, which is crucial for open-ended instruction following tasks.</p><p>We utilize the all-mpnet-base-v2 model from the sentence-transformers library, which maps sentences to a 768-dimensional dense vector space. For a given input prompt, let y be the ground truth response and ŷ be the model's generated response. We compute the embeddings u = SBERT(y) and v = SBERT(ŷ). The similarity score is calculated as the cosine similarity between these normalized embeddings:</p><formula xml:id="formula_33">Score(y, ŷ) = u • v ∥u∥∥v∥ × 100%<label>(26)</label></formula><p>To ensure the robustness of our results, we report the average similarity score across five distinct random seeds {10, 20, 30, 40, 50} for each experimental configuration.</p><p>Table <ref type="table" target="#tab_6">8</ref> presents the BERT similarity scores across three model architectures: GPT-2 (120M and 340M) and TinyLlama-1.1B.</p><p>The results demonstrate the efficacy of our proposed method, DISTILLLENS, compared to Supervised Fine-Tuning (SFT) and standard Knowledge Distillation (KD) baselines.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 7 .</head><label>7</label><figDesc>Semantic Similarity Landscape.Radar charts visualizing SBERT similarity scores across five diverse instruction-following benchmarks. DISTILLLENS demonstrates robust generalization, consistently covering a larger area than baselines (SFT and Standard KD).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 8 .</head><label>8</label><figDesc>SBERT Similarity Scores.Quantitative comparison of semantic alignment across three student models. DISTILLLENS consistently achieves higher semantic similarity to ground truth references than SFT and Standard KD.</figDesc><table><row><cell>Model</cell><cell>Method</cell><cell cols="5">Dolly SelfInst Vicuna S-NI UnNI</cell><cell>Avg</cell></row><row><cell></cell><cell>SFT</cell><cell>64.6</cell><cell>37.2</cell><cell>59.8</cell><cell>32.9</cell><cell>45.9</cell><cell>47.90</cell></row><row><cell></cell><cell>KD (FKL)</cell><cell>65.2</cell><cell>37.8</cell><cell>58.9</cell><cell>40.6</cell><cell>48.3</cell><cell>50.16</cell></row><row><cell></cell><cell>SeqKD</cell><cell>64.7</cell><cell>36.5</cell><cell>58.1</cell><cell>34.7</cell><cell>45.1</cell><cell>47.82</cell></row><row><cell>GPT-2 120M</cell><cell>RKL FKL + RKL</cell><cell>66.4 66.1</cell><cell>38.6 39.4</cell><cell>61.6 62.0</cell><cell>44.2 43.2</cell><cell>49.0 49.3</cell><cell>51.96 52.00</cell></row><row><cell></cell><cell>JSD</cell><cell>65.9</cell><cell>37.9</cell><cell>61.6</cell><cell>39.2</cell><cell>47.8</cell><cell>50.48</cell></row><row><cell></cell><cell>AKL</cell><cell>66.0</cell><cell>38.4</cell><cell>61.7</cell><cell>39.0</cell><cell>48.2</cell><cell>50.66</cell></row><row><cell></cell><cell>DISTILLLENS</cell><cell>69.1</cell><cell>43.1</cell><cell>65.8</cell><cell>46.3</cell><cell>53.3</cell><cell>55.52</cell></row><row><cell></cell><cell>SFT</cell><cell>69.6</cell><cell>42.8</cell><cell>55.0</cell><cell>49.4</cell><cell>53.1</cell><cell>53.98</cell></row><row><cell></cell><cell>KD (FKL)</cell><cell>70.0</cell><cell>43.1</cell><cell>66.2</cell><cell>48.5</cell><cell>53.3</cell><cell>55.28</cell></row><row><cell></cell><cell>SeqKD</cell><cell>69.4</cell><cell>43.2</cell><cell>65.9</cell><cell>51.3</cell><cell>54.4</cell><cell>56.84</cell></row><row><cell>GPT-2 340M</cell><cell>RKL FKL + RKL</cell><cell>69.4 69.5</cell><cell>44.0 44.1</cell><cell>65.9 67.8</cell><cell>49.8 50.1</cell><cell>54.0 54.0</cell><cell>56.62 57.00</cell></row><row><cell></cell><cell>JSD</cell><cell>69.4</cell><cell>42.7</cell><cell>66.7</cell><cell>50.4</cell><cell>53.8</cell><cell>56.60</cell></row><row><cell></cell><cell>AKL</cell><cell>69.0</cell><cell>43.4</cell><cell>65.3</cell><cell>49.7</cell><cell>53.3</cell><cell>56.14</cell></row><row><cell></cell><cell>DISTILLLENS</cell><cell>71.2</cell><cell>46.6</cell><cell>69.9</cell><cell>55.1</cell><cell>57.0</cell><cell>59.96</cell></row><row><cell></cell><cell>SFT</cell><cell>69.4</cell><cell>50.2</cell><cell>69.0</cell><cell>57.6</cell><cell>58.3</cell><cell>60.90</cell></row><row><cell></cell><cell>KD (FKL)</cell><cell>69.6</cell><cell>49.4</cell><cell>69.0</cell><cell>56.8</cell><cell>58.0</cell><cell>60.56</cell></row><row><cell></cell><cell>SeqKD</cell><cell>69.3</cell><cell>47.6</cell><cell>67.2</cell><cell>54.7</cell><cell>56.9</cell><cell>59.14</cell></row><row><cell>Tiny-Llama-1.1B</cell><cell>RKL FKL + RKL</cell><cell>69.8 70.0</cell><cell>49.0 49.6</cell><cell>70.1 70.2</cell><cell>56.8 55.8</cell><cell>59.4 58.7</cell><cell>61.02 60.86</cell></row><row><cell></cell><cell>JSD</cell><cell>69.6</cell><cell>50.1</cell><cell>70.1</cell><cell>57.8</cell><cell>58.9</cell><cell>61.30</cell></row><row><cell></cell><cell>AKL</cell><cell>70.0</cell><cell>50.8</cell><cell>70.1</cell><cell>57.7</cell><cell>58.4</cell><cell>62.00</cell></row><row><cell></cell><cell>DISTILLLENS</cell><cell>71.4</cell><cell>52.1</cell><cell>73.6</cell><cell>60.2</cell><cell>60.3</cell><cell>63.52</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">On-policy distillation of language models: Learning from self-generated mistakes</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Vieillard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Stanczyk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">R</forename><surname>Garea</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Geist</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Bachem</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=3zKtaqxLhW" />
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Why exposure bias matters: An imitation learning perspective of error accumulation in language generation</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Arora</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>El Asri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bahuleyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">C K</forename><surname>Cheung</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: ACL 2022</title>
+		<imprint>
+			<date type="published" when="2022">2022. 2, 5, 6, 13</date>
+			<biblScope unit="page" from="700" to="710" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">Eliciting latent predictions from transformers with the tuned lens</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Belrose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Furman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Halawi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Ostrovsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Mckinney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.08112</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">A mathematical framework for transformer circuits</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Nanda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Conerly</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Transformer Circuits Thread</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page">12</biblScope>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">How contextual are contextualized word representations? comparing the geometry of bert, elmo, and gpt-2 embeddings</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Ethayarajh</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="55" to="65" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Transformer feed-forward layers are key-value memories</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Geva</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Schuster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Berant</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Levy</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2021 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="5484" to="5495" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Beyond logits: Aligning feature dynamics for effective knowledge distillation</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Gong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Xiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Junhuashu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhaolongxing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Chen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 63rd Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">7</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Knowledge distillation of large language models</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Minillm</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum" />
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">8</biblScope>
+			<biblScope unit="page">13</biblScope>
+		</imprint>
+	</monogr>
+	<note>id=5h0qf7IBZZ. 2, 5, 6</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Overthinking the truth: Understanding how language models process false demonstrations</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Halawi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J.-S</forename><surname>Denain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=Tigr1kMDZy.2" />
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Distilling the knowledge in a neural network</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Hinton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Dean</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1503.02531</idno>
+		<imprint>
+			<date type="published" when="2005">2015. 1, 2, 5</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Unnatural instructions: Tuning language models with (almost) no human labor</title>
+		<author>
+			<persName><forename type="first">O</forename><surname>Honovich</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Scialom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Levy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Schick</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 61st Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="14409" to="14428" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Hurst</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lerer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">P</forename><surname>Goucher</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Perelman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ramesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ostrow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Welihinda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Hayes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.21276</idno>
+		<title level="m">Gpt-4o system card</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">5</biblScope>
+			<biblScope unit="page">15</biblScope>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Theory of Probability</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Jeffreys</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1948">1948. 3, 5, 11</date>
+			<publisher>Oxford University Press</publisher>
+		</imprint>
+	</monogr>
+	<note>second edition</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Improving task-agnostic bert distillation with layer mapping search</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Shang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Neurocomputing</title>
+		<imprint>
+			<biblScope unit="volume">461</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="194" to="203" />
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Sequence-level knowledge distillation</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">M</forename><surname>Rush</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2016 conference on empirical methods in natural language processing</title>
+		<meeting>the 2016 conference on empirical methods in natural language processing</meeting>
+		<imprint>
+			<date type="published" when="2005">2016. 2, 5</date>
+			<biblScope unit="page" from="1317" to="1327" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Towards streamlined distillation for large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S.-Y</forename><surname>Yun</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Distillm</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2006">2024. 2, 4, 6</date>
+			<biblScope unit="page" from="24872" to="24895" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Distillm-2: A contrastive approach boosts the distillation of llms</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Zharkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S.-Y</forename><surname>Yun</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-second International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Rouge: A package for automatic evaluation of summaries</title>
+		<author>
+			<persName><forename type="first">C.-Y</forename><surname>Lin</surname></persName>
+		</author>
+		<ptr target="https://www.lesswrong.com/posts/" />
+	</analytic>
+	<monogr>
+		<title level="m">AcKRB8wDpdaN6v6ru/ interpreting-gpt-the-logit-lens</title>
+		<imprint>
+			<date type="published" when="2004">2004. 2020</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">2</biblScope>
+		</imprint>
+	</monogr>
+	<note>Text summarization branches out Interpreting gpt: The logit lens</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Training language models to follow instructions with human feedback</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ray</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="issue">8</biblScope>
+			<biblScope unit="page" from="27730" to="27744" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Sentence-bert: Sentence embeddings using siamese bert-networks</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Reimers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Gurevych</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">5</biblScope>
+			<biblScope unit="page">13</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Romero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Ballas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">E</forename><surname>Kahou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chassang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gatta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bengio</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Fitnets</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1412.6550</idno>
+		<title level="m">Hints for thin deep nets</title>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">2</biblScope>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">V</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Distilbert</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1910.01108</idno>
+		<title level="m">a distilled version of bert: smaller, faster, cheaper and lighter</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.03300</idno>
+		<title level="m">Pushing the limits of mathematical reasoning in open language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Layer by layer: Uncovering hidden representations in language models</title>
+		<author>
+			<persName><forename type="first">O</forename><surname>Skean</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">R</forename><surname>Arefin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">N</forename><surname>Patel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Naghiyev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Lecun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Shwartz-Ziv</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=WGXb7UdvTX.1" />
+	</analytic>
+	<monogr>
+		<title level="m">Fortysecond International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">Patient knowledge distillation for bert model compression</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Gan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="4323" to="4332" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">How does bert answer questions? a layer-wise analysis of transformer representations</title>
+		<author>
+			<persName><forename type="first">B</forename><surname>Van Aken</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Winter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Löser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">A</forename><surname>Gers</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 28th ACM international conference on information and knowledge management</title>
+		<meeting>the 28th ACM international conference on information and knowledge management</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="1823" to="1832" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Deep self-attention distillation for task-agnostic compression of pre-trained transformers</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Minilm</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page" from="5776" to="5788" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Super-naturalinstructions: Generalization via declarative instructions on 1600+ nlp tasks</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Alipoormolabashi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Kordi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mirzaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Naik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ashok</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">S</forename><surname>Dhanasekaran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Arunkumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Stap</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">EMNLP</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Self-instruct: Aligning language models with self-generated instructions</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Kordi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Khashabi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Hajishirzi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 61st annual meeting of the association for computational linguistics</title>
+		<meeting>the 61st annual meeting of the association for computational linguistics</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="13484" to="13508" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">f-divergence minimization for sequence-level knowledge distillation</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Mou</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 61st Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="10817" to="10834" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Rethinking kullback-leibler divergence in knowledge distillation for large language models</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Tao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Wong</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.02657</idno>
+		<imprint>
+			<date type="published" when="2005">2024. 2, 3, 4, 5</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Paying more attention to attention: Improving the performance of convolutional neural networks via attention transfer</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zagoruyko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Komodakis</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=Sks9_ajex.2" />
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Investigating layer importance in large language models</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Kawaguchi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 7th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP</title>
+		<meeting>the 7th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="469" to="479" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<title level="m" type="main">Judging llm-as-a-judge with mt-bench and chatbot arena. Advances in neural information processing systems</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W.-L</forename><surname>Chiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Xing</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page">15</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

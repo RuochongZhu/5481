@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Retrieval Collapses When AI Pollutes the Web</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher>ACM</publisher>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-04-12">2026-04-12</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="consolidated" source="crossref">
+					<analytic>
+						<author>
+							<persName><forename type="first">Hongyeon</forename><surname>Yu</surname></persName>
+							<email>hongyeon.yu@navercorp.com</email>
+							<idno type="ORCID">0000-0002-4325-5332</idno>
+							<affiliation key="aff0">
+								<orgName type="institution">NAVER Corp. Bellevue</orgName>
+								<address>
+									<region>WA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Dongchan</forename><surname>Kim</surname></persName>
+							<email>dongchan.usa@gmail.com</email>
+							<idno type="ORCID">0000-0002-9803-9311</idno>
+							<affiliation key="aff1">
+								<orgName type="institution">NAVER Corp. Bellevue</orgName>
+								<address>
+									<region>WA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Young-Bum</forename><surname>Kim</surname></persName>
+							<email>youngbum.kim@navercorp.com</email>
+							<idno type="ORCID">0000-0003-1304-5446</idno>
+							<affiliation key="aff2">
+								<orgName type="institution">NAVER Corp. Bellevue</orgName>
+								<address>
+									<region>WA</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Retrieval Collapses When AI Pollutes the Web</title>
+					</analytic>
+					<monogr>
+						<title level="m">Proceedings of the ACM Web Conference 2026</title>
+						<meeting>the ACM Web Conference 2026						</meeting>
+						<imprint>
+							<publisher>ACM</publisher>
+							<biblScope unit="page" from="8745" to="8748"/>
+							<date type="published" when="2026-04-12" />
+						</imprint>
+					</monogr>
+					<idno type="MD5">8729A1108F0F75CBEE70DB7CE8B65078</idno>
+					<idno type="DOI">10.1145/3774904.3792955</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<textClass>
+				<keywords>
+					<term>CCS Concepts</term>
+					<term>Information systems → World Wide Web</term>
+					<term>Web searching and information discovery</term>
+					<term>Information retrieval</term>
+					<term>• Computing methodologies → Natural language generation AI-generated content, retrieval collapse, web contamination, evidence diversity, retrieval-augmented generation</term>
+				</keywords>
+			</textClass>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>The rapid proliferation of AI-generated content on the Web presents a structural risk to information retrieval, as search engines and Retrieval-Augmented Generation (RAG) systems increasingly consume evidence produced by the Large Language Models (LLMs). We characterize this ecosystem-level failure mode as Retrieval Collapse, a two-stage process where (1) AI-generated content dominates search results, eroding source diversity, and (2) low-quality or adversarial content infiltrates the retrieval pipeline. We analyzed this dynamic through controlled experiments involving both highquality SEO-style content and adversarially crafted content. In the SEO scenario, a 67% pool contamination led to over 80% exposure contamination, creating a homogenized yet deceptively healthy state where answer accuracy remains stable despite the reliance on synthetic sources. Conversely, under adversarial contamination, baselines like BM25 exposed ∼19% of harmful content, whereas LLM-based rankers demonstrated stronger suppression capabilities. These findings highlight the risk of retrieval pipelines quietly shifting toward synthetic evidence and the need for retrieval-aware strategies to prevent a self-reinforcing cycle of quality decline in Web-grounded systems.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>The rapid proliferation of Large Language Models (LLMs) has fundamentally transformed the landscape of Web content creation <ref type="bibr" target="#b15">[16]</ref>. Although this shift offers scalability in information production, it introduces a critical structural vulnerability for search engines and Retrieval-Augmented Generation (RAG) systems <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b11">12]</ref>. These systems increasingly consume evidence that is itself generated by the very models they rely on, creating a self-referential cycle. While similar phenomena have been studied in model training as model collapse <ref type="bibr" target="#b0">[1,</ref><ref type="bibr" target="#b14">15]</ref>, the implications for the retrieval ecosystem remain underexplored.</p><p>We characterize this ecosystem-level failure mode as Retrieval Collapse, a two-stage degradation process. The first stage, Dominance and Homogenization, occurs when high-quality, SEO-optimized synthetic content captures the top search results, drastically reducing source diversity. This stage is particularly insidious because it creates a deceptively healthy state: surface-level answer quality may remain stable due to the fluency of LLM outputs, masking the underlying erosion of information provenance. The second stage, Pollution and System Corruption, emerges when low-quality or adversarial content infiltrates the pipeline. In this phase, malicious actors can exploit ranking algorithms to inject misleading information, undermining the factual integrity of downstream RAG systems.</p><p>To investigate these risks, we constructed a controlled experimental environment using the MS MARCO dataset, simulating two distinct contamination scenarios: (1) a high-quality SEO pool and (2) an adversarial abuse pool. Our findings reveal a contrast in system behavior. Under the SEO scenario, a Pool Contamination Rate of 67% led to an Exposure Contamination Rate exceeding 80% across rankers, confirming a rapid shift toward homogenized synthetic evidence <ref type="bibr" target="#b4">[5]</ref>. Conversely, under the adversarial scenario, while LLMbased rankers showed resilience, widely deployed baselines like BM25 exhibited significant vulnerability, exposing approximately 19% of harmful content at the same contamination level.</p><p>This study highlights that current retrieval pipelines can quietly shift toward synthetic or harmful evidence without immediate signs of quality collapse. Our contributions are threefold:</p><p>• We formally conceptualize Retrieval Collapse as a structural failure mode distinct from training-time model collapse.</p><p>• We provide empirical evidence of contamination dynamics, quantifying how 67% pool contamination translates to over 80% exposure in SEO settings and ∼19% vulnerability in BM25 under adversarial attacks.</p><p>• We underscore the necessity for retrieval-aware ranking strategies that go beyond topical relevance to preserve ecosystem diversity and trust.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Background and Related Work</head><p>While generative models degrade when trained on their own outputs, a phenomenon termed model collapse <ref type="bibr" target="#b0">[1,</ref><ref type="bibr" target="#b14">15]</ref>, prior research typically focuses on closed training loops. In contrast, we address structural risks during retrieval, where heterogeneous generators and ranking systems shape the exposure landscape. Recent studies have begun to explore similar feedback loops in Open Domain Question Answering (ODQA) <ref type="bibr" target="#b2">[3]</ref> and RAG corpus poisoning <ref type="bibr" target="#b16">[17,</ref><ref type="bibr" target="#b18">19]</ref>, where adversarial actors inject malicious documents. However, our work differentiates itself by analyzing the ecosystem-level shift caused by mass-produced SEO content rather than isolated adversarial attacks.</p><p>With the proliferation of AI-generated text <ref type="bibr" target="#b15">[16]</ref>, challenges in attribution <ref type="bibr" target="#b12">[13,</ref><ref type="bibr" target="#b13">14]</ref> and pre-training data quality <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b5">6]</ref> have intensified. Unlike traditional keyword spam <ref type="bibr" target="#b7">[8]</ref>, modern synthetic content is semantically coherent, allowing it to blend into ranking systems and propagate through pipelines as authoritative evidence <ref type="bibr" target="#b3">[4,</ref><ref type="bibr" target="#b4">5,</ref><ref type="bibr" target="#b17">18,</ref><ref type="bibr" target="#b19">20]</ref>. We extend these findings by quantifying distinct contamination dynamics driven by SEO-style versus adversarial content. Although provenance techniques like datasheets <ref type="bibr" target="#b6">[7]</ref> and watermarking <ref type="bibr" target="#b10">[11]</ref> offer document-level mechanisms, they do not fully address the ecosystem degradation where the collective presence of synthetic documents reshapes ranking behavior.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Experimental Methodology</head><p>We construct a controlled environment to evaluate how different forms of AI-generated content propagate through retrieval pipelines and induce the two-stage dynamics of Retrieval Collapse. <ref type="foot" target="#foot_0">1</ref></p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Dataset</head><p>Our experiments utilize 1,000 query-answer pairs randomly sampled from the MS MARCO passage ranking benchmark. MS MARCO provides diverse open-domain queries paired with human-validated reference answers, which we use both to ground retrieval tasks and to evaluate factual correctness. We next construct three document pools used as reference sources for answer generation. Original Pool. For each MS MARCO query, we retrieve ten Web documents using the Google Search API. As these are top-ranked results from a major search engine, they inherently reflect current industry-standard SEO optimization. We follow each URL to extract full article content, producing an Original Pool of 𝑁 = 10,000 documents. To determine factual validity, each document is verified by an LLM Judge against the ground truth, yielding a Micro Correct Rate of 51.69%.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>SEO Pool (High-Quality Synthetic Content).</head><p>To simulate content farms, we generate 20 synthetic documents per query using GPT-5-nano. We generate a larger pool than the original set to ensure sufficient unique synthetic content is available for the 20round cumulative contamination simulation. Each SEO document is created by sampling a random combination of the Original Pool documents and synthesizing them into a coherent article. This models the realistic scenario where non-expert users utilize LLMs to aggregate and refine search results into optimized pages. The SEO Pool exhibits a Micro Correct Rate of 66.79%, reflecting the "deceptively healthy" Stage 1 Dominance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Abuse Pool (Adversarial Synthetic Content).</head><p>To simulate malicious contamination, the Abuse Pool is constructed without using Original documents. Each document is created via a two-step adversarial pipeline: (1) a Clickbait/SEO Generator produces an engaging draft, and (2) a Misleading Content Rewriter adversarially replaces factual entities with plausible but incorrect alternatives. This simulates Stage 2 pollution. The Abuse Pool has a Micro Correct Rate of 38.44%.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">LLM Modules and Simulation</head><p>Our retrieval environment consists of four components instantiated using the GPT-5 family. We employ different model sizes to balance realistic simulation constraints against evaluation rigor. The Content Generator (GPT-5-nano) produces synthetic documents. We selected the 'nano' variant to simulate the economic reality of content farms, where low-latency, low-cost models are preferred for mass production. The LLM Ranker (GPT-5-nano) performs semantic re-ranking, and the LLM Answerer (GPT-5-nano) synthesizes final responses. Crucially, the LLM Judge (GPT-5-mini) employs a more capable model than the generators. This ensures a highquality upper bound for correctness evaluation and reduces the risk of self-confirmation bias where a model might preferentially rate its own output highly.</p><p>To simulate the gradual growth of AI-generated content, we run a 20-round contamination process. In each round, one synthetic document is cumulatively added to the fixed set of ten Original documents per query, increasing the AI ratio from 0% (Round 0) to 66.7% (Round 20). Prompting Strategy. To ensure the SEO Pool mimicked realistic content farms, we utilized a role-playing prompt instructing the generator to "act as an SEO specialist," explicitly integrating high-IDF keywords extracted from the Original Pool to maximize retrieval likelihood. Conversely, for the Abuse Pool, the prompt emphasized "preserving surface-level fluency while altering specific named entities and numerical facts," thereby creating documents that pass statistical filters while degrading information integrity.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Evaluation Metrics</head><p>We evaluate how contamination propagates through the retrieval stack using three metrics: Pool Contamination Rate (PCR), the fraction of AI-generated documents in the full pool; Exposure Contamination Rate (ECR), the fraction appearing in the top-10 retrieved results; and Citation Contamination Rate (CCR), the fraction explicitly cited by the LLM Answerer. ECR reflects contamination entering the RAG pipeline, whereas CCR captures the evidence actually used to generate an answer.</p><p>To assess user-facing impact, we use two standard retrieval metrics: Precision@10 (P@10) measures the proportion of retrieved documents that are factually correct (i.e., labeled as correct based on the ground truth). Answer Accuracy (AA) evaluates the validity of the final response. Specifically, we employ the LLM Judge to verify whether the answer generated by the LLM Answerer is semantically consistent with the MS MARCO ground-truth answer as reference.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Results and Analysis 4.1 Baseline Ranker</head><p>We first evaluate ranker performance on the pristine Original Pool. The LLM Ranker achieves strong retrieval quality (𝑛𝐷𝐶𝐺@5 = 0.6251), slightly outperforming the scalable BM25 Ranker baseline (𝑛𝐷𝐶𝐺@5 = 0.6125). </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Scenario 1: Dominance and Homogenization</head><p>We evaluate this effect in Scenario 1, which examines how SEO-style synthetic documents reshape retrieval (Figure <ref type="figure" target="#fig_0">1a</ref>; Table <ref type="table" target="#tab_0">1a</ref>). Contamination Convergence. Across both rankers, exposure contamination is significantly amplified relative to pool contamination. Under BM25, ECR surpasses 68% by Round 10 (𝑃𝐶𝑅 = 50%) and exceeds 80% by Round 20 (𝑃𝐶𝑅 = 67%). The LLM Ranker exhibits a stronger preference, with ECR reaching 76% at Round 10 and remaining consistently higher than that of BM25. This pattern shows that SEO-optimized content disproportionately activates ranking signals, causing both models to converge rapidly toward synthetic-dominated evidence.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Factual Stability vs. Diversity Collapse.</head><p>Despite this dramatic shift in retrieved evidence, AA remains stable or slightly improves (from roughly 68% to 70%). Because SEO documents are high-quality and topically aligned, retrieval appears healthy when measured solely by accuracy. However, nearly all retrieved evidence is synthetic, indicating a severe collapse in source diversity. This divergence, characterized by stable accuracy despite collapsing diversity, reveals a structurally brittle retrieval pipeline: the system performs well in aggregate metrics while quietly losing its grounding in human-written content. Overall, high-quality synthetic content not only integrates seamlessly into retrieval pipelines but actively overwhelms ranking signals, leading both BM25 and LLM Rankers to rely almost exclusively on AI-generated evidence.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Scenario 2: Pollution and System Corruption</head><p>Scenario 2 investigates the second stage of Retrieval Collapse using the adversarial Abuse Pool. This scenario highlights a critical divergence in ranker behavior compared to Scenario 1 (Figure <ref type="figure" target="#fig_0">1b</ref>; Table <ref type="table" target="#tab_0">1b</ref>).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Robustness of LLM Rankers vs. Vulnerability of BM25.</head><p>A striking finding is the LLM Ranker's resilience. Unlike in Scenario 1, where it was overwhelmed by SEO content, LLM Ranker successfully detects and suppresses lower-quality adversarial documents, maintaining ECR near zero. However, relying exclusively on computationally expensive LLM Rankers is often impractical for largescale systems. The scalable BM25 Ranker, while performing better than in the SEO setting, still exhibits a critical vulnerability: it allows approximately 19-24% of abusing documents to infiltrate the top-10 results. This represents a significant structural risk for standard retrieval pipelines. Apparent Stability vs. Underlying Degradation. Despite the retrieval breach under BM25, AA appears relatively stable. This is primarily because the LLM Answerer successfully suppressed citation corruption, acting as a final filter against adversarial content. However, this stability masks a critical vulnerability at the retrieval layer. Furthermore, a comparative analysis reveals that answer accuracy in Scenario 2 consistently underperforms compared to Scenario 1. While Scenario 1 saw AA maintained or even improved (reaching up to 70% with LLM Rankers) due to the high quality of SEO content, Scenario 2 exhibits a decline in answer quality relative to the SEO setting. Specifically for BM25, AA drops below the original baseline (68% → 66%). This confirms that regardless of the ranker, adversarial pollution in the retrieval stage negatively impacts end-to-end performance, with the degradation being most severe when relying on lightweight retrievers.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Implications and Conclusion</head><p>We formally introduced and empirically validated Retrieval Collapse, a two-stage structural issue where synthetic content first achieves Dominance and subsequently facilitates System Corruption. Our Scenario 1 findings expose a critical loss in source diversity, introducing extreme brittleness where high accuracy masks ecosystem decay. Scenario 2 demonstrates that scalable baselines like BM25 are critically vulnerable to adversarial pollution (19% exposure), whereas LLM-based rankers offer resilience but at high computational cost.</p><p>By establishing the framework of Retrieval Collapse, this work lays the foundation for understanding how synthetic content reshapes information retrieval. To mitigate these risks, we propose a shift toward Defensive Ranking strategies that jointly optimize relevance, factuality, and provenance <ref type="bibr" target="#b9">[10]</ref>.</p><p>Effective mitigation requires moving beyond retrieval-time reranking to implement scalable, ingestion-stage safeguards, such as deploying lightweight "perplexity filters" or "provenance graphs" that flag content with high fluency but low attribution density before it enters the index. Furthermore, as Agentic AI begins to autonomously publish content, defense mechanisms must evolve from static text analysis to behavioral fingerprinting, identifying and isolating agents that systematically produce high-entropy, lowfactuality streams. Limitations. We acknowledge that our metrics (PCR, ECR, CCR) are descriptive decompositions intended to characterize dynamics rather than novel theoretical measures. Additionally, our SEO simulation assumes generic LLM-based optimization rather than expert-level adversarial engineering. Future work should explore agentic threats where autonomous AI explicitly attempts to manipulate retrieval rankings, and validate these findings in live, large-scale web environments.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Contamination dynamics across SEO and adversarial settings under BM25.</figDesc><graphic coords="4,53.80,83.69,242.10,137.83" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Contamination statistics across Scenarios 1 and 2 under both BM25 and LLM Rankers.</figDesc><table><row><cell></cell><cell></cell><cell>(a) Scenario 1</cell><cell></cell><cell></cell><cell></cell><cell>(b) Scenario 2</cell></row><row><cell cols="3">Ranker Round PCR ECR</cell><cell>CCR</cell><cell>AA</cell><cell cols="2">Ranker Round PCR ECR</cell><cell>CCR</cell><cell>AA</cell></row><row><cell></cell><cell>0</cell><cell cols="3">0.00 0.0000 0.0000 0.6817</cell><cell></cell><cell>0</cell><cell>0.00 0.0000 0.0000 0.6817</cell></row><row><cell>BM25</cell><cell>5 10</cell><cell cols="3">0.33 0.4291 0.5613 0.6947 0.50 0.6809 0.7683 0.6911</cell><cell>BM25</cell><cell>5 10</cell><cell>0.33 0.1395 0.0000 0.6792 0.50 0.2434 0.0010 0.6678</cell></row><row><cell></cell><cell>20</cell><cell cols="3">0.67 0.8095 0.8695 0.6768</cell><cell></cell><cell>20</cell><cell>0.67 0.1897 0.0050 0.6561</cell></row><row><cell></cell><cell>0</cell><cell cols="3">0.00 0.0000 0.0000 0.6841</cell><cell></cell><cell>0</cell><cell>0.00 0.0000 0.0000 0.6841</cell></row><row><cell>LLM</cell><cell>5 10</cell><cell cols="3">0.33 0.4508 0.5265 0.7019 0.50 0.7602 0.7853 0.7089</cell><cell>LLM</cell><cell>5 10</cell><cell>0.33 0.0002 0.0000 0.6663 0.50 0.0001 0.0000 0.6904</cell></row><row><cell></cell><cell>20</cell><cell cols="3">0.67 0.7998 0.8170 0.7023</cell><cell></cell><cell>20</cell><cell>0.67 0.0009 0.0000 0.6794</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>The source code used in our experiments is publicly available at https://github.com/ dongchankim-io/retrieval-collapse to support reproducibility.</p></note>
+		</body>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">Sina</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josue</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorenzo</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmed</forename><surname>Imtiaz Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hossein</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><forename type="middle">G</forename><surname>Baraniuk</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.01850[cs.LG</idno>
+		<ptr target="https://arxiv.org/abs/2307.01850" />
+		<title level="m">Self-Consuming Generative Models Go MAD</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">Abeba</forename><surname>Birhane</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Uday</forename><surname>Vinay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emmanuel</forename><surname>Prabhu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Kahembwe</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2110.01963[cs.CY</idno>
+		<ptr target="https://arxiv.org/abs/2110.01963" />
+		<title level="m">Multimodal datasets: misogyny, pornography, and malignant stereotypes</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Spiral of Silence: How is Large Language Model Killing Information Retrieval?-A Case Study on Open Domain Question Answering</title>
+		<author>
+			<persName><forename type="first">Xiaoyang</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongyu</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xianpei</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianshu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Boxi</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yingfei</forename><surname>Sun</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2024.acl-long.798</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics</title>
+		<editor>
+			<persName><forename type="first">Lun-Wei</forename><surname>Ku</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Andre</forename><surname>Martins</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Vivek</forename><surname>Srikumar</surname></persName>
+		</editor>
+		<meeting>the 62nd Annual Meeting of the Association for Computational Linguistics<address><addrLine>Bangkok, Thailand</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="14930" to="14951" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Bias and Unfairness in Information Retrieval Systems: New Challenges in the LLM Era</title>
+		<author>
+			<persName><forename type="first">Sunhao</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chen</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shicheng</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenhua</forename><surname>Dong</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3637528.3671458</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining</title>
+		<title level="s">KDD &apos;24</title>
+		<meeting>the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining<address><addrLine>Barcelona, Spain; New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2024-06">Jun Xu. 2024</date>
+			<biblScope unit="page" from="6437" to="6447" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Neural Retrievers are Biased Towards LLM-Generated Content</title>
+		<author>
+			<persName><forename type="first">Sunhao</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weihao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaolin</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gang</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3637528.3671882</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD &apos;24)</title>
+		<meeting>the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD &apos;24)</meeting>
+		<imprint>
+			<publisher>ACM</publisher>
+			<date type="published" when="2024-06">Jun Xu. 2024</date>
+			<biblScope unit="page" from="526" to="537" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Corpus</title>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Dodge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ana</forename><surname>Marasović</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Agnew</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gabriel</forename><surname>Ilharco</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Groeneveld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matt</forename><surname>Gardner</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.emnlp-main.98</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing</title>
+		<editor>
+			<persName><forename type="first">Marie-Francine</forename><surname>Moens</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Xuanjing</forename><surname>Huang</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Lucia</forename><surname>Specia</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Scott</forename><forename type="middle">Wentau</forename><surname>Yih</surname></persName>
+		</editor>
+		<meeting>the 2021 Conference on Empirical Methods in Natural Language Processing<address><addrLine>Dominican Republic</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="1286" to="1305" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Datasheets for datasets</title>
+		<author>
+			<persName><forename type="first">Timnit</forename><surname>Gebru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jamie</forename><surname>Morgenstern</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Briana</forename><surname>Vecchione</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jennifer</forename><forename type="middle">Wortman</forename><surname>Vaughan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanna</forename><surname>Wallach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hal</forename><surname>Daumé</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iii</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kate</forename><surname>Crawford</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3458723</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Commun. ACM</title>
+		<imprint>
+			<biblScope unit="volume">64</biblScope>
+			<biblScope unit="page" from="86" to="92" />
+			<date type="published" when="2021-11">2021. Nov. 2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">Web Spam Taxonomy</title>
+		<author>
+			<persName><forename type="first">Zoltan</forename><surname>Gyongyi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hector</forename><surname>Garcia-Molina</surname></persName>
+		</author>
+		<idno>2004-25</idno>
+		<ptr target="http://ilpubs.stanford.edu:8090/646/" />
+		<imprint>
+			<date type="published" when="2004">2004</date>
+			<pubPlace>Stanford InfoLab</pubPlace>
+		</imprint>
+	</monogr>
+	<note type="report_type">Technical Report</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering</title>
+		<author>
+			<persName><forename type="first">Gautier</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.eacl-main.74</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume</title>
+		<editor>
+			<persName><forename type="first">Jorg</forename><surname>Tiedemann</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Reut</forename><surname>Tsarfaty</surname></persName>
+		</editor>
+		<meeting>the 16th Conference of the European Chapter of the Association for Computational Linguistics: Main Volume<address><addrLine>Paola Merlo</addrLine></address></meeting>
+		<imprint>
+			<publisher>Online</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="874" to="880" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Unbiased Learning-to-Rank with Biased Feedback</title>
+		<author>
+			<persName><forename type="first">Thorsten</forename><surname>Joachims</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adith</forename><surname>Swaminathan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tobias</forename><surname>Schnabel</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3018661.3018699</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Tenth ACM International Conference on Web Search and Data Mining</title>
+		<meeting>the Tenth ACM International Conference on Web Search and Data Mining<address><addrLine>Cambridge, United Kingdom; New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page" from="781" to="789" />
+		</imprint>
+	</monogr>
+	<note>WSDM &apos;17)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">A Watermark for Large Language Models</title>
+		<author>
+			<persName><forename type="first">John</forename><surname>Kirchenbauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonas</forename><surname>Geiping</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxin</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Katz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Miers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Goldstein</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+		<ptr target="https://proceedings.mlr.press/v202/kirchenbauer23a.html" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 40th International Conference on Machine Learning (Proceedings of Machine Learning Research</title>
+		<editor>
+			<persName><forename type="first">Andreas</forename><surname>Krause</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Emma</forename><surname>Brunskill</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Kyunghyun</forename><surname>Cho</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Barbara</forename><surname>Engelhardt</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Sivan</forename><surname>Sabato</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Jonathan</forename><surname>Scarlett</surname></persName>
+		</editor>
+		<meeting>the 40th International Conference on Machine Learning ( Machine Learning Research</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">202</biblScope>
+			<biblScope unit="page" from="17061" to="17084" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Retrieval-augmented generation for knowledge-intensive NLP tasks</title>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Lewis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aleksandra</forename><surname>Piktus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fabio</forename><surname>Petroni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Karpukhin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heinrich</forename><surname>Küttler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mike</forename><surname>Lewis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wen-Tau</forename><surname>Yih</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tim</forename><surname>Rocktäschel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Riedel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Douwe</forename><surname>Kiela</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 34th International Conference on Neural Information Processing Systems</title>
+		<title level="s">NIPS &apos;20</title>
+		<meeting>the 34th International Conference on Neural Information Processing Systems<address><addrLine>Vancouver, BC, Canada; Red Hook, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Curran Associates Inc</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">793</biblScope>
+			<biblScope unit="page">16</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">MAGE: Machine-generated Text Detection in the Wild</title>
+		<author>
+			<persName><forename type="first">Yafu</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qintong</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leyang</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhilin</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Longyue</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Linyi</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuming</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yue</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2024.acl-long.3</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics</title>
+		<editor>
+			<persName><forename type="first">Lun-Wei</forename><surname>Ku</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Andre</forename><surname>Martins</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Vivek</forename><surname>Srikumar</surname></persName>
+		</editor>
+		<meeting>the 62nd Annual Meeting of the Association for Computational Linguistics<address><addrLine>Bangkok, Thailand</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="36" to="53" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Can AI-Generated Text be</title>
+		<author>
+			<persName><forename type="first">Aounon</forename><surname>Vinu Sankar Sadasivan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sriram</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenxiao</forename><surname>Balasubramanian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Soheil</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Feizi</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum?id=NvSwR4IvLO" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">AI models collapse when trained on recursively generated data</title>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zakhar</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yarin</forename><surname>Gal</surname></persName>
+		</author>
+		<idno type="DOI">10.1038/s41586-024-07566-y</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">631</biblScope>
+			<biblScope unit="page" from="755" to="759" />
+			<date type="published" when="2024">2024. 2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m" type="main">Delving into: the quantification of AI-generated content on the internet (synthetic data)</title>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Hr Spennemann</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.08755</idno>
+		<ptr target="https://arxiv.org/abs/2504.08755" />
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note>cs.IR</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Corpus Poisoning via Approximate Greedy Gradient Descent</title>
+		<author>
+			<persName><forename type="first">Jinyan</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Preslav</forename><surname>Nakov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Claire</forename><surname>Cardie</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2025.findings-acl.222</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: ACL 2025</title>
+		<editor>
+			<persName><forename type="first">Wanxiang</forename><surname>Che</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Joyce</forename><surname>Nabende</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ekaterina</forename><surname>Shutova</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Mohammad</forename><surname>Taher</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Pilehvar</forename></persName>
+		</editor>
+		<meeting><address><addrLine>Vienna, Austria</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="4274" to="4294" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Invisible Relevance Bias: Text-Image Retrieval Models Prefer AI-Generated Images</title>
+		<author>
+			<persName><forename type="first">Shicheng</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danyang</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jingcheng</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huawei</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xueqi</forename><surname>Cheng</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3626772.3657750</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval</title>
+		<meeting>the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval<address><addrLine>Washington DC, USA; New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="208" to="217" />
+		</imprint>
+	</monogr>
+	<note>SIGIR &apos;24)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">SafeBench: A Safety Evaluation Framework for Multimodal Large Language Models</title>
+		<author>
+			<persName><forename type="first">Zonghao</forename><surname>Ying</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aishan</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siyuan</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinyang</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenbo</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xianglong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dacheng</forename><surname>Tao</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/s11263-025-02613-1</idno>
+	</analytic>
+	<monogr>
+		<title level="j">Int. J. Comput. Vision</title>
+		<imprint>
+			<biblScope unit="volume">134</biblScope>
+			<biblScope unit="page">25</biblScope>
+			<date type="published" when="2025-12">2025. Dec. 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Exploring the Escalation of Source Bias in User, Data, and Recommender System Feedback Loop</title>
+		<author>
+			<persName><forename type="first">Yuqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sunhao</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gang</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenhua</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ji-Rong</forename><surname>Wen</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3726302.3729972</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval</title>
+		<meeting>the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval<address><addrLine>Padua, Italy; New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="1676" to="1686" />
+		</imprint>
+	</monogr>
+	<note>SIGIR &apos;25)</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

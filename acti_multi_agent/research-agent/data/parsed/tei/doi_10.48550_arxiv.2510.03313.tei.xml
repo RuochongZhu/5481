@@ -1,0 +1,1426 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">SCALING LAWS REVISITED: MODELING THE ROLE OF DATA QUALITY IN LANGUAGE MODEL PRETRAINING</title>
+				<funder>
+					<orgName type="full">National Heart, Lung, and Blood Institute</orgName>
+					<orgName type="abbreviated">NHLBI</orgName>
+				</funder>
+				<funder>
+					<orgName type="full">NIH/NHLBI</orgName>
+				</funder>
+				<funder>
+					<orgName type="full">National Institutes of Health</orgName>
+					<orgName type="abbreviated">NIH</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-02-23">23 Feb 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Anirudh</forename><surname>Subramanyam</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Center for Translational Data Science</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yuxin</forename><surname>Chen</surname></persName>
+							<email>chenyuxin@uchicago.edu</email>
+							<affiliation key="aff1">
+								<orgName type="department">Department of Computer Science</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Robert</forename><forename type="middle">L</forename><surname>Grossman</surname></persName>
+							<email>rgrossman1@uchicago.edu</email>
+							<affiliation key="aff0">
+								<orgName type="department">Center for Translational Data Science</orgName>
+							</affiliation>
+							<affiliation key="aff1">
+								<orgName type="department">Department of Computer Science</orgName>
+							</affiliation>
+							<affiliation key="aff2">
+								<orgName type="department">Department of Medicine</orgName>
+								<orgName type="institution">University of Chicago</orgName>
+								<address>
+									<postCode>60637</postCode>
+									<settlement>Chicago</settlement>
+									<region>IL</region>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">SCALING LAWS REVISITED: MODELING THE ROLE OF DATA QUALITY IN LANGUAGE MODEL PRETRAINING</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-02-23">23 Feb 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">3CAB010B2F6D87D16D096C81E15D1DED</idno>
+					<idno type="arXiv">arXiv:2510.03313v2[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:14+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Scaling laws for language model training traditionally characterize how performance scales with model size and dataset volume. Prior work has explored architecture variants and data treatments such as dataset filtering and noise injection in language model pretraining; however, these studies have not formalized data quality within a principled scaling law. We introduce a dimensionless data-quality parameter Q, and propose a quality-aware scaling law extending the Chinchilla framework to predict loss as a joint function of model size, data volume, and data quality. The law is motivated by an effective-sample-size and informationtheoretic view of noisy or redundant corpora, and it admits two practical estimators for Q: (i) a corruption rate proxy and (ii) a deficiency measure. Through synthetic experiments in neural machine translation and autoregressive modelingwhere we systematically control data quality via multiple levels of noise injection variation-we show that loss scales predictably with data quality and that higherquality data can substantially reduce model size and hence compute requirements. Our results demonstrate a sublinear decay of effective data with quality and robustness to moderate data corruption; out-of-sample evaluations further validate the predictive form of the law. Unlike prior empirical analyses, our work establishes an explicit, generalizable law for data quality, offering concrete guidance for balancing data curation effort and model scale in large-scale pretraining.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">INTRODUCTION</head><p>It is well understood in large-language model (LLM) training that both the amount of training data and its quality influence pretraining loss. Yet most existing scaling laws are formulated solely in terms of dataset size, remaining agnostic to quality <ref type="bibr" target="#b19">(Henighan et al., 2020;</ref><ref type="bibr" target="#b16">Ghorbani et al., 2021;</ref><ref type="bibr" target="#b23">Ivgi et al., 2022;</ref><ref type="bibr" target="#b35">Sorscher et al., 2022;</ref><ref type="bibr" target="#b0">Alabdulmohsin et al., 2022;</ref><ref type="bibr" target="#b7">Caballero et al., 2023;</ref><ref type="bibr" target="#b36">Tao et al., 2024;</ref><ref type="bibr" target="#b41">Wu et al., 2025)</ref>. This leaves a gap between common intuition-"cleaner data trains better models"-and the quantitative laws that guide large-scale training.</p><p>The importance of such a quantitative framework is especially clear in specialized domainsbusiness, scientific, or medical applications-where training corpora are limited in quantity and heterogeneous in quality. With the same compute budget, outcomes may differ drastically depending on how clean and representative the data are. There have been quite a number of studies to classify data quality among multiple "dimensions" <ref type="bibr" target="#b39">(Wang and Strong, 1996;</ref><ref type="bibr" target="#b14">Fox et al., 1994;</ref><ref type="bibr" target="#b33">Sidi et al., 2012;</ref><ref type="bibr" target="#b22">ISO/IEC, 2008)</ref>. While the exact taxonomy varies, the core dimensions typically include: accuracy, completeness, consistency, timeliness, uniqueness, validity. The focus of these studies is usually datasets containing structured data that is clean and curated for a certain task or purpose. In contrast, when collecting data to pretrain large language models, large amounts of "found" data are collected and cleaned, usually by removing duplicate data and obviously "poor" quality data.</p><p>To reason about how such imperfect corpora affect performance, we need a simpler abstraction of quality. In this work, we introduce a single dimensionless parameter Q ∈ (0, 1] characterizing the usable information in a corpus. A value of Q = 1 represents fully clean and representative data, while smaller Q values reflect increasing corruption or redundancy. As discussed below (Section 3), Q can be estimated via corruption rates or a more general deficiency measure, and serves as a proxy for the fraction of effective samples. We incorporate this abstraction into scaling laws through a term of the form B/(D β Q γ ) (Equation <ref type="formula" target="#formula_9">2</ref>), linking model performance directly to both the quantity and the quality of data.</p><p>Our main contributions are:</p><p>• We propose a theoretically grounded quality-aware scaling law that augments the classical Chinchilla form by introducing a dimensionless quality parameter Q. The law predicts loss as L(N, D, Q) = A/N α + B/(D β Q γ ) + E, capturing the interplay between model size, data volume, and data quality.</p><p>• We derive the scaling law from an effective sample size perspective and information-theoretic arguments, and we provide two simple estimators for Q based on corruption rate and data deficiency. We show that under natural assumptions these estimators lead to the form D eff = D g(Q) with g(Q) ≈ Q γ , recovering the proposed law.</p><p>• We conduct controlled experiments on neural machine translation and causal language modeling to illustrate the law's utility. These results demonstrate that loss scales predictably with our quality parameter and that higher-quality data can compensate for smaller models. This is particularly relevant for specialized models in many real-world domains, such as business, scientific or medical applications.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">RELATED WORKS</head><p>Data quality in information systems. Data quality has long been studied in information systems, where datasets are evaluated along multiple dimensions-accuracy, completeness, consistency, timeliness, uniqueness and validity-to ensure that structured records support downstream tasks. Note that what call completeness is also called coverage and closely to what is usually called diversity. A consistent finding from this literature is that diverse imperfections degrade the utility of data and therefore motivate extensive curation practices <ref type="bibr" target="#b5">(Batini et al., 2009)</ref>. Large-scale pretraining, however, relies on corpora assembled from the web. Here, quality varies widely across sources, and subtle forms of corruption or deficiency persist despite deduplication or heuristic filtering. Nonetheless, the key insight from information systems continues to hold: the quality of training data directly influences the performance of learned models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Data quality in large-scale pretraining.</head><p>In the era of LLMs, quality has become a first-class design concern. Major corpora such as The Pile <ref type="bibr" target="#b15">(Gao et al., 2020)</ref>, RefinedWeb <ref type="bibr" target="#b32">(Penedo et al., 2023)</ref>, and Dolma <ref type="bibr" target="#b34">(Soldaini et al., 2024)</ref> highlight different philosophies of data construction, from assembling diverse sources to aggressively filtering and refining web text. Deduplication strategies <ref type="bibr" target="#b27">(Lee et al., 2022)</ref> and contamination checks <ref type="bibr" target="#b30">(Magar and Schwartz, 2022)</ref> have been shown to substantially affect evaluation reliability. Empirical analyses further suggest that careful filtering yields performance gains comparable to scaling compute, therefore implying the nontrivial role of quality in driving LLM performance.</p><p>Classical scaling laws and their limitations. Alongside these developments, foundational studies on scaling laws formalized how performance scales with model size, dataset size, and compute. <ref type="bibr" target="#b25">Kaplan et al. (2020)</ref> showed that loss decreases predictably as models and datasets grow, while <ref type="bibr" target="#b20">Hoffmann et al. (2022)</ref> refined these results by introducing compute-optimal training. Despite their influence, these existing scaling laws generally assume that the underlying data is of fixed quality. In real-world corpora, noise, redundancy, or domain imbalance systematically distort scaling behavior, highlighting the need to explicitly account for quality.</p><p>Data quality and scaling laws. Several recent works have begun to address this gap. <ref type="bibr" target="#b4">Bansal et al. (2022)</ref> study scaling laws for neural machine translation, and show that while test loss scales predictably with dataset size, architectural choices and moderate noise primarily shift the scaling curves without changing the exponent. <ref type="bibr" target="#b17">Goyal et al. (2024)</ref> argue that data filtering is not computeagnostic: the value of higher-quality data depends on the available compute budget, since reusing small clean datasets leads to diminishing returns. <ref type="bibr" target="#b28">Li et al. (2024)</ref> assess data quality by comparing perplexity gaps between models of different sizes, theoretically linking their metric to inverse scaling laws. These studies highlight the importance of data quality but stop short of providing a unified predictive law that couples quality with model size and dataset size. By introducing a dimensionless quality parameter Q into scaling laws, our work formalizes the influence of data quality and offers predictive guidance for building smaller, high accuracy models in specialized domains.</p><p>Beyond these empirical analyses, several recent studies refine scaling laws from complementary perspectives. <ref type="bibr" target="#b8">Chang et al. (2024)</ref> propose parameter-constrained scaling laws that combine text diversity and syntheticity, revealing that effective training tokens depend on both data quantity and diversity. On the theoretical front, <ref type="bibr" target="#b2">Bahri et al. (2024)</ref> present a unifying theory of neural scaling laws, distinguishing variance-limited and resolution-limited regimes and connecting scaling exponents to generalization error. Although these contributions deepen our understanding of scaling, they do not incorporate an explicit scalar quality parameter. Our work complements this literature by modeling data quality via Q, linking it to effective sample size and generalization theory, and providing a unified scaling law that accounts for quality.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">DATA QUALITY MEASURES</head><p>To incorporate data quality into scaling laws, we first need a formal definition of Q. In this section we introduce two approaches for mapping a dataset ω to a scalar Q(ω) ∈ (0, 1], with larger Q indicating higher quality. These definitions capture different sources of imperfection-token corruption versus more general deficiency-and will later allow us to connect Q to effective sample size and generalization theory. The precise choice of Q is application-dependent; the key requirement is that Q degrades smoothly under corruption, providing a proxy for the usable information in a dataset.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">DATA CORRUPTION RATE</head><p>One of the simplest measures of data quality is what is sometimes called the data corruption rate, which we will denote CR. We assume 0 ≤ CR &lt; 1.</p><p>Definition 1. Let ω be a dataset with data corruption rate CR. We define the data corruption rate data quality by Q(ω) = 1 -CR.</p><p>As an example, if we have a dataset consisting of D tokens and 10% are corrupted, then we would say that the CR = 10% and the data quality Q is 90%. To simplify our formulas, we assume that the data corruption rate is strictly less than 1, so that Q is strictly greater than 0. Note that standard sampling methods (e.g. Deming (1966)) can be used to estimate data corruption.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">DATA DEFICIENCY MEASURES</head><p>We introduce a dimensionless quantity ∆ call the data deficiency, which quantifies the lack of quality in a dataset ω. We assume that the data deficiency has the following properties:</p><p>1. Positivity. ∆(ω) ≥ 0, for all datasets ω 2. Continuity. ∆(ω) is a continuous function of the dataset ω 3. Additivity. If ω 1 and ω 2 are independent datasets, and ω is the union of ω 1 and ω 2 than ∆(ω) = ∆(ω 1 ) + ∆(ω 2 ).</p><p>Additive noise model. Data deficiency can be measured and quantified in many ways. One of the simplest models is to model data deficiency using an additive noise model, where each data measurement ξ i , for i = 1, . . ., has the form</p><formula xml:id="formula_0">ξ i = x i + ϵ i ,</formula><p>where ϵ i is a noise term. We assume that ϵ i ≥ 0, and that the data quality as measured by the data deficiency worsens as ϵ i increases. Note that properties (1)-( <ref type="formula" target="#formula_14">3</ref>) above hold when we model data quality using the additive noise model. We now add a fourth assumption.</p><p>4. Maximum quality. In the additive noise model, we assume that the noise term ϵ i captures all the noise, so that data quality is maximized when ϵ i = 0, for all i.</p><p>Note that the data deficiency ∆ can grow arbitrarily large with this model, so that 0 ≤ ∆(ω) &lt; ∞, for a dataset ω. Definition 2. We define the data quality induced by data deficiency Q(ω) of a dataset ω by Q(ω) = exp (-∆(ω)) .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">QUALITY-AWARE SCALING LAWS</head><p>A widely used empirical scaling law for LLMs (also known as the Chinchilla Scaling Law by Hoffmann et al. ( <ref type="formula">2022</ref>)) is</p><formula xml:id="formula_1">L(N, D) = A N α + B D β + E,</formula><p>where N is the number of training parameters, D is the number of training tokens, and L(N, D) is the pretraining loss. This equation was estimated empirically from experimental studies involving over 400 LLM, with the number of parameters ranging from 70M to 16B and the number of training tokens ranging from 5B to 400B. Here A, B, E, α, and β are empirically estimated constants, with E the minimal loss.</p><p>For example, one formulation studied in <ref type="bibr" target="#b20">Hoffmann et al. (2022)</ref> is:</p><formula xml:id="formula_2">L(N, D) = 406.4 N -0.34 + 410.7 D -0.28 + 1.69.<label>(1)</label></formula><p>In large-scale training, improvements such as filtering out low-quality data or introducing better training objectives have yielded improved performance beyond what naive scaling might predict.</p><p>For instance, filtering training data to remove noise has been observed to effectively improve the scaling behavior, enabling models to achieve lower loss with the same compute. This indicates that not all tokens are equal: a billion high-quality tokens may be far more valuable than a billion noisy or redundant ones. The Chinchilla analysis already hinted that many models are undertrained given their size, pointing toward the need for either more data or better data. This motivates us to extend scaling laws with explicit parameters for data quality.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">EFFECTIVE SAMPLE SIZE</head><p>We now formalize when data quality Q leads to a scaling law of the form D -β Q -γ . The key idea is that poor data quality (e.g. data corruption or large data deficiency) reduces the effective sample size of the dataset. We formalize this with: Definition 3. Let g be a monotone function g : [0, 1] → R + with g(1) = 1. Then the effective sample size of D associated with the link function g is</p><formula xml:id="formula_3">D eff := D g(Q).</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Assumption 1 (Effective sample size factorization).</head><p>There exists a monotone function g : [0, 1] → R + with g(1) = 1 such that the expected excess loss satisfies</p><formula xml:id="formula_4">L N (D, Q) ≈ B D β eff = B (D • g(Q)) β .</formula><p>where L N (D, Q) denotes the loss for a given parameter size N .</p><p>This assumption is consistent with classical results: in PAC learning with random classification noise of rate η &lt; 1/2, the sample complexity inflates by a factor (1 -2η) -2 <ref type="bibr" target="#b1">(Angluin and Laird, 1988;</ref><ref type="bibr" target="#b26">Kearns, 1998)</ref>; in regression with additive Gaussian noise of variance σ 2 , effective samples scale with the signal-to-noise ratio SNR = 1/σ 2 (Tsybakov, 2009); and in information theory, channel capacity arguments show that mutual information is reduced by a multiplicative factor depending on the corruption level <ref type="bibr" target="#b10">(Cover and Thomas, 2006)</ref>. In the following two lemmas (proof deferred to the appendix), we show that the usable sample size can be written as D eff = D • g(Q) with g(Q) well-approximated by a power law Q γ over practical ranges of Q:</p><p>• γ ≈ 1 for signal-to-noise ratio like token noise (Lemma 1)</p><p>• γ ≈ 2 for symmetric label noise (Lemma 2) Lemma 1 (Effective sample size under additive Gaussian noise). Consider i.i.d. observations of the form y i = f (x i ) + ϵ i , ϵ i ∼ N (0, σ 2 ), for i = 1, . . . , D. Then the Fisher information contributed by each observation is proportional to 1/σ 2 , and the total Fisher information satisfies</p><formula xml:id="formula_5">I D ∝ D σ 2 .</formula><p>Equivalently, the D noisy samples carry the same information as D eff = D • (1/σ 2 ) noise-free samples.</p><p>We define the deficiency as</p><formula xml:id="formula_6">∆ = ln σ 2 σ 2 0 , Q = e -∆ = σ 2 0 σ 2 .</formula><p>where σ 2 0 is baseline noise (i.e. e.g. noise not modeled by ∆). Without loss of generality, we may assume σ 0 := 1. In this formulation, datasets noisier than the reference (σ 2 &gt; σ 2 0 ) have Q &lt; 1, while "clean" datasets (σ 2 = σ 2 0 ) have Q = 1. The effective sample size then scales as</p><formula xml:id="formula_7">D eff = D • Q γ</formula><p>and taking γ = 1 recovers the classical D • SNR scaling.</p><p>Lemma 2 (Effective sample size under random classification noise). Consider binary classification with labels Y ∈ {0, 1} and i.i.d. examples (X, Y ). Suppose labels are corrupted by random classification noise (RCN) with flip rate η ∈ [0, 1/2), i.e., we observe Ỹ = Y w.p. 1 -η and Ỹ = 1 -Y w.p. η, independently of X. For any classification-calibrated surrogate loss admitting an unbiased noise-corrected estimator (e.g., logistic/hinge via the standard correction), the variance of the perexample corrected loss inflates by a factor proportional to (1 -2η) -2 . Consequently, generalization bounds and excess-risk rates scale as if the number of clean samples were</p><formula xml:id="formula_8">D eff = D • (1 -2η) 2 ,</formula><p>i.e., the effective sample size is reduced by (1 -2η) 2 under RCN.</p><p>Lemma 2 formalizes the intuition that symmetric label noise reduces usable information multiplicatively, yielding D eff = D • g(Q) with g(Q) = (2Q -1) 2 . In other words, if we define data quality via the corruption rate as Q = 1 -η (cf. Section 3), then (1 -2η) 2 = (2Q -1) 2 . Over practical high-quality regimes Q ∈ (1/2, 1], the factor (2Q -1) 2 is well-approximated by a local power law in Q with exponent γ ≈ 2, so that an effective-sample model D eff = D • Q γ with γ ≈ 2 is justified for RCN.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">QUALITY-AWARE SCALING LAW</head><p>We incorporate the data quality Q and introduce the following quality-aware scaling law: Definition 4 (Quality-Aware Scaling Law).</p><formula xml:id="formula_9">L(N, D, Q) = A N α + B D β Q γ + E,<label>(2)</label></formula><p>where Q denotes data quality and γ is a empirically measured parameter.</p><p>Note that for the highest quality data with Q = 1, this reduces to the standard Chinchilla scaling law, and as the quality of the data decreases, the loss increases, as is expected. On the other hand, as the quality of the data goes up, the amount of the data required to achieve the same loss goes down.</p><p>The following corollary formalizes how the proposed form arises under mild regularity conditions: Corollary 1. Suppose that g(Q) is regularly varying at Q = 1, i.e. g(Q) = c Q γ (1 + o(1)) as Q → 1. Then the quality-aware scaling law (Definition 4) holds under Assumption 1.</p><p>We next give an information-theoretic perspective that leads to the same law:</p><p>Proposition 1 (Information-theoretic justification). Let X denote clean tokens, X their corrupted versions produced by a memoryless channel C Q parameterized by quality Q ∈ (0, 1], and let Z be the learned representation used for prediction. Suppose corruption reduces usable information multiplicatively, I( X; Z) = ρ(Q) I(X; Z), with ρ(1) = 1, ρ(Q) monotone, and locally ρ(Q) ≈ c Q γ as Q → 1. Here I(X; Z) denotes mutual information as usual. If the data-dependent loss scales as<ref type="foot" target="#foot_0">foot_0</ref> </p><formula xml:id="formula_10">L D ∝ 1 D • I( X; Z) β ,</formula><p>then the quality-aware scaling law takes the form</p><formula xml:id="formula_11">L(N, D, Q) ≈ A N α + B D β Q γ + E,</formula><p>after reparameterization of constants.</p><p>The proof of Proposition 1 is deferred to the appendix. For a binary symmetric channel with flip rate η, ρ(Q) is proportional to the capacity 1 -H 2 (η) with Q = 1 -η; over practical ranges this is well-approximated by Q γ with γ ≈ 2. In regression with additive Gaussian noise, ρ(Q) is proportional to the signal-to-noise ratio, yielding γ ≈ 1. Both cases recover the effective sample size view D eff = D • ρ(Q).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">COMPARISON WITH OTHER QUALITY-AWARE SCALING LAWS</head><p>Table 1: Relating different realizations of the data deficiency term ∆(ω) to the literature</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Definition of ∆(ω)</head><p>Interpretation of Data Deficiency Paper</p><formula xml:id="formula_12">µ 1 E+µ 2 1 F +µ 3 G+µ 4 H (equation 3)</formula><p>Decomposition into noise (E), inverse coverage (1/F ), and repeated-data measure (G), and syntheticity (S).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ours µ 2 Dis(ρ)</head><p>Cluster-based density ρ, with Dis(ρ) = -ln(1 -ρ). Small ρ →high-quality; large ρ →low-quality.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Chen et al. (2025)</head><p>µ 2 DR(ω) + µ 4 S(ω) Compression-based density (compressibility as proxy for diversity) DR(ω) = CR -1 (ω) and CR = size compressed size , and data syntheticity S(ω). Higher DR, higher S →lower quality. <ref type="formula">Chang et al. (2024</ref></p><formula xml:id="formula_13">) µ 3 k τ</formula><p>Declining marginal value of data with repeated exposure over k epochs; linear-exponential saturation depending on τ . Models over-training on repeated data. <ref type="bibr" target="#b17">Goyal et al. (2024)</ref> To relate our data dispersion to the literature, assume that the data deficiency is of the form</p><formula xml:id="formula_14">∆(ω) = µ 1 E + µ 2 1 F + µ 3 G + µ 4 H,<label>(3)</label></formula><p>where E quantifies the noise in the data, F quantifies the coverage/diversity of the data, G quantifies the amount of repeated data, and H quantifies the loss in data quality due to synthetic data. As shown in Table <ref type="table">1</ref>, by assuming particular forms for each of these terms, we recover the data quality scaling laws in <ref type="bibr" target="#b9">Chen et al. (2025)</ref>, <ref type="bibr" target="#b17">Goyal et al. (2024)</ref> and <ref type="bibr" target="#b8">Chang et al. (2024)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">EXPERIMENTAL STUDIES</head><p>To establish the quality aware scaling laws, we train decoder only language models across two tasks, neural machine translation (NMT) and causal language modeling (CLM). To capture the effects of quality and dataset size we train on 3 different dataset volumes and 7 degrees of quality. We use subsets of Paracrawl v8 <ref type="bibr" target="#b3">(Bañón et al. (2020)</ref>) and C4 <ref type="bibr" target="#b13">(Dodge et al. (2021)</ref>) as our training data for the translation and language tasks respectively. See Table <ref type="table" target="#tab_0">2</ref>. We optimize cross-entropy loss averaged over the relevant context and report the same on held out test datasets to measure the effectiveness of our quality aware scaling law for predicting the loss on out of sample data (Table <ref type="table">3</ref>. We use the parametric loss fitting approach described in <ref type="bibr" target="#b20">Hoffmann et al. (2022)</ref> to find our parameters using two methods, Least Squares and Huber <ref type="bibr" target="#b21">(Huber, 1992)</ref>. The full details of the experiments, and model training details can be found in the appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">TASK DESCRIPTION NEURAL MACHINE TRANSLATION</head><p>Our first task is English to German translation using the Paracrawl v8 English to German dataset <ref type="bibr" target="#b3">(Bañón et al., 2020)</ref>. We filter the raw data with min hash deduplication, language ID filtering with a 0.8 threshold and length filtering (≤ 258) leaving ∼ 101M sentence pairs. We use a 8L GPT Neo model with a hidden size of 1024 with approximately ∼ 133M params. We also train our own BPE tokenizer with a vocabulary size of 32000. We train 3 replicates for each combination of the 3 datasets of size 500K, 1M and 2M sentence pairs and 7 quality levels for a total of 63 experiment runs. We train using AdamW with a maximum learning rate of 5e-4 and cosine decay with a 20% warmup ratio. The full model configuration and training hyper-parameters are available in the appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>CAUSAL LANGUAGE MODELING</head><p>For the CLM objective we train our models on a subset of C4 (en) <ref type="bibr" target="#b13">(Dodge et al., 2021)</ref>. We run our pretraining experiments on a 8L Llama 3 <ref type="bibr" target="#b18">(Grattafiori et al., 2024)</ref> model with a hidden size of 512 and a context length of 2048. We do not use ROPE scaling. We employ random data truncation on the base dataset to sample within the context length. We also employ the pre-trained Llama-3.2-1B tokenizer. We sample datasets of three sizes; 100M , 1B and 10B tokens and train for a single epoch using fused AdamW <ref type="bibr" target="#b29">(Loshchilov and Hutter, 2019)</ref> with a maximum learning rate of 1e-3 with cosine decay and a 10% warm-up ratio. We duplicate our experiment setting to match a total of 63 runs. The full model configuration and training hyperparameters are available in the appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">SYNTHETIC NOISE AND DATA SAMPLING STRATEGY</head><p>To simulate the different levels of data quality we add synthetic iid noise to the base dataset. The base dataset after pre-processing is assumed to have quality, Q = 1.0. We vary the quality of a dataset by increasing/decreasing the fraction of samples that are perturbed with synthetic noise. For example, if 25% of all samples are perturbed, then the quality of that dataset is considered to be 0.75. We use two noise models, one for each task. For NMT, we randomly set 50% of all nonspecial tokens in a selected sample to pad tokens, we do not discriminate between source and target here. For CLM, we randomly swap 50% of all non-special tokens with valid non-special tokens from the tokenizer vocabulary.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">DATA SAMPLING STRATEGY</head><p>We employ a nested subset sampling strategy that guarantees noise and sample monotonicity. S = {s 1 , s 2 , s 3 , . . . , s n } is the base experiment dataset with n unique samples. We draw from S thrice using different seeds to create working datasets S w1 , S w2 and S w3 . Each working dataset S wi is then sampled to produce datasets of different sizes. Each of these different sized datasets are then perturbed to various degrees to create the noised variants at that dataset size.</p><p>For example, in our CLM experiments the dataset volumes are T ={0.1, 1, 10} billion (B) tokens. We first draw thrice from C4 to get our 3 working datasets S w1 , S w2 and S w3 of size 40M samples or ≃16B tokens each (Using the Meta Llama-3.2-1B tokenizer, we find that on average the "en" subset of C4 has approximately 400 tokens per sample). We ensure that for each working dataset S wi , we sample subsets of the form, i.e. S 0.1B ⊆ S 1.0B ⊆ S 10.0B . At each subset level, we then compose 7 different dataset variants with η = {0, 10, 20, 25, 30, 40, 50} percent noised samples (where η denotes the noise percentage), meaning that quality Q = {1.0, 0.9, 0.8, 0.75, 0.7, 0.6, 0.5}.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4">EXPERIMENTAL SETUP</head><p>We make use of multiple compute sources in this work. NMT experiments upto a dataset volume of 1M sentence pairs were conducted on an A100 node with 4, 80GB GPUs. All other experiments are run on 2 Hopper nodes with 4, 141GB GPUs each. We do not use multi-node or multi-GPU training. We utilise the GPU counts to parallelize experiment runs. Fitting the quality-aware scaling law. Our main results are summarized in Table <ref type="table" target="#tab_0">2</ref>, which estimates B, β, γ, and E, and Figure <ref type="figure" target="#fig_0">1</ref>, which shows the test loss as Q varies from 0.5 to 1.0. Pre-dictably, we find that test loss L decreases as we increase the volume of data D and increase the fraction of high quality samples Q. Table <ref type="table">3</ref> shows us that using our pre-trained models to evaluate loss on unseen data also follows a scaling law similar to our fit on in distribution data, thus showing evidence for scaling generalization. To further illustrate trade-offs between D and Q, Figure <ref type="figure">2</ref> presents iso-loss contours, showing how data quality improvements can substitute for increased dataset size at fixed model capacity.</p><p>Interestingly, the estimated exponents for data quality, γ, are significantly less than one: γ ≈ 0.173 for NMT and γ ≈ 0.401 for CLM (with Huber estimation). This indicates that the effective dataset size decays sublinearly with quality, i.e., models are more robust to moderate corruption than predicted by simple effective sample-size theories from PAC learning or channel-capacity analysis, which typically suggest γ ≥ 1. We hypothesize that this robustness arises from redundancy in natural language data, where even partially corrupted samples carry useful contextual information (e.g., syntax, alignment, or co-occurring clean tokens). The higher γ in CLM compared to NMT suggests that autoregressive language modeling is more sensitive to token corruption, whereas NMT can leverage cross-sequence redundancy to mitigate the impact of noise. Another plausible hypothesis is that in the NMT noise model (padding half the tokens in a noised sample), the corrupted samples are not completely useless: alignment and context still leak enough information. In CLM (token swaps), the corruption is harsher for distributional modeling, since the noised tokens add entropy and can mislead local dependencies. Hence a larger γ. Isolating the quality effect. To quantify the incremental loss due to degraded quality at fixed N and D, define</p><formula xml:id="formula_15">∆L(Q) = L(N, D, Q) -L(N, D, 1). (<label>4</label></formula><formula xml:id="formula_16">)</formula><p>From the fitted law, this difference takes the form</p><formula xml:id="formula_17">∆L(Q) ≈ B D -β Q -γ -1 , which makes clear that ∆L(Q) should grow approximately linearly in Q -γ -1,</formula><p>where γ is the estimated γ. We therefore directly plot ∆L(Q) versus Q -γ -1, using the estimated γ from our scaling experiments.</p><p>As shown in Figure <ref type="figure" target="#fig_3">3</ref>, the resulting plots are close to linear across the tested quality levels, validating that the multiplicative Q -γ term accurately captures the degradation due to corruption. Furthermore, the plots show homogeneous linear functions, which suggest that the additive terms in our proposed scaling law, A N α + E, indeed do not vary with data quality Q. The stability of these plots across dataset sizes (0.1B, 1B, 10B for CLM; 0.5M, 1M, 2M pairs for NMT) (with the Huber estimation) further suggests that γ is an intrinsic task-dependent parameter rather than an artifact of optimization or dataset sampling.</p><p>In practice, the exponent γ serves as a robustness index: smaller values indicate that a model-task pair is resilient to corruption, while larger values reveal greater sensitivity to data quality. In our  experiments, both tasks show γ &lt; 1, which means loss increases more slowly than linearly with decreasing Q. In other words, the model is robust to moderate amounts of corruption -one needs a large drop in Q to see a noticeable rise in loss.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Robustness and generalization.</head><p>We have included additional validations to verify the robustness of our findings (see Appendix E for full details). First, we confirmed that our synthetic noise model serves as a valid proxy for semantic degradation by observing a strictly monotonic decrease in embedding similarity with increasing noise (Figure <ref type="figure" target="#fig_5">4</ref>). We performed learning rate sweeps and found that γ is stable across practical learning rate regimes (Table <ref type="table" target="#tab_3">9</ref>). We provide a practical guide for estimating Q in Section E.3.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">SUMMARY AND CONCLUSION</head><p>This paper revisits scaling laws for large language model pretraining by introducing an explicit and dimensionless measure of data quality, alongside traditional factors like model size and dataset volume. We propose a new quality-aware scaling law that extends the widely used Chinchilla framework, predicting pretraining loss as a joint function of model size, data volume, and data quality. By systematically injecting synthetic noise in neural machine translation and causal language modeling experiments, we demonstrate that higher data quality leads to significantly lower loss for a given model size and dataset. Notably, our findings show that for high-quality datasets, smaller models and less compute are needed to achieve strong results, which is highly relevant for domain-specific applications. The study provides a formal scaling law:</p><formula xml:id="formula_18">L(N, D, Q) = A N α + B D β Q γ + E,</formula><p>where Q measures data quality and γ is empirically estimated. This extends earlier work that primarily focused on model and data size. Our experiments on both NMT and CLM tasks, using real datasets with systematically controlled levels of data corruption, confirm the predictive power of the new scaling law and offer concrete guidance for balancing data curation versus model scale. The work establishes a unified framework that quantifies data quality's influence, enabling principled decisions for specialized LLM development in fields building smaller models over domain specific datasets, such as those that arise in business, scientific and medical applications.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>REPRODUCIBILITY STATEMENT</head><p>We include all results from our experimental runs, all model and training configurations and recipes and all steps taken to produce this work in the relevant sections in main and the appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A PROOFS A.1 PROOF OF LEMMA 1</head><p>Proof of Lemma 1. For the Gaussian location family, the log-likelihood of a single observation is ℓ(θ) = -1 2σ 2 (y -θ) 2 + const, where θ = f (x). Differentiating twice with respect to θ and taking expectation over ϵ gives the Fisher information per sample:</p><formula xml:id="formula_19">I 1 (θ) = E - ∂ 2 ∂θ 2 ℓ(θ) = 1 σ 2 .</formula><p>By additivity of Fisher information across i.i.d. samples, I D = D • I 1 = D/σ 2 . Thus, the usable information is equivalent to D eff = D • (1/σ 2 ) noise-free samples. We define the deficiency as</p><formula xml:id="formula_20">∆ = ln σ 2 σ 2 0 , Q = e -∆ = σ 2 0 σ 2 .</formula><p>where σ 2 0 is baseline noise (i.e. noise for "clean" data; wlog σ 0 := 1). In this formulation, datasets noisier than the reference (σ 2 &gt; σ 2 0 ) have Q &lt; 1, while "clean" datasets (σ 2 = σ 2 0 ) have Q = 1. The effective sample size then scales as</p><formula xml:id="formula_21">D eff = D • Q γ</formula><p>and taking γ = 1 recovers the classical D • SNR scaling.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2 PROOF OF LEMMA 2</head><p>Proof of Lemma 2. For symmetric label noise with flip rate η, the unbiased loss correction constructs a per-sample estimator l(f (X), Ỹ ) whose expectation matches the clean loss: <ref type="bibr" target="#b31">(Natarajan et al., 2013)</ref>. This divides by (1 -2η), so the variance of l inflates by a factor (1 -2η) -2 relative to the clean loss. Uniform convergence or stability-based generalization bounds then inherit a Var[ l]/D dependence, implying an excess-risk rate equivalent to having D eff = D (1 -2η) 2 clean samples. Classic PAC analyses of RCN similarly show polynomial overheads governed by (1 -2η) -2 (e.g., <ref type="bibr" target="#b1">Angluin and Laird (1988)</ref>).</p><formula xml:id="formula_22">E[ l | X, Y ] = ℓ(f (X), Y ). For symmetric noise, the correction has the form l = (1-η) ℓ(f (X), Ỹ )-η ℓ(f (X),1-Ỹ ) 1-2η</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.3 PROOF OF PROPOSITION 1</head><p>Proof of Proposition 1. By assumption (as in the Information Bottleneck principle <ref type="bibr" target="#b37">(Tishby et al., 1999)</ref>), the data-dependent loss scales as</p><formula xml:id="formula_23">L D ∝ D • I( X; Z) -β , β &gt; 0.</formula><p>Substituting the multiplicative reduction of usable information,</p><formula xml:id="formula_24">I( X; Z) = ρ(Q) I(X; Z), we obtain L D ∝ D -β ρ(Q) -β I(X; Z) -β . Since I(X; Z) does not depend on Q or D, we can absorb it into the constant B. By the regular- variation assumption, ρ(Q) ≈ c Q γ0 as Q → 1, so ρ(Q) -β ≈ c -β Q -βγ0 .</formula><p>Absorbing c -β into B and setting γ = βγ 0 , we obtain</p><formula xml:id="formula_25">L D ≈ B D β Q γ .</formula><p>Adding the standard model-size contribution A/N α and irreducible error floor E yields L(N, D, Q) ≈ A N α + B D β Q γ + E, which is the claimed quality-aware scaling law after reparameterization of constants. HuggingFace in CLM to train to easily use Flash Attention 2 <ref type="bibr" target="#b11">(Dao, 2023)</ref>. Additionally we use weight decay of 0.01 in both cases.</p><p>Table 6: Training Details TASK D(avg) Batch Size Max LR Grad Acc Steps Warmup Ratio NMT 3.6754244e+07 512 5e-4 8 0.2 NMT 7.3486728e+07 512 5e-4 8 0.2 NMT 1.4697256e+08 1024 5e-4 8 0.2 CLM 1.0317308e+08 48 1e-3 1 0.1 CLM 1.0296028e+09 48 1e-3 8 0.1 CLM 1.0294779e+10 48 1e-3 8 0.1 C.2 ADDITIONAL RESULTS</p><p>In reporting our performance we evaluate our trained models on test loss on heldout datasets. In NMT, during dataset prepartion we partition a test set of 50,000 samples and report evaluation loss on this heldout. For CLM, we partition 40,000 samples from the validation set of C4 en and use that for evaluation. The full results are shown in Table <ref type="table" target="#tab_2">7</ref> and Table <ref type="table">8</ref> for reference.  Table 8: Causal Language Modeling Results.D is the number of tokens used for training , Q represents dataset quality and L is the test loss in nats. The horizontal lines demarcate the replicate experiments and vertical sections the different dataset sizes used.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Q L</head><p>Turning to <ref type="bibr" target="#b17">Goyal et al. (2024)</ref>, we can define a notion of the declining value of data as the number of training epochs k increases (and hence the amount of repeated data increases). We can define an additive term in the data deficiency as follows:</p><p>µ 3 k τ where k is the number of epochs. With this form, for small number of epochs, the loss decreases, but as the number of epochs increases, the loss begins to grow exponentially, and then levels out, with the rate determined by a "decay parameter" τ .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E ADDITIONAL VALIDATIONS AND PRACTICAL GUIDE</head><p>In this section, we present additional experiments validating our noise model and scaling law stability, along with a practical guide for estimating Q.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E.1 VALIDATION OF SYNTHETIC NOISE MODEL</head><p>To validate that our synthetic noise injection serves as a meaningful proxy for real-world data degradation, we measured the semantic drift of the corrupted data. We computed the average cosine similarity between the embeddings of clean samples and their synthetically corrupted counterparts using a pre-trained reference model. As shown in Figure <ref type="figure" target="#fig_5">4</ref> there is a strictly monotonic, near-linear increase in embedding similarity as the synthetic quality increase (noise level decrease). This confirms that our parameter Q effectively captures the loss of semantic information. E.2 SENSITIVITY TO LEARNING RATE</p><p>We performed a sensitivity analysis by retraining models at 5 different learning rates (1e-5 to 5e-3) across 3 dataset scales and 3 noise levels. As shown in Table <ref type="table" target="#tab_3">9</ref> and Figure <ref type="figure" target="#fig_6">5</ref>, the estimated γ is highly stable (∼ 0.39) for practical learning rates near the optimal 1e-3 used in our main experiments.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E.3 PRACTITIONER'S GUIDE TO ESTIMATING Q</head><p>We propose the following recipe for estimating Q in practice:</p><p>1. Establish a baseline: Identify a small, high-quality reference subset (e.g., manually curated text or a trusted domain corpus) to represent Q ≈ 1. 2. Select quality proxies: Choose measurable proxies for "deficiency" relevant to the domain.  3. Compute deficiency (∆): Construct a composite deficiency score ∆ = j µ j ∆ j , where µ j are weights determined by importance or preliminary ablation.</p><p>4. Map to Q: Calculate Q = e -∆ . This maps the unbounded deficiency metric to the (0, 1] interval.</p><p>5. Sanity check: Verify that Q correlates with downstream performance or semantic drift (as in our embedding experiment) on a small validation set.</p><p>6. Fit scaling law: Use the estimated Q values for different data subsets to fit the parameters (B, β, γ) of the scaling law L ≈ B/(D β Q γ ) + E (assuming N is fixed or large enough), using the robust Huber loss method described in the paper.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Test loss as data quality varies from 0.5 to 1 for a) machine translation and b) next token prediction.</figDesc><graphic coords="8,130.76,481.64,159.88,159.88" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><figDesc>Figure 2: Iso loss contours for machine translation (a) and next token prediction (b).</figDesc><graphic coords="9,108.74,308.32,196.01,136.59" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>(a) NMT, γ = 0.173 (b) CLM, γ = 0.400</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 3 :</head><label>3</label><figDesc>Figure 3: ∆L(Q) vs. Q -γ -1 for a) NMT and b) CLM, where γ is the estimated γ parameter using the Huber estimation from the scaling experiments.</figDesc><graphic coords="10,116.65,81.86,188.10,141.21" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>C. 3</head><label>3</label><figDesc>PARAMETRIC LOSS FITTING WITH HUBER LOSS Similar to Hoffmann et al. (2022) we minimize the following objective following a regularization introduced by Huber (1992) min b,e,β,γ Run i Huber δ LSE b -β log D i -γ log Q i , e -log L i where B = exp (b), E = exp (e) and δ = 10 -3 using the L-BFGS-B solver available through SciPy minimize. We replicate the grid initialization of parameters as follows, b ∈ [0, 25, 5], e ∈ [0, 2, 0.5], β ∈ [0.0, 0.4, 0.1] and γ ∈ [0.0, 0.4, 0.1].We also add bounds 0 ≤ β ≤ 1 and 0 ≤ γ ≤ 1. We also report a secondary fit using SciPy inbuilt function curve fitting functions using Least Squares.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 4 :</head><label>4</label><figDesc>Figure 4: Semantic drift analysis: Average cosine similarity between embeddings of clean and corrupted samples at various quality levels.</figDesc><graphic coords="20,187.20,351.20,237.59,175.86" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 5 :</head><label>5</label><figDesc>Figure 5: Sensitivity analysis of learning rate: (a) Estimated γ across different learning rates, (b) Learning rate vs test loss for different batch sizes.</figDesc><graphic coords="21,108.00,180.63,194.03,148.80" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2 :</head><label>2</label><figDesc>Estimated Parameters in Quality-Aware Scaling Law</figDesc><table><row><cell>TASK</cell><cell>METHOD</cell><cell>B</cell><cell>β</cell><cell>γ</cell><cell>E</cell></row><row><cell cols="2">NMT Least Squares</cell><cell cols="4">166.568727 0.262933 0.185135 0.146998</cell></row><row><cell cols="2">NMT Huber</cell><cell cols="4">139.602744 0.250067 0.173161 0.066539</cell></row><row><cell cols="6">CLM Least Squares 1428.225931 0.395142 0.388678 3.439888</cell></row><row><cell cols="2">CLM Huber</cell><cell cols="4">1441.505289 0.395859 0.400657 3.439047</cell></row><row><cell></cell><cell cols="4">Table 3: Estimated Parameters on Unseen Data -CLM</cell><cell></cell></row><row><cell>TASK</cell><cell>METHOD</cell><cell>B</cell><cell>β</cell><cell>γ</cell><cell>E</cell></row><row><cell>CLM (ours)</cell><cell cols="5">Least Squares 1428.225931 0.395142 0.388678 3.439888</cell></row><row><cell cols="6">CLM (unseen) Least Squares 1589.071797 0.396787 0.332273 4.551611</cell></row><row><cell>CLM (ours)</cell><cell>Huber</cell><cell cols="4">1441.505289 0.395859 0.400657 3.439047</cell></row><row><cell cols="2">CLM (unseen) Huber</cell><cell cols="4">1427.299279 0.390546 0.336753 4.540009</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 5 :</head><label>5</label><figDesc>Llama config used for CLM pretraining experiments</figDesc><table><row><cell>Variable</cell><cell>Value</cell></row><row><cell>attention bias</cell><cell>false</cell></row><row><cell>attention dropout</cell><cell>0.0</cell></row><row><cell>head dim</cell><cell>64</cell></row><row><cell>hidden act</cell><cell>silu</cell></row><row><cell>hidden size</cell><cell>512</cell></row><row><cell>initializer range</cell><cell>0.02</cell></row><row><cell>intermediate size</cell><cell>2048</cell></row><row><cell>max position embeddings</cell><cell>2048</cell></row><row><cell>mlp bias</cell><cell>false</cell></row><row><cell>model type</cell><cell>llama</cell></row><row><cell>num attention heads</cell><cell>8</cell></row><row><cell>num hidden layers</cell><cell>8</cell></row><row><cell>num key value heads</cell><cell>8</cell></row><row><cell>pretraining tp</cell><cell>1</cell></row><row><cell>rms norm eps</cell><cell>1e-05</cell></row><row><cell>rope scaling</cell><cell>null</cell></row><row><cell>rope theta</cell><cell>10000.0</cell></row><row><cell>tie word embeddings</cell><cell>true</cell></row><row><cell>vocab size</cell><cell>128256</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 7 :</head><label>7</label><figDesc>Neural Machine Translation Results. D is the number of tokens used for training , Q represents dataset quality and L is the test loss in nats. The horizontal lines demarcate the replicate experiments and vertical sections the different dataset sizes used.</figDesc><table><row><cell>D</cell><cell>Q</cell><cell>L</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 9 :</head><label>9</label><figDesc>Sensitivity of the estimated quality exponent γ to learning rate.</figDesc><table><row><cell>Learning Rate</cell><cell>Estimated γ</cell></row><row><cell>1e-5</cell><cell>0.037 (Undertrained)</cell></row><row><cell>3e-4</cell><cell>0.394</cell></row><row><cell>1e-3 (Ours)</cell><cell>0.396</cell></row><row><cell>5e-3</cell><cell>0.177 (Unstable)</cell></row></table><note><p>(a) γ vs learning rate (b) Test loss vs learning rate</p></note></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>This assumption is motivated by information-theoretic generalization bounds(Xu and Raginsky,  </p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" xml:id="foot_1"><p>2017;<ref type="bibr" target="#b6">Bu et al., 2020)</ref>, which relate generalization error to the mutual information between training data and learned representations or weights, as well as by the Information Bottleneck principle<ref type="bibr" target="#b37">(Tishby et al., 1999)</ref>.</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>ACKNOWLEDGMENTS</head><p>This research was supported, in part, funded by the <rs type="funder">National Heart, Lung, and Blood Institute (NHLBI)</rs> of the <rs type="funder">National Institutes of Health (NIH)</rs>. The views and conclusions contained in this document are those of the authors and should not be interpreted as representing the official policies, either expressed or implied, of the <rs type="funder">NIH/NHLBI</rs>. We also acknowledge the <rs type="institution">University of Chicago's Research Computing Center</rs> for their support of this work.</p></div>
+			</div>
+			<listOrg type="funding">
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B EXTENDED METHODS</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.1 TOKENIZER TRAINING</head><p>We pretrain a BPE tokenizer for our experiments in Neural Machine translation from English to German. We use the HuggingFace <ref type="bibr" target="#b40">Wolf et al. (2020)</ref> tokenizers module with the following pipeline. We use NFKC normalization with Whitespace pre-tokenization with a 32000 vocabulary size and a minimum frequency of 2 and &lt; unk &gt; , &lt; s &gt; , &lt; /s &gt; , &lt; pad &gt; , &lt; sep &gt; as the special tokens. Predictably &lt; s &gt; and &lt; /s &gt; are the bos and eos tokens respectively.&lt; sep &gt; is used as the separator token to separate the source and target languages.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.2 MODEL CONFIGURATIONS</head><p>We present the exact configurations that we use for our model definitions for each of the tasks. We use a GPT Neo model for NMT and a Llama model for CLM. Table <ref type="table">4</ref> and Table <ref type="table">5</ref> show the exact parameter definitions used for the two models. We use the official implementations exposed via HuggingFace transformers.</p><p>Variable Value activation function gelu new attention dropout 0.1 attention types [global, local] -4 classifier dropout 0.1 embed dropout 0.1 hidden size 1024 initializer range 0.02 layer norm epsilon 1e-05 max position embeddings 260 num heads 8 num layers 8 resid dropout 0.1 vocab size 32000 window size 256 Table 4: GPT Neo config used for NMT pretraining experiments B.3 DATA PRE-PROCESSING B.3.1 PARACRAWL V8</p><p>In preparing our dataset for machine translation from English to German, we used a pretrained language detection model from FastText <ref type="bibr" target="#b24">(Joulin et al., 2016)</ref> lid.176.bin to filter the data as described in 5.1.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.3.2 C4</head><p>We use a cleaned version of C4 by <ref type="bibr">AllenAI Dodge et al. (2021)</ref> available on HuggingFace, they provide 5 splits, en, en.noclean, en.noblocklist, realnewslike, and multilingual (mC4). We use the en variant in our experiments, it contains 364,868,892 samples in the train split and 364,608 samples in the validation split.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C EMPIRICAL RESULTS</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.1 ADDITIONAL EXPERIMENTAL DETAILS</head><p>Table <ref type="table">6</ref> shows other hyperparameters and choices made during our training experiments. We also notably use greedy dataset packing in NMT and make use of DataCollatorWithFlattening() from D RELATIONSHIP TO OTHER DEFINITIONS OF DATA QUALITY</p><p>In this section, we show that our quality aware scaling law recovers the scaling law in <ref type="bibr" target="#b9">Chen et al. (2025)</ref> by assuming that the data deficiency ∆(ω) for a dataset ω has the following form:</p><formula xml:id="formula_26">∆(ω) = µ 1 E + µ 2 1 F + µ 3 G (<label>5</label></formula><formula xml:id="formula_27">)</formula><p>where E is the total noise, F is the coverage scaled between 0 (minimum coverage) and 1 (maximum coverage), and G quantifies the amount of repeated data.</p><p>We assume that density as defined in <ref type="bibr" target="#b9">Chen et al. (2025)</ref>, which incorporates both coverage and repeated data, is quantified such that low density is associated with high quality data and high density is associated with lower quality data.</p><p>Let ρ be the density of a dataset as defined in <ref type="bibr" target="#b9">Chen et al. (2025)</ref>, Equation <ref type="formula">3</ref>, with the density assumed to satisfy 0 ≤ ρ ≤ 1. Here low ρ close to 0 corresponds to higher quality data with fewer repetitions, and high ρ close to 1 corresponds to low quality data with more repetitions, leading to sub-scaling behavior <ref type="bibr" target="#b9">Chen et al. (2025)</ref>.</p><p>We define the data dispersion to be</p><formula xml:id="formula_28">Dis(ρ) = -ln(1 -ρ),</formula><p>so as ρ approaches 1 (low quality data in the sense of Chen et al. ( <ref type="formula">2025</ref>)), Dis approaches ∞, and as ρ approaches 0 (high quality data in the sense of Chen et al. ( <ref type="formula">2025</ref>)), Dis approaches 1.</p><p>In the equation above, we assume that the data dispersion Dis captures the coverage 1/F of the data and density ρ. We also assume that the Dis captures the amount of repeated data, although as we will see below, this can also be modeled in more precise ways. If we fix the noise E, then the data deficiency is</p><formula xml:id="formula_29">∆(ω) = constant + µ 2 Dis(ρ)<label>(6)</label></formula><p>and we recover the data quality scaling law in <ref type="bibr" target="#b9">Chen et al. (2025)</ref>. In particular, as the density ρ approaches 0, the data quality factor Q approaches 1, and as the density ρ approaches 1, the data quality degrades.</p><p>More generally, we can define a modified data dispersion</p><formula xml:id="formula_30">Dis κ (ρ) = -ln(1 -ρ κ ).</formula><p>Turning towards the data quality scaling law in <ref type="bibr" target="#b8">Chang et al. (2024)</ref>, if instead of using the cluster based definition of density, we use the compression based definition of density, we get</p><formula xml:id="formula_31">CR(ω) = size(ω)/compressed size(ω) DR(ω) = CR -1 (ω)</formula><p>We define dispersion as:</p><formula xml:id="formula_32">Dis(ρ) = -ln(1 -DR(ω)).</formula><p>With this definition of Dis(ω), the rest of the argument is the same.</p><p>In a similar fashion, we can add a term H = S(ω) to the data deficiency ∆(ω) to capture the increase in data deficiency due to the negative impact of synthetic data, which we can quantify with a term as follows</p><formula xml:id="formula_33">∆(ω) = µ 1 E + µ 2 1 F + µ 3 G + µ 4 H</formula><p>For example, <ref type="bibr" target="#b8">Chang et al. (2024)</ref> measures S(ω) using the perplexity measure.</p></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Revisiting neural scaling laws in language and vision</title>
+		<author>
+			<persName><forename type="first">Behnam</forename><surname>Ibrahim M Alabdulmohsin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaohua</forename><surname>Neyshabur</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Zhai</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="22300" to="22312" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Learning from noisy examples</title>
+		<author>
+			<persName><forename type="first">Dana</forename><surname>Angluin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philip</forename><surname>Laird</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Machine learning</title>
+		<imprint>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="issue">4</biblScope>
+			<biblScope unit="page" from="343" to="370" />
+			<date type="published" when="1988">1988</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Explaining neural scaling laws</title>
+		<author>
+			<persName><forename type="first">Yasaman</forename><surname>Bahri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Dyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jaehoon</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Utkarsh</forename><surname>Sharma</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Proceedings of the National Academy of Sciences</title>
+		<imprint>
+			<biblScope unit="volume">121</biblScope>
+			<biblScope unit="issue">27</biblScope>
+			<biblScope unit="page">2311878121</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Paracrawl: Web-scale acquisition of parallel corpora</title>
+		<author>
+			<persName><forename type="first">Marta</forename><surname>Bañón</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pinzhen</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Barry</forename><surname>Haddow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kenneth</forename><surname>Heafield</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hieu</forename><surname>Hoang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miquel</forename><surname>Esplà-Gomis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mikel</forename><surname>Forcada</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amir</forename><surname>Kamran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Faheem</forename><surname>Kirefu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Koehn</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 58th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2020">2020. 2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Data scaling laws in nmt: The effect of noise and architecture</title>
+		<author>
+			<persName><forename type="first">Yamini</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Behrooz</forename><surname>Ghorbani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ankush</forename><surname>Garg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Biao</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Cherry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Behnam</forename><surname>Neyshabur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Orhan</forename><surname>Firat</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<publisher>PMLR</publisher>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="1466" to="1482" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Methodologies for data quality assessment and improvement</title>
+		<author>
+			<persName><forename type="first">Carlo</forename><surname>Batini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cinzia</forename><surname>Cappiello</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chiara</forename><surname>Francalanci</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrea</forename><surname>Maurino</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">ACM computing surveys (CSUR)</title>
+		<imprint>
+			<biblScope unit="volume">41</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page" from="1" to="52" />
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Tightening mutual information-based bounds on generalization error</title>
+		<author>
+			<persName><forename type="first">Yuheng</forename><surname>Bu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shaofeng</forename><surname>Zou</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Venugopal</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Veeravalli</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE Journal on Selected Areas in Information Theory</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="121" to="130" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Broken neural scaling laws</title>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Caballero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kshitij</forename><surname>Gupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Irina</forename><surname>Rish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Krueger</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Eleventh International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Scaling parameter-constrained language models with quality data</title>
+		<author>
+			<persName><forename type="first">Ernie</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matteo</forename><surname>Paltenghi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pin-Jie</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Changsheng</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Huber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zechun</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rastislav</forename><surname>Rabatin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yangyang</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vikas</forename><surname>Chandra</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track</title>
+		<meeting>the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="80" to="97" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Revisiting scaling laws for language models: The role of data quality and training strategies</title>
+		<author>
+			<persName><forename type="first">Zhengyu</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siqi</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teng</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yudong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shiqi</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xunliang</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junxian</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jingang</forename><surname>Wang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 63rd Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="23881" to="23899" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Elements of Information Theory</title>
+		<author>
+			<persName><forename type="first">Thomas</forename><forename type="middle">M</forename><surname>Cover</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joy</forename><forename type="middle">A</forename><surname>Thomas</surname></persName>
+		</author>
+		<idno type="DOI">10.1002/047174882X</idno>
+		<imprint>
+			<date type="published" when="2006">2006</date>
+			<publisher>Wiley-Interscience</publisher>
+		</imprint>
+	</monogr>
+	<note>2 edition</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Flashattention-2: Faster attention with better parallelism and work partitioning</title>
+		<author>
+			<persName><forename type="first">Tri</forename><surname>Dao</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2307.08691" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Some theory of sampling</title>
+		<author>
+			<persName><forename type="first">William</forename><surname>Edwards</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deming</forename></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1966">1966</date>
+		</imprint>
+		<respStmt>
+			<orgName>Courier Corporation</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Documenting large webtext corpora: A case study on the colossal clean crawled corpus</title>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Dodge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ana</forename><surname>Marasović</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Agnew</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gabriel</forename><surname>Ilharco</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Groeneveld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matt</forename><surname>Gardner</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2104.08758</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">The notion of data and its quality dimensions. Information processing &amp; management</title>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Fox</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anany</forename><surname>Levitin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Redman</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1994">1994</date>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="page" from="9" to="19" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sid</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurence</forename><surname>Golding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Travis</forename><surname>Hoppe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Foster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Phang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Horace</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anish</forename><surname>Thite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noa</forename><surname>Nabeshima</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Skyler</forename><surname>Presser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Connor</forename><surname>Leahy</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2101.00027</idno>
+		<title level="m">The pile: An 800gb dataset of diverse text for language modeling</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<title level="m" type="main">Scaling laws for neural machine translation</title>
+		<author>
+			<persName><forename type="first">Behrooz</forename><surname>Ghorbani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Orhan</forename><surname>Firat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Markus</forename><surname>Freitag</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ankur</forename><surname>Bapna</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxim</forename><surname>Krikun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Garcia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ciprian</forename><surname>Chelba</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Cherry</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2109.07740</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Scaling laws for data filtering-data curation cannot be compute agnostic</title>
+		<author>
+			<persName><forename type="first">Sachin</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pratyush</forename><surname>Maini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zachary</forename><forename type="middle">C</forename><surname>Lipton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aditi</forename><surname>Raghunathan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J Zico</forename><surname>Kolter</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="22702" to="22711" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">The llama 3 herd of models</title>
+		<author>
+			<persName><forename type="first">Aaron</forename><surname>Grattafiori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhimanyu</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhishek</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmad</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aiesha</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akhil</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alan</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Vaughan</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2407.21783" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title level="m" type="main">Scaling laws for autoregressive generative modeling</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mor</forename><surname>Katz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Hesse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Jackson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heewoo</forename><surname>Jun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Tom B Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Gray</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2010.14701</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">Training compute-optimal large language models</title>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Clark</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.15556</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Robust estimation of a location parameter</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Peter</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Huber</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Breakthroughs in statistics: Methodology and distribution</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="1992">1992</date>
+			<biblScope unit="page" from="492" to="518" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">Systems and software engineering -systems and software quality requirements and evaluation (square) -data quality model</title>
+		<author>
+			<persName><surname>Iso/Iec</surname></persName>
+		</author>
+		<idno>ISO/IEC 25012</idno>
+	</analytic>
+	<monogr>
+		<title level="j">International Organization for Standardization</title>
+		<imprint>
+			<date type="published" when="2008">2008. 2008</date>
+			<pubPlace>Geneva, Switzerland</pubPlace>
+		</imprint>
+	</monogr>
+	<note type="report_type">Technical Report</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Scaling laws under the microscope: Predicting transformer performance from small scale experiments</title>
+		<author>
+			<persName><forename type="first">Maor</forename><surname>Ivgi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yair</forename><surname>Carmon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Berant</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2022</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="7354" to="7371" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">Bag of tricks for efficient text classification</title>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Bojanowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomas</forename><surname>Mikolov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1607.01759</idno>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Chess</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2001.08361</idno>
+		<title level="m">Scaling laws for neural language models</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Efficient noise-tolerant learning from statistical queries</title>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Kearns</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of the ACM (JACM)</title>
+		<imprint>
+			<biblScope unit="volume">45</biblScope>
+			<biblScope unit="issue">6</biblScope>
+			<biblScope unit="page" from="983" to="1006" />
+			<date type="published" when="1998">1998</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Deduplicating training data makes language models better</title>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Ippolito</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Nystrom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chiyuan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Douglas</forename><surname>Eck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Callison-Burch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Carlini</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (ACL)</title>
+		<meeting>the 60th Annual Meeting of the Association for Computational Linguistics (ACL)</meeting>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="8424" to="8445" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Assessing data quality through inverse utilization of scaling laws</title>
+		<author>
+			<persName><forename type="first">Ruihang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yixuan</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miaosen</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nenghai</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Han</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Houwen</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Scalingfilter</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP)</title>
+		<meeting>the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP)</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="3209" to="3222" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">Decoupled weight decay regularization</title>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Loshchilov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Frank</forename><surname>Hutter</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/1711.05101" />
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Data contamination: From memorization to exploitation</title>
+		<author>
+			<persName><forename type="first">Inbal</forename><surname>Magar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roy</forename><surname>Schwartz</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.08242</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Learning with noisy labels</title>
+		<author>
+			<persName><forename type="first">Nagarajan</forename><surname>Natarajan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pradeep</forename><forename type="middle">K</forename><surname>Inderjit S Dhillon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ambuj</forename><surname>Ravikumar</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Tewari</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">26</biblScope>
+			<date type="published" when="2013">2013</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Malartic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Hesslow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ebtesam</forename><surname>Almazrouei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alizé</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allal</forename><surname>Ling</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louis</forename><surname>Hamel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Brando</forename><surname>Pannier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hady</forename><surname>Elsahar Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikhil</forename><surname>Goyal</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.01116</idno>
+		<title level="m">Refinedweb: A large-scale clean web corpus for pretraining large language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Data quality: A survey of data quality dimensions</title>
+		<author>
+			<persName><forename type="first">Fatimah</forename><surname>Sidi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Payam</forename><surname>Hassany</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shariat</forename><surname>Panahy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lilly</forename><surname>Suriani Affendey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marzanah</forename><forename type="middle">A</forename><surname>Jabar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamidah</forename><surname>Ibrahim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aida</forename><surname>Mustapha</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">2012 International Conference on Information Retrieval &amp; Knowledge Management</title>
+		<imprint>
+			<publisher>IEEE</publisher>
+			<date type="published" when="2012">2012</date>
+			<biblScope unit="page" from="300" to="304" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Lo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Wallace</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michihiro</forename><surname>Yasunaga</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jungo</forename><surname>Kasai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Drahomira</forename><surname>Herrmannova</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Dodge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Wadden</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Lhoest</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.00159</idno>
+		<title level="m">Dolma: an open corpus of three trillion tokens for language model pretraining research</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">Beyond neural scaling laws: beating power law scaling via data pruning</title>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Sorscher</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>Geirhos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shashank</forename><surname>Shekhar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Surya</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ari</forename><surname>Morcos</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="19523" to="19536" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">Scaling laws with vocabulary: Larger models deserve larger vocabularies</title>
+		<author>
+			<persName><forename type="first">Chaofan</forename><surname>Tao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qian</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Longxu</forename><surname>Dou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhongwei</forename><surname>Wan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ping</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Min</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ngai</forename><surname>Wong</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="114147" to="114179" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">The information bottleneck method</title>
+		<author>
+			<persName><forename type="first">Naftali</forename><surname>Tishby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fernando</forename><forename type="middle">C</forename><surname>Pereira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Bialek</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 37th Annual Allerton Conference on Communication, Control, and Computing</title>
+		<meeting>the 37th Annual Allerton Conference on Communication, Control, and Computing</meeting>
+		<imprint>
+			<date type="published" when="1999">1999</date>
+			<biblScope unit="page" from="368" to="377" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title level="a" type="main">Introduction to Nonparametric Estimation</title>
+		<author>
+			<persName><forename type="first">B</forename><surname>Alexandre</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Tsybakov</surname></persName>
+		</author>
+		<idno type="DOI">10.1007/978-0-387-79051-5</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Springer Series in Statistics</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<analytic>
+		<title level="a" type="main">Beyond accuracy: What data quality means to data consumers</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Richard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diane</forename><forename type="middle">M</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Strong</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of management information systems</title>
+		<imprint>
+			<biblScope unit="volume">12</biblScope>
+			<biblScope unit="issue">4</biblScope>
+			<biblScope unit="page" from="5" to="33" />
+			<date type="published" when="1996">1996</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Huggingface&apos;s transformers: State-of-the-art natural language processing</title>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lysandre</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Victor</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clement</forename><surname>Delangue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anthony</forename><surname>Moi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierric</forename><surname>Cistac</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tim</forename><surname>Rault</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rémi</forename><surname>Louf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Morgan</forename><surname>Funtowicz</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/1910.03771" />
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Inference scaling laws: An empirical analysis of compute-optimal inference for llm problem-solving</title>
+		<author>
+			<persName><forename type="first">Yangzhen</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhiqing</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shanda</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sean</forename><surname>Welleck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Yang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Information-theoretic analysis of generalization capability of learning algorithms</title>
+		<author>
+			<persName><forename type="first">Aolin</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxim</forename><surname>Raginsky</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="volume">30</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

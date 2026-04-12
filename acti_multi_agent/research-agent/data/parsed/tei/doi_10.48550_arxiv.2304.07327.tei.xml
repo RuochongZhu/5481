@@ -1,0 +1,2180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">OpenAssistant Conversations -Democratizing Large Language Model Alignment</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2023-10-31">31 Oct 2023</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Andreas</forename><surname>Köpf</surname></persName>
+							<email>andreas.koepf@provisio.com</email>
+						</author>
+						<author>
+							<persName><forename type="first">Yannic</forename><surname>Kilcher</surname></persName>
+							<email>yannic@ykilcher.com</email>
+						</author>
+						<author>
+							<persName><forename type="first">Alexander</forename><surname>Mattick</surname></persName>
+							<email>alexander.mattick@googlemail.com</email>
+						</author>
+						<title level="a" type="main">OpenAssistant Conversations -Democratizing Large Language Model Alignment</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2023-10-31">31 Oct 2023</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">5658D664EBAFCC09A9C92020D096D643</idno>
+					<idno type="arXiv">arXiv:2304.07327v2[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:18+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Aligning large language models (LLMs) with human preferences has proven to drastically improve usability and has driven rapid adoption as demonstrated by ChatGPT. Alignment techniques such as supervised fine-tuning (SFT) and reinforcement learning from human feedback (RLHF) greatly reduce the required skill and domain knowledge to effectively harness the capabilities of LLMs, increasing their accessibility and utility across various domains. However, state-of-the-art alignment techniques like RLHF rely on high-quality human feedback data, which is expensive to create and often remains proprietary. In an effort to democratize research on large-scale alignment, we release OpenAssistant Conversations, a human-generated, human-annotated assistant-style conversation corpus consisting of 161,443 messages in 35 different languages, annotated with 461,292 quality ratings, resulting in over 10,000 complete and fully annotated conversation trees. The corpus is a product of a worldwide crowd-sourcing effort involving over 13,500 volunteers. Models trained on OpenAssistant Conversations show consistent improvements on standard benchmarks over respective base models. We release our code 2 and data 3 under a fully permissive licence.</p><p>A list of contributors who have chosen to be acknowledged by name can be found at <ref type="url" target="https://open-assistant.io/contributors">https://open-assistant.io/contributors</ref>.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Artificial intelligence (AI), particularly in the field of natural language processing, has witnessed rapid progress in recent years. Major advancements are primarily driven by a straightforward formula: take a Transformer <ref type="bibr" target="#b0">[1]</ref>-based architecture, increase the parameter count by enlarging depth and width, increase the size of the training corpus, and increase the scale of training compute. Although models have for some time exhibited an extraordinary ability to fit the training data and generalize based on their trained objective <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b2">3]</ref>, their adoption among the general public has until recently been slow. This can be mainly attributed to misalignment between model predictions and final intended usage.</p><p>The alignment of AI systems to human values, intentions, and preferences is a vital and intricate challenge within the AI research domain. This refers to the process of ensuring that AI systems can not only successfully optimize the provided surrogate training objectives, but also that their predictions are in line with their intended purpose and adhere to ethical and safety standards provided by humans <ref type="bibr" target="#b3">[4,</ref><ref type="bibr" target="#b4">5]</ref>. One possible solution is assistant-style fine-tuning of language models that has recently emerged as a promising approach to making large language models more in line with human preferences by generating more desirable outputs based on explicitly collected human preference data <ref type="bibr" target="#b5">[6,</ref><ref type="bibr" target="#b6">7,</ref><ref type="bibr" target="#b7">8,</ref><ref type="bibr" target="#b8">9,</ref><ref type="bibr" target="#b9">10,</ref><ref type="bibr" target="#b10">11]</ref> and thus making them more useful.</p><p>A notable instance of such an assistant-style model is ChatGPT, which has gained unprecedented user growth due to remarkable capabilities demonstrated in a wide range of fields, but also easeof-use for the end user <ref type="bibr" target="#b11">[12]</ref>. Aligning the model's predictions is in this case accomplished by introducing human-generated examples of intended usage and using reinforcement learning from human feedback <ref type="bibr" target="#b12">[13,</ref><ref type="bibr" target="#b13">14]</ref>. In RLHF, the human acts as a teacher and provides feedback in the form of rewards or penalties. In more detail, Ouyang et al. <ref type="bibr" target="#b12">[13]</ref> proposed a three stage procedure to align language models: First, collect human-generated demonstrations of desired behaviour and train a supervised fine-tuned (SFT) model. Second, train a reward model (RM) on human-annotated rankings for different model outputs. Third, use the RM as a reward function and fine-tune the SFT model to maximize the reward generated by its responses. This is achieved using the PPO algorithm <ref type="bibr" target="#b14">[15]</ref>.</p><p>It becomes apparent that the benefits of all the aforementioned stages are predominantly dependent on the quality of the data used <ref type="bibr" target="#b15">[16]</ref>. Despite this, availability of large-scale human feedback datasets for the open research community remains scarce. Most openly accessible datasets are comprised of synthetic data of instructions automatically generated by querying language models <ref type="bibr" target="#b16">[17,</ref><ref type="bibr" target="#b17">18,</ref><ref type="bibr" target="#b18">19,</ref><ref type="bibr" target="#b19">20]</ref>. Unfortunately, these datasets are limited with respect to their complexity, creativity and quality, as they rely on a pre-specified list of possible instruction types. Other datasets, such as Vicuna <ref type="bibr" target="#b20">[21]</ref>, use human-generated instructions, but still rely on langauge models to produce the respective responses. Without sufficiently broad and high quality data, even models with substantial size and pre-training would be inadequate for building capable, helpful, and harmless AI assistants.</p><p>Research in this area has predominantly been confined to a select few research labs with access to the required resources to engage in large-scale training and data collection. This monopolization of access to quality data undermines the potential for inclusive and diverse research endeavours, particularly in relation to alignment challenges, which arguably constitute some of the most crucial research areas of our time. In an effort to democratize research on aligning large language models, we introduce and release the OpenAssistant Conversations dataset. This dataset is the culmination of an extensive open-and crowd-sourcing initiative, and its release to the research community seeks to promote more inclusive research in this highly-influential domain. We provide a comprehensive analysis of the dataset, assessing ethical implications and safety considerations. We also fine-tune and release several assistant and preference models to further advance open access and research in this area. This transparency allows for iterative improvements on the released artifacts, fostering a more collaborative and inclusive research environment. By providing such a large and diverse dataset, OpenAssistant Conversations opens up new avenues of research in the field, enabling researchers to explore the complexities of human language and interactions in ways that were not possible before <ref type="bibr" target="#b21">[22]</ref>. In the following sections, we delve into the intricacies of the OpenAssistant Conversations dataset and discuss its implications for the alignment of large language models and for society at large.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Data Format</head><p>The proposed dataset consists of a list of conversations. The basic data structure is a Conversation Tree (CT), with nodes representing written messages in a conversation. A CT's root node represents an initial prompt, given by the prompter. To avoid confusion, we call the roles of the conversation prompter and assistant. This allows us to reserve the term user for the human contributors. Although our efforts focus largely on human contributions, both the prompter and assistant roles can, in principle, be fulfilled by either a human user or a machine. Every tree node is labelled by its role, and can have multiple children of the opposite role, each of which represents a separate next step in the conversation. A path from the root to any node in the tree (including to itself) is called a thread, and it represents a valid conversation with the prompter and the assistant taking turns. Tree nodes are annotated with additional data such as user-provided labels and metadata, such as collection timestamp and indicated language. Each assistant node further has a rank associated which orders it compared to replies of the parent prompt, according to user preferences. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Data Collection</head><p>The OpenAssistant Conversations dataset is a comprehensive collection of conversational data that was obtained through a crowd-sourcing effort involving more than 13,000 volunteers. The data was collected using a web-app interface, dividing the collection of each tree into five separate steps: prompting, labelling prompts, adding reply messages as prompter or assistant, labelling replies, and ranking assistant replies. Users were fully informed about contributing to a public dataset. The dataset was curated with content moderation and spam filtering as key components of the annotation pipeline, ensuring high quality and safety standards.</p><p>Volunteers completed over 625,000 tasks in total, resulting in the collection of over 10,000 fully annotated and filtered Conversation Trees. Example User Interface (UI) displays of the data collection platform can be found in Appendix C, and current collection parameter settings, such as the number of collected replies to any parent message, can be found in Appendix G. In the following sections, we provide more details regarding the various aspects of the data collection pipeline.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Single-Step Collection</head><p>Data collection is structured to be both efficient and effective by breaking the work down into single units and advancing multiple conversation trees one step at a time. This approach minimizes data loss due to user attrition and ensures that every unit of work is captured for utilization. The users are presented with a range of task types, either by choice or through random sampling (weighted according to current requirements). The task types include creating prompts, replying as an assistant, replying as a prompter, labeling prompts or replies, and ranking prompter or assistant replies.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Create a prompt.</head><p>Users write an initial prompt that forms the root of a new conversation tree. As this task is particularly popular, a lottery system manages the selection of new prompts, with only a fixed number of prompts being chosen for continuation at any given moment. This method serves to regulate the influx of new prompts and maintain a balanced distribution of tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Reply as assistant.</head><p>Replying as an assistant is a more labor-intensive task that necessitates users to carefully consider their responses and often engage in external research to provide a helpful and relevant answer to the prompter's request. This task type, despite its demanding nature, has been reported to be the most enjoyable by many users due to the diverse array of topics covered. To account for the increased effort required for this task, a reward system has been implemented to incentivize users to participate. See Figure <ref type="figure" target="#fig_6">6</ref> for a UI preview.</p><p>Reply as prompter. The task of replying as a prompter, on the other hand, does not impose strict quality requirements but instead emphasizes on the importance of diversity to accommodate various use-cases. Examples of prompter replies may include asking for clarification, modifying the original intent, posing a follow-up question, or changing the direction of the conversation altogether.</p><p>Label a prompt or reply. Users are presented with a message from the database along with the preceding conversation thread (if available) and are asked to categorize the message according to three dimensions: spam detection, guideline adherence, and quality. For spam detection, users assess whether the message is unsuitable for inclusion in the dataset, for instances of obvious spam or trolling. Messages flagged as spam by multiple users are automatically removed from the dataset.</p><p>Guideline adherence is evaluated through a set of labels that determines whether the contribution aligns with the established guidelines (see Figure <ref type="figure" target="#fig_4">4</ref>). These labels encompass the message being in a language other than the specified one, containing personally identifiable information, hate speech, sexual content, or being deemed inappropriate. Messages labelled in this manner are subsequently reviewed by human moderators.</p><p>Quality labels require users to rate the message on a five-point Likert scale across dimensions such as quality, creativity, humorousness, politeness, and harmlessness. These labels are stored for later analysis and application. Notably, users can voluntarily assign these labels (as well as spam &amp; guideline adherence labels) to any message within the system, even as part of another task, as an additional contribution.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Rank assistant replies.</head><p>Users are presented with two or more responses to the same parent message and asked to rank them in order of preference. This allows for a comparative analysis of the various responses and helps in identifying the most effective and engaging replies (Figure <ref type="figure" target="#fig_5">5</ref>). In summary, this data collection methodology effectively divides work into single units, minimizes data loss due to user attrition, and captures valuable information for future analysis and application. By offering users a diverse range of task types, the study encourages active participation and ensures the collection of rich and varied data for a comprehensive understanding of the subject.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Message Tree State Machine</head><p>The tree state machine serves as a systematic approach to managing the progression of message trees throughout the data collection process. This method ensures that each tree undergoes a series of states until it reaches completion, beginning with the creation of new trees by randomly sampling from the pool of initial prompts. The various states that a message tree passes through include the initial prompt review state, growing state, and end state, as well as the aborted low-grade state for trees that are deemed unsuitable for inclusion in the dataset and the halted by moderator state for trees that have manually been halted by a community moderator.</p><p>Upon the creation of a new tree, it enters the initial prompt review state, where multiple users are tasked with providing labels to assess its quality and suitability. This state plays a crucial role in identifying any potential issues with the initial prompt, and demands special attention, as the entire rest of the tree (potentially several dozens of tasks) is rooted in the initial prompt. If, at this point, the provided labels indicate that the tree contains spam or unsuitable content, it is transitioned to the aborted low-grade state and subsequently removed from the dataset. Conversely, if the tree passes the initial prompt review state, it proceeds to the growing state.</p><p>The growing state involves the continuous issuance of tasks to users, such as providing replies, labels, and rankings, to facilitate the development and expansion of the conversation tree. This state is essential for collecting diverse and rich data, as it allows for the accumulation of multiple interactions and the exploration of various conversation paths, given the same initial prompt. The growing state continues until the tree reaches its end state, which is defined by a maximum number of messages or other predetermined criteria.</p><p>Parameters within the data collection platform govern the behaviour of the tree state machine, such as the average number of messages collected for each parent message or the maximum tree depth. These parameters enable researchers to fine-tune the data collection process according to their specific research goals and requirements, ensuring a more targeted and efficient approach to gathering data. Parameters varied during the collection of the dataset. Current settings can be found in Appendix G.</p><p>In summary, the tree state machine is a structured and systematic method for managing the progression of message trees during the data collection process. By guiding each tree through a series of states, from initial prompt review to growing and reaching its end state, the tree state machine ensures the collection of high-quality, diverse, and relevant data. Additionally, the inclusion of platform parameters allows for the customization of the data collection process to align with specific research objectives, further enhancing the effectiveness and utility of this approach.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Contributor Guidelines</head><p>To achieve a high degree of quality and consistency across a wide range of contributors, we issue clear and detailed guidelines. A full copy of these guidelines at the present time can be found in Appendix A. Our guidelines follow three main goals: First, clarify the meanings, scales, and criteria for assigning labels and rankings during the labelling and ranking tasks. Second, make assistant responses be polite, helpful, concise, friendly, and safety-aware and third, instruct prompts and prompter replies to explore a diverse and challenging set of inputs to the assistant role.</p><p>The guidelines establish a framework for safely interacting with an automated assistant by drawing inspiration from the concept of informed consent. Rather than categorically denying large parts of request categories, we aim to provide the prompter with useful feedback, for example drawing special awareness to dangerous activities, elaborating on weaknesses of automated assistants, such as hallucinations, and discouraging and denying requests asking for illegal or highly inappropriate content. In our validation experiments in training assistant models based on OpenAssistant Conversations, we observe a high degree of consistency of the trained models' outputs with our given guidelines.</p><p>Although guideline adherence is already high in our models after training, our approach is completely compatible with deploying additional safety measures during inference, such as secondary models to filter or modify ill-suited user input.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">Quality Control &amp; Content Moderation</head><p>We take a multi-pronged approach to quality assurance, with the main pillars being a system of reward points &amp; leaderboards, and manual review of flagged content by human moderators. This both maximizes the quality of contributions, while effectively utilizing the limited time of the volunteer moderators. In an effort to demonstrate progress and achievement to users, and to encourage highquality contributions, our system allocates points for the completion of tasks. These points contribute to various leaderboards, including daily, weekly, monthly, and all-time rankings. A level system also exists, wherein higher point accumulation results in elevated levels, reflecting veteran status and engagement. In the future, this system could potentially be developed further to facilitate preferential access to more engaging tasks or similar perks.</p><p>The distribution of points is contingent upon task type, as certain tasks require greater effort, such as the reply as assistant task (compared to the create a prompt task). A significant portion of points is deferred and reliant on interactions with other users. For instance, a user's assistant reply may gather many additional points if it is subsequently deemed non-spam and highly ranked by other users. Inversely, points may be reduced or lost for answers that are labeled as spam or down-voted by consensus of other users.</p><p>Within the moderator section of the website, an alternative leaderboard, designated the Trollboard, is exhibited. This leaderboard assesses users based on an aggregate of negative labels, reports, and down-votes received for their contributions. This approach enables human moderators to proactively scrutinize potentially misbehaving users in a comprehensive manner. The Trollboard has proven to be an effective tool in addressing the numerical disparity between users and moderators, maximizing the collective efforts of contributors to identify undesirable contributions.</p><p>Users further have the option to report messages to moderators for manual review, either via the platform, or directly via communication on a community chat server. Moderators have the ability to delete individual messages, or all messages of a given user, at their own discretion. Deleted messages are retained, but marked as deleted and are not exported for training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Dataset Composition</head><p>The full dataset consists of 161,443 messages (91,829 prompter and 69,614 assistant messages) distributed across 66,497 conversation trees, in 35 different languages, annotated with 461,292 quality ratings. This includes 8,576 synthetic messages, leaving 152,867 human-submitted messages. Of the 66,497 total conversation trees, we consider 10,968 complete, meaning the full number of messages has been collected and the moderation process for these trees has been concluded. 52,159 incomplete trees are in the prompt lottery state, meaning they only consist of a single initial prompt. The completed trees contain 92,365 messages.</p><p>The set of categories for which Likert-scale human labels are collected is Creativity, Quality, Humor, Helpfulness, Violence, and Rudeness. The set of categories for which binary human labels are collected is Language Mismatch, Not Appropriate, Personally Identifiable Information, Hate Speech, and Sexual Content. We additionally release the rank of each assistant message compared to other assistant messages submitted for the same prompt, computed from the preference rankings of several human annotators. To merge the rankings of multiple (possibly conflicting) annotators, we use a variant of Tideman's method, described in Appendix B.</p><p>English 42.8% Spanish 31.4% Russian 5.7%</p><p>German 3.6%  The dataset is dominated by English and Spanish messages as illustrated in Figure <ref type="figure" target="#fig_2">2</ref> (left). The prominence of English is expected as a result of the community around OpenAssistant originating in the English-speaking open-source machine learning community. The high quantity of Spanish messages can be attributed to the publicity given to OpenAssistant by prominent figures in the Spanish machine learning community. Figure <ref type="figure" target="#fig_2">2</ref> (right) illustrates how a small number of power users contributed a significant proportion of the dataset. This must be taken into account when considering possible biases in the data. Although significant effort went into preventing responses directly copied from other sources, it is possible that some users utilised automated techniques to enter data.</p><p>We release the dataset on the Hugging Face Hub<ref type="foot" target="#foot_0">foot_0</ref> in several variants: One variant containing all collected initial prompts, one variant containing all trees that are considered completed, one variant containing all trees (completed and in-progress), and one variant containing messages filtered out as spam. For most purposes, such as instruction-tuning of language models, we recommend using the variant containing all completed trees, and include non-completed trees if more data is required.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Contributor Demographics and Satisfaction</head><p>To gain a deeper understanding of the contributors' demographics, a Google Form survey was sent out as an announcement on the project's Discord channel. The survey consists of 3 parts with questions on demographic information, personal motivation and user satisfaction. At the time of the release of this paper, a total of 270 survey answers have been collected. Results can be seen in Figures <ref type="figure" target="#fig_7">7</ref>,<ref type="figure" target="#fig_8">8</ref>,9,10, and Tables <ref type="table">3</ref> and <ref type="table" target="#tab_2">4</ref> (all in the Appendix). Respondent answers indicate a homogeneity towards identifying as male, but strong diversity in the reported levels of education, stated motivations for contribution, proficiency in artificial intelligence, and use cases for the technology. Over 95% of respondents either agreed or strongly agreed with the statement "Overall, I'm glad I have contributed to OpenAssistant." About 40% reported this being their first time contributing to an open-source project. We note that the method of recruiting via Discord is biased towards users who are present on the platform and have been active around the time of the announcement. Active contributors are also expected to be more likely to respond.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Experimental Validation</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.1">Instruction Tuning &amp; Preference Modeling</head><p>We focus on the development and evaluation of fine-tuned language models based on Pythia <ref type="bibr" target="#b2">[3]</ref>, LLaMA <ref type="bibr" target="#b1">[2]</ref>, and Falcon <ref type="bibr" target="#b22">[23]</ref>. Pythia and Falcon are state-of-the-art language models with permissive open-source licenses, while LLaMA is a powerful language model with a bespoke non-commercial license. Specifically we train supervised fine-tuned (SFT) models, reward models (RM <ref type="bibr" target="#b12">[13]</ref>, <ref type="bibr" target="#b23">[24]</ref>), and, using the trained reward models, reinforcement-learned models (RLHF) <ref type="foot" target="#foot_1">5</ref> .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Model</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>LMEH VEL OAIE HE</head><p>gpt-3.  <ref type="bibr" target="#b26">[27]</ref> (for all benchmarks, higher is better). We have chosen to leave the Hugging Face Hub identifiers as the model names for identifiability.</p><p>Table <ref type="table" target="#tab_0">1</ref> shows evaluation scores of a selection of baseline and trained models on a set of standard benchmark datasets. Evaluations were performed externally using FastEval and evaluation results are hosted on a leaderboard, which is continually being updated <ref type="foot" target="#foot_2">6</ref> . LMEH refers to the average performance on a set of widely-used NLU tasks consisting of BoolQ, PIQA, HellaSwag, WinoGrande, ARC-e, ARC-c and OBQA <ref type="foot" target="#foot_3">7</ref> . We omit instruction-centric experiments (VEL, OAIE, HE) for the base models, as these benchmarks are unsuitable for non-instruction-tuned models. The results show that models using OpenAssistant Conversations are consistently outperforming the corresponding baseline models (in the case of LLaMA even a larger baseline model). RLHF outperforms SFT in some benchmarks, but not in others. For Falcon-based models, sft-top1 is trained only on top-ranked conversation threads, whereas sft-mix mixes OpenAssistant Conversations with other instruction datasets (details in Appendix H). The varied evaluation scores demonstrate that by combining different data sources, the nature of the resulting model can be readily influenced. Ranks across benchmarks are not consistent, which could indicate the unsuitability of automatic evaluations for language models, or could indicate that different models and datasets lead to different capabilities. The results also show that while open-source models are close to matching ChatGPT in some benchmarks, others still show large performance gaps. Anecdotally, users report OpenAssistant models to be less robotic and more human-sounding than commercial models and report generations to have high quality and diversity in domains such as creative writing, conversational messaging, and drafting social media posts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.2">Spam and Toxicity</head><p>To understand the concordance between human and automated toxicity detection, we employ toxicity detection methods based on Detoxify <ref type="bibr" target="#b27">[28]</ref> to obtain automated ratings for six distinct categories, classifying whether a message is toxic, obscene, threatening, insulting, attacking a certain identity or sexually explicit. We limit our analysis to those languages that are supported by the toxicity detection method, covering English, Spanish, Russian, French, and Italian. These languages represent the majority of OASST1 messages (over 83%). Using automated toxicity ratings, we are able to systematically assess the correlation between these ratings and human-assigned toxicity labels (hate speech, not appropriate, and sexual content). Based on a sample of 115,153 messages, we compute the correlation between automatic and human-annotated toxicity labels, which is visualized in Figure <ref type="figure" target="#fig_3">3</ref>. We see a correlation between human and automatic labels in at least one element of each row and column of the correlation matrix, suggesting agreement between human annotators and off-the-shelf toxicity detection models. The results serve to both validate the capabilities and show limitations of AI-driven toxicity detection in comparison to human judgement and may inform future work in this area.</p><p>In addition to analysing the correlation between human-assigned toxicity labels and automated ratings, we extend the application of the Detoxify model to assess the efficacy of the moderation process for the same languages described earlier. To facilitate this analysis, we define two categories of messages: deleted messages, which encompass those that either failed to pass the community moderation process or were subsequently manually removed by moderators, and retained messages, which successfully made it through to the dataset. In order to provide a comprehensive evaluation of the moderation process, we calculated average values for each of the six Detoxify categories for both deleted and retained messages. The values obtained for this analysis are based on a sample of 74,781 messages. We excluded messages in trees that were incomplete at the time of export, as these messages may be subject to removal by the moderation process.</p><p>Our analysis, presented in Table <ref type="table" target="#tab_1">2</ref> shows that the values for all six toxicity categories are markedly higher for deleted messages compared to retained messages. This significant difference demonstrates the effectiveness of the moderation processes in place, as messages removed from the dataset are on average rated as significantly more toxic by the Detoxify model than messages allowed to remain in the dataset. While deleted messages are rated as more toxic than retained messages by the Detoxify model across all categories, the average toxicity values for these messages are still small. This implies toxicity ratings from models like Detoxify alone are not sufficient to determine when messages are unsuitable for inclusion in the dataset. Reasons for deleting non-toxic messages may include a lack of factual accuracy, or poor grammar. Additionally, messages which are children of deleted messages must themselves be deleted even if they appear to be acceptable in isolation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7">Limitations</head><p>Reward model data collection. InstructGPT <ref type="bibr" target="#b12">[13]</ref> trained reward models on ranking data of messages generated by their initial SFT model, while our reward models are trained using ranking data of human-generated messages. We chose to do so because we were already collecting this ranking data as part of our general efforts, for use in quality control, spam filtering, and dataset sub-sampling. While subjectively, many users report our RLHF models to follow instructions more closely (also compare Section 6.1), the models do not deliver the same uniform and significant improvements over SFT models as reported in <ref type="bibr" target="#b12">[13]</ref>. We hypothesize that the difference in data collection for the reward model could at least partially explain this gap. We plan to collect ranking data based on our own SFT models in the future to verify these assumptions. Further research is necessary to determine more precise criteria for collecting data useful to RLHF.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Subjective, Cultural, and Contribution Frequency Biases.</head><p>The open nature of our project introduces a unique set of challenges when it comes to controlling for biases within the dataset. Annotators from diverse backgrounds contribute to the dataset, with demographics that are simultaneously heterogeneous in some dimensions and homogeneous in others (see Section 5). Specifically, 89.1% of the annotators identify as male, with a median age of 26. This demographic profile may inadvertently introduce biases in the dataset, as it is bound to reflect the values, perspectives, and interests of the annotators. (We pose that some of this could be mitigated by introducing more constrained conversations, for example sampling a random Wikipedia page to determine the conversation topic.) Further, users' participation levels differ significantly. More engaged users contribute a greater number of annotations (see Figure <ref type="figure" target="#fig_2">2</ref>), which likely leads to over-representation of their values and interests in the dataset. Consequently, the dataset may not adequately capture the diverse perspectives that a more balanced distribution of contributions could have provided. Further research is necessary to determine the effect of uneven contributor distributions have when given a clear, general task.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Possibility of Unsafe Content.</head><p>While we have implemented measures to detect and remove harmful messages, our system is not infallible. It is possible that the dataset still contains unsafe content. We believe that the open nature of the project allows for data filtering to be conducted in a transparent manner, ultimately converging on the highest possible standards. Nevertheless, the potential presence of residual unsafe content in the dataset necessitates careful evaluation of any models trained on it.</p><p>Given the limitations discussed above, we advocate for the use of our models in academic research contexts only. We strongly encourage researchers to thoroughly investigate the safety and bias of any model before employing it in downstream tasks. The released models may exhibit unsafe behavior and are likely susceptible to prompt injection attacks. The alignment of LLMs is a crucial aspect of AI research, and we hope that our contributions can help advance the field of AI alignment. However, we also acknowledge that current alignment techniques are not perfect and can even exacerbate certain biases <ref type="bibr" target="#b28">[29]</ref>. As such, researchers should exercise caution when using these models and be cognizant of their limitations. Additionally, it is essential to continue refining alignment techniques and advancing the field of AI alignment in order to mitigate these limitations and develop more reliable and robust LLMs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8">Safety and Ethical Implications</head><p>Large language models are prone to generating inaccurate information about people, places, or facts, commonly known as 'hallucinations' <ref type="bibr" target="#b29">[30,</ref><ref type="bibr" target="#b30">31]</ref>. LLMs can also produce toxic or hateful content and fail to follow provided constraints <ref type="bibr" target="#b31">[32]</ref>. Additionally, these models tend to incorporate biases present in their training data, leading to unfair and discriminatory outputs <ref type="bibr" target="#b32">[33]</ref>. While methods such as RLHF can mitigate some of these shortcomings, they may exacerbate others <ref type="bibr" target="#b33">[34,</ref><ref type="bibr" target="#b28">29]</ref>. We hope that alignment methods using OpenAssistant Conversations can fix some of these issues <ref type="bibr" target="#b12">[13]</ref>, but we acknowledge that achieving full alignment is a complex and ongoing challenge.</p><p>We recognize that sufficiently powerful language models can have a significant impact on society <ref type="bibr" target="#b34">[35]</ref>, and therefore we believe it is essential to promote transparency in their development and deployment. OpenAssistant Conversations is our contribution to this goal of transparency.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Appendix</head><p>Table of Contents A Contributor Guidelines 14 B Ranking merging 18 C Web application for data collection 19 D Filtering ChatGPT Inputs 22 E Online Survey Results 22 F Word Cloud 27 G Collection parameters 27 H Training Configuration 29 I Evaluation Tasks 30 J Political Compass Evaluations 30 K Community Engagement 31 L Dataset Documentation (Data card) 34 M Author Statement 34</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Contributor Guidelines</head><p>We provide the guidelines presented to the users for the creation of the dataset.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head># Guidelines</head><p>Below is a list of guidelines that should be adhered to for each possible task available when building the dataset.</p><p>To see some examples of how the guidelines can be applied, visit the examples document. Please consider checking out our survey [here](<ref type="url" target="https://forms.gle/vBW7b2kMzjCoehkH9">https://forms.gle/vBW7b2kMzjCoehkH9</ref>). You can use it to rate each guideline and leave feedback for each task. If you have further suggestions to improve any of our guidelines, or want to add more examples, create a pull request or suggest them on our [GitHub](<ref type="url" target="https://github.com/LAION-AI/Open-Assistant">https://github.com/LAION-AI/Open-Assistant</ref>). ## 1. General rules -Always make sure to read and understand the guidelines to each task before fulfilling it. -Try to follow the guidelines as closely as possible. -If you are unsure whether a message violates a guidelines, contact us at our</p><p>Discord.</p><p>-Use the thumbs-up/thumbs-down system to further mark messages that are of high or low quality. ## 2. Providing an assistant reply {#assistant-reply} ### Do:</p><p>-Remain polite and treat the user with respect, even when not given the same courtesy. -Talk in a friendly and approachable manner, unless specifically requested</p><p>otherwise. -Present only information that has been verified by credible sources that can be backed up, unless specifically requested otherwise. -Make sure the user is aware when given unverified information.</p><p>-Inform the user about the potential dangers when being asked for advice regarding a topic with high risk, such as medicine, law or chemistry. -When being asked about a high-risk topic, make sure the user knows that as a language model, the assistant is susceptible to producing incorrect information, and that no actions should be taken regarding the assistant reply without the opinion of a professional. -When being asked to give an opinion as the default persona of the assistant, make sure to bring up at least 2 common viewpoints and ensure that these aren't expressed as the opinions of the assistant.</p><p>-If the user further insists on a personal opinion of the assistant, let them know that by default, the assistant does not have any personal opinions and can only try to emulate others' viewpoints. -Ask for clarification if it's unclear what the user is asking for.</p><p>-Use paragraphs and line breaks to make larger replies more readable.</p><p>-Make use of [Markdown syntax](<ref type="url" target="https://www.markdownguide.org/basic-syntax">https://www.markdownguide.org/basic-syntax</ref>) to better format lists, tables or blocks of code.</p><p>-If you are using a codeblock to write code in a particular language, specify it to enable [syntax highlighting] (<ref type="url" target="https://www.markdownguide.org/extended-syntax/#syntax-highlighting">https://www.markdownguide.org/extended-syntax/#syntax-highlighting</ref>).</p><p>You can find all supported abbreviations [here](<ref type="url" target="https://github.com/jincheng9/markdown_supported_languages">https://github.com/jincheng9/markdown_supported_languages</ref> #heres-a-full-list-of-supported-languages). -Be consistent in the style and tone of the assistant. ### Don't:</p><p>-Copy and paste text from other sources without editing. **This includes ChatGPT.** -Supply text that violates the law of Germany, UK, USA, or your country of residence. -Write content encouraging:</p><p>-Violence -Violation of the rights of a third party -Pedophilia -Provide the user with information that could be used for self-harm if there is plausible suspicion of intent to self-harm. -Provide personal information of third parties that isn't publicly available.</p><p>-Ask for personal information unless it is relevant to the issue and can't be used to determine the identity of the user, such as country of residence or occupation. The user should be allowed to refuse to give up any information. -Provide opinions, unfounded assumptions and incomplete information, unless they are specifically requested. -Purposefully curate information to guide the conclusion, i.e. don't hide facts to present a particular narrative.</p><p>-Answer an unclear request if the reply could run counter to an alternative interpretation of the prompt. Ask the user to elaborate or rephrase instead. -Dodge a question, unless it violates a guideline.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>-Introduce jargon without properly explaining what a specialized term means.</head><p>That is, unless the conversation so far suggests that the user is already familiar with it. -Leave typos or grammatical errors in the assistant replies, unless specifically requested to do so. -Overload the user with too much information. Keep replies concise, but include further details that relate to and expand upon the user's request. -Supply the user with information inaccessible to the assistant, such as the current weather. -Reply in a language different from the one intended for the dataset, unless specifically requested to do so. ## 3. Providing an initial prompt or user reply {#user-reply} ### Do:</p><p>-Ask questions that reflect real-life situations and needs.</p><p>-Ask questions that might be directed towards search engines or specialists.</p><p>-Make requests that encourage lateral thinking and/or require specialized knowledge. -Use a mix between questions that are straightforward and questions without a clear answer. -Introduce a variety in prompts by using different phrasing, degrees of politeness or amount of context given. -Consider the previous replies and prompts that lead up to the current one.</p><p>-Try to build upon the topic and ask a sensible follow-up question when replying to the assistant.</p><p>### Don't:</p><p>-Write prompts without a clear request.</p><p>-Supply text that violates the law of Germany, UK, USA, or your country of residence. -Make requests that override the original purpose of the assistant, i.e. jailbreak the model. -Make requests that leave the assistant with no other choice but to refuse in order to avoid the generation of harmful content. -Submit a prompt similar or identical to a prompt you previously submitted.</p><p>-Change the topic of a conversation without prefacing it accordingly when replying to the assistant. -Leave typos and grammatical errors in the prompt.</p><p>-Reply in a language different from the one intended for the dataset, unless the context of the conversation requires it. ## 4. Classifying an assistant reply {#classifying-assistant} ### Do:</p><p>-Rate every criteria of each reply, unless it can't be discerned because it is spam or inappropriate. -Judge quality based on how well the reply adheres to the guidelines. Factual accuracy and helpfulness are first and foremost. -Make sure to read the reply thoroughly.</p><p>-Use the [label explanations](#label-explanation) to determine which labels apply to the reply. -Research to make sure whether the reply is factually accurate.</p><p>-Skip a classification if you are unable to determine the validity of reply. ### Don't:</p><p>-Judge quality based on personal beliefs. Assuming an opinion was warranted, fulfills the users request and doesn't violate any guidelines, it should not impact the rating of the reply. -Skip a label just because the reply is spam. Each label can help the model improve. -Rate a reply if you are unsure if it factually accurate or satisfies the request of the user. ## 5. Classifying an initial prompt or user reply {#classifying-user} ### Do:</p><p>-Rate every criteria of each prompt, unless it can't be discerned because it is spam or inappropriate. -Judge quality based on how well the prompt adheres to the guidelines.</p><p>-Make sure to read the prompt thoroughly.</p><p>-Use the [label explanations](#label-explanation) to determine which labels apply to the prompt.</p><p>### Don't:</p><p>-Judge quality based on personal beliefs. The opinion of the user should not impact the rating of the prompt. -Skip a label just because the reply is spam. Each label can help the model improve.</p><p>## 6. Ranking assistant replies {#ranking-assistant} ### Do:</p><p>-Make sure to read every available reply.</p><p>-Think about which reply best satisfies the request of the user.</p><p>-Rank replies based on how well they adhere to the guidelines. Factual accuracy and helpfulness are first and foremost. -Penalize replies that fail to provide adequate warnings or caveats.</p><p>-Penalize replies that are difficult to read due to a lack of formatting, capitalization or other errors. -Penalize replies if the requested information is obfuscated by superfluous details that make up a large part of the message. -Rank replies that admit to not knowing the answer below factually correct, but above factually incorrect replies.</p><p>### Don't:</p><p>-Rank replies based on personal beliefs. Assuming an opinion was warranted, fulfills the users request and doesn't violate any guidelines, it should not impact the rating of the reply. -Rank replies based on how long and short they are -instead, find out which reply best answers the query of the user. ## 7. Label Explanation {#label-explanation} **Is the message spam?** Is the message an unrelated piece of text that doesn't contribute to the previous prompt in any way? If it's an initial prompt, is it something unlikely to be used to initiate a conversation with the assistant? **Is it a bad reply, as an answer to the prompt task?** Does the assistant reply fail to engage the request of the user or does it contain incorrect information? Does it ignore relevant parts of the prompt? ### Tags **Not Target Language**: Unless specifically requested, is the language used different from the target language of the dataset?</p><p>**Not Appropriate**: In case of a user prompt, is it missing a clear request? **Contains PII**: Does the message contain personally identifying information (PII) that isn't publicly available and can be used to determine the identity of the user or a private third party? **Hate Speech**: Does the message contain prejudice towards a group classified as protected according to the law of Germany, UK, USA or your country of residence? **Sexual Content**: Does the message contain or request sexually explicit content, such as descriptions of sexual acts? ### Scales **Low Quality/High Quality**: How well does the message adhere to the guidelines? For assistant replies, factual accuracy and helpfulness are first and foremost. **Serious/Humorous**: Does the message contain sarcasm, a play on words or other humorous embellishments? **Ordinary/Creative**: How unlikely is the question to be asked? Is it challenging the assistant with a problem that requires creative thinking? Does the question include lots of context? On the assistant's side, is the reply straightforward, or does it contain a unique approach to a problem? **Rude/Polite**: How polite is the message towards the recipient? Does it use words like "please" or is it dismissive, rude or insulting towards the other side of the conversation? **Violent/Harmless**: Does the message contain descriptions of explicit violent acts? Is it glorifying, encouraging or downplaying violent behavior?</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Ranking merging</head><p>Reinforcement learning from human feedback <ref type="bibr" target="#b35">[36,</ref><ref type="bibr" target="#b36">37]</ref> comprises a set of techniques that all aim to optimize the output distribution of a language model using the preference structure provided by human rankers. To get a preference structure that is well aligned to users, we cannot just rely on the opinions of individual rankers, due to the high variance in human preferences. Since our objective is to collect data for a generally capable digital assistant, every ranking of possible responses is performed by K independent rankers, (see, section 3.1). Once this is done, we need to fuse these K individual opinions into one consensus opinion usable in training preference models.</p><p>We perform this preference fusion by treating it as a ranked-voting problem, whose objective it is to maintain the preferences as faithfully as possible. The method chosen for this is known as "ranked pairs" or "Tideman's method" <ref type="bibr" target="#b37">[38]</ref>. Simplified, this method creates a sorted list of "winners" according to the strength of the preference of one element over the others. The way the preference strength is measured is by considering all preference pairs in the input votes: For example, if the votes are two times A &gt; B &gt; C and one time B &gt; A &gt; C, this would mean that the pair A &gt; B exists 2 times, while A &gt; C exists three times. The method then orders the winners by winning strength, i.e. here A &gt; C would happen before A &gt; B, and constructs a directed graph using the preferences, i.e. A &gt; C would become an edge A → C. Edges are added one by one according to their weight (higher first), as long as no cycle is produced. If the edge would produce a cycle, it is skipped as the corresponding dominant preferences are already in the graph.</p><p>The resulting directed acyclic graph can be turned into a preference structure by recursively removing source nodes and adding them to the back of a preference list, since source nodes are, by construction, not preferred over any other item left in the graph. In practice, one can speed up the construction by not explicitly constructing the preference graph and fusing the graph con-and destruction.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Web application for data collection</head><p>Figures <ref type="figure" target="#fig_4">4</ref>, <ref type="figure" target="#fig_5">5</ref>, and 6 show the data collection platform UI interface for labelling, reply input, and ranking, respectively. The UI also allows the user to choose a random task type, the task is automatically chosen according the previously discussed heuristics, which allows for more variation and engagement.</p><p>The UI did grow and change over time as the project developed, so the experience of early users was less refined as shown here.   </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Filtering ChatGPT Inputs</head><p>The widespread use of ChatGPT at the time of our data collection meant that some of the inputs could be performed using ChatGPT, rather than being fully created by humans. Our guidelines specifically target this, explicitly discouraging contributors from copy-pasting responses generated by other AI models. Users who were found to post ChatGPT-generated responses were banned, and their contributions were deleted. Furthermore, we used multiple automatic tests to catch such cases. For instance, we searched for and removed messages that contained text such as "as a large language model" or "knowledge cutoff after September 2021". Moreover, users were encouraged to up-vote and down-vote responses they came across from other users, which also helped weeding out low-quality, generic, (possibly AI generated) responses. We note that these mechanisms cannot remove all ChatGPT-generated content, and more post-hoc filtering may be necessary.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Online Survey Results</head><p>We asked users to provide feedback based on the overall experience, while taking part in the data collection process. Results are provided in Tables 3, 4 and Fig. <ref type="figure" target="#fig_7">7</ref>, 8, 9, 10.     </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F Word Cloud</head><p>We present some statistics on the words used the most in Fig. <ref type="figure" target="#fig_11">11</ref>. The number of topics was selected by selecting the peak coherence from 40 LDA models. One can observe high topic variety from biology (second top row), cooking (top row), and music (second to last row), all the way up to quantum physics (bottom row).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G Collection parameters</head><p>We provide more information on the parameters used to collect new data samples.</p><p>num required rankings: Number of rankings in which the message participated. p activate backlog tree: Probability to activate a message tree in BACKLOG_RANKING state when another tree enters a terminal state. min active rankings per lang: When the number of active ranking tasks is below this value when a tree enters a terminal state an available trees in BACKLOG_RANKING will be activated (i.e. enters the RANKING state). lonely children count: Number of children below which parents are preferred during sampling for reply tasks. recent tasks span sec: Time in seconds of recent tasks to consider for exclusion during task selection. max pending tasks per user: Maximum number of pending tasks (neither canceled nor completed) by a single user within the time span defined by 'recent_tasks_span_sec'. max prompt lottery waiting: Maximum number of prompts in prompt_lottery_waiting state per language. If this value is exceeded no new initial prompt tasks for that language are generated.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>H Training Configuration</head><p>Following <ref type="bibr" target="#b12">[13]</ref> and as introduced in Section 1, we train supervised fine-tuned models (SFT), reward models (RM), and a PPO fine-tuned models based on RM's predictions. We use as base models the popular decoder-only Pythia <ref type="bibr" target="#b2">[3]</ref> and LLaMA <ref type="bibr" target="#b1">[2]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Conversation format</head><p>We sample threads in the CTs and provide them as input text to the model by using some additional special tokens. More specifically, a thread composed of prompts (P) P 1 , P 2 , . . . and replies (R) R 1 , R 2 , . . . is provided as input to the model with the following format: &lt;prompter_token&gt; P 1 &lt;endoftext_token&gt; &lt;assistant_token&gt; R 1 &lt;endoftext_token&gt; &lt;prompter_token&gt; P 2 &lt;endoftext_token&gt; &lt;assistant_token&gt; R 2 &lt;endoftext_token&gt; . . .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Each of the prompts and the replies consists potentially of multiple tokens after tokenizing.</head><p>SFT-mix details. The sft-mix training data configuration used for training OpenAssistant/falcon-40b-sft-mix-1226 is a mixture of OASST1 with other instruction tuning datasets, according to the following configuration:</p><p>sft9-stage2: # oasst_export: 100.00% (29899) # vicuna: 50.00% (16963) # code_alpaca: 50.00% (9510) # oa_wiki_qa_bart_10000row: 100.00% (9434) # grade_school_math_instructions: 100.00% (8351) # dolly15k: 100.00% (14250) use_custom_sampler: true datasets: -oasst_export: lang: "bg,ca,cs,da,de,en,es,fr,hr,hu,it,nl,pl,pt,ro,ru,sl,sr,sv,uk" # sft-8.0 input_file_path: 2023-06-02_oasst_all_labels.jsonl.gz val_split: 0.05 top_k: 2 -vicuna: fraction: 0.5 val_split: 0.025 max_val_set: 250 -code_alpaca: fraction: 0.5 val_split: 0.05 max_val_set: 250 -oa_wiki_qa_bart_10000row: large degrees of certainty, as the community has yet to find consensus on the exact methodology to perform such evaluations. We will update this section with improved results in the future. Our limited, preliminary results show the model trained on OpenAssistant Conversations to be more balanced and varied in its political leanings than ChatGPT.</p><p>Figure <ref type="figure" target="#fig_2">12</ref>: Comparison of evaluations on test for political leanings. For original ChatGPT results and references to tests used, see <ref type="bibr" target="#b38">[39]</ref> </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>K Community Engagement</head><p>Throughout the collection of OpenAssistant Conversations, a large global community has been built, including an active Discord group, and a GitHub repository with over 200 contributors.</p><p>Figure <ref type="figure" target="#fig_12">13</ref> shows the growth of the Discord community throughout the duration of data collection.</p><p>Figure <ref type="figure" target="#fig_13">14</ref> shows new commits to the GitHub repository over time.</p><p>Figure <ref type="figure" target="#fig_14">15</ref> shows the growth in stars on the GitHub repository over time.</p><p>Figure <ref type="bibr" target="#b15">16</ref> shows popularity of OpenAssistant by YouTube's videos' views on the theme over time.</p><p>These Figures serve as a strong reminder of what can be achieved by the collective effort of many volunteers, even in a field where research has thus far been largely monopolized by a small number of industrial labs.</p><p>In addition, by comparing the massive influx of new contributors and subscribers to the emergence of Open Assistant themed videos, it shows how certain media events have influenced the development.    </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: An example CT of depth 4 containing 12 messages. Any path from the root prompt to a node is a valid thread.</figDesc><graphic coords="3,146.35,234.89,316.80,113.45" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>French</head></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 2 :</head><label>2</label><figDesc>Figure 2: Left: Relative share of the most frequent languages in the dataset. Right: Distribution of contributions among users.</figDesc><graphic coords="6,266.40,265.08,233.63,116.82" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 3 :</head><label>3</label><figDesc>Figure 3: Correlation between human labels and Detoxify outputs for all messages in Detoxifysupported languages.</figDesc><graphic coords="8,314.66,175.72,178.19,106.16" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 4 :</head><label>4</label><figDesc>Figure4: A preview of the page for labelling tasks. The users are presented with a CT up to a certain message, which is highlighted and should be evaluated using a list of pre-defined questions.</figDesc><graphic coords="20,195.85,183.10,217.80,394.86" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: A preview of the page for ranking assistant replies. Users are provided with CT up to a message, and a couple of responses that should be ranked according to how good they answer the given message. The interaction is drag &amp; drop based. Additionally, users can choose to mark all answers as factually incorrect.</figDesc><graphic coords="21,185.95,481.15,237.60,185.79" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 6 :</head><label>6</label><figDesc>Figure6: A preview of the page for replying as an assistant. Users are provided with a CT up to a prompter message, and they should provide a response to it. In this example, the CT contains only one message. Users can use Markdown in their responses. An additional progress bar is added below the input field to incentivize longer messages.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 7 :</head><label>7</label><figDesc>Figure 7: Demography of 270 respondents</figDesc><graphic coords="22,108.00,279.79,396.00,247.50" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 8 :</head><label>8</label><figDesc>Figure 8: Familiarity with AI based on level of education. The average values are shown as outlines in the bar chart.</figDesc><graphic coords="24,108.00,190.47,396.00,371.25" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 9 :</head><label>9</label><figDesc>Figure 9: Motivations for contribution based on level of education. The average values are shown as outlines in the bar chart.</figDesc><graphic coords="25,108.00,190.47,396.00,371.25" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><head>Figure 10 :</head><label>10</label><figDesc>Figure 10: Planned personal use-cases for OpenAssistant. The average values are shown as outlines in the bar chart.</figDesc><graphic coords="26,108.00,190.47,396.00,371.25" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><head>Figure 11 :</head><label>11</label><figDesc>Figure 11: Word clouds for 33 topics extracted from the English subset of the open-assistant dataset.The number of topics was selected by selecting the peak coherence from 40 LDA models. One can observe high topic variety from biology (second top row), cooking (top row), and music (second to last row), all the way up to quantum physics (bottom row).</figDesc><graphic coords="27,127.72,542.86,70.86,70.87" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head>Figure 13 :</head><label>13</label><figDesc>Figure 13: Discord users in the OpenAssistant group over time.</figDesc><graphic coords="32,108.00,103.41,395.99,221.49" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>Figure 14 :</head><label>14</label><figDesc>Figure 14: GitHub commits to the OpenAssistant repository over time.</figDesc><graphic coords="32,108.00,426.64,396.00,231.00" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_14"><head>Figure 15 :</head><label>15</label><figDesc>Figure 15: GitHub stars on the OpenAssistant repository over time.</figDesc><graphic coords="33,108.00,102.46,396.01,229.09" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_15"><head>Figure 16 :</head><label>16</label><figDesc>Figure 16: YouTube's videos' views on the OpenAssistant theme over time.</figDesc><graphic coords="33,108.00,431.38,396.00,227.21" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_16"><graphic coords="31,108.00,128.80,395.98,222.74" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Comparison of model evaluation scores on different LLM benchmarks: LMEH: lmevaluation-harness<ref type="bibr" target="#b24">[25]</ref> (average scores, see online leaderboard for more details) VEL: Vicuna Elo Rank<ref type="bibr" target="#b20">[21]</ref> OAIE: OpenAI Evals<ref type="bibr" target="#b25">[26]</ref> HE: HumanEval</figDesc><table><row><cell>5-turbo (ChatGPT)</cell><cell></cell><cell>1110</cell><cell>0.87</cell><cell>0.72</cell></row><row><cell>EleutherAI/pythia-12b</cell><cell>60.33</cell><cell></cell><cell></cell><cell></cell></row><row><cell>OpenAssistant/pythia-12b-sft-v8-7k-steps</cell><cell>60.28</cell><cell>997</cell><cell>0.10</cell><cell>0.10</cell></row><row><cell>tiiuae/falcon-40b</cell><cell>72.29</cell><cell></cell><cell></cell><cell></cell></row><row><cell>OpenAssistant/falcon-40b-sft-top1-560</cell><cell>74.04</cell><cell>1192</cell><cell>0.26</cell><cell>0.09</cell></row><row><cell>OpenAssistant/falcon-40b-sft-mix-1226</cell><cell>74.40</cell><cell>1053</cell><cell>0.44</cell><cell>0.13</cell></row><row><cell>huggyllama/llama-65b</cell><cell>67.24</cell><cell></cell><cell></cell><cell></cell></row><row><cell>OpenAssistant/oasst-sft-7e3-llama-30b</cell><cell>68.03</cell><cell>979</cell><cell>0.52</cell><cell>0.20</cell></row><row><cell>OpenAssistant/oasst-rlhf-3-llama-30b-5k-steps</cell><cell>68.51</cell><cell>1068</cell><cell>0.51</cell><cell>0.15</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 :</head><label>2</label><figDesc>Detoxify outputs across six categories of toxicity, comparing deleted and retained messages.</figDesc><table><row><cell></cell><cell>Toxicity Obscene Threat</cell><cell>Insult</cell><cell cols="2">Identity Attack Explicit</cell><cell>N</cell></row><row><cell>State</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Deleted</cell><cell cols="2">4.625% 1.965% 0.411% 2.085%</cell><cell>0.651%</cell><cell>1.39%</cell><cell>3422</cell></row><row><cell cols="3">Retained 0.988% 0.574% 0.102% 0.715%</cell><cell>0.121%</cell><cell cols="2">0.177% 71359</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 4 :</head><label>4</label><figDesc>It was clear from the website what to do and how to contribute messages to the training data.Previous Contributions</figDesc><table><row><cell>Strongly agree</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_0"><p>https://huggingface.co/OpenAssistant/oasst1</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_1"><p>All trained models are released at https://huggingface.co/OpenAssistant</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="6" xml:id="foot_2"><p>https://github.com/FastEval/FastEval, https://tju01.github.io/ilm-eval/</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="7" xml:id="foot_3"><p>For readability, Table1contains aggregated LMEH scores. Details in the online leaderboard.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="8" xml:id="foot_4"><p>Translated from English by OpenAssistant, first try</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="9" xml:id="foot_5"><p>https://github.com/CarperAI/trlx</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgments and Disclosure of Funding</head><p>Our greatest thanks go to the many volunteer contributors, of human data, code, moderation, documentation, and community organization. Absent of any financial incentives, this project is a stunning and unprecedented display of global cooperation of humans for the purpose of advancing and democratizing AI research. In addition, several organizations have contributed to this project with resources: <rs type="person">Redmond AI</rs> provided training compute. Stability AI and <rs type="person">Hugging Face</rs> provided inference compute. We thank <rs type="person">Olivier Dehaene</rs> at <rs type="person">Hugging Face</rs> for close collaboration and personal support. <rs type="person">Weights &amp; Biases</rs> provided their full MLOps solution to the entire team. LAION provided legal input and acts as the website addressee. We thank <rs type="person">Til Jasper Ullrich</rs> for running LLM benchmark evaluations, <rs type="person">Luke Thomas Kaiser</rs> for running evaluations on model bias, and <rs type="person">Silvia Pareti</rs> for detailed feedback on the manuscript. Agradecemos a Carlos Santana por la promoción a gran escala de la plataforma de recopilación de datos para la comunidad hispanohablante. <ref type="bibr" target="#b7">8</ref> </p></div>
+			</div>			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Parameter value max active trees 100 max initial prompt review 100 max tree depth 5 max children count 2 num prompter replies 1 goal tree size 9 num reviews initial prompt 3 num reviews reply 3 auto mod enabled true auto mod max skip reply 25 auto mod red flags 4 p full labeling review prompt 1 p full labeling review reply assistant 1 p full labeling review reply prompter 0.1 acceptance threshold initial prompt 0.6 acceptance threshold reply 0.6 num required rankings 3 p activate backlog tree 0.1 min active rankings per lang 20 lonely children count 2 p lonely child extension 0.75 recent tasks span sec 300 max pending tasks per user 8 max prompt lottery waiting 1000 Table <ref type="table">5</ref>: Collection parameters max active trees: Maximum number of concurrently active message trees in the database. No new initial prompt tasks are handed out to users if this number is reached max initial prompt review: Maximum number of initial prompts under review before no more initial prompt tasks will be handed out. max tree depth: Maximum depth of message tree. auto mod enabled: Flag to enable/disable auto moderation.</p><p>auto mod max skip reply: Automatically set tree state to 'halted_by_moderator' when more than the specified number of users skip replying to a message. (auto moderation) auto mod red flags: Delete messages that receive more than this number of red flags if it is a reply or set the tree to 'aborted_low_grade' when a prompt is flagged. (auto moderation) p full labeling review prompt: Probability of full text-labeling (instead of mandatory only) for initial prompts.</p><p>p full labeling review reply assistant: Probability of full text-labeling (instead of mandatory only) for assistant replies.</p><p>p full labeling review reply prompter: Probability of full text-labeling (instead of mandatory only) for prompter replies.</p><p>acceptance threshold initial prompt: Threshold for accepting an initial prompt.</p><p>acceptance threshold reply: Threshold for accepting a reply. val_split: 0.05 max_val_set: 250 -grade_school_math_instructions: val_split: 0.05 -dolly15k: val_split: 0.05 max_val_set: 300</p><p>More details can be found on the Hugging Face hub and in our open-source codebase.</p><p>Supervised fine-tuning. During this phase, we fine-tune pretrained models for the regular language modelling tasks based on our conversational data. We mask tokens that correspond to prompts and only train to predict tokens that correspond to assistant replies.</p><p>Reward model. For the reward model training, we replace the language modelling head with a linear layer producing a single output r θ , corresponding to the predicted score for the last reply of the conversation. We use replies to the same prompt and their rankings as described in Appendix B. Following <ref type="bibr" target="#b12">[13]</ref>, assuming K distinct replies, we produce K 2 comparisons and train to minimize the loss</p><formula xml:id="formula_0">loss(θ) = - 1 K 2 E (x,yw,y l ) [log(σ(r θ (x, y w ) -r θ (x, y l )))],</formula><p>where σ is the sigmoid function and y w corresponds to a preferred completion for the pair of y w and y r . We also optionally add another regularization parameter that prevents the predicted values from diverging too much. Performance is measured by measuring the ability to predict the better reply among pairs of replies with different rank, on a held-out validation set.</p><p>PPO training. We fine-tune the SFT model by producing assistant replies to unanswered questions. We use the RM to score these replies and train with PPO, using the trlx framework 9 . Following <ref type="bibr" target="#b12">[13]</ref>, we also add a per-token KL penalty from the SFT model at each token to avoid instability and over-optimization to the RM model.</p><p>All details and current training parameters are publicly available under <ref type="url" target="https://github.com/LAION-AI/Open-Assistant/tree/main/model/model_training">https://github.com/  LAION-AI/Open-Assistant/tree/main/model/model_training</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>I Evaluation Tasks</head><p>This section aims to provide a brief explanation of the evaluation tasks used in Table <ref type="table">1</ref>.</p><p>lm-evaluation-harness <ref type="bibr" target="#b24">[25]</ref> is a framework for evaluating language models on a variety of standardized tasks. We focus on the subset of BoolQ, PIQA, HellaSwag, WinoGrande, ARC-e, ARC-c and OBQA.</p><p>Vicuna Elo Rank <ref type="bibr" target="#b20">[21]</ref> leverages LLMs to judge other LLMs and assign them a ranking according to the ELO system.</p><p>OpenAI Evals <ref type="bibr" target="#b25">[26]</ref> is a set of general LLM evaluation benchmarks OpenAI released along with the announcement of GPT-4, and to which OpenAI has asked the community to contribute.</p><p>HumanEval <ref type="bibr" target="#b26">[27]</ref> is a benchmark OpenAI released along with the announcement of Codex and sets out to measure "measure functional correctness for synthesizing programs from docstrings".</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>J Political Compass Evaluations</head><p>The political leanings of ChatGPT have been investigated in <ref type="bibr" target="#b38">[39]</ref>. We evaluated a model fine-tuned on OpenAssistant Conversations on a subset of the given tests. Prompts were standardized and multiple samples were drawn, with majority vote deciding on the final answer for each question. Figure <ref type="figure">12</ref> depicts the result. We stress that these are very preliminary results and should not be taken with</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>L Dataset Documentation (Data card)</head><p>Dataset documentation can be found at <ref type="url" target="https://huggingface.co/OpenAssistant/oasst1">https://huggingface.co/OpenAssistant/oasst1</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>M Author Statement</head><p>We confirm that we bear all responsibility in case of any violation of rights during the collection of the data or other work, and will take appropriate action when needed, e.g. to remove data with such issues.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_17"><figDesc>max children count: Maximum number of reply messages per tree node. num prompter replies: Number of prompter replies to collect per assistant reply. goal tree size: Total number of messages to gather per tree. num reviews initial prompt: Number of peer-review checks to collect in the 'INI-TIAL_PROMPT_REVIEW' state num reviews reply: Number of peer review checks to collect per reply (other than initial prompt).</figDesc></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niki</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Łukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibaut</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gautier</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hambro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Faisal</forename><surname>Azhar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.13971</idno>
+		<title level="m">Open and efficient foundation language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hailey</forename><surname>Schoelkopf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Anthony</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Herbie</forename><surname>Bradley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O'</forename><surname>Kyle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Brien</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohammad</forename><surname>Hallahan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shivanshu</forename><surname>Aflah Khan</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Purohit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edward</forename><surname>Usvsn Sai Prashanth</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Raff</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2304.01373</idno>
+		<title level="m">A suite for analyzing large language models across training and scaling</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Artificial intelligence, values, and alignment</title>
+		<author>
+			<persName><forename type="first">Iason</forename><surname>Gabriel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Minds and Machines</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page" from="411" to="437" />
+			<date type="published" when="2020-09">September 2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Aligning large language models with human: A survey</title>
+		<author>
+			<persName><forename type="first">Yufei</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wanjun</forename><surname>Zhong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangyou</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fei</forename><surname>Mi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xingshan</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenyong</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lifeng</forename><surname>Shang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xin</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qun</forename><surname>Liu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Training a helpful and harmless assistant with reinforcement learning from human feedback</title>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamal</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nova</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stanislav</forename><surname>Fort</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deep</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saurav</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jackson</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Conerly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sheer</forename><surname>El-Showk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nelson</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zac</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danny</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tristan</forename><surname>Hume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Johnston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shauna</forename><surname>Kravec</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liane</forename><surname>Lovitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Neel</forename><surname>Nanda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Catherine</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Understanding dataset difficulty with V-usable information</title>
+		<author>
+			<persName><forename type="first">Kawin</forename><surname>Ethayarajh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Swabha</forename><surname>Swayamdipta</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 39th International Conference on Machine Learning</title>
+		<editor>
+			<persName><forename type="first">Kamalika</forename><surname>Chaudhuri</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Stefanie</forename><surname>Jegelka</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Le</forename><surname>Song</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Csaba</forename><surname>Szepesvari</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Gang</forename><surname>Niu</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Sivan</forename><surname>Sabato</surname></persName>
+		</editor>
+		<meeting>the 39th International Conference on Machine Learning</meeting>
+		<imprint>
+			<date type="published" when="2022-07">Jul 2022</date>
+			<biblScope unit="volume">162</biblScope>
+			<biblScope unit="page" from="17" to="23" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">Romal</forename><surname>Thoppilan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">De</forename><surname>Freitas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jamie</forename><surname>Hall</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Apoorv</forename><surname>Kulshreshtha</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Heng-Tze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alicia</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Taylor</forename><surname>Jin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leslie</forename><surname>Bos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Baker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yaguang</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongrae</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huaixiu</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amin</forename><surname>Steven Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marcelo</forename><surname>Ghafouri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanping</forename><surname>Menegali</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxim</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dmitry</forename><surname>Krikun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Lepikhin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dehao</forename><surname>Qin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhong</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhifeng</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vincent</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanqi</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chung-Ching</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Igor</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Will</forename><surname>Krivokon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marc</forename><surname>Rusch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pranesh</forename><surname>Pickett</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laichee</forename><surname>Srinivasan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kathleen</forename><surname>Man</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Meredith</forename><forename type="middle">Ringel</forename><surname>Meier-Hellstern</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tulsee</forename><surname>Morris</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Renelito Delos</forename><surname>Doshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Toju</forename><surname>Santos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johnny</forename><surname>Duke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Soraker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vinodkumar</forename><surname>Zevenbergen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Prabhakaran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Diaz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kristen</forename><surname>Hutchinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quoc</forename><surname>Olson</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Lamda</surname></persName>
+		</author>
+		<title level="m">Language models for dialog applications</title>
+		<editor>
+			<persName><forename type="first">Alejandra</forename><surname>Molina</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Erin</forename><surname>Hoffman-John</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Josh</forename><surname>Lee</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Lora</forename><surname>Aroyo</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ravi</forename><surname>Rajakumar</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Alena</forename><surname>Butryna</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Matthew</forename><surname>Lamm</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Viktoriya</forename><surname>Kuzmina</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Joe</forename><surname>Fenton</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Aaron</forename><surname>Cohen</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Rachel</forename><surname>Bernstein</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Ray</forename><surname>Kurzweil</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Blaise</forename><surname>Aguera-Arcas</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Claire</forename><surname>Cui</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Marian</forename><surname>Croak</surname></persName>
+		</editor>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Webgpt: Improving the factual accuracy of language models through web browsing</title>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Nakano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Balaji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">OpenAI Blog</title>
+		<imprint>
+			<date type="published" when="2021-12-16">December, 16, 2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Teaching language models to support answers with verified quotes</title>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Menick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maja</forename><surname>Trebacz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Mikulik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Aslanides</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francis</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Chadwick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Susannah</forename><surname>Young</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucy</forename><surname>Campbell-Gillingham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Geoffrey</forename><surname>Irving</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.11147</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Fine-tuning language models from human preferences</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Daniel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nisan</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Stiennon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Geoffrey</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Irving</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Tracking public attitudes toward chatgpt on twitter using sentiment analysis and topic modeling</title>
+		<author>
+			<persName><forename type="first">Ratanond</forename><surname>Koonchanok</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hyeju</forename><surname>Ya-Chen Pan</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Jang</surname></persName>
+		</author>
+		<idno>ArXiv, abs/2306.12951</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diogo</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carroll</forename><forename type="middle">L</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pamela</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandhini</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katarina</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Ray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fraser</forename><surname>Kelton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Miller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maddie</forename><surname>Simens</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Welinder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Lowe</surname></persName>
+		</author>
+		<title level="m">Training language models to follow instructions with human feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Leandro Von Werra</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Shahbuland</forename><surname>Tow</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Matiana</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Louis</forename><surname>Havrilla</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><surname>Castricato</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Duy</forename><forename type="middle">V</forename><surname>Alan</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Ayush</forename><surname>Phung</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Alexey</forename><surname>Thakur</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Fabrizio</forename><surname>Bukhtiyarov</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><surname>Milo</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Daniel</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Dong</forename><surname>King</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Shin</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Justin</forename><surname>Kim</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Manuel</forename><surname>Wei</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Nicky</forename><surname>Romero</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Omar</forename><surname>Pochinkov</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Reshinth</forename><surname>Sanseviero</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Sherman</forename><surname>Adithyan</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Siu</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Simonini</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Blagojevic</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Zack</forename><surname>Song</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><surname>Witten</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<idno>crumb. CarperAI/trlx: v0.6.0: LLaMa</idno>
+		<title level="m">Benchmark Util, T5 ILQL, Tests</title>
+		<imprint>
+			<date type="published" when="2023-03">March 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Filip</forename><surname>Wolski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oleg</forename><surname>Klimov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1707.06347</idno>
+		<title level="m">Proximal policy optimization algorithms</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m" type="main">The effects of data quality on machine learning performance</title>
+		<author>
+			<persName><forename type="first">Lukas</forename><surname>Budach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Moritz</forename><surname>Feuerpfeil</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nina</forename><surname>Ihde</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrea</forename><surname>Nathansen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nele</forename><surname>Noack</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hendrik</forename><surname>Patzlaff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Felix</forename><surname>Naumann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hazar</forename><surname>Harmouch</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<title level="m" type="main">Self-instruct: Aligning language model with self generated instructions</title>
+		<author>
+			<persName><forename type="first">Yizhong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yeganeh</forename><surname>Kordi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Swaroop</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alisa</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Khashabi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2212.10560</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<author>
+			<persName><forename type="first">Rohan</forename><surname>Taori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ishaan</forename><surname>Gulrajani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yann</forename><surname>Dubois</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuechen</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carlos</forename><surname>Guestrin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<ptr target="https://github.com/tatsu-lab/stanford_alpaca" />
+		<title level="m">Stanford alpaca: An instruction-following llama model</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">Gpt4all: Training an assistant-style chatbot with large scale data distillation from gpt-3.5-turbo</title>
+		<author>
+			<persName><forename type="first">Yuvanesh</forename><surname>Anand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zach</forename><surname>Nussbaum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Brandon</forename><surname>Duderstadt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Schmidt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andriy</forename><surname>Mulyar</surname></persName>
+		</author>
+		<ptr target="https://github.com/nomic-ai/gpt4all" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<author>
+			<persName><forename type="first">Baolin</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chunyuan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pengcheng</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michel</forename><surname>Galley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Gao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2304.03277</idno>
+		<title level="m">Instruction tuning with gpt-4</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">Vicuna: An open-source chatbot impressing gpt-4 with 90%* chatgpt quality</title>
+		<author>
+			<persName><surname>Vicuna</surname></persName>
+		</author>
+		<ptr target="https://vicuna.lmsys.org/" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Grounding in communication</title>
+		<author>
+			<persName><forename type="first">Herbert</forename><forename type="middle">H</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Susan</forename><forename type="middle">E</forename><surname>Brennan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Perspectives on Socially Shared Cognition</title>
+		<editor>
+			<persName><forename type="first">Lauren</forename><surname>Resnick</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">B</forename><surname>Levine</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">M</forename><surname>John</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Stephanie</forename><surname>Teasley</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">D</forename></persName>
+		</editor>
+		<imprint>
+			<publisher>American Psychological Association</publisher>
+			<date type="published" when="1991">1991</date>
+			<biblScope unit="page" from="13" to="1991" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Falcon-40B: an open large language model with state-of-the-art performance</title>
+		<author>
+			<persName><forename type="first">Ebtesam</forename><surname>Almazrouei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamza</forename><surname>Alobeidli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abdulaziz</forename><surname>Alshamsi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruxandra</forename><surname>Cojocaru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Merouane</forename><surname>Debbah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Etienne</forename><surname>Goffinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Heslow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Launay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Malartic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Badreddine</forename><surname>Noune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Pannier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deep</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nova</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nelson</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zac</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danny</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jackson</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamal</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Catherine</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note>A general language assistant as a laboratory for alignment</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">A framework for few-shot language model evaluation</title>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Tow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sid</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anthony</forename><surname>Dipofi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Foster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurence</forename><surname>Golding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Hsu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Mcdonell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Phang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laria</forename><surname>Reynolds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anish</forename><surname>Thite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Zou</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021-09">September 2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title/>
+	</analytic>
+	<monogr>
+		<title level="j">OpenAI. Gpt-4 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jerry</forename><surname>Tworek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heewoo</forename><surname>Jun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qiming</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Henrique</forename><surname>Ponde De Oliveira Pinto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Harri</forename><surname>Edwards</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuri</forename><surname>Burda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Greg</forename><surname>Brockman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Ray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Raul</forename><surname>Puri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gretchen</forename><surname>Krueger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Petrov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heidy</forename><surname>Khlaaf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pamela</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Brooke</forename><surname>Chan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mikhail</forename><surname>Pavlov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alethea</forename><surname>Power</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohammad</forename><surname>Bavarian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clemens</forename><surname>Winter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philippe</forename><surname>Tillet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Felipe</forename><forename type="middle">Petroski</forename><surname>Such</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dave</forename><surname>Cummings</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Plappert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fotios</forename><surname>Chantzis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elizabeth</forename><surname>Barnes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ariel</forename><surname>Herbert-Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Hebgen Guss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Nichol</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Paino</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikolas</forename><surname>Tezak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Igor</forename><surname>Babuschkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suchir</forename><surname>Balaji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shantanu</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Saunders</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Hesse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><forename type="middle">N</forename><surname>Carr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josh</forename><surname>Achiam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vedant</forename><surname>Misra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Evan</forename><surname>Morikawa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Knight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miles</forename><surname>Brundage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mira</forename><surname>Murati</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katie</forename><surname>Mayer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Welinder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bob</forename><surname>Mcgrew</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Sutskever</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wojciech</forename><surname>Zaremba</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note>Evaluating large language models trained on code</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title/>
+		<ptr target="https://github.com/unitaryai/detoxify" />
+	</analytic>
+	<monogr>
+		<title level="j">Detoxify. Github</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<publisher>Laura Hanu and Unitary team</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Amelia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nat</forename><surname>Mcaleese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maja</forename><surname>Trębacz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Aslanides</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vlad</forename><surname>Firoiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timo</forename><surname>Ewalds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maribeth</forename><surname>Rauh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laura</forename><surname>Weidinger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Chadwick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Phoebe</forename><surname>Thacker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucy</forename><surname>Campbell-Gillingham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ramona</forename><surname>Comanescu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fan</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abigail</forename><surname>See</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumanth</forename><surname>Dathathri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rory</forename><surname>Greig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charlie</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Doug</forename><surname>Fritz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jaume</forename><surname>Sanchez Elias</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Green</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Soňa</forename><surname>Mokrá</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Fernando</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Boxi</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rachel</forename><surname>Foley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Susannah</forename><surname>Young</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iason</forename><surname>Gabriel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Isaac</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Mellor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Demis</forename><surname>Hassabis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Koray</forename><surname>Kavukcuoglu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Geoffrey</forename><surname>Irving</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note>Improving alignment of dialogue agents via targeted human judgements</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<author>
+			<persName><forename type="first">Wojciech</forename><surname>Kryściński</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bryan</forename><surname>Mccann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caiming</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Socher</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1910.12840</idno>
+		<title level="m">Evaluating the factual consistency of abstractive text summarization</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<author>
+			<persName><forename type="first">Kurt</forename><surname>Shuster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Spencer</forename><surname>Poff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Moya</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Douwe</forename><surname>Kiela</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2104.07567</idno>
+		<title level="m">Retrieval augmentation reduces hallucination in conversation</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Ethical challenges in data-driven dialogue systems</title>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Henderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Koustuv</forename><surname>Sinha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Angelard-Gontier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><forename type="middle">Rosemary</forename><surname>Ke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Genevieve</forename><surname>Fried</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Lowe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joelle</forename><surname>Pineau</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2018 AAAI/ACM Conference on AI, Ethics, and Society</title>
+		<meeting>the 2018 AAAI/ACM Conference on AI, Ethics, and Society</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="123" to="129" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Measuring and mitigating unintended bias in text classification</title>
+		<author>
+			<persName><forename type="first">Lucas</forename><surname>Dixon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Sorensen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nithum</forename><surname>Thain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucy</forename><surname>Vasserman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2018 AAAI/ACM Conference on AI, Ethics, and Society</title>
+		<meeting>the 2018 AAAI/ACM Conference on AI, Ethics, and Society</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="67" to="73" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Ringer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamilė</forename><surname>Lukošiūtė</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karina</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edwin</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Heiner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Craig</forename><surname>Pettit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Catherine</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandipan</forename><surname>Kundu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saurav</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Brian</forename><surname>Israel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bryan</forename><surname>Seethor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cameron</forename><surname>Mckinnon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Da</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniela</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eli</forename><surname>Tran-Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guro</forename><surname>Khundadze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jackson</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Landis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jamie</forename><surname>Kerr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Mueller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeeyoon</forename><surname>Hyun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Landau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamal</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Landon</forename><surname>Goldberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liane</forename><surname>Lovitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Lucas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Sellitto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miranda</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Neerav</forename><surname>Kingsland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nelson</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noemí</forename><surname>Mercado</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nova</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oliver</forename><surname>Rausch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robin</forename><surname>Larson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Johnston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shauna</forename><surname>Kravec</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sheer</forename><forename type="middle">El</forename><surname>Showk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tamera</forename><surname>Lanham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothy</forename><surname>Telleen-Lawton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tristan</forename><surname>Hume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zac</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Samuel</forename><forename type="middle">R</forename><surname>Bowman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roger</forename><surname>Grosse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danny</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deep</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Evan</forename><surname>Hubinger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Schiefer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<title level="m">Discovering language model behaviors with model-written evaluations</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<title level="m" type="main">Ethical and social risks of harm from language models</title>
+		<author>
+			<persName><forename type="first">Laura</forename><surname>Weidinger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Mellor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maribeth</forename><surname>Rauh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Conor</forename><surname>Griffin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Myra</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Borja</forename><surname>Balle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Atoosa</forename><surname>Kasirzadeh</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2112.04359</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">Deep reinforcement learning from human preferences</title>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miljan</forename><surname>Martic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Legg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<author>
+			<persName><forename type="first">Nisan</forename><surname>Stiennon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">M</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Lowe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chelsea</forename><surname>Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Christiano</surname></persName>
+		</author>
+		<title level="m">Learning to summarize from human feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">Independence of clones as a criterion for voting rules</title>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">N</forename><surname>Tideman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Social Choice and Welfare</title>
+		<imprint>
+			<biblScope unit="volume">4</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page" from="185" to="206" />
+			<date type="published" when="1987-09">September 1987</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title level="a" type="main">The political biases of chatgpt</title>
+		<author>
+			<persName><forename type="first">David</forename><surname>Rozado</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Social Sciences</title>
+		<imprint>
+			<biblScope unit="volume">12</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page">148</biblScope>
+			<date type="published" when="2023-03">Mar 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

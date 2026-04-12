@@ -1,0 +1,2867 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Hynek</forename><surname>Kydlíček</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Loubna</forename><surname>Ben</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Colin</forename><forename type="middle">Raffel</forename><surname>Leandro</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Werra</forename><forename type="middle">Thomas</forename><surname>Wolf</surname></persName>
+						</author>
+						<title level="a" type="main">The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">C54D0019C99FE182064E0A41873940F4</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:16+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>The performance of a large language model (LLM) depends heavily on the quality and size of its pretraining dataset. However, the pretraining datasets for state-ofthe-art open LLMs like Llama 3 and Mixtral are not publicly available and very little is known about how they were created. In this work, we introduce FineWeb, a 15-trillion token dataset derived from 96 Common Crawl snapshots that produces better-performing LLMs than other open pretraining datasets. To advance the understanding of how best to curate high-quality pretraining datasets, we carefully document and ablate all of the design choices used in FineWeb, including indepth investigations of deduplication and filtering strategies. In addition, we introduce FineWeb-Edu, a 1.3-trillion token collection of educational text filtered from FineWeb. LLMs pretrained on FineWeb-Edu exhibit dramatically better performance on knowledge-and reasoning-intensive benchmarks like MMLU and ARC. Along with our datasets, we publicly release our data curation codebase and all of the models trained during our ablation experiments.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Large Language Models (LLMs) have quickly become a ubiquitous technology thanks to their ability to competently perform a wide range of text-based tasks. A driving factor in the success of LLMs has been a steady increase in model sizes <ref type="bibr" target="#b0">[1]</ref><ref type="bibr" target="#b1">[2]</ref><ref type="bibr" target="#b2">[3]</ref>, which in turn necessitate ever-larger pretraining datasets. Beyond scale, other characteristics of pretraining data have proven to be important, including filtering out "low-quality" content <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b3">4]</ref> and removing duplicate text <ref type="bibr" target="#b4">[5]</ref>. Ultimately, the curation choices made when developing a pretraining dataset can have a huge impact on the downstream capabilities and performance of an LLM. As such, pretraining dataset curation strategies are often treated as closely guarded trade secrets. In fact, there are many popular "open" language models whose parameters are publicly available but whose pretraining datasets were not released and are scarcely documented <ref type="bibr" target="#b5">[6,</ref><ref type="bibr" target="#b6">7]</ref>. The lack of access to high-quality large-scale pretraining datasets and lack of information about their curation has led to concerns of a growing gap between proprietary and public knowledge.</p><p>In this work, we aim to minimize this gap by developing and releasing the FineWeb datasets, a collection of large-scale pretraining datasets that can be used to train performant LLMs. Specifically, we first introduce FineWeb, a 15-trillion token dataset of text sourced from 96 Common Crawl snapshots. FineWeb is sufficiently large to train a Chinchilla-optimal model <ref type="bibr" target="#b0">[1]</ref> with more than 500 billion parameters. Beyond scale, FineWeb's recipe involves a principled strategy for choosing and tuning filtering heuristics that helped produce a small set of effective filters out of over fifty candidate filters from past work. In addition, we performed an in-depth exploration of how different deduplication strategies and granularities can impact performance. To validate our design choices, we ultimately demonstrate that models trained on FineWeb perform better than those trained on other public web-based pre-training datasets. Inspired by recent work advocating for training LLMs on educational data <ref type="bibr" target="#b7">[8,</ref><ref type="bibr" target="#b8">9]</ref>, we additionally introduce FineWeb-Edu, a subset of 1.3 trillion tokens from FineWeb that was rated as highly educational by a custom classifier. Models trained on FineWeb-Edu exhibit significantly better performance on knowledge-and reasoning-intensive benchmarks like MMLU <ref type="bibr" target="#b9">[10]</ref> and ARC <ref type="bibr" target="#b10">[11]</ref>. Both datasets are released under the permissive <ref type="url" target="https://opendatacommons.org/licenses/by/1-0/">ODC-By License</ref>. Apart from contributing datasets, we also release datatrove <ref type="bibr" target="#b11">[12]</ref>, the data processing library we developed to create FineWeb. On the whole, our work represents a significant step towards improving public knowledge and resources for curating LLM pre-training datasets.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Background</head><p>In this work, we focus on the curation of training datasets for autoregressive Transformer-based large language models (LLMs) <ref type="bibr" target="#b12">[13]</ref>. At their core, LLMs aim to produce a distribution over the next token of text conditioned on past tokens, where each token is typically a word or subword unit <ref type="bibr" target="#b2">[3]</ref>. The generality of this paradigm allows LLMs to be applied to virtually any text-based task by formulating a prefix whose continuation corresponds to performing the task (e.g. "The cat sat on the mat translated to French is..." for English-to-French translation). Such models may undergo many stages of training including pretraining on unstructured text data, fine-tuning to improve performance on a specific task <ref type="bibr" target="#b13">[14]</ref>, multitask fine-tuning to improve generalization to new tasks <ref type="bibr" target="#b14">[15]</ref>, and learning from human feedback to improve instruction-following capabilities <ref type="bibr" target="#b15">[16,</ref><ref type="bibr" target="#b1">2]</ref>. In this work, we focus solely on curating data for the pretraining stage.</p><p>While many sources have been considered for pretraining data including text from books <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b2">3,</ref><ref type="bibr" target="#b16">17,</ref><ref type="bibr" target="#b3">4]</ref>, Wikipedia <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b2">3,</ref><ref type="bibr" target="#b16">17,</ref><ref type="bibr" target="#b3">4]</ref>, and research papers <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b3">4,</ref><ref type="bibr" target="#b17">18]</ref>, a highly common choice is to use web text, i.e. text scraped from webpages on the public internet <ref type="bibr" target="#b18">[19,</ref><ref type="bibr" target="#b19">20]</ref>. While some companies like OpenAI <ref type="bibr" target="#b20">[21]</ref> and Anthropic <ref type="bibr">[22]</ref> perform their own web scrapes, designing, implementing, and running a web scraper at scale requires significant resources and expertise. Many LLM pretraining datasets have therefore been constructed from text from the Common Crawl <ref type="bibr">[23]</ref>, a publicly available and continually updated collection of website snapshots that has been running since 2007. As of writing, Common Crawl has produced 100 web snapshots totaling petabytes of data.</p><p>Although Common Crawl has produced more than enough data to train recent LLMs, it has been shown that the performance of an LLM can heavily depend on how web text has been filtered and preprocessed before being used for pretraining <ref type="bibr" target="#b18">[19]</ref>. In particular, web text can contain a large amount of "unnatural" language (e.g. "boilerplate" text, gibberish, etc.). Training on unnatural language data can harm the performance of LLMs, possibly because most downstream uses of LLMs do not involve such data. On the other hand, filtering out too much content can produce a dataset that is too small to perform sufficient pretraining (which typically involves only one pass or a few passes over the pretraining dataset <ref type="bibr" target="#b21">[24]</ref>) for a general use model. Separately, web text can contain a large amount of duplicated content, which has also been shown to be harmful in the context of pretraining data <ref type="bibr" target="#b4">[5]</ref>. While deduplication may seem as straightforward as "removing duplicate text", in practice many design choices must be made (line, paragraph, or document-level deduplication? fuzzy or exact matching? etc.). The curation and relative performance of different web text-based pretraining datasets therefore heavily depends on a given dataset's filtering and deduplication pipeline.</p><p>Given that the focus of our work is to carefully design an effective Common Crawl-based pretraining dataset, we now briefly discuss the filtering and deduplication used in past public datasets. OSCAR <ref type="bibr" target="#b22">[25]</ref> processes Common Crawl using a pipeline inspired by that of Touvron et al. <ref type="bibr" target="#b1">[2]</ref>, which uses a fastText-based language classifier <ref type="bibr" target="#b23">[26]</ref> to filter pages based on their language and then performs deduplication at the line level using a non-cryptographic hash algorithm. C4 <ref type="bibr" target="#b14">[15]</ref> uses langdetect [27] to filter out non-English pages, then applies a series of heuristic filters (retaining only those lines that end in a terminal punctuation mark, removing short lines, discarding any page that contains a word from a "bad words" list, etc.), and finally deduplicates over three-line windows. CC-100 <ref type="bibr" target="#b24">[28]</ref> uses the cc_net pipeline, which includes fastText for language identification, performs paragraph-level hash-based deduplication, and retains only the text that is assigned a low perplexity by a n-gram language model trained on Wikipedia. The Pile <ref type="bibr" target="#b25">[29]</ref> is a composite dataset that includes "Pile-CC", a collection of text from one Common Crawl snapshot that uses pycld2 [30] for language detection, jusText <ref type="bibr">[31]</ref> for boilerplate removal, a classifier to filter out pages that are dissimilar form WebText (described below), and fuzzy deduplication using MinHash <ref type="bibr" target="#b26">[32]</ref>. ROOTS <ref type="bibr" target="#b27">[33]</ref> includes text from the pre-processed web crawl OSCAR with additional heuristic-based filtering and SimHash-based deduplication. RedPajama <ref type="bibr" target="#b28">[34]</ref> is a composite dataset that includes Common Crawl-sourced text processed using the cc_net pipeline as well as quality filtering using a classifier trained to distinguish Wikipedia level content from random Common Crawl samples. SlimPajama <ref type="bibr" target="#b29">[35]</ref> further processed RedPajama by removing short documents and performing additional fuzzy MinHash-based deduplication. RefinedWeb <ref type="bibr" target="#b30">[36]</ref> uses trafilatura [37] for text extraction, fastText for language identification, heuristic rules inspired by MassiveText (discussed below) to filter data, and both MinHash (fuzzy) and ExactSubstr (exact) deduplication. RedPajama v2 <ref type="bibr" target="#b28">[34]</ref> has 84 Common Crawl snapshots released unfiltered and non-deduplicated but with labels from filtering techniques from cc_net, C4, MassiveText, RefinedWeb and others, as well as deduplication labels for exact (Bloom filter) and fuzzy (MinHash) deduplication. Finally, Dolma <ref type="bibr" target="#b31">[38]</ref> has a Common Crawl-based subset that uses fastText for language classification, heuristic rules from MassiveText and C4 for quality filtering, rules-and classifier-based toxicity filtering, and URL, document and paragraph-level deduplication using a Bloom filter.</p><p>Apart from public datasets, the technical reports accompanying the announcement of closed LLMs occasionally discuss pretraining datasets. WebText <ref type="bibr" target="#b19">[20]</ref> (used to train GPT-2) involves only those non-Wikipedia webpages that were linked to from Reddit posts with at least 3 karma, with text extracted using Dragnet <ref type="bibr" target="#b32">[39]</ref> and Newspaper1 [40] and an unspecified deduplication pipeline. GPT-3's Dataset <ref type="bibr" target="#b2">[3]</ref> includes content from Common Crawl that has been filtered using a classifier trained on WebText, Wikipedia, and Books, and deduplicated using MinHash. MassiveText <ref type="bibr" target="#b33">[41]</ref> (used to train Gopher) is a web-based dataset using Google's SafeSearch to remove explicit content and heuristic filters based on document's content (number of words, stop-words appearance, character repetition, etc.) as well as MinHash-based deduplication.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Building FineWeb</head><p>Our design of FineWeb is primarily empirical: we performed a series of "data ablation" experiments to test different methods at each stage of the pipeline. In this section, we chronicle our experimental results and design choices. All ablations follow our iterative dataset building process, i.e., the baseline model for each subsection includes only the processing steps from the previous subsections, unless explicitly mentioned. Our results are fully reproducible with <ref type="url" target="https://github.com/huggingface/datatrove/blob/main/examples/fineweb.py">code</ref> in our datatrove repository.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Experimental setup</head><p>We compare pipeline design choices at each stage by training data ablation models that are identical apart from the data they were trained on (same number of parameters, architecture hyper-parameters, and trained on an equal number of randomly sampled tokens from each version of the data). We then evaluated them on the same set of downstream task benchmark datasets (discussed below). To minimize the impact of random data subset selection on evaluation scores, we trained two models for each dataset version, each using a different but equal-sized random subset of the full data and a different initialization seed, and then compared average scores.</p><p>All training was performed using the <ref type="url" target="https://github.com/huggingface/nanotron">nanotron</ref> library. Data ablation models all had 1.71B parameters (including embeddings), used the Llama architecture <ref type="bibr" target="#b1">[2]</ref> with a sequence length of 2048, a global batch size of ~2 million tokens, and the GPT2 tokenizer <ref type="bibr" target="#b19">[20]</ref>. Within a given experiment, all models were trained on the same amount of data for the same number of steps. Filtering ablations were trained on ~28 billion tokens (roughly the Chinchilla-optimal training size for this model size <ref type="bibr" target="#b0">[1]</ref>), while some deduplication ablations and runs to confirm cumulative relative performance improvements after each step of filtering were conducted on 350 billion tokens. The full training hyperparameter are available in Appendix D. We make all models trained for our ablations publicly available on our dataset repository. In total, we trained over 70 models on our internal cluster, for an estimated total of 80,000 H100 GPU hours.</p><p>Evaluation was performed using the <ref type="url" target="https://github.com/huggingface/lighteval/">lighteval</ref> library. We aimed to select a set of benchmarks that would provide good signal at the relatively small scale of our data ablations. Specifically, we chose benchmarks where models showed minimal score variance between runs trained on different random samples of the same dataset; monotonic (or nearly monotonic) score improvement over a given training; and scores above random baseline for models of this size. These criteria ensure that the scores obtained on a subset of the data are representative of the entire dataset and that they reflect a reliable measurement of the effect of the training data on model performance. Ultimately, we selected benchmark datasets CommonSense QA <ref type="bibr" target="#b34">[42]</ref>, HellaSwag <ref type="bibr" target="#b35">[43]</ref>, OpenBook QA <ref type="bibr" target="#b36">[44]</ref>, PIQA <ref type="bibr" target="#b37">[45]</ref>, SIQA <ref type="bibr" target="#b38">[46]</ref>, WinoGrande <ref type="bibr" target="#b39">[47]</ref>, ARC <ref type="bibr" target="#b10">[11]</ref>, and MMLU <ref type="bibr" target="#b9">[10]</ref>, truncating large benchmarks to 1000 samples so that we could efficiently evaluate over the course of training. We publicly release our <ref type="url" target="https://huggingface.co/datasets/HuggingFaceFW/fineweb/blob/main/lighteval_tasks.py">exact evaluation setup</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Text extraction</head><p>Common Crawl data is available in two different formats: WARC and WET. WARC (Web ARChive format) files contain the raw data from the crawl, including the full page HTML and request metadata. WET (WARC Encapsulated Text) files provide a text-only version of crawled websites by using htmlparser <ref type="bibr">[48]</ref>. While WET files are commonly used as a starting point for dataset creation, similarly to Gao et al. <ref type="bibr" target="#b25">[29]</ref>, we found that WET files retained too much boilerplate and menu text. We therefore experimented with extracting the text content from the WARC files using the open source trafilatura library <ref type="bibr" target="#b40">[49]</ref>, which from visual inspection of the results provided good quality extraction when compared to other available libraries (less boilerplate and menu text). Custom text extraction is relatively costly, but its effects are felt on model performance: Fig. <ref type="figure">1</ref> shows the performance of ablation models trained on either trafilatura applied to WARC data or WET data, with minimal additional filtering (fastText language identification to filter samples with English as the highest probability label) and no deduplication. Using trafilatura-extracted text from WARC files clearly results in a more performant model and we therefore use WARC-based data in all of our following experiments. 0 5 10 15 20 25 30 Training tokens (billions) 34 36 38 40 42 Aggregate Acc (%) Base Filtering Extracted from WARC Figure 2: Base filtered WARC vs Unfiltered WARC data 28B tokens ablation study. Our base filtering step provides a significant performance uplift.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Base filtering</head><p>As a starting point to our filtering, we applied a basic filtering pipeline using part of the setup from RefinedWeb <ref type="bibr" target="#b41">[50]</ref>. Concretely, we applied URL filtering using a blocklist <ref type="bibr" target="#b42">[51]</ref> to remove adult content, applied a fastText language classifier <ref type="bibr" target="#b43">[52,</ref><ref type="bibr" target="#b23">26]</ref> to keep only English text with a score &gt;= 0.65, and applied quality and repetition filters from MassiveText <ref type="bibr" target="#b33">[41]</ref>, using the original thresholds. After applying this filtering to all of the WARC-based text extracted from the 96 snapshots available at the time of writing, we obtained roughly 36 trillion tokens of data when tokenized with the GPT-2 tokenizer. Applying these steps results in a performance uplift, as seen in Fig. <ref type="figure">2</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">Deduplication</head><p>The web has many aggregators, mirrors, templated pages or just otherwise repeated content spread over different domains and webpages. Removing these duplicates (deduplicating) has been correlated with improvements in model performance <ref type="bibr" target="#b4">[5]</ref> and a reduction in memorization of pretraining data <ref type="bibr" target="#b44">[53,</ref><ref type="bibr" target="#b45">54]</ref>. There are different ways to identify and even define duplicated data. Common approaches rely on hashing techniques or efficient data structures like suffix arrays <ref type="bibr" target="#b46">[55]</ref>. Methods can also be "fuzzy" by using a similarity metric or "exact" by checking for exact matches between two text chunks <ref type="bibr" target="#b47">[56]</ref>.</p><p>Following RefinedWeb <ref type="bibr" target="#b41">[50]</ref>, we experimented with MinHash, a fuzzy hash-based deduplication technique that scales efficiently to many CPU nodes and allows tuning of similarity thresholds (by controlling the number and the number of hashes per bucket) as well as the length of the subsequences considered (by controlling the n-gram size). We chose to collect each document's 5-grams, obtained using an English word tokenizer <ref type="bibr" target="#b48">[57]</ref>, and computed MinHashes using 112 hash functions in total, split into 14 buckets of 8 hashes each -targeting documents that are at least 75% similar. Documents with the same 8 MinHashes in any bucket are considered duplicates of each other. We then perform a transitive clustering step where documents A, B and C will be in the same duplicate cluster if A and C are duplicates and B and C are duplicates, even if A and B do not have 8 matching MinHashes in any bucket with each other. One (randomly chosen) document is kept per duplicate cluster while the remaining duplicates are removed. We further discuss deduplication parameters in Appendix E.1. 0 5 10 15 20 25 30 Training tokens (billions) 33 35 38 40 43 Aggregate Acc (%) Originally removed data Originally kept data Figure 4: 2013-48 global minhash impact study.</p><p>Global deduplication upsamples lower-quality data in the last deduplicated crawl, resulting in worse performance of the retained data compared to the removed data.</p><p>Our first approach was to apply MinHash deduplication globally to the entire dataset (all 96 snapshots).</p><p>We did this in an iterative manner: starting with the most recent snapshot (2023-50, at the time the experiment was run) and proceeding chronologically until we reached the oldest snapshot. When applied to the oldest snapshots, this process removed as much as 90% of the original base filtered data, as they were deduplicated against a large number of other snapshots. Deduplicating the entire dataset in this manner resulted in 4 trillion tokens of data. However, when training on a randomly sampled 350 billion tokens subset, our ablation models showed little improvement over a model trained on the non-deduplicated data, scoring far below RefinedWeb on our aggregate of tasks, as shown in Fig. <ref type="figure">3</ref>.</p><p>This challenged our initial assumption that global deduplication would inevitably result in higher benchmark scores. We therefore performed an additional experiment to investigate the quality of the remaining data. We trained two models on two slices from the older 2013-48 snapshot: (a) the fully deduplicated remaining ~31 billion tokens (originally kept data); and (b) 171 billion tokens obtained by individually deduplicating (without considering the other crawls) the ~460 billion tokens that had been removed from this crawl in the iterative deduplication process (originally removed data). Results are presented in Fig. <ref type="figure">4</ref>. They show that, for this older crawl taken in isolation, the data from it that was kept (10% of the original data) was actually of worse quality than the 90% of data that was removed. We confirmed this by visual inspection: originally kept data contains more ads, incoherent lists of keywords and generally badly formatted text than originally removed data.</p><p>We therefore tried an alternative approach: individually deduplicating each snapshot (independently from the others), using the same parameters as before. This resulted in 20 trillion tokens of data.</p><p>When training on a random sample from this dataset (with data sampled from all snapshots) it matched RefinedWeb's performance, as per Fig. <ref type="figure" target="#fig_2">5</ref>.</p><p>One of our hypotheses is that the main improvement gained from deduplication lies in the removal of large clusters of duplicates with hundreds of thousands of documents <ref type="bibr" target="#b41">[50]</ref> present in all crawls, while further deduplication of clusters with a small number of duplicates (less than ~100, i.e., the number of crawls) can harm performance. More specific filtering targeting the long tail of data quality might be more suited than deduplication for this subset of the data. To attempt to improve upon individual deduplication of each snapshot, we additionally experimented with "lighter" global deduplication techniques. Ultimately, none of these techniques improved performance over independent per-snapshot deduplication. A full description of these methods and results are in Appendix E.3.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.5">Adding C4's filters</head><p>By this point we had reached the same performance as RefinedWeb <ref type="bibr" target="#b41">[50]</ref> using our base filtering and independent MinHash. However, we noted that the C4 dataset <ref type="bibr" target="#b14">[15]</ref>, while smaller than FineWeb, still showed stronger performance on some of the benchmarks in our evaluation suite, in particular HellaSwag <ref type="bibr" target="#b35">[43]</ref>, one of the benchmarks in our aggregate group of tasks with the highest signal-to-noise ratio. Despite being one of the first large scale LLM training datasets, C4 is still frequently part of the pretraining data mixture of recent models such as LlamaA 1 <ref type="bibr" target="#b1">[2]</ref>. We set out to explore additional filtering steps that would allow us to match or surpass the performance of C4. A natural starting point was to look into the processing of C4 itself.</p><p>5 10 15 20 25 30 Training tokens (billions) 32 36 40 44 48 HellaSwag Acc (%) All filters C4 All but Terminal Punct Terminal Punct Filter Word Length Filter Curly Bracket Filter Baseline 10 15 20 25 30 Training tokens (billions) 40 41 42 43 44 Aggregate Acc (%) Filters combined Punctuation filter Line duplicates filter Short lines filter C4 Terminal Punct Filter Baseline C4 was constructed from the 2019-18 crawl by applying heuristic filters, which included dropping lines without a terminal punctuation mark, that mentioned javascript, or that had "terms-ofuse"/"cookie policy" statements, and dropping documents that were too short or that contained "lorem ipsum" or a curly bracket ({). We experimented with applying these filters to a baseline of the base filtered and individually deduplicated 2019-18 crawl, and, additionally, compared the results to C4 itself.</p><p>Fig. <ref type="figure" target="#fig_3">6</ref> shows that applying All filters allows us to match C4's HellaSwag performance; the Curly bracket filter, and the Word lengths filter only give a small boost, removing 2.8% and 4.3% of tokens, respectively; the Terminal punctuation filter, by itself, gives the biggest individual boost, but removes around 30% of all tokens; the lorem_ipsum, javascript and policy rules each remove &lt;0.5% of training tokens, so we did not train on them individually; All but terminal punct performs better than terminal_punct by itself, while removing less in total (~7%). We decided to apply all C4 filters mentioned above except the terminal punctuation filter, as it eliminates an excessively large amount of data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.6">Developing additional heuristic filters</head><p>Past work has mainly developed heuristic filters through data inspection <ref type="bibr" target="#b14">[15]</ref>. In this work we devised a more systematic process for designing heuristic filters and tuning their thresholds. We started by collecting over 50 high-level statistics ranging from document-level metrics (e.g. number of lines, avg. line/word length, etc) to inter-document repetition metrics (inspired by MassiveText <ref type="bibr" target="#b0">[1]</ref>) on both a high-and low-quality web dataset. Specifically, we used the individually and globally deduplicated versions of the 2013-48 snapshot (previously mentioned in Section 3.4) as our "high-quality" and "low-quality" datasets respectively. We then identified metrics for which the distribution of values differed significantly across the two datasets, inspected the histograms of the two distributions and empirically chose thresholds that would target sections of the histogram where the lower quality dataset frequency was higher than on the corresponding higher quality dataset section. As an example, we plot the distribution of the fraction of lines ending with punctuation metric in Fig. <ref type="figure" target="#fig_5">8</ref>. We can see that the higher quality dataset has in general higher document density for larger values of our metric, and, in particular, the lower quality dataset has a much higher density of documents for values &lt; 0.12. We thus conclude that documents with a fraction of lines ending with punctuation &lt; 0.12 are generally lower quality and use this value as a tentative threshold to filter documents. Following this process for all metrics yielded 16 candidate metric-threshold pairs. We then assessed the effectiveness of these 16 newly created filters by conducting several 28B token ablation runs on the 2019-18 crawl. Full details for these runs are in Appendix E.4. Out of all those runs, we identified three filters (see their ablations runs in Fig. <ref type="figure" target="#fig_4">7</ref>) that demonstrated the most significant improvements on the aggregate benchmark score. Specifically, the chosen filters remove documents where the fraction of lines ending with punctuation is &lt;= 0.12 (10.14% of tokens removed vs. 30% from the original C4 terminal punctuation filter), where the fraction of characters in duplicated lines is &gt;= 0.1 (12.47% of tokens removed; the original MassiveText threshold for this ratio is &gt;= 0.2), and/or where the fraction of lines shorter than 30 characters is &gt;= 0.67 (3.73% of tokens removed). When applying the three together, ~22% of tokens were removed and the aggregate score increased by about 1% in the 28B token ablations. These filters allowed us to further improve performance and, notably, surpass the C4 dataset performance while filtering out a smaller proportion of data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.7">The final FineWeb dataset</head><p>Combining the decisions made in the previous sections and applying the resulting pipeline to 96 Common Crawl snapshots produces the 15T-token FineWeb dataset. Specifically, we extract text from WARC files (Section 3.2), apply base filtering (Section 3.3), perform individual per-crawl MinHash deduplication (Section 3.4), apply a selection of C4 filters (Section 3.5), and finally apply custom filters (Section 3.6). Each step provides a relative performance boost on our group of benchmark tasks, as seen in Fig. <ref type="figure" target="#fig_6">9</ref>. For the public release of the dataset, we have also applied Personal Identifiable Information (PII) removal, by anonymizing email and public IP addresses.</p><p>In Fig. <ref type="figure" target="#fig_7">10</ref> we <ref type="url" target="https://huggingface.co/collections/HuggingFaceFW/ds-662457b0d213e8c14fe47f32">compare</ref> FineWeb with the following commonly used openly accessible web-scale datasets: RefinedWeb (500B tokens) <ref type="bibr" target="#b41">[50]</ref>, C4 (172B tokens) <ref type="bibr" target="#b14">[15]</ref>; the Common Crawl-based part of Dolma 1.6 (3T tokens) and 1.7 (1.2T tokens) <ref type="bibr" target="#b49">[58]</ref>, The Pile (340B tokens) <ref type="bibr" target="#b25">[29]</ref>, SlimPajama (627B tokens) <ref type="bibr" target="#b29">[35]</ref>, the deduplicated variant of RedPajama2<ref type="foot" target="#foot_1">foot_1</ref> (20T tokens) <ref type="bibr" target="#b28">[34]</ref>, English CommonCrawl section of Matrix (1.3T tokens) <ref type="bibr" target="#b50">[59]</ref>, English CC-100 (70B tokens) <ref type="bibr" target="#b51">[60]</ref>, and Colossal-OSCAR (850B tokens) <ref type="bibr" target="#b52">[61]</ref>. Notably, FineWeb shows strong performance and FineWeb-Edu (detailed below) outperforms all other open datasets we compared on our aggregate group of tasks, further validating the design choices we made. Note that to train these models we randomly sampled 350 billion tokens from each dataset, without upsampling any individual Common Crawl snapshot. 0 60 120 180 240 300 360 Training tokens (billions) 42 44 46 48 50 52 Aggregate Acc (%) FineWeb-Edu (Ours) Matrix Dolma 1.7 FineWeb (Ours) C4 RefinedWeb Dolma 1.6 CC-100 SlimPajama RedPajama2 The Pile Oscar </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">FineWeb-Edu</head><p>An interesting approach has recently emerged for filtering LLM training datasets: using synthetic data to develop classifiers for identifying educational content. This technique was notably used in the non-public pretraining datasets of Llama 3 <ref type="bibr" target="#b5">[6]</ref> and Phi-3 <ref type="bibr" target="#b7">[8]</ref>, but its large-scale impact on web data filtering has not been publicly explored. We applied this technique to FineWeb by filtering it with an educational quality classifier developed from synthetic annotations generated by Llama-3-70B-Instruct <ref type="bibr" target="#b53">[62]</ref>. The resulting dataset, FineWeb-Edu, contains 1.3 trillion tokens. FineWeb-Edu is specifically optimized for educational content and outperforms all openly accessible web-based datasets on a number of reasoning-and knowledge-intensive benchmarks such as MMLU, ARC, and OpenBookQA by a significant margin.</p><p>To build the synthetic annotations, we use Llama-3-70B-Instruct to score 460,000 randomly sampled webpages from the FineWeb CC-MAIN-2024-10 snapshot for their educational quality on a scale from 0 to 5. We explored several prompt formats to automatically extract an educational score using an LLM and found that the additive scale used in previous work Yuan et al. <ref type="bibr" target="#b54">[63]</ref> worked best. It allows the LLM to evaluate each criterion and build the score step-by-step, unlike the single-rating scale <ref type="bibr" target="#b55">[64]</ref> which assigns a fixed score based on predefined categories. To avoid having the LLM favor highly technical pages like arXiv abstracts and submissions, we prompted it to focus on grade-school and middle-school level knowledge. The prompt used for synthetic annotations is in Appendix F.1.</p><p>To scale our filtering to the entirety of FineWeb, we trained a linear regression model on top of the Snowflake-arctic-embed-m embedding model <ref type="bibr" target="#b56">[65]</ref>. We fine-tuned this linear regressor on 410,000 of our Llama 3 synthetic annotations for 20 epochs with a learning rate of 3e-4 (while keeping the embedding and encoder layers frozen). We selected the checkpoint with the highest F1 score on the held-out validation set containing the remaining 50,000 samples, treating Llama 3 annotations as ground-truth. After training, we rounded the model's output scores to integers from 0 to 5. We then used fixed thresholds to classify whether a given document from FineWeb was educational. We investigated the impact of using different thresholds for the filtering and ultimately chose a minimum threshold of 3 for FineWeb-Edu, which ultimately gave the best trade-off between performance on knowledge and reasoning intensive benchmarks and the performance on other benchmarks like HellaSwag <ref type="bibr" target="#b57">[66]</ref>. With a threshold of 3, the model achieved an F1 score of 82% on the validation set, indicating strong performance in distinguishing high-quality educational content.</p><p>Applying the classifier to the 15 trillion tokens of FineWeb required 6,000 H100 GPU hours.</p><p>To confirm the effectiveness of education filtering at a larger scale, we conducted a larger ablation training a 1.71B model on 350 billion tokens, similar to the FineWeb filtering ablations mentioned above. As shown in Fig. <ref type="figure" target="#fig_7">10</ref> and Fig. <ref type="figure" target="#fig_8">11</ref>, we observed that FineWeb-Edu surpasses FineWeb and all other open web datasets, with quite remarkable improvements on educational benchmarks such as MMLU, ARC and OpenBookQA. Specifically, MMLU score increases from 33% to 37%, a relative improvement of approximately 12%, and ARC score goes from 46% to 57%, an improvement of about 24%. FineWeb-Edu achieves a 33.6% accuracy on the MMLU benchmark at only 38 billion tokens, significantly outperforming Matrix (second best on the metric), which reaches similar accuracy at 300 billion tokens.</p><p>On MMLU, FineWeb-Edu can match the final performance of Matrix with almost 10x fewer tokens, demonstrating the effectiveness of classifiers trained on LLM annotations for large-scale data filtering. Additional evaluation plots can be found in Appendix F.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Topic distribution</head><p>To examine how the educational classifier may skew the dataset towards certain topics, we embed <ref type="bibr" target="#b58">[67]</ref> 50k samples from FineWeb and 50k samples from FineWeb-Edu using a sentencetransformers <ref type="bibr" target="#b59">[68]</ref> model (all-MiniLM-L6-v2) which we then project to 2D space using UMAP <ref type="bibr" target="#b60">[69]</ref>. Finally, we use DBSCAN <ref type="bibr" target="#b61">[70]</ref> clustering to find the 100 densest topic clusters in the union of the two datasets, which we label using Llama 3.1 70B <ref type="bibr" target="#b5">[6]</ref>. To compare the two datasets, we plot the difference of the size (as a percentage of the entire dataset) of each cluster in FineWeb-Edu and FineWeb in Fig. <ref type="figure" target="#fig_15">18</ref>. The educational classifier heavily favors topics such as 'Education, Learning, Teaching' or 'History, Culture, Politics', while down-sampling 'Business, Finance, Law', 'Entertainment, Film, Theater' and 'Places, Travel, Real Estate', among others.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Domain fit</head><p>We evaluate the macro average perplexity of six checkpoints from our FineWeb and FineWeb-Edu ablation models on the domains from Paloma <ref type="bibr" target="#b62">[71]</ref>. We use the codebase provided in <ref type="bibr" target="#b62">[71]</ref> but intentionally do not perform decontamination, to compare how well each dataset covers different domains. The results are in Fig. <ref type="figure" target="#fig_0">12</ref>. The FineWeb model generally shows lower perplexity in broad web sources such as C4, mC4, Falcon, Dolma V1.5 or the CommonCrawl subset of RedPajama, as well as on Twitter AAE, Manosphere, Gab, reddit (100 Subreddits) or 4chan. FineWeb-Edu tends to favour sources containing Wikipedia (WikiText-103 and M2D2 Wikipedia) or that are heavy in academic content (M2D2 S2ORC, which has semantic scholar papers, and the Arxiv subset of RedPajama). FineWeb-Edu also seems to have better coverage of programming content (100 PLs) than FineWeb. We have included results per subset for some of these sources in Appendix F.4.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Bias analyses</head><p>Language models are known to reflect the biases present in their pretraining datasts <ref type="bibr" target="#b63">[72]</ref><ref type="bibr" target="#b64">[73]</ref><ref type="bibr" target="#b65">[74]</ref><ref type="bibr" target="#b66">[75]</ref><ref type="bibr" target="#b67">[76]</ref><ref type="bibr" target="#b68">[77]</ref>. To provide a brief picture of dataset bias in FineWeb and FineWeb-Edu, we focus on subgroups recognised as "sensitive" or "protected" in English-speaking countries. These are a subset of subgroups that are historically subject to discrimination and are disproportionately the target of negative societal norms such as stereotyping, which is reflected in text-based language consumed for a dataset. We find that the FineWeb dataset has a relative overrepresentation of words that reflect hegemonic norms, known to be overrepresented in online text <ref type="bibr" target="#b63">[72]</ref>, such as 'man' and 'christian'. Although biases across the gender, religion, and age subgroups examined are not strong, we see the most skewed association between religion words and intimacy, such as 'christian dating' and 'jewish singles'. Fittingly, the FineWeb-Edu dataset captures associations that are less tied to intimacy compared to FineWeb and more expected from educational content of history and health, such as 'man' being associated to 'king', and 'woman' associated to 'pregnancy'. Further details are provided in Appendix G. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Conclusion</head><p>In this paper, we developed the FineWeb datasets, a collection of large-scale LLM pretraining datasets that produce performant LLMs. Specifically, we release FineWeb, a 15-trillion token dataset derived from 96 Common Crawl snapshots, as well as FineWeb-Edu, a 1.3-trillion token dataset of educational content from FineWeb. FineWeb was created through a series of experiments that provided empirical evidence for our choice of text extraction strategy, deduplication procedure, and content filters. Both datasets are publicly released, along with the code and processing library that we used and all of the models we trained during our dataset ablation experiments.</p><p>While FineWeb and FineWeb-Edu attain state-of-the-art performance among public LLM pretraining datasets, we identify various paths to further improvement. First, both datasets are entirely comprised of web content scraped by Common Crawl. It is possible that augmenting either datasets with other datatypes (books, speech transcripts, etc.) could further improve performance. In addition, most of the experiments we ran were at a smaller scale due to computational constraints. Designing datasets at more realistic scales could provide more reliable guidance. Our evaluation setup was also by necessity limited to performance on academic benchmarks without any further instruction tuning or alignment. An evaluation setup that better reflected current usage patterns of LLMs might also be more reliable. We hope that our released datasets, code, and models help further improve public knowledge and development of performant LLM pretraining datasets.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A FineWeb Datasheet</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Dataset Details</head><p>Purpose of the dataset We released FineWeb to make large language model training more accessible to the machine learning community at large.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Curated by</head><p>The dataset was curated by Hugging Face.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Funded by</head><p>The dataset was funded by Hugging Face.</p><p>Language(s) English</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>License</head><p>The dataset is released under the Open Data Commons Attribution License (ODC-By) v1.0 license. The use of this dataset is also subject to Common-Crawl's Terms of Use.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Dataset Structure</head><p>Data Instances The following is an example sample from the dataset. It is part of the CC-MAIN-2021-43 snapshot and was crawled on 2021-10-15T21:20:12Z: { "text": "This is basically a peanut flavoured cream thickened with egg yolks and then set into a ramekin on top of some jam.</p><p>Tony, one of the Wedgwood chefs, suggested sprinkling on some toasted crushed peanuts at the end to create extra crunch, which I thought was a great idea. The result is excellent.", ↩→ ↩→ ↩→ ↩→ ↩→ ↩→ ↩→ ↩→ ↩→ ↩→ "id": "&lt;urn:uuid:e5a3e79a-13d4-4147-a26e-167536fcac5d&gt;", ↩→ ↩→ "dump": "CC-MAIN-2021-43", "url": "&lt;http<ref type="url" target="://allrecipes.co.uk">://allrecipes.co.uk</ref> /recipe/24758/peanut-butter-and -jam-creme-brulee.aspx ?o_is=SimilarRecipes&amp;o_ln=Sim Recipes_Photo_7&gt;", ↩→ ↩→ ↩→ ↩→ "date": "2021-10-15T21:20:12Z", "file_path": "s3://commoncrawl/crawl-data/ CC-MAIN-2021-43/segments/ 1634323583083.92/warc/ CC-MAIN-20211015192439 -20211015222439-00600.warc.gz", ↩→ ↩→ ↩→ ↩→ ↩→</p><p>"language": "en", "language_score": 0.948729, "token_count": 69 } Data Fields text (string): the main text content id (string): original unique identifier for this sample from CommonCrawl dump (string):</p><p>the CommonCrawl dump/snapshot this sample was a part of url (string): url to the original page where text was present date (string): crawl date (from Common-Crawl) -file_path (string): s3 path for the individual CommonCrawl warc file containing this sample language (string): en for all the samples in this dataset -language_score (float): language prediction score (0.01.0) as reported by the fastText language classifier -token_count (int): number of tokens when applying the gpt2 tokenizer to this sample</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Data Splits</head><p>The default subset includes the entire dataset. We also include separate splits for each CommonCrawl dump. FineWeb-Edu, a subset filtered for educational content, is also available.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Dataset Creation</head><p>Curation Rationale With FineWeb, we aim to provide the open source community with a clean and large-scale dataset for pretraining performant large language models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Source Data</head><p>The source data consists of webpages crawled by the CommonCrawl foundation over the 2013-2024 time period. We then extracted the main page text from the HTML of each webpage, filtered each sample and deduplicated each individual Common-Crawl dump/crawl.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Data processing steps</head><p>The data processing pipeline consists of:</p><p>-URL filtering -Trafilatura text extraction -FastText language filter -MassiveText repetition and quality filters</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>↩→</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>-C4 quality filters -FineWeb custom filters -MinHash deduplication -PII reformatting</head><p>For FineWeb-Edu, we further apply a filtering step based on our educational content classifier.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Annotations</head><p>We augment the original samples with the language, language_score and tokens_count annotations.</p><p>The language related annotations are automatically generated by our language filter. token_count is generated by applying the GPT-2 tokenizer to the text column.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Personal and Sensitive Information</head><p>We anonymize email addresses and public IP addresses using regex patterns.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Considerations for Using the Data</head><p>Social Impact of Dataset With the release of FineWeb, we aim to make LLM training more accessible to the machine learning community by: (a) making the dataset creation process more transparent, by sharing our entire processing setup including the codebase used (b) helping alleviate the costs of dataset curation, both in time and in compute, for model creators by publicly releasing our dataset with the community.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Biases</head><p>Efforts were made to minimize the amount of NSFW and toxic content present in the dataset by employing filtering on the URL level. However, there are still a significant number of documents present in the final dataset that could be considered to be toxic or contain harmful content. As FineWeb was sourced from the web as a whole, any harmful biases typically present in the web may be reproduced on our dataset. Bias analyses for sensitive subgroups demonstrate that 'man' is more common in the dataset than other gender terms, 'christian' is more common than other religion terms. The disproportionate association of specific terms to sensitive subgroups is relatively low, with the most notable bias that some religion terms tend to be more associated with online dating terms. We provide a more detailed bias analysis in Section 5.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Other Known Limitations</head><p>As a consequence of some of the filtering steps applied, it is likely that code content is not prevalent in our dataset. Users are advised to consider complementing FineWeb with other code datasets and specialized curated sources, such as Wikipedia, which may have better formatting than the Wikipedia content included in FineWeb.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B License and hosting</head><p>The FineWeb datasets are released under the Open Data Commons Attribution License (ODC-By) v1.0. The full text of the license is available at <ref type="url" target="https://opendatacommons.org/licenses/by/1-0/">https://opendatacommons.org/licenses/by/  1-0/</ref>. The use of the dataset is also subject to <ref type="url" target="https://commoncrawl.org/terms-of-use">CommonCrawl's Terms of Use</ref>.</p><p>The FineWeb datasets are hosted on the <ref type="url" target="https://huggingface.co/">HuggingFace hub,</ref> where they will remain available for the foreseeable future. We plan to regularly update the dataset with new CommonCrawl snapshots as they are released. larger number of hash functions also requires a substantially larger amount of compute resources, as each individual hash must be computed, stored, and then compared with hashes from other documents. We believe the compute and storage savings make up for the higher uncertainty on documents near the threshold.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Data ablation setup</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E.2 Measuring the effect of deduplication</head><p>Given the nature of deduplication, its effect is not always visible in a smaller slice of the dataset (such as 28B tokens, the size used for our filtering ablations). Furthermore, there are specific effects at play when deduplicating across different Common Crawl dumps, as some URLs and webpages are recrawled from one snapshot to the next. To visualize the effect of scaling the number of training tokens when measuring deduplication impact, we simulated creating different-sized subsets of randomly sampled documents from the full dataset under the following extreme conditions: there are 100 snapshots, where each one is made up of unique documents with a total of 200 billion tokens (yielding our total of 20 trillion from Section 3.4), and each snapshot is an exact copy of each other (worst case scenario for inter snapshot duplication).</p><p>In Fig. <ref type="figure" target="#fig_11">14</ref>, we can see that for a 1 billion subset, almost all documents would be unique (#duplicates=1), despite each document being repeated 100 times in the full dataset. At the 100 billion scale (0.5% of the total dataset), there starts to be a larger number of documents being repeated twice, and a few even 4-8 times. At the larger scale of 1 trillion (5% of the total dataset), the majority of the documents are repeated up to 8 times, with some being repeated up to 16 times. This simulation illustrates the inherent difficulties with measuring deduplication impact on the training of larger LLMs once the largest duplicate clusters have been removed. We ran our performance evaluations for deduplicated data at the 350 billion scale, which would, under this theoretical scenario, be made up of a significant portion of documents duplicated up to 8 times.</p><p>E.3 Alternative global deduplication 0 60 120 180 240 300 360 Training tokens (billions) 42 44 45 46 48 Aggregate Acc (%) Individual minhash URL dedup Line dedup w/ min words Global minhash Line dedup 3-line dedup To attempt to improve performance on top of independently deduplicating each snapshot, we experimented with applying other "lighter" global deduplication methods to all the individually MinHash deduplicated snapshots (comprising 20 trillion tokens of data).</p><p>We explored URL deduplication, where we only kept one document per normalized (lowercased) URL (71.5% of tokens removed, 5.6 trillion left) -FineWeb URL dedup. Different line-based deduplication variations were also considered: remove all but 1 (randomly chosen) occurrence of each duplicated line (77.8% of tokens dropped, 4.4 trillion left) -FineWeb line dedup; same as above, but only removing duplicate lines with at least 10 words and dropping documents with fewer than 3 sentences after deduplication (85% of tokens dropped, 2.9 trillion left) -FineWeb line dedup w/ min words; and remove all but 1 occurrence of each span of 3 duplicated lines with each number treated as 0 when finding duplicates, (80.9% of tokens removed, 3.7 trillion left) -FineWeb 3-line dedup.</p><p>As can be seen in Fig. <ref type="figure" target="#fig_12">15</ref> the performance of the models trained on each of these methods was consistently worse (albeit to different degrees) than that of the original individually deduplicated data. We therefore did not apply any additional deduplication beyond individual-snapshot MinHash-based deduplication. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F FineWeb-Edu</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.1 Annotation Prompt</head><p>We use the following prompt template to generate document annotations using the Llama3 model:</p><p>Below is an extract from a web page. Evaluate whether the page has a high educational value and could be useful in an educational setting for teaching from primary school to grade school levels using the additive 5-point scoring system described below. Points are accumulated based on the satisfaction of each criterion: -Add 1 point if the extract provides some basic information relevant to educational topics, even if it includes some irrelevant or non-academic content like advertisements and promotional material.</p><p>-Add another point if the extract addresses certain elements pertinent to education but does not align closely with educational standards. It might mix educational content with non-educational material, offering a superficial overview of potentially useful topics, or presenting information in a disorganized manner and incoherent writing style.</p><p>-Award a third point if the extract is appropriate for educational use and introduces key concepts relevant to school curricula. It is coherent though it may not be comprehensive or could include some extraneous information. It may resemble an introductory section of a textbook or a basic tutorial that is suitable for learning but has notable limitations like treating concepts that are too complex for grade school students.</p><p>-Grant a fourth point if the extract highly relevant and beneficial for educational purposes for a level not higher than grade school, exhibiting a clear and consistent writing style. It could be similar to a chapter from a textbook or a tutorial, offering substantial educational content, including exercises and solutions, with minimal irrelevant information, and the concepts aren't too advanced for grade school students. The content is coherent, focused, and valuable for structured learning.</p><p>-Bestow a fifth point if the extract is outstanding in its educational value, perfectly suited for teaching either at primary school or grade school. It follows detailed reasoning, the writing style is easy to follow and offers profound and thorough insights into the subject matter, devoid of any non-educational or complex content. The extract: &lt;EXAMPLE&gt;. After examining the extract:</p><p>-Briefly justify your total score, up to 100 words.</p><p>-Conclude with the score using the format: "Educational score: &lt;total points&gt;"</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.2 Additional results</head><p>Fig. <ref type="figure" target="#fig_3">16</ref> compares FineWeb-Edu to other open web datasets on 9 becnhmarks, using a 1.71B model trained on 350 billion tokens. Additionally, Fig. <ref type="figure" target="#fig_14">17</ref> displays the results of experiments with various filtering thresholds for building FineWeb-Edu, using a 1.71B model trained on 28 billion tokens. Our findings indicate that a threshold of 3 yields the best average performance. 5 10 15 20 25 30 Training tokens (billions) 38 40 42 44 Aggregate Acc (%) FW-Edu-4 FW-Edu-3 FW-Edu-2 FineWeb </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F.3 Topic distribution</head><p>Business, Finance, Law -3.2%</p><p>Entertainment, Film, Theater -2.8% Places, Travel, Real Estate -2.5% Food, Summer, Recipes -2.1% Sports, Teams, Games -2.1% Music, Entertainment, Arts -2.1% Personal, Family, Leisure -1.4% Fashion, Clothing, Accessories -1.3% Crime, Law, Police -1.2% Gaming, Technology, Games -1.2% Technology, Gadgets, Innovation -1.1% Sports, Football, Soccer -1.0% Cars, Automotive, Industry -1.0% Literature, War, Fantasy -0.8% Crafts, Personal, Journaling -0.8% Furniture, Architecture, Design -0.8% Jewelry, Accessories, Shopping -0.8% Politics, Conflict, International -0.7% Baseball, Sports, News -0.6% Technology, Support, Marketing -0.6% Dating, Relationships, Places -0.5% Health, Medicine, Diseases +0.5% Math, Formulae, Education +0.5% Math, Education, Teaching +0.5% Culture, India, Spirituality +0.6% Health, Nutrition, Diet +0.7% Weather, Climate, Science +0.8% Plants, Gardening, Nature +0.8% Fish, Environment, Conservation +0.9% History, War, Military +0.9% History, Religion, Culture +1.0% Space, Astronomy, Science +1.1% Energy, Environment, Climate +1.2% Water, Environment, Conservation +1.2% History, Royalty, Philosophy +1.2% Wildlife, Animals, Nature +1.2% Health, Medicine, Biology +1.8% History, Culture, Politics +2.2% Education, Learning, Teaching +3.2%</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>More in FineWeb Edu</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>More in FineWeb</head><p>Topic distribution  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>FineWeb 10BT</head><p>FineWeb-Edu 10BT FineWeb 10BT FineWeb-Edu 10BT To begin, we examine the distribution over subgroup terms for gender (Fig. <ref type="figure" target="#fig_16">19</ref>) age (Fig. <ref type="figure" target="#fig_17">20</ref>), and religion (Fig. <ref type="figure" target="#fig_18">21</ref>) in a subset of FineWeb and FineWeb-Edu randomly sampled from the whole dataset, of around 10 Billion GPT-2 tokens (FineWeb 10BT and FineWeb-Edu 10BT). Terms used are shown in Table <ref type="table" target="#tab_1">4</ref> and are all normalized to lowercase for this analysis.</p><p>We find that 'man' appears much more frequently than 'woman' and 'non-binary', and 'christian' appears much more frequently than all other religions terms tested.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>FineWeb 10BT</head><p>FineWeb-Edu 10BT </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G.2 Association Analysis</head><p>We next examine the skews with respect to the different subgroup terms, as measured by TF-IDF <ref type="bibr" target="#b69">[78]</ref>.</p><p>This method is described as capturing the specificity of words in the dataset, here applied as specificity with respect to the terms for the different subgroups. This provides a way to quantify how "biased" each subgroup term is with respect to the words they co-occur with. Specifically, given the dataset and terms for a subgroup of interest, we:</p><p>1. Build a vocabulary of all words that occur at least twice in the dataset.</p><p>2. Extract all data instances where the subgroup term is present. 3. Compute the TF-IDF for all words in the vocabulary that co-occur in the same documents as a given subgroup term. 4. Compute the difference between the TF-IDF for the given subgroup terms and the average TF-IDF of all other words they co-occur with. 5. Extract the words co-occurring with the given subgroup terms with a TF-IDF greater than 0.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G.2.1 Gender</head><p>We find that 'man' is associated with terms such as 'god', 'police', 'said' and 'good', 'woman' is associated with terms like 'said', 'women', 'police', 'life', 'love', 'dating' and 'family', and 'non-binary' is associated with 'gender' and LGBTQIA+ terms such as 'trans', 'transgender', and 'queer' (Fig. <ref type="figure">22</ref>). Applying this same analysis to FineWeb-Edu-Sample-10BT, we find that 'man' is associated with the term 'god', and slightly associated with terms like 'war', 'great', and 'king'. 'woman' is associated with terms like 'pregnancy', 'cancer', 'mother', 'children', and 'family'.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G.2.2 Religion</head><p>Throughout, we see skews towards words associated with online intimacy: 'online', 'singles', 'sex', 'mature', 'girls'. As can be seen in Fig. <ref type="figure" target="#fig_23">27</ref>, 'jewish' is particularly associated with 'dating' and 'singles'. 'muslim', 'jewish', 'hindu' and 'buddhist' are slightly skewed to co-occur with 'women', while 'sex' is skewed with 'muslim', 'christian', 'jewish'; and 'girl' with 'muslim', 'jewish', 'hindu'.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G.2.3 Age</head><p>The word 'young' is skewed to co-occur with 'women', consistent with the problematic tendencies in English-speaking societies to infantilize women and over-indexing on womens' youth <ref type="bibr" target="#b70">[79,</ref><ref type="bibr" target="#b71">80]</ref>. We also see expected skews, such as 'young' co-occurring with words like 'children' and 'school'. A B C Figure <ref type="figure">22</ref>: Most skewed associations in FineWeb for gender terms 'non-binary' (A), 'woman' (B), and 'man' (C) in FineWeb compared to one another, measured using TF-IDF. Columns are sorted by the 'non-binary+', 'woman+' and 'man+' columns, measuring the difference from the mean over all words occurring more than once in the dataset.      </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :Figure 2 :</head><label>12</label><figDesc>Figure 1: Trafilatura-extracted WARC vs WET 28B tokens ablation study. Custom text extraction outperforms the default WET data. No filtering or deduplication was applied except fastText English language filtering.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 3 :Figure 4 :</head><label>34</label><figDesc>Figure3: Global minhash deduplication study. Applying minhash deduplication globally to the dataset provides only a modest performance uplift, with the resulting model far behind one trained on Refined-Web.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Individual minhash deduplication study. Unlike Global minhash, deduplicating individually improves the average score.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 6 :</head><label>6</label><figDesc>Figure 6: Comparison of C4 filters impact on Hel-laSwag benchmark performance. The Terminal Punctuation filter provides the most significant performance uplift.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 7 :</head><label>7</label><figDesc>Figure7: Custom FineWeb filters study. The combined filters outperform both the base filtered baseline as well as the best performing C4 filter (Terminal Punctation), while removing less.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 8 :</head><label>8</label><figDesc>Figure8: Impact of Deduplication Methods on 2013-48 Crawl. Histogram showcasing higher frequency of documents with small fraction of lines ending with a terminal mark for Global minhash compared to Indivudal one. A threshold selected for filtering is also indicated.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 9 :</head><label>9</label><figDesc>Figure 9: Each processing step in FineWeb provides a performance uplift. Compared to the base filtering (Section 3.3), applying individual-crawl Min-Hash deduplication (Section 3.4) the C4 filters (Section 3.5), and our additional heuristic filters (Section 3.6) each improve performance.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 10 :</head><label>10</label><figDesc>Figure10: Comparing FineWeb datasets to other public datasets. Base FineWeb shows strong performance, with the educational subset (FineWeb-Edu) surpassing all other public datasets and further enhancing the aggregate score by approximately 2%.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 11 :</head><label>11</label><figDesc>Figure 11: Performance Comparison on MMLU.FineWeb-Edu achieves a 33.6% accuracy on the MMLU benchmark at only 38 billion tokens, significantly outperforming Matrix (second best on the metric), which reaches similar accuracy at 300 billion tokens.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 12 :</head><label>12</label><figDesc>Figure 12: FineWeb and FineWeb-Edu fit to Paloma domains. FineWeb has lower perplexity on broad web sources while FineWeb-Edu has better coverage of Wikipedia and programming content.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><head>Figure 13 :</head><label>13</label><figDesc>Figure 13: Comparison between FineWeb and RefinedWeb document matching probabilities.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><head>Figure 14 :</head><label>14</label><figDesc>Figure14: Small ablations are ineffective for deduplication analysis. The chart displays the distribution of document repetitions across different sample sizes (1 billion, 10 billion, 100 billion, 350 billion, and 1 trillion tokens) from a dataset of 20T tokens.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head>Figure 15 :</head><label>15</label><figDesc>Figure 15: URL and Line-wise deduplication study. None of the attempted deduplication methods outperform individual deduplication.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>F 7 F 4 RF 7 F 4 RF 7 F 4 RF 7 FF 7 FF 7 FFigure 16 :</head><label>74747477716</label><figDesc>Figure16: Comparing FineWeb datasets to other public datasets on each benchmark.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_14"><head>Figure 17 :</head><label>17</label><figDesc>Figure17: Ablation study of FineWeb Edu thresholds. Using a filtering threshold of 3 yields the best Aggregate Accuracy when building FineWeb-Edu. FW-Edu-i denotes dataset filtered to only contain documents with an educational score greater or equal i.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_15"><head>Figure 18 :</head><label>18</label><figDesc>Figure18: FineWeb and FineWeb-Edu topic comparison. FineWeb-Edu has a higher representation of topics like 'Education, Learning, Teaching' and 'History, Culture, Politics' compared to FineWeb. Conversely, it down-samples topics such as 'Business, Finance, Law' and 'Entertainment, Film, Theater.' Values indicate the absolute difference in the percentage of each topic between the datasets and only topics with an absolute difference of at least 0.5% are displayed.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_16"><head>Figure 19 :</head><label>19</label><figDesc>Figure 19: Distribution of gender terms in FineWeb (Left) and FineWeb-Edu (Right), 10BT samples.</figDesc><graphic coords="31,78.11,241.17,230.40,172.80" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_17"><head>Figure 20 :</head><label>20</label><figDesc>Figure 20: Distribution of age terms in FineWeb (Left) and FineWeb-Edu (Right), 10BT samples.</figDesc><graphic coords="31,78.11,445.65,230.40,172.80" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_18"><head>Figure 21 :</head><label>21</label><figDesc>Figure 21: Distribution of religion terms in FineWeb (Left) and FineWeb-Edu (Right), 10BT samples.</figDesc><graphic coords="32,78.11,88.36,230.40,172.80" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_19"><head>Figure 23 :</head><label>23</label><figDesc>Figure23: Most skewed associations in FineWeb for 'atheist' compared to other religions, measured using TF-IDF. Columns are sorted by the 'atheist+' column, measuring the difference from the mean over all words.</figDesc><graphic coords="34,110.00,95.91,392.00,251.50" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_20"><head>Figure 24 :</head><label>24</label><figDesc>Figure24: Most skewed associations in FineWeb for 'buddhist' compared to other religions, measured using TF-IDF. Columns are sorted by the 'buddhist+' column, measuring the difference from the mean over all words.</figDesc><graphic coords="34,109.00,442.89,394.00,213.50" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_21"><head>Figure 25 :</head><label>25</label><figDesc>Figure25: Most skewed associations in FineWeb for 'christian' compared to other religions, measured using TF-IDF. Columns are sorted by the 'christian+' column, measuring the difference from the mean over all words.</figDesc><graphic coords="35,109.25,77.53,393.50,289.00" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_22"><head>Figure 26 :</head><label>26</label><figDesc>Figure26: Most skewed associations in FineWeb for 'muslim' compared to other religions, measured using TF-IDF. Columns are sorted by the 'muslim+' column, measuring the difference from the mean over all words.</figDesc><graphic coords="35,111.25,425.27,389.50,249.50" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_23"><head>Figure 27 :</head><label>27</label><figDesc>Figure27: Most skewed associations in FineWeb for 'jewish' compared to other religions, measured using TF-IDF. Columns are sorted by the 'jewish+' column, measuring the difference from the mean over all words.</figDesc><graphic coords="36,108.00,200.40,396.00,351.50" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_24"><head>Figure 28 :</head><label>28</label><figDesc>Figure 28: Most skewed associations in FineWeb for 'hindu' compared to other religions, measured using TF-IDF. Columns are sorted by the 'hindu+' column, measuring the difference from the mean over all words.</figDesc><graphic coords="37,111.25,219.15,389.50,314.00" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_25"><graphic coords="33,118.00,111.05,186.30,293.85" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2 :</head><label>2</label><figDesc>Full list of heuristic filters tested</figDesc><table><row><cell>E.4 Other filters considered</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Metric</cell><cell cols="2">Threshold</cell><cell>Aggregate</cell><cell>Tokens removed</cell></row><row><cell></cell><cell></cell><cell></cell><cell>Acc (%)</cell><cell>(%)</cell></row><row><cell>lines-with-punct-ratio</cell><cell cols="2">≥ 0.12</cell><cell>42.85</cell><cell>10.14</cell></row><row><cell>duplicated-line-char-ratio</cell><cell cols="2">≤ 0.01</cell><cell>42.78</cell><cell>12.47</cell></row><row><cell>lines-with-punct-ratio</cell><cell cols="2">≥ 0.12 or = 0</cell><cell>42.72</cell><cell>5.82</cell></row><row><cell>lines-shorter-30-ratio</cell><cell cols="2">≤ 0.67</cell><cell>42.65</cell><cell>3.37</cell></row><row><cell>line-with-most-3-words-ratio</cell><cell cols="2">≤ 0.49</cell><cell>42.61</cell><cell>2.51</cell></row><row><cell>duplicate-(5-10)-grams-char-ratio</cell><cell cols="2">≤ 0.1, 0.084, 0.073,</cell><cell>42.60</cell><cell>10.92</cell></row><row><cell></cell><cell cols="2">0.065, 0.057, 0.05</cell><cell></cell><cell></cell></row><row><cell>lines-with-punct-ratio</cell><cell cols="2">≥ 0.08 or = 0</cell><cell>42.59</cell><cell>3.42</cell></row><row><cell>top-(2,3,4)-gram-char-ratio</cell><cell>≤</cell><cell>0.13, 0.087,</cell><cell>42.58</cell><cell>56.71</cell></row><row><cell></cell><cell>0.079</cell><cell></cell><cell></cell><cell></cell></row><row><cell>lines-shorter-30-ratio</cell><cell>0.69</cell><cell></cell><cell>42.58</cell><cell>3.73</cell></row><row><cell>avg-words-per-line</cell><cell>≥ 7</cell><cell></cell><cell>42.56</cell><cell>2.32</cell></row><row><cell>lines-shorter-30-ratio</cell><cell>≤ 0.5</cell><cell></cell><cell>42.53</cell><cell>11.17</cell></row><row><cell>avg-words-per-line</cell><cell>≥ 5</cell><cell></cell><cell>42.39</cell><cell>0.83</cell></row><row><cell>avg-words-per-line</cell><cell>≥ 9</cell><cell></cell><cell>42.27</cell><cell>4.47</cell></row><row><cell>avg-line-length-0.5-sampling</cell><cell>≥ 56</cell><cell></cell><cell>42.93</cell><cell>3.24</cell></row><row><cell>avg-line-length</cell><cell>≥ 56</cell><cell></cell><cell>42.12</cell><cell>6.48</cell></row><row><cell>avg-line-length-0.5-sampling</cell><cell>≥ 40</cell><cell></cell><cell>42.03</cell><cell>1.50</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 4 :</head><label>4</label><figDesc>Subgroups and terms used for bias analyses.</figDesc><table><row><cell>F.4 Domain fit</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Source</cell><cell>Domain</cell><cell cols="2">FineWeb ppl FineWeb-Edu ppl</cell></row><row><cell>Dolma V1.5</cell><cell>common-crawl</cell><cell>14.499</cell><cell>18.336</cell></row><row><cell>Dolma V1.5</cell><cell>pes2o</cell><cell>12.226</cell><cell>10.242</cell></row><row><cell>Dolma V1.5</cell><cell>reddit uniform</cell><cell>23.814</cell><cell>29.864</cell></row><row><cell>Dolma V1.5</cell><cell>stack uniform</cell><cell>7.65</cell><cell>7.014</cell></row><row><cell>Dolma V1.5</cell><cell>wiki</cell><cell>12.0</cell><cell>12.243</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts</cell><cell>10.367</cell><cell>14.518</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts Culture and Humanities</cell><cell>14.037</cell><cell>14.116</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts Games and Toys</cell><cell>15.774</cell><cell>18.912</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts Mass media</cell><cell>14.352</cell><cell>18.134</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts Performing arts</cell><cell>14.311</cell><cell>13.313</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts Sports and Recreation</cell><cell>11.295</cell><cell>14.735</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts The arts and Entertainment</cell><cell>13.669</cell><cell>19.039</cell></row><row><cell cols="2">M2D2 Wikipedia Culture and the arts Visual arts</cell><cell>14.967</cell><cell>15.158</cell></row><row><cell cols="2">M2D2 Wikipedia General referece</cell><cell>11.962</cell><cell>11.246</cell></row><row><cell cols="2">M2D2 Wikipedia General referece Further research tools and topics</cell><cell>16.202</cell><cell>19.191</cell></row><row><cell cols="2">M2D2 Wikipedia General referece Reference works</cell><cell>14.914</cell><cell>18.621</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness</cell><cell>12.0</cell><cell>13.448</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness Exercise</cell><cell>11.874</cell><cell>13.951</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness Health science</cell><cell>11.509</cell><cell>10.997</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness Human medicine</cell><cell>12.0</cell><cell>13.448</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness Nutrition</cell><cell>10.09</cell><cell>8.489</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness Public health</cell><cell>12.804</cell><cell>11.797</cell></row><row><cell cols="2">M2D2 Wikipedia Health and fitness Self care</cell><cell>14.62</cell><cell>12.782</cell></row><row><cell cols="2">M2D2 Wikipedia History and events</cell><cell>13.446</cell><cell>12.516</cell></row><row><cell cols="2">M2D2 Wikipedia History and events By continent</cell><cell>14.174</cell><cell>12.066</cell></row><row><cell cols="2">M2D2 Wikipedia History and events By period</cell><cell>12.94</cell><cell>11.0</cell></row><row><cell cols="2">M2D2 Wikipedia History and events By region</cell><cell>13.61</cell><cell>11.63</cell></row><row><cell cols="2">M2D2 Wikipedia Human activites</cell><cell>15.159</cell><cell>18.728</cell></row><row><cell cols="2">M2D2 Wikipedia Human activites Human activities</cell><cell>12.784</cell><cell>11.117</cell></row><row><cell cols="2">M2D2 Wikipedia Human activites Impact of human activity</cell><cell>15.092</cell><cell>13.592</cell></row><row><cell cols="2">M2D2 Wikipedia Mathematics and logic</cell><cell>12.703</cell><cell>9.903</cell></row><row><cell cols="2">M2D2 Wikipedia Mathematics and logic Fields of mathematics</cell><cell>12.703</cell><cell>9.903</cell></row><row><cell cols="2">M2D2 Wikipedia Mathematics and logic Logic</cell><cell>14.281</cell><cell>13.367</cell></row><row><cell cols="2">M2D2 Wikipedia Mathematics and logic Mathematics</cell><cell>14.923</cell><cell>14.207</cell></row><row><cell cols="2">M2D2 Wikipedia Natural and physical sciences</cell><cell>12.884</cell><cell>10.529</cell></row><row><cell cols="2">M2D2 Wikipedia Natural and physical sciences Biology</cell><cell>12.718</cell><cell>10.221</cell></row><row><cell cols="2">M2D2 Wikipedia Natural and physical sciences Earth sciences</cell><cell>15.346</cell><cell>13.145</cell></row></table><note><p>gender</p><p>'man', 'woman', 'non-binary' religion 'muslim', 'christian', 'jewish', 'hindu', 'buddhist', 'atheist'</p></note></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" xml:id="foot_0"><p>38th Conference on Neural Information Processing Systems (NeurIPS 2024) Track on Datasets and Benchmarks.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_1"><p>RedPajama2 includes 40+ quality annotations but is only actually filtered with the CCNet pipeline<ref type="bibr" target="#b24">[28]</ref> </p></note>
+		</body>
+		<back>
+
+			<div type="availability">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Hugging Face</head><p><ref type="url" target="https://huggingface.co/datasets/HuggingFaceFW/fineweb">https://huggingface.co/datasets/HuggingFaceFW/fineweb</ref>  <ref type="url" target="https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu">https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu</ref> </p></div>
+			</div>
+
+
+			<div type="availability">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Linked resources</head><note type="other">Resource</note><p>URL FineWeb repository (DOI 10.57967/hf/2493) <ref type="url" target="https://hf.co/datasets/HuggingFaceFW/fineweb">https://hf.co/datasets/HuggingFaceFW/fineweb</ref> FineWeb Croissant metadata <ref type="url" target="https://hf.co/api/datasets/HuggingFaceFW/fineweb/croissant">https://hf.co/api/datasets/HuggingFaceFW/fineweb/  croissant</ref> FineWeb-Edu repository (DOI 10.57967/hf/2497) <ref type="url" target="https://hf.co/datasets/HuggingFaceFW/fineweb-edu">https://hf.co/datasets/HuggingFaceFW/fineweb-edu</ref> FineWeb-Edu Croissant metadata <ref type="url" target="https://hf.co/api/datasets/HuggingFaceFW/fineweb-edu/croissant">https://hf.co/api/datasets/HuggingFaceFW/  fineweb-edu/croissant</ref> FineWeb Llama3 annotations <ref type="url" target="https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-llama3-annotations">https://huggingface.co/datasets/HuggingFaceFW/  fineweb-edu-llama3-annotations</ref> Educational classifier <ref type="url" target="https://huggingface.co/HuggingFaceFW/fineweb-edu-classifier">https://huggingface.co/HuggingFaceFW/  fineweb-edu-classifier</ref> Dataset comparison models <ref type="url" target="https://hf.co/collections/HuggingFaceFW/comparison-models-662457b0d213e8c14fe47f32">https://hf.co/collections/HuggingFaceFW/  comparison-models-662457b0d213e8c14fe47f32</ref> Ablation models <ref type="url" target="https://hf.co/collections/HuggingFaceFW/data-experiments-665ed849020d8b66a5d9896f">https://hf.co/collections/HuggingFaceFW/  data-experiments-665ed849020d8b66a5d9896f</ref> Datatrove processing code to reproduce FineWeb <ref type="url" target="https://github.com/huggingface/datatrove/blob/main/examples/fineweb.py">https://github.com/huggingface/datatrove/blob/  main/examples/fineweb.py</ref> Evaluation setup <ref type="url" target="https://hf.co/datasets/HuggingFaceFW/fineweb/blob/main/lighteval_tasks.py">https://hf.co/datasets/HuggingFaceFW/fineweb/  blob/main/lighteval_tasks.py</ref> </p></div>
+			</div>
+
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>D.2 Distributed training setup Parameter Value Data parallelism (dp) 64 Tensor parallelism (tp) 1 Pipeline parallelism (pp) 1 Micro-batch size 4 Sequence length 2048 Batch accumulation per replica 4 D.3 Optimizer Configuration Parameter Value Adam beta1 0.9 Adam beta2 0.95 Adam epsilon 1.0e-8 Gradient clipping 1.0 Weight decay 0.1 Learning rate 3e-4 Warmup steps 500 Warmup style linear Decay style cosine Minimum decay LR 3.0e-5</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Deduplication</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E.1 Deduplication parameters</head><p>As mentioned in Section 3.4, we use 5-grams and 112 hash functions for our MinHash deduplication.</p><p>Each 5-gram is hashed with each of the 112 hash functions, and a document signature is obtained by taking the minimum hash value (minhash) across all 5-grams for each hash function. We further split the resulting 112 minhashes into 14 buckets of 8 hashes each. Documents are matched if they have the same 8 minhashes in at least one of the 14 buckets.</p><p>With these parameters, the probability that two documents with a n-gram similarity (s) of 0.7, 0.75, 0.8 and 0.85 would be identified as duplicates would be 56%, 77%, 92% and 98.8%, respectively. This split therefore will match documents that are at least 75% similar with a high probability, and almost guarantee that documents with similarities of 85% or above will be matched. These values can be computed by taking the following probabilities: that the two documents would have the same value for a given hash function, s; that they do not have the same 8 minhashes in one bucket, 1 -s 8 ; that they do not have the same 8 minhashes in any of the 14 buckets, (1 -s 8 ) 14 ; and finally that they have the same 8 minhashes on at least one of the 14 buckets, 1 -(1 -s 8 ) 14 .</p><p>See Fig. <ref type="figure">13</ref> for a match probability comparison between our setup with 112 hashes and the one from RefinedWeb, with 9000 hashes, divided into 450 buckets of 20 hashes.</p><p>While the high number of hash functions in RefinedWeb allows for a steeper, more well-defined cut off (document pairs with similarity near the threshold are more likely to be correctly identified), this  </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_26"><head>Figure 29 :</head><label>29</label><figDesc>Age bias in FineWeb, measured as most skewed associations for 'old' and 'young', using TF-IDF. Sorted by the difference from the mean TF-IDF for all words associated to 'old' ('old+', A) and 'young' ('young+', B).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 3 :</head><label>3</label><figDesc>Paloma domain comparison between FineWeb and FineWeb-Edu.Lower perplexity (ppl) in bold. A lower perplexity value indicates a better fit to a given domain.</figDesc><table><row><cell>Source</cell><cell>Domain</cell><cell cols="2">FineWeb ppl FineWeb-Edu ppl</cell></row><row><cell cols="2">M2D2 Wikipedia Natural and physical sciences Nature</cell><cell>12.594</cell><cell>9.886</cell></row><row><cell cols="2">M2D2 Wikipedia Natural and physical sciences Physical sciences</cell><cell>13.088</cell><cell>10.643</cell></row><row><cell cols="2">M2D2 Wikipedia Philosophy and thinking</cell><cell>14.081</cell><cell>16.067</cell></row><row><cell cols="2">M2D2 Wikipedia Philosophy and thinking Philosophy</cell><cell>14.209</cell><cell>12.91</cell></row><row><cell cols="2">M2D2 Wikipedia Philosophy and thinking Thinking</cell><cell>14.081</cell><cell>16.067</cell></row><row><cell cols="2">M2D2 Wikipedia Religion and belief systems</cell><cell>12.636</cell><cell>11.326</cell></row><row><cell cols="2">M2D2 Wikipedia Religion and belief systems Allah</cell><cell>14.072</cell><cell>10.808</cell></row><row><cell cols="2">M2D2 Wikipedia Religion and belief systems Belief systems</cell><cell>12.843</cell><cell>11.652</cell></row><row><cell cols="3">M2D2 Wikipedia Religion and belief systems Major beliefs of the world 13.824</cell><cell>11.834</cell></row><row><cell cols="2">M2D2 Wikipedia Society and social sciences</cell><cell>11.777</cell><cell>11.195</cell></row><row><cell cols="2">M2D2 Wikipedia Society and social sciences Social sciences</cell><cell>11.81</cell><cell>13.03</cell></row><row><cell cols="2">M2D2 Wikipedia Society and social sciences Society</cell><cell>11.777</cell><cell>11.195</cell></row><row><cell cols="2">M2D2 Wikipedia Technology and applied sciences</cell><cell>11.592</cell><cell>9.368</cell></row><row><cell cols="2">M2D2 Wikipedia Technology and applied sciences Agriculture</cell><cell>13.941</cell><cell>14.998</cell></row><row><cell cols="2">M2D2 Wikipedia Technology and applied sciences Computing</cell><cell>15.562</cell><cell>16.091</cell></row><row><cell cols="2">M2D2 Wikipedia Technology and applied sciences Engineering</cell><cell>14.897</cell><cell>13.861</cell></row><row><cell cols="2">M2D2 Wikipedia Technology and applied sciences Transport</cell><cell>16.519</cell><cell>17.886</cell></row><row><cell>Manosphere</cell><cell>avfm</cell><cell>27.332</cell><cell>32.058</cell></row><row><cell>Manosphere</cell><cell>incels</cell><cell>18.253</cell><cell>20.788</cell></row><row><cell>Manosphere</cell><cell>love shy</cell><cell>28.206</cell><cell>33.374</cell></row><row><cell>Manosphere</cell><cell>mgtow</cell><cell>24.913</cell><cell>29.702</cell></row><row><cell>Manosphere</cell><cell>pua forum</cell><cell>25.133</cell><cell>33.297</cell></row><row><cell>Manosphere</cell><cell>red pill talk</cell><cell>33.87</cell><cell>42.947</cell></row><row><cell>Manosphere</cell><cell>reddit</cell><cell>24.786</cell><cell>30.903</cell></row><row><cell>Manosphere</cell><cell>rooshv</cell><cell>23.593</cell><cell>27.819</cell></row><row><cell>Manosphere</cell><cell>the attraction</cell><cell>24.988</cell><cell>30.907</cell></row><row><cell>RedPajama</cell><cell>arxiv</cell><cell>32.338</cell><cell>23.368</cell></row><row><cell>RedPajama</cell><cell>books</cell><cell>22.095</cell><cell>23.953</cell></row><row><cell>RedPajama</cell><cell>c4</cell><cell>12.685</cell><cell>15.599</cell></row><row><cell>RedPajama</cell><cell>commoncrawl</cell><cell>8.0</cell><cell>8.979</cell></row><row><cell>RedPajama</cell><cell>github</cell><cell>5.613</cell><cell>5.247</cell></row><row><cell>RedPajama</cell><cell>stackexchange</cell><cell>9.055</cell><cell>8.862</cell></row><row><cell>RedPajama</cell><cell>wikipedia</cell><cell>8.741</cell><cell>8.608</cell></row><row><cell>Twitter AAE</cell><cell>AA</cell><cell>246.907</cell><cell>575.106</cell></row><row><cell>Twitter AAE</cell><cell>white</cell><cell>98.536</cell><cell>192.374</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hennigan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katie</forename><surname>Noland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">George</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bogdan</forename><surname>Van Den Driessche</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelia</forename><surname>Damoc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Guy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Osindero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erich</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><forename type="middle">W</forename><surname>Elsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oriol</forename><surname>Rae</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sifre</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note>Training compute-optimal large language models</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title level="m" type="main">Edouard Grave, and Guillaume Lample. Llama: Open and efficient foundation language models</title>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibaut</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gautier</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hambro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Faisal</forename><surname>Azhar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelien</forename><surname>Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">Language models are few-shot learners</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melanie</forename><surname>Subbiah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arvind</forename><surname>Neelakantan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Shyam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2005.14165</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<title level="m" type="main">Open foundation models by 01</title>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Young</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bei</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chao</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chengen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ge</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guanwei</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heng</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiangcheng</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianqun</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jing</forename><surname>Chang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.04652</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">ai. arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Deduplicating training data makes language models better</title>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Ippolito</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Nystrom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chiyuan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Douglas</forename><surname>Eck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Callison-Burch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Carlini</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<author>
+			<persName><surname>Ai@meta</surname></persName>
+		</author>
+		<ptr target="https://github.com/meta-llama/llama3/blob/main/MODEL_CARD.md" />
+		<title level="m">Llama 3 model card</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Albert</forename><forename type="middle">Q</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexandre</forename><surname>Sablayrolles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antoine</forename><surname>Roux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Blanche</forename><surname>Savary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Bamford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Devendra</forename><surname>Singh Chaplot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emma</forename><forename type="middle">Bou</forename><surname>Hanna</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Florian</forename><surname>Bressand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gianna</forename><surname>Lengyel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Bour</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Lample</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Renard</forename><surname>Lélio</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucile</forename><surname>Lavaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Saulnier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandeep</forename><surname>Stock</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Subramanian</surname></persName>
+		</author>
+		<editor>Sophia Yang, Szymon Antoniak, Teven Le Scao, Théophile Gervet, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed</editor>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>Mixtral of experts</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">Marah</forename><surname>Abdin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><forename type="middle">Ade</forename><surname>Jacobs</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ammar</forename><surname>Ahmad Awan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jyoti</forename><surname>Aneja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmed</forename><surname>Awadallah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hany</forename><surname>Awadalla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nguyen</forename><surname>Bach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amit</forename><surname>Bahree</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arash</forename><surname>Bakhtiari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Harkirat</forename><surname>Behl</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.14219</idno>
+		<title level="m">Phi-3 technical report: A highly capable language model locally on your phone</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<author>
+			<persName><forename type="first">Suriya</forename><surname>Gunasekar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jyoti</forename><surname>Aneja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caio</forename><surname>César</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teodoro</forename><surname>Mendes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allie</forename><surname>Del Giorno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sivakanth</forename><surname>Gopi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mojan</forename><surname>Javaheripi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piero</forename><surname>Kauffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gustavo</forename><surname>De Rosa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Olli</forename><surname>Saarikivi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.11644</idno>
+		<title level="m">Textbooks are all you need</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Measuring massive multitask language understanding</title>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Hendrycks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Collin</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Steven</forename><surname>Basart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Zou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mantas</forename><surname>Mazeika</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Think you have solved question answering? try arc, the ai2 reasoning challenge</title>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Isaac</forename><surname>Cowhey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oren</forename><surname>Etzioni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tushar</forename><surname>Khot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Sabharwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carissa</forename><surname>Schoenick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Datatrove: large scale data processing</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hynek</forename><surname>Kydlíček</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mario</forename><surname>Sasko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<ptr target="https://github.com/huggingface/datatrove" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niki</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Łukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Universal language model fine-tuning for text classification</title>
+		<author>
+			<persName><forename type="first">Jeremy</forename><surname>Howard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Ruder</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P18-1031</idno>
+		<ptr target="https://aclanthology.org/P18-1031" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 56th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Melbourne, Australia</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2018-07">July 2018</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="328" to="339" />
+		</imprint>
+	</monogr>
+	<note>Iryna Gurevych and Yusuke Miyao Long Papers)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">Exploring the limits of transfer learning with a unified text-to-text transformer</title>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Matena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><forename type="middle">J</forename><surname>Liu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diogo</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carroll</forename><forename type="middle">L</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pamela</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandhini</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katarina</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Ray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fraser</forename><surname>Kelton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Miller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maddie</forename><surname>Simens</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Welinder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Lowe</surname></persName>
+		</author>
+		<title level="m">Training language models to follow instructions with human feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Palm: Scaling language modeling with pathways</title>
+		<author>
+			<persName><forename type="first">Aakanksha</forename><surname>Chowdhery</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaurav</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Barham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hyung</forename><forename type="middle">Won</forename><surname>Chung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Sutton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Gehrmann</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Machine Learning Research</title>
+		<imprint>
+			<biblScope unit="volume">24</biblScope>
+			<biblScope unit="issue">240</biblScope>
+			<biblScope unit="page" from="1" to="113" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Taylor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marcin</forename><surname>Kardas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillem</forename><surname>Cucurull</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Scialom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anthony</forename><surname>Hartshorn</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Saravia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Poulton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Viktor</forename><surname>Kerkez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>Stojnic</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2211.09085</idno>
+		<title level="m">Galactica: A large language model for science</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">A simple method for commonsense reasoning</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Trieu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Trinh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Quoc</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Le</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title level="m" type="main">Language models are unsupervised multitask learners</title>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Sutskever</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<ptr target="https://platform.openai.com/docs/gptbot" />
+		<title level="m">Openai gptbot documentation</title>
+		<imprint>
+			<biblScope unit="page" from="2024" to="2026" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><forename type="middle">M</forename><surname>Rush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Boaz</forename><surname>Barak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teven</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aleksandra</forename><surname>Piktus</surname></persName>
+		</author>
+		<title level="m">Nouamane Tazi, Sampo Pyysalo, Thomas Wolf, and Colin Raffel. Scaling data-constrained language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Abadji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pedro</forename><forename type="middle">Ortiz</forename><surname>Suarez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Romary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benoît</forename><surname>Sagot</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2201.06642</idno>
+		<title level="m">Towards a Cleaner Document-Oriented Multilingual Crawled Corpus. arXiv e-prints, art</title>
+		<imprint>
+			<date type="published" when="2022-01">January 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Bojanowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthijs</forename><surname>Douze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hérve</forename><surname>Jégou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomas</forename><surname>Mikolov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1612.03651</idno>
+		<title level="m">Fasttext.zip: Compressing text classification models</title>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">Unsupervised cross-lingual representation learning at scale</title>
+		<author>
+			<persName><forename type="first">Alexis</forename><surname>Conneau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kartikay</forename><surname>Khandelwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vishrav</forename><surname>Chaudhary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Wenzek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francisco</forename><surname>Guzmán</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Myle</forename><surname>Ott</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Veselin</forename><surname>Stoyanov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1911.02116</idno>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sid</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurence</forename><surname>Golding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Travis</forename><surname>Hoppe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Foster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Phang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Horace</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anish</forename><surname>Thite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noa</forename><surname>Nabeshima</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2101.00027</idno>
+		<title level="m">The Pile: An 800GB dataset of diverse text for language modeling</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">On the resemblance and containment of documents</title>
+		<author>
+			<persName><forename type="first">Andrei</forename><forename type="middle">Z</forename><surname>Broder</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings. Compression and Complexity of SEQUENCES 1997 (Cat. No. 97TB100171)</title>
+		<meeting>Compression and Complexity of SEQUENCES 1997 (Cat. No. 97TB100171)</meeting>
+		<imprint>
+			<publisher>IEEE</publisher>
+			<date type="published" when="1997">1997</date>
+			<biblScope unit="page" from="21" to="29" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">The bigscience roots corpus: A 1.6 tb composite multilingual dataset</title>
+		<author>
+			<persName><forename type="first">Lucile</forename><surname>Hugo Laurençon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Saulnier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Albert</forename><surname>Akiki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teven</forename><surname>Villanova Del Moral</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenghao</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eduardo</forename><forename type="middle">González</forename><surname>Mou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huu</forename><surname>Ponferrada</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Nguyen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="31809" to="31826" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Redpajama: an open dataset for training large language models</title>
+		<ptr target="https://github.com/togethercomputer/RedPajama-Data" />
+	</analytic>
+	<monogr>
+		<title level="m">Together Computer</title>
+		<imprint>
+			<date type="published" when="2023-10">October 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">Slimpajama: A 627b token cleaned and deduplicated version of redpajama</title>
+		<author>
+			<persName><forename type="first">Daria</forename><surname>Soboleva</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Faisal</forename><surname>Al-Khateeb</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>Myers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><forename type="middle">R</forename><surname>Steeves</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joel</forename><surname>Hestness</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nolan</forename><surname>Dey</surname></persName>
+		</author>
+		<ptr target="https://huggingface.co/datasets/cerebras/SlimPajama-627B" />
+		<imprint>
+			<date type="published" when="2023-06">June 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">The Refined-Web dataset for Falcon LLM: Outperforming curated corpora with web data only</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Malartic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Hesslow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruxandra</forename><surname>Cojocaru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamza</forename><surname>Alobeidli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Pannier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ebtesam</forename><surname>Almazrouei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Launay</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rodney</forename><surname>Kinney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akshita</forename><surname>Bhagia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Schwenk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Atkinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Russell</forename><surname>Authur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Bogin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Khyathi</forename><surname>Chandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jennifer</forename><surname>Dumas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentin</forename><surname>Hofmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ananya</forename><surname>Harsh Jha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sachin</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Lucy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinxi</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathan</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Magnusson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Morrison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aakanksha</forename><surname>Naik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Crystal</forename><surname>Nam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><forename type="middle">E</forename><surname>Peters</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhilasha</forename><surname>Ravichander</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Richardson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zejiang</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emma</forename><surname>Strubell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nishant</forename><surname>Subramani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pete</forename><surname>Walsh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iz</forename><surname>Beltagy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Groeneveld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Dodge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Lo</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>Dolma: an open corpus of three trillion tokens for language model pretraining research</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Content extraction using diverse feature sets</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Matthew</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Peters</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Lecocq</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 22nd international conference on world wide web</title>
+		<meeting>the 22nd international conference on world wide web</meeting>
+		<imprint>
+			<date type="published" when="2013">2013</date>
+			<biblScope unit="page" from="89" to="90" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Jack</forename><forename type="middle">W</forename><surname>Rae</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katie</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francis</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Aslanides</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sarah</forename><surname>Henderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roman</forename><surname>Ring</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Susannah</forename><surname>Young</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Hennigan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Menick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Albin</forename><surname>Cassirer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Powell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">George</forename><surname>Van Den Driessche</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maribeth</forename><surname>Rauh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amelia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumanth</forename><surname>Dathathri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saffron</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Mellor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Irina</forename><surname>Higgins</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antonia</forename><surname>Creswell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nat</forename><surname>Mcaleese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amy</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erich</forename><surname>Elsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siddhant</forename><surname>Jayakumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Budden</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Esme</forename><surname>Sutherland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michela</forename><surname>Paganini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Sifre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lena</forename><surname>Martens</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorraine</forename><surname>Xiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adhiguna</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aida</forename><surname>Kuncoro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Nematzadeh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Domenic</forename><surname>Gribovskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Angeliki</forename><surname>Donato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Lazaridou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jean-Baptiste</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maria</forename><surname>Lespiau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikolai</forename><surname>Tsimpoukelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Doug</forename><surname>Grigorev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibault</forename><surname>Fritz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mantas</forename><surname>Sottiaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Toby</forename><surname>Pajarskas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhitao</forename><surname>Pohlen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Gong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cyprien</forename><surname>Toyama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yujia</forename><surname>De Masson D'autume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tayfun</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Terzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Igor</forename><surname>Mikulik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Babuschkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelia</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Guy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Bradbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Blake</forename><surname>Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laura</forename><surname>Hechtman</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Weidinger</surname></persName>
+		</author>
+		<editor>Iason Gabriel, William Isaac, Ed Lockhart, Simon Osindero, Laura Rimell, Chris Dyer, Oriol Vinyals, Kareem Ayoub, Jeff Stanway, Lorrayne Bennett</editor>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note>Demis Hassabis, Koray Kavukcuoglu, and Geoffrey Irving. Scaling language models: Methods, analysis &amp; insights from training gopher</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Commonsenseqa: A question answering challenge targeting commonsense knowledge</title>
+		<author>
+			<persName><forename type="first">Alon</forename><surname>Talmor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Herzig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Lourie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Berant</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/N19-1421</idno>
+		<ptr target="https://aclanthology.org/N19-1421" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<title level="s">Long and Short Papers</title>
+		<meeting>the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies<address><addrLine>Minneapolis, Minnesota</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019-06">June 2019</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="4149" to="4158" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">Hellaswag: Can a machine really finish your sentence?</title>
+		<author>
+			<persName><forename type="first">Rowan</forename><surname>Zellers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ari</forename><surname>Holtzman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Bisk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Farhadi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P19-1472</idno>
+		<ptr target="https://aclanthology.org/P19-1472" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics</title>
+		<editor>
+			<persName><forename type="first">Anna</forename><surname>Korhonen</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">David</forename><surname>Traum</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Lluís</forename><surname>Màrquez</surname></persName>
+		</editor>
+		<editor>
+			<persName><surname>Editors</surname></persName>
+		</editor>
+		<meeting>the 57th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Florence, Italy</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019-07">July 2019</date>
+			<biblScope unit="page" from="4791" to="4800" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">Can a suit of armor conduct electricity? a new dataset for open book question answering</title>
+		<author>
+			<persName><forename type="first">Todor</forename><surname>Mihaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tushar</forename><surname>Khot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Sabharwal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">EMNLP</title>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Bisk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rowan</forename><surname>Zellers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Ronan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Piqa</surname></persName>
+		</author>
+		<title level="m">Reasoning about physical commonsense in natural language</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannah</forename><surname>Rashkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Derek</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronan</forename><surname>Lebras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<title level="m">Socialiqa: Commonsense reasoning about social interactions</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<title level="m" type="main">Winogrande: An adversarial winograd schema challenge at scale</title>
+		<author>
+			<persName><forename type="first">Keisuke</forename><surname>Sakaguchi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Ronan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chandra</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Bhagavatula</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Choi</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Trafilatura: A web scraping library and command-line tool for text discovery and extraction</title>
+		<author>
+			<persName><forename type="first">Adrien</forename><surname>Barbaresi</surname></persName>
+		</author>
+		<ptr target="https://aclanthology.org/2021.acl-demo.15" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Joint Conference of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations</title>
+		<meeting>the Joint Conference of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="122" to="131" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<monogr>
+		<title level="m" type="main">The refinedweb dataset for falcon llm: Outperforming curated corpora with web data, and web data only</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Malartic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Hesslow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruxandra</forename><surname>Cojocaru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamza</forename><surname>Alobeidli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Pannier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ebtesam</forename><surname>Almazrouei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Launay</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<ptr target="https://dsi.ut-capitole.fr/blacklists/" />
+		<title level="m">Ut1 url blacklists</title>
+		<imprint>
+			<biblScope unit="page" from="2024" to="2026" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title level="m" type="main">Bag of tricks for efficient text classification</title>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Bojanowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomas</forename><surname>Mikolov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1607.01759</idno>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<title level="m" type="main">Quantifying memorization across neural language models</title>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Carlini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Ippolito</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Jagielski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Florian</forename><surname>Tramer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chiyuan</forename><surname>Zhang</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<analytic>
+		<title level="a" type="main">Deduplicating training data mitigates privacy risks in language models</title>
+		<author>
+			<persName><forename type="first">Nikhil</forename><surname>Kandpal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Wallace</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<analytic>
+		<title level="a" type="main">Suffix arrays: a new method for on-line string searches</title>
+		<author>
+			<persName><forename type="first">Udi</forename><surname>Manber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gene</forename><surname>Myers</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">siam Journal on Computing</title>
+		<imprint>
+			<biblScope unit="volume">22</biblScope>
+			<biblScope unit="issue">5</biblScope>
+			<biblScope unit="page" from="935" to="948" />
+			<date type="published" when="1993">1993</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<monogr>
+		<title level="m" type="main">A survey on data selection for language models</title>
+		<author>
+			<persName><forename type="first">Alon</forename><surname>Albalak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sang</forename><surname>Michael Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shayne</forename><surname>Longpre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathan</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinyi</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bairu</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangming</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haewon</forename><surname>Jeong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shiyu</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wang</forename></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<title level="m" type="main">Natural language processing with Python: analyzing text with the natural language toolkit</title>
+		<author>
+			<persName><forename type="first">Steven</forename><surname>Bird</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ewan</forename><surname>Klein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edward</forename><surname>Loper</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<publisher>Reilly Media, Inc</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rodney</forename><surname>Kinney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akshita</forename><surname>Bhagia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Schwenk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Atkinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Russell</forename><surname>Authur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Bogin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Khyathi</forename><surname>Chandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jennifer</forename><surname>Dumas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentin</forename><surname>Hofmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ananya</forename><surname>Harsh Jha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sachin</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Lucy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinxi</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathan</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Magnusson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Morrison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aakanksha</forename><surname>Naik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Crystal</forename><surname>Nam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><forename type="middle">E</forename><surname>Peters</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhilasha</forename><surname>Ravichander</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Richardson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zejiang</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emma</forename><surname>Strubell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nishant</forename><surname>Subramani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pete</forename><surname>Walsh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iz</forename><surname>Beltagy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Groeneveld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Dodge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Lo</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>Dolma: an open corpus of three trillion tokens for language model pretraining research. arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<monogr>
+		<author>
+			<persName><forename type="first">Ge</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Qu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaheng</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenchen</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenghua</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leuang</forename><surname>Chou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danny</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Esther</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qunshu</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Raven</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tuney</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinrun</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yinghao</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yizhi</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ziyang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bill</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emmanouil</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huan</forename><surname>Benetos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junting</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kaijing</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minghao</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Morry</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><surname>Niu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quehry</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruibo</forename><surname>Que</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sine</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shawn</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Soren</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wangchunshu</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinyue</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yizhi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yubo</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuelin</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuhan</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxiang</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zenith</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenzhu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zijian</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiajun</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wanli</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenhao</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenhu</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.19327</idno>
+		<title level="m">Map-neo: Highly capable and transparent bilingual large language model series</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<analytic>
+		<title level="a" type="main">Unsupervised cross-lingual representation learning at scale</title>
+		<author>
+			<persName><forename type="first">Alexis</forename><surname>Conneau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kartikay</forename><surname>Khandelwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vishrav</forename><surname>Chaudhary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Wenzek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francisco</forename><surname>Guzmán</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Myle</forename><surname>Ott</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Veselin</forename><surname>Stoyanov</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.acl-main.747</idno>
+		<ptr target="https://aclanthology.org/2020.acl-main.747" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics</title>
+		<editor>
+			<persName><forename type="first">Dan</forename><surname>Jurafsky</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Joyce</forename><surname>Chai</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Natalie</forename><surname>Schluter</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Joel</forename><surname>Tetreault</surname></persName>
+		</editor>
+		<meeting>the 58th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2020-07">July 2020</date>
+			<biblScope unit="page" from="8440" to="8451" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<analytic>
+		<title level="a" type="main">Asynchronous pipelines for processing huge corpora on medium to low resource infrastructures</title>
+		<author>
+			<persName><forename type="first">Pedro</forename><surname>Javier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ortiz</forename><surname>Suárez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benoît</forename><surname>Sagot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Romary</surname></persName>
+		</author>
+		<idno type="DOI">10.14618/ids-pub-9021</idno>
+		<ptr target="http://nbn-resolving.de/urn:nbn:de:bsz" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Workshop on Challenges in the Management of Large Corpora (CMLC-7)</title>
+		<meeting>the Workshop on Challenges in the Management of Large Corpora (CMLC-7)<address><addrLine>Mannheim</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2019-07-22">2019. Cardiff, 22nd July 2019. 2019</date>
+			<biblScope unit="page" from="39" to="90215" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<monogr>
+		<ptr target="https://huggingface.co/meta-llama/" />
+		<title level="m">Meta llama 3 70b instruct</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b54">
+	<monogr>
+		<author>
+			<persName><forename type="first">Weizhe</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><forename type="middle">Yuanzhe</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyunghyun</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sainbayar</forename><surname>Sukhbaatar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jing</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2401.10020</idno>
+		<title level="m">Self-rewarding language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b55">
+	<monogr>
+		<author>
+			<persName><forename type="first">Xian</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ping</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chunting</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timo</forename><surname>Schick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Omer</forename><surname>Levy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mike</forename><surname>Lewis</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2308.06259</idno>
+		<title level="m">Self-alignment with instruction backtranslation</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b56">
+	<monogr>
+		<title level="m" type="main">Arctic-embed: Scalable, efficient, and accurate text embedding models</title>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Merrick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danmei</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaurav</forename><surname>Nuti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Campos</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.05374</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b57">
+	<monogr>
+		<title level="m" type="main">Hellaswag: Can a machine really finish your sentence</title>
+		<author>
+			<persName><forename type="first">Rowan</forename><surname>Zellers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ari</forename><surname>Holtzman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Bisk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Farhadi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1905.07830</idno>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b58">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Werra</forename></persName>
+		</author>
+		<ptr target="https://github.com/huggingface/text-clustering" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>text-clustering</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b59">
+	<analytic>
+		<title level="a" type="main">Sentence-bert: Sentence embeddings using siamese bertnetworks</title>
+		<author>
+			<persName><forename type="first">Nils</forename><surname>Reimers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iryna</forename><surname>Gurevych</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/1908.10084" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<biblScope unit="page" from="11" to="2019" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b60">
+	<monogr>
+		<title level="m" type="main">Umap: Uniform manifold approximation and projection for dimension reduction</title>
+		<author>
+			<persName><forename type="first">Leland</forename><surname>Mcinnes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Healy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Melville</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/1802.03426" />
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b61">
+	<monogr>
+		<title level="m" type="main">A density-based algorithm for discovering clusters in large spatial databases with noise</title>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Ester</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hans-Peter</forename><surname>Kriegel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jorg</forename><surname>Sander</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaowei</forename><surname>Xu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1996">1996</date>
+			<biblScope unit="volume">96</biblScope>
+			<biblScope unit="page" from="226" to="231" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b62">
+	<monogr>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Magnusson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akshita</forename><surname>Bhagia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentin</forename><surname>Hofmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Schwenk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pete</forename><surname>Walsh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Lo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Groeneveld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iz</forename><surname>Beltagy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanna</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Richardson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jesse</forename><forename type="middle">Dodge</forename><surname>Paloma</surname></persName>
+		</author>
+		<idno>ArXiv, abs/2312.10523</idno>
+		<ptr target="https://api.semanticscholar.org/CorpusID" />
+		<title level="m">A benchmark for evaluating language model fit</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page">266348815</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b63">
+	<analytic>
+		<title level="a" type="main">On the dangers of stochastic parrots: Can language models be too big?</title>
+		<author>
+			<persName><forename type="first">Emily</forename><forename type="middle">M</forename><surname>Bender</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timnit</forename><surname>Gebru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Angelina</forename><surname>Mcmillan-Major</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shmargaret</forename><surname>Shmitchell</surname></persName>
+		</author>
+		<idno type="DOI">10.1145/3442188.3445922</idno>
+		<ptr target="https://doi.org/10.1145/3442188.3445922" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 ACM Conference on Fairness, Accountability, and Transparency, FAccT &apos;21</title>
+		<meeting>the 2021 ACM Conference on Fairness, Accountability, and Transparency, FAccT &apos;21<address><addrLine>New York, NY, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computing Machinery</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="610" to="623" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b64">
+	<analytic>
+		<title level="a" type="main">Evaluating the underlying gender bias in contextualized word embeddings</title>
+		<author>
+			<persName><forename type="first">Christine</forename><surname>Basta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marta</forename><forename type="middle">R</forename><surname>Costa-Jussà</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noe</forename><surname>Casas</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the First Workshop on Gender Bias in Natural Language Processing</title>
+		<meeting>the First Workshop on Gender Bias in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="33" to="39" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b65">
+	<analytic>
+		<title level="a" type="main">Measuring bias in contextualized word representations</title>
+		<author>
+			<persName><forename type="first">Keita</forename><surname>Kurita</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nidhi</forename><surname>Vyas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ayush</forename><surname>Pareek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alan</forename><forename type="middle">W</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yulia</forename><surname>Tsvetkov</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the First Workshop on Gender Bias in Natural Language Processing</title>
+		<meeting>the First Workshop on Gender Bias in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="166" to="172" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b66">
+	<analytic>
+		<title level="a" type="main">The woman worked as a babysitter: On biases in language generation</title>
+		<author>
+			<persName><forename type="first">Emily</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kai-Wei</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prem</forename><surname>Natarajan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nanyun</forename><surname>Peng</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="3407" to="3412" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b67">
+	<analytic>
+		<title level="a" type="main">Gender bias in contextualized word embeddings</title>
+		<author>
+			<persName><forename type="first">Jieyu</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianlu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Yatskar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Cotterell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vicente</forename><surname>Ordonez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kai-Wei</forename><surname>Chang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference of the North American Chapter</title>
+		<title level="s">Long and Short Papers</title>
+		<meeting>the 2019 Conference of the North American Chapter</meeting>
+		<imprint>
+			<publisher>the Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="629" to="634" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b68">
+	<analytic>
+		<title level="a" type="main">From pretraining data to language models to downstream tasks: Tracking the trails of political biases leading to unfair nlp models</title>
+		<author>
+			<persName><forename type="first">Shangbin</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chan</forename><forename type="middle">Young</forename><surname>Park</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuhan</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yulia</forename><surname>Tsvetkov</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 61st Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="11737" to="11762" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b69">
+	<analytic>
+		<title level="a" type="main">A statistical interpretation of term specificity and its application in retrieval</title>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Sparck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jones</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of documentation</title>
+		<imprint>
+			<biblScope unit="volume">28</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="11" to="21" />
+			<date type="published" when="1972">1972</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b70">
+	<monogr>
+		<title level="m" type="main">The Lolita effect: The media sexualization of young girls and what we can do about it</title>
+		<author>
+			<persName><forename type="first">Gigi</forename><surname>Durham</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<publisher>Abrams</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b71">
+	<analytic>
+		<title level="a" type="main">The hypersexualization of young girls and the infantilization of adult women</title>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Sidani</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">American Journal of Humanities and Social Sciences Research</title>
+		<imprint>
+			<biblScope unit="volume">7</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="193" to="197" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

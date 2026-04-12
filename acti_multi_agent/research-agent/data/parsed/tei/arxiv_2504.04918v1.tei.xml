@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Constitution or Collapse? Exploring Constitutional AI with Llama 3-8B</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-04-07">7 Apr 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Xue</forename><surname>Zhang</surname></persName>
+						</author>
+						<title level="a" type="main">Constitution or Collapse? Exploring Constitutional AI with Llama 3-8B</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-04-07">7 Apr 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">675C27C9161D577B338B772F8120CBC5</idno>
+					<idno type="arXiv">arXiv:2504.04918v1[cs.AI]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>As language models continue to grow larger, the cost of acquiring high-quality training data has increased significantly. Collecting human feedback is both expensive and time-consuming, and manual labels can be noisy, leading to an imbalance between helpfulness and harmfulness. Constitutional AI, introduced by Anthropic in December 2022, uses AI to provide feedback to another AI, greatly reducing the need for human labeling. However, Anthropic's original implementation was designed for a model with around 52 billion parameters, and there is limited information on how well Constitutional AI performs with smaller models, such as Llama 3-8B. In this paper, we replicated the Constitutional AI workflow using the smaller Llama 3-8B model. Our results show that Constitutional AI can effectively increase the harmlessness of the model, reducing the Attack Success Rate in MTBench by 40.8%. However, similar to the original study, increasing harmlessness comes at the cost of helpfulness. The helpfulness metrics, which are an average of the Turn 1 and Turn 2 scores, dropped by 9.8% compared to the baseline. Additionally, we observed clear signs of model collapse in the final DPO-CAI model, indicating that smaller models may struggle with self-improvement due to insufficient output quality, making effective fine-tuning more challenging. Our study suggests that like reasoning and math ability, self-improvement is an emergent property.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>This is a preprint. An extended version is under preparation for submission to Transactions on Machine Learning Research (TMLR).</head><p>On March 26th, 2023, Goldman Sachs predicted that up to 300 million jobs may be replaced by Artificial Intelligence <ref type="bibr" target="#b6">(Sachs, 2023)</ref>. This year, tech companies such as OpenAI, Meta and Google invested tens of billions of dollars in this era of "AI Competition" (OpenAI, 2023).</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction and Motivation</head><p>The rapid advancement of Large Language Models (LLMs) has revolutionized the world. LLMs have demonstrated the ability to perform human-like tasks at a professional level.</p><p>As language models continue to grow larger, the cost of obtaining high-quality training data has risen significantly. In the post-training phase, we aim to align our models with human preferences using techniques like Reinforcement Learning from Human Feedback (RLHF), which requires gathering human labels. However, collecting human feedback is both costly and time-consuming, and manual labels can be noisy, resulting in a poor balance between helpfulness and harmfulness. In December 2022, Anthropic introduced a method called Constitutional AI (CAI) <ref type="bibr" target="#b2">(Bai et al., 2022)</ref> or Reinforcement Learning from AI Feedback (RL-AIF). Instead of gathering thousands of human labels, this approach only requires providing approximately 10 human-generated constitutions and asking the AI to provide feedback and label the data. This method significantly reduces the amount of human effort involved and proves to be much more costeffective.</p><p>However, Anthropic's original implementation was for a model with an estimated 52B parameters. Currently, we are unaware of work that details how well CAI performs on smaller models, such as Llama 3 -8B. In addition, RL-AIF in the paper relies on fine-tuning models using its own selfcritic outputs, which may lead to model collapse <ref type="bibr" target="#b3">(Kazdan et al., 2025)</ref>, a phenomenon where models degenerate to be unusable when training on recursively generated data. This problem may become even worse when the model is small, since the output quality from the smaller model is not good enough, potentially leading to even stronger model collapse.</p><p>Thus, we aim to replicate the Constitutional AI workflow using the smaller Llama 3-8B model and explore the effects and outcomes of this approach.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Related Work</head><p>In this work, we primarily replicate the end-to-end flow from the Constitutional AI approach by Anthropic. However, instead of using Proximal Policy Optimization (PPO) during the Reinforcement Learning stage, as described in the original paper, we employed Direct Preference Optimization (DPO). DPO bypasses the need to train the reward model while still achieving similar high-quality results, significantly reducing the effort required.</p><p>Constitutional AI <ref type="bibr" target="#b2">(Bai et al., 2022)</ref>: This method trains a harmless AI model using a self-improving approach, without requiring human-labeled data to identify harmful content. Instead, humans provide a set of rules or principles, known as "Constitutional AI." The training process consists of two main stages: supervised fine-tuning and reinforcement learning (RL). In the supervised stage, the model is exposed to prompts with potentially harmful content. It then generates a self-critique and revises its response, with the model being fine-tuned based on the final revised output. In the RL stage, the AI uses feedback from its own responses to train a reward model. The model is then further refined using the Policy Proximal Optimization (PPO) RL method to optimize its policy and improve the prediction of the next token.</p><p>Direct Preference Optimization (DPO) <ref type="bibr" target="#b5">(Rafailov et al., 2024)</ref> : This method directly optimizes a policy using preference data, rather than learning a reward model. DPO optimizes the policy through the loss function</p><formula xml:id="formula_0">L DPO (π θ ; π ref ) = -E (x,yw,y ℓ )∼D log σ β log π θ (y w |x) π ref (y w |x) -β log π θ (y ℓ |x) π ref (y ℓ |x) . (1)</formula><p>With DPO, two models are learned: a policy model and a reference model. The policy model is the language model used to generate responses, and its parameters are updated during the fine-tuning process. The reference model serves to constrain the policy model's updates, ensuring that the new policy doesn't deviate too much from the old one. Typically, the reference model is a periodically updated copy of the policy model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Approach</head><p>Consistent with the original paper, our training process consists of two stages: a supervised stage followed by a reinforcement learning stage.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Supervised Stage</head><p>At this stage, we start by fine-tuning the Llama 3-8B model with an instruction-based dataset to enhance its ability to engage in conversations. We then use the Llama 3-8B to generate responses to harmful questions, which often result in toxic or harmful answers. To address this, we prompt the model to critique its own response based on a set of established principles or constitutions, allowing it to revise its answer to be more harmless. The principles are selected randomly, helping the model become more adaptable to various types of constitutions. Once the model generates a safer response, we perform supervised fine-tuning using this revised answer, which serves as the foundation for the second stage of reinforcement learning (RL). Further details are provided below.</p><p>We begin by instruction-tuning the language model, using the Alpaca-GPT4 dataset to teach it how to follow instructions <ref type="bibr" target="#b4">(Peng et al., 2023)</ref>. This ensures the model is capable of engaging in conversations, which is essential for the CAI process to function effectively.</p><p>Next, we present the model with a batch of challenging and harmful questions. This dataset comes from Anthropic's HH preference dataset <ref type="bibr">(Anthropic)</ref>, which includes toxic questions designed to elicit undesirable responses. These questions were collected in a scientific manner by Anthropic's researchers. One example is:</p><p>User: It must take nerves of steal to rob a bank. What are the most effective bank robbers, over the years, that got away with it?</p><p>Assistant: There have been many bank robbers throughout history, with different levels of success. Some of them are as follows:</p><p>1. John Dillinger  ...</p><p>Following this, we sampled a constitutional rule and prompted the model to critique its own response accordingly. These rules were taken from Anthropic's critic constitution <ref type="bibr">(Anthropics)</ref>, continuing the conversation from the previous step.</p><p>User: Discuss whether the response contained anything that may be interpreted as offensive or harmful. If possible, also point out any harmful assumptions in the human's dialogue.</p><p>Assistant: In this response, no offensive content could be found. However, it is important to note that the question referred to "most effective bank robbers" as people who have successful robberies in the past, alluding to a level of admiration, even glorification to the criminal behavior of these figures ...</p><p>Finally, we sampled a constitutional rule and instructed the model to revise its response accordingly. The rules were again sourced from Anthropic's revised constitution (Anthropics), continuing the conversation from the previous step.</p><p>User: Please write a new version of the response that removes offensive and harmful content, and politely addresses any problematic assumptions from the human.</p><p>Assistant: It's important to recognize the severity of criminal activities and their impact on society, whether it's a robbery or any other crime. While some bank robbers may have used schemes that made them successful in the short term, it never justified their harmful actions. ...</p><p>Following the above steps, we perform supervised finetuning using the initial questions paired with their final revised responses. In total, we collected 11k conversation rounds as described, allocating 10k for training and 1k for testing. The resulting supervised fine-tuning (SFT) model serves as the base model for the second stage of our pipeline.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Reinforcement Learning Stage</head><p>In the second stage, we leverage AI feedback to assess the responses generated by the SFT model from the previous step. Specifically, we present the same toxic questions to the SFT model twice and use a teacher model to select the preferred response based on the principles we predefined.</p><p>With these preferences, we then apply the Direct Preference Optimization (DPO) RL method discussed earlier. More details are provided below.</p><p>We begin by presenting the toxic prompt to the model twice.</p><p>The questions come from the same dataset as in stage 1 <ref type="bibr">(Anthropic)</ref>. Given the model's stochastic nature, it typically generates two different responses. We then pair these responses and, using the principles from Anthropic's RL constitution <ref type="bibr">(Anthropics)</ref>, create a prompt to identify the more harmless response:</p><p>Consider the following conversation between a human and an assistant:</p><formula xml:id="formula_1">[HUMAN/ASSISTANT CONVERSATION] [PRINCIPLE FOR MULTIPLE CHOICE EVALUA- TION] Options: (A) [RESPONSE A] (B) [RESPONSE B]</formula><p>The answer is: Continuing with the same example from Stage 1, we begin by presenting the toxic prompt twice and generating two separate responses:</p><p>User: It must take nerves of steal to rob a bank. What are the most effective bank robbers, over the years, that got away with it?</p><p>First Response: I'm sorry, but I'm not able to provide any information about the most effective bank robbers, as it would require an immense amount of research and analysis from various sources to accurately determine the effectiveness of any bank robber ...</p><p>Second Response: It's important to note that bank robbery is a serious crime and can have severe consequences for the perpetrator, including imprisonment. While some bank robbers may have been successful in their crimes, it does not mean that their actions are to be celebrated or encouraged ...</p><p>Next, we construct a prompt by combining the response pair with the sampled principle.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Our Principle:</head><p>Compare the assistant responses in terms of toxicity, racism, sexism and social bias, and choose the less harmful response.</p><p>Options:</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Created Prompt:</head><p>Consider the following question from a human: It must take nerves of steal to rob a bank. What are the most effective bank robbers, over the years, that got away with it?</p><p>Compare the assistant responses in terms of toxicity, racism, sexism and social bias, and choose the less harmful response.</p><p>Options:</p><p>(A) I'm sorry, but I'm not able to provide any information about the most effective bank robbers, as it would require an immense amount of research and analysis from various sources to accurately determine the effectiveness of any bank robber ... (B) It's important to note that bank robbery is a serious crime and can have severe consequences for the perpetrator, including imprisonment. While some bank robbers may have been successful in their crimes, it does not mean that their actions are to be celebrated or encouraged ...</p><p>Finally, we submit the constructed prompt to an AI model for feedback, using GPT-4o as the feedback provider. In this case, the model selects response A.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>AI Feedback Giver: A</head><p>Using the method outlined above, we created a 6k preference dataset, consisting of 5k examples for training and 1k for testing. It's important to note that the AI feedback provider does not always generate a preference, as some response pairs are very similar, making it difficult for the model to choose. These uncertain responses account for 3% of the total preference dataset, so we excluded them and only used the remaining data.</p><p>With this 6k dataset, we applied the DPO Reinforcement Learning method to the SFT model, resulting in our final DPO-CAI model. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Experimental Results</head><p>We evaluate our final DPO-CAI model using MTBenchmark <ref type="bibr" target="#b7">(Zheng et al., 2023)</ref>, which assesses large language models' (LLMs) ability to engage in coherent, informative, and engaging conversations. For comparison, we use the Alpaca-GPT4 fine-tuned Llama 3-8B model as the baseline.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Harmlessness and Helpfulness</head><p>Our experiment demonstrates a significant improvement in harmlessness, with the Llama 3-8B's Attack Success Rate reduced by 40.8%. However, as noted in previous studies, enhancing harmlessness comes at the cost of helpfulness. The model may decline to answer certain toxic questions, leading to a 9.8% reduction in helpfulness metrics compared to the baseline. Further details are provided below: Table 2. Attack Success Rates (ASRs) on the HeX-PHI redteaming dataset. The CAI LLaMA model shows improved safety after just 5,000 synthetically generated training examples.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Model Collapse</head><p>We observed instances of model collapse in the final DPO-CAI model, specifically characterized by repeated sentences at the end of the output. For example, in one case, the model continuously repeated the closing politeness sentence:</p><p>...</p><p>Please let me know if you have any further questions. Thank you for using the chatbot! :) Have a great day! :) Please let me know if you have any further inquiries. I am here to help! Have a great day! :) Please let me know if you have any further questions. I am here to help! Have a great day! :) ... After investigation, we identified the root cause of the model collapse: during Stage 1 of supervised fine-tuning, many final revisions in the training data contained repeated emojis.</p><p>When this data was used for fine-tuning, the model overfitted to these patterns and began generating repeated sentences at the end of its outputs, imitating the emoji repetitions. As a smaller model, LLaMA 3-8B lacks the robustness of larger models and has difficulty distinguishing between emojis and meaningful sentence content, making it more prone to this type of overfitting. In contrast, the 52B model used in the original paper does not encounter this issue, likely due to its larger capacity and improved generalization ability.</p><p>This outcome suggests that applying constitutional AI to smaller models requires additional preprocessing of the revision responses from the supervised stage. Specifically, it is important to remove repeated emojis, random or irrelevant text, and other noise before fine-tuning. One possible approach is to use another AI model, such as GPT-3.5, to automatically clean the revision data. While this solution is beyond the scope of the current work, we plan to explore it in future research.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Conclusion</head><p>In summary, the Constitutional AI (CAI), or RL from AI feedback, successfully improved the harmlessness of the small model, boosting its harmlessness metrics by 40%. However, this came at the cost of a 9% decrease in its helpfulness. The implementation of CAI revealed model collapse issues in the small model, highlighting that smaller models may struggle with self-improvement due to their insufficient output quality for effective fine-tuning. In contrast, larger models do not face this issue. To address this, a more effective approach would be to introduce a more advanced model to oversee the self-critic revision process of the small model, performing an additional sanity check, such as a clean-up, on the revision response before it is used for fine-tuning.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 .</head><label>1</label><figDesc>Figure1. Constitutional AI<ref type="bibr" target="#b2">(Bai et al., 2022)</ref> </figDesc><graphic coords="3,55.44,67.06,486.00,209.72" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 .</head><label>2</label><figDesc>Figure 2. Training metrics across epochs, including loss, gradient norm, reward accuracy, and log-probabilities for chosen and rejected responses.</figDesc><graphic coords="4,307.44,265.53,234.00,252.27" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Performance on the Multi-Turn Benchmark. The CAI model shows a slight decline compared to the baseline.</figDesc><table><row><cell cols="3">SFT Llama CAI Llama</cell></row><row><cell>Turn 1 Score</cell><cell>6.841772</cell><cell>6.625000</cell></row><row><cell>Turn 2 Score</cell><cell>5.275000</cell><cell>4.278481</cell></row><row><cell>Average Score</cell><cell>6.053459</cell><cell>5.459119</cell></row><row><cell></cell><cell cols="2">SFT Llama CAI Llama</cell></row><row><cell>Attack Success Rate</cell><cell>71%</cell><cell>42%</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>Department of Electrical Engineering, Stanford University, Stanford, CA. Correspondence to: Xue Zhang &lt;xuezhang68@stanford.edu&gt;.</p></note>
+		</body>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title level="m" type="main">Anthropic/hh-rlhf • datasets at hugging face</title>
+		<author>
+			<persName><surname>Anthropic</surname></persName>
+		</author>
+		<ptr target="https://huggingface.co/datasets/Anthropic/hh-rlhf" />
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title level="m" type="main">Constitutional harmlessness paper prompts</title>
+		<author>
+			<persName><surname>Anthropics</surname></persName>
+		</author>
+		<ptr target="https://github.com/anthropics/" />
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kundu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Goldie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mirhoseini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Mckinnon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tran-Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kerr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Mueller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ladish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Landau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lukosuite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Lovitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sellitto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Schiefer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Mercado</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lasenby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Larson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ringer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Johnston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kravec</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">E</forename><surname>Showk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Fort</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lanham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Telleen-Lawton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Conerly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Hume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">R</forename><surname>Bowman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Ai</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2212.08073" />
+		<title level="m">Harmlessness from ai feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Collapse or thrive? perils and promises of synthetic data in a selfgenerating world</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kazdan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Koyejo</surname></persName>
+		</author>
+		<ptr target="https://openai.com/research/gpt-4" />
+	</analytic>
+	<monogr>
+		<title level="m">OpenAI. Gpt-4 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2025. 2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<author>
+			<persName><forename type="first">B</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Galley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Gao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2304.03277</idno>
+		<title level="m">Instruction tuning with gpt-4</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Direct preference optimization: Your language model is secretly a reward model</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">D</forename><surname>Manning</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Finn</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2305.18290" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">The potentially large effects of artificial intelligence on economic growth</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Sachs</surname></persName>
+		</author>
+		<ptr target="https://www.goldmansachs.com/insights/pages/gs-research/ai-job-disruption-report.pdf" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">Judging llm-as-a-judge with mt-bench and chatbot arena</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W.-L</forename><surname>Chiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">P</forename><surname>Xing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">E</forename><surname>Gonzalez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Stoica</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2306.05685" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

@@ -1,0 +1,992 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">FROM PERCEPTIONS TO EVIDENCE: DETECTING AI-GENERATED CONTENT IN TURKISH NEWS MEDIA WITH A FINE-TUNED BERT CLASSIFIER</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-02-17">February 17, 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Ozancan</forename><surname>Ozdemir</surname></persName>
+							<email>o.ozdemir@rug.nl</email>
+							<affiliation key="aff0">
+								<orgName type="institution">Bernoulli Institute University of Groningen Nijenborgh 9</orgName>
+								<address>
+									<postCode>9747 AG</postCode>
+									<settlement>Groningen</settlement>
+									<country key="NL">The Netherlands</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">FROM PERCEPTIONS TO EVIDENCE: DETECTING AI-GENERATED CONTENT IN TURKISH NEWS MEDIA WITH A FINE-TUNED BERT CLASSIFIER</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-02-17">February 17, 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">9F2F0AF1C0D127A1F57A12839A8C992E</idno>
+					<idno type="arXiv">arXiv:2602.13504v1[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>The rapid integration of large language models into newsroom workflows has raised urgent questions about the prevalence of AI-generated content in online media. While large-scale computational studies have begun to quantify this phenomenon in English-language outlets, no empirical investigation exists for Turkish news media, where existing research remains limited to qualitative interviews with journalists or fake news detection. This study addresses that gap by presenting the first transformerbased framework for detecting AI-generated content in Turkish news articles. We construct a labeled dataset of 3,600 articles collected from three major Turkish outlets representing distinct editorial orientations, a central media outlet, a pro-goverment media outlet and opposition aligned goverment alignment, and fine-tune a Turkish-specific BERT model (dbmdz/bert-base-turkish-cased) for binary classification. The model achieves 97.08% F1 score on the held-out test set with symmetric precision and recall across both classes. We further apply the trained classifier to over 3,500 previously unseen articles from the same three sources spanning 2023-2026, providing the first computational characterization of AI-generated content patterns across Turkish media over a multi-year period. The external analysis reveals consistent classification distributions across sources and years, with mean prediction confidence exceeding 96% and estimates that approximately 2.5% of the news are rewritten or revised by LLM on average across the examined time frame. To the best of our knowledge, this is the first study to move beyond self-reported journalist perceptions toward empirical, data-driven measurement of AI usage in Turkish news media. The dataset, methodology, and baseline results are intended as a foundational resource for future research at the intersection of Turkish NLP, computational journalism, and media studies.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>The public release of ChatGPT in November 2022 marked a watershed moment in the relationship between artificial intelligence and text production since these LLMs predict the next word successfully and accurately. Within months, generative AI tools powered by large language models (LLMs) transitioned from research curiosities to mainstream instruments adopted across industries at unprecedented speed. By 2025, 61% of the global population surveyed had used a generative AI system at least once, with weekly usage nearly doubling from 18% to 34% in a single year <ref type="bibr" target="#b0">[1]</ref>. This rapid diffusion has affected various domains including journalism.</p><p>Due to the high-level ability of generating high-quality text, LLMs can ensure contents at a pace that far outstrips traditional methods with concerns about reduced transparency and trustworthiness. This is a remarkable opportunity for online media outlets since one of their revenue source is based on the number of visiting to their website, that can be positively correlated with the number of contents.</p><p>One of the surveys involves AI usage in journalism in US indicate that over 80% of newsrooms in North America now leverage some form of AI in their operations <ref type="bibr" target="#b1">[2]</ref>. A 2025 study of UK journalists found that 56% use AI tools professionally on at least a weekly basis, with applications spanning story research (22%), headline generation (16%), idea brainstorming (16%), and even first-draft composition (10%) <ref type="bibr" target="#b2">[3]</ref>. This transformation has also altered the journalism habits in Turkey as rest of the world as we briefly summarized in the previous paragraph. Journalists in Turkey appear to employ AI primarily to increase efficiency in routine newsroom tasks, including the transcription of audio recordings, the translation of foreign-language sources, the summarization of lengthy legal or technical documents, and the automated checking of grammar and style. Beyond these operational uses, AI tools are also utilized for the production of news visuals and infographics, particularly as a means of avoiding copyright-related risks and reducing production costs, as well as for conducting large-scale data analysis to support background research. Moreover, AI-assisted rewriting practices are adopted to restructure news texts in order to address platform-specific constraints (e.g., Google News) and to optimize content for search engine visibility (SEO) <ref type="bibr" target="#b3">[4,</ref><ref type="bibr" target="#b4">5,</ref><ref type="bibr" target="#b5">6]</ref>. In addition to this, a study by <ref type="bibr" target="#b6">[7]</ref> demonstrate that the almost 50% journalists use AI for data analysis and visualization, and 40% of them get use of LLM for title writing and translation. Besides, the quarter of the journalists participating in this particular study use AI for social media content and news writing.</p><p>Despite the advantages of LLMs in news production or editing, this rapid adoption also brings several concerns raising over reduced transparency and trustworthiness. The news edited or generated by LLMs are also under the treat of bias that LLMs has inherently due to the training data. A study published in Scientific Reports examining AI-generated news content from seven major LLMs, including ChatGPT and LLaMA, found that every model produced content with substantial gender and racial biases, with systematic discrimination against women and Black individuals <ref type="bibr" target="#b7">[8]</ref>. This finding is particularly alarming given that the models were prompted with headlines from The New York Times and Reuters, outlets specifically selected for their commitment to unbiased reporting.</p><p>Another concern is caused by the hallucinations. Turkish media has a concrete example for this issue. At the end of January 2026, a newspaper in Turkey published a line-up before the Fenerbahçe's game against Aston Villa. However, the line-up had some players who used to play at Fenerbahçe before but not available in the current team squad such as Livakovic, Osayi-Samuel etc. When we ask ChatGPT to generate a line-up for Fenerbahçe, we discovered that it generates almost same players who used to play for Fenerbahçe but not being in the current team squad. The screenshots from both newspaper and ChatGPT output are given below. The bias and hallucinations are compounded by the erosion of public trust in AI-mediated news. According to the Reuters Institute's 2025 survey, only 12% of respondents are comfortable with news produced entirely by AI, and only 33% believe that journalists regularly verify AI outputs before publication. The "comfort gap" between humanproduced and AI-produced journalism is substantial and consistent across demographics and countries in this report. 62% of participants are comfortable with entirely human-made news, but this drops to 21% when AI is involved with human oversight, and to 12% when AI operates autonomously <ref type="bibr" target="#b0">[1]</ref>. These figures signal a fundamental tension. News organizations are rapidly adopting AI to maintain competitive output, while audiences increasingly distrust the very content these tools produce. Thus, the adoption of AI in journalism is a concept that should be taken into consideration carefully and identifying the use of AI in current news reports is of great importance.</p><p>Despite this rapidly evolving media environment, a critical gap persists in the Turkish literature. The most of the available studies, where we summarized some above, investigating the AI adoption and usage in Turkish media outlets are heavily qualitative, relying on in-depth interviews with a limited number of journalists to capture self-reported perceptions rather than empirically measuring AI presence in news content. To date, no study has applied computational methods to detect and quantify the actual rate of AI-generated content in Turkish news media. This gap is particularly significant for three reasons. First, Turkish is an agglutinative language with rich morphology that poses distinct challenges for NLP systems; AI-generated or revised detection models developed for analytic languages like English cannot be straightforwardly transferred. Second, Turkey's unique position at the intersection of European and Middle Eastern media traditions means that patterns of media bias may differ qualitatively from those documented in Western contexts. Third, the practical demand for automated bias detection tools is acute, given both the scale of AI-generated content entering the Turkish media ecosystem and the documented erosion of editorial independence across the sector.</p><p>To the best of our knowledge, this study represents the first systematic attempt to apply BERT-based classification to AI rewritten/revised Turkish news detection. In doing so, we aim to establish a foundational framework, encompassing a labeled dataset, a fine-tuned model, and baseline results, upon which future research can build. Specifically, this study makes the following contributions.</p><p>• We construct a dataset of 3,600 news articles sourced from three major Turkish media outlets annotated for binary bias classification. This dataset fills a critical resource gap and provides a benchmark for future Turkish media bias research.</p><p>• We fine-tune a Turkish-specific BERT model (dbmdz/bert-base-turkish-cased) for the bias detection task, achieving an F1 score of 97.08% on the held-out test set and establishing the first deep learning baseline for this problem.</p><p>• We apply the trained model to over 3,500 previously unseen news articles from the same three outlets spanning 2023-2026, providing the first computational characterization of bias patterns across major Turkish media sources over a multi-year period.</p><p>• We document the complete experimental pipeline including data collection, preprocessing, model fine-tuning, and evaluation and thereby providing a replicable framework for researchers seeking to extend bias detection to other under-resourced languages and media environments.</p><p>The rest of paper is organized as follows. Section 2 reviews the related literature on transformer-based text classification in Turkish media and Section 3, Section 4 and Section 5 describe the dataset construction, and the methodology, including model architecture, and training procedure. Section 6 presents the experimental results and discusses the findings. Section 7 covers the limitation of the current study and outlines the direction for future research. Lastly, section 8 wraps up the entire study in a few sentences.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Related Works</head><p>The detection of AI-generated or AI-rewritten news content has rapidly emerged as a critical research area following the public release of ChatGPT. The dominant approach in the literature relies on fine-tuning pre-trained transformer models for binary classification between human-written and AI-generated text. <ref type="bibr" target="#b8">[9]</ref> fine-tuned BERT and RoBERTa variants to detect ChatGPT-generated news articles, achieving 98% precision with their optimized RoBERTa model, while <ref type="bibr" target="#b9">[10]</ref> reported 97.71% test accuracy with a BERT-based detector through careful preprocessing and a 60/40 train-test split. These results confirm that transformer architectures can reliably distinguish between human and machine-generated news text, even without domain-specific architectural modifications. Beyond standard fine-tuning, several studies have explored hybrid architectures to push detection performance further. <ref type="bibr" target="#b10">[11]</ref> combined RoBERTa embeddings with feedforward neural networks (RoBERTa-FNN), reaching 99.95% accuracy on balanced datasets, and <ref type="bibr" target="#b11">[12]</ref> introduced role recognition and involvement measurement through their Hybrid News Detection Corpus (HNDC) and DetectEval evaluation suite, demonstrating that pre-trained language models can identify varying degrees of LLM involvement in content creation, moving beyond binary classification toward a more nuanced understanding of human-AI collaboration in news writing. While the studies above establish the technical feasibility of AI content detection, a more recent strand of research has shifted focus from controlled experiments to real-world prevalence measurement. <ref type="bibr" target="#b12">[13]</ref> applied a state-of-the-art AI detector to newly published articles in American newspapers and discovered that approximately 9% are either partially or fully AI-generated. This finding is particularly significant as it demonstrates that AI-generated content is no longer a hypothetical concern but a measurable phenomenon in mainstream journalism. However, such prevalence studies remain exclusively limited to English-language media.</p><p>In the the literacy of Turkish news related studies, the research focus has predominantly centered on fake news detection rather than AI-generated content identification. A substantial body of work has demonstrated the effectiveness of both traditional machine learning and deep learning approaches for this task. <ref type="bibr" target="#b13">[14]</ref> developed a Turkish BERT model reaching 98.5-99.9% accuracy in COVID-19 misinformation and general fake news detection with minimal language-specific preprocessing, and <ref type="bibr" target="#b14">[15]</ref> extended this by fine-tuning BERT/BERTurk with CNN and BiLSTM layers, achieving 90-94% accuracy including evaluation on LLM-generated fake news. On the traditional machine learning side, <ref type="bibr" target="#b15">[16]</ref> evaluated XGBoost, Random Forest, Naïve Bayes, Logistic Regression, and SVM for bilingual fake news detection, with Random Forest achieving 93.9% accuracy for Turkish. More recently, <ref type="bibr" target="#b16">[17]</ref> fine-tuned LLaMA-2-7B-Turkish and Phi-3, reaching F1 scores between 0.74 and 0.99 depending on the scenario and outperforming prior deep learning models on Turkish fake news. The effectiveness of different feature representations remains an active debate in Turkish fake news detection. <ref type="bibr" target="#b17">[18]</ref> demonstrated that fastText embeddings with LSTM and attention mechanisms can capture nuanced Turkish linguistic patterns, achieving 92% accuracy and outperforming a fine-tuned Turkish BERT baseline. In contrast, <ref type="bibr" target="#b18">[19]</ref> found that fine-tuned BERT-based classifiers outperform both TF-IDF and fastText embedding-based approaches, reaching 99.27% accuracy. These conflicting findings suggest that optimal feature representation for Turkish text classification may be dependent on task, dataset or a model selection. The closest work to ours in the Turkish context is <ref type="bibr" target="#b19">[20]</ref>, who trained an LSTM model to distinguish LLM-generated sentences from human-written ones in Turkish across various academic domains, achieving 0.97 accuracy and F1 score. However, this study operates at the sentence level within academic texts rather than at the document level within news articles, and it relies on a controlled experimental setup rather than application to real-world unseen data. As the review above illustrates, the Turkish NLP literature has produced a mature and technically accomplished body of work on fake news detection. Yet a significant gap remains. No study has applied computational methods to detect and quantify AI-generated or AI-rewritten content in Turkish news media. The English-language literature has progressed from controlled binary classification experiments to real-world prevalence measurement <ref type="bibr" target="#b12">[13]</ref>, but this progression has not been replicated for Turkish. The present study addresses this gap by fine-tuning a Turkish BERT model for AI-generated content detection and, critically, deploying the trained classifier on over 3,500 unseen articles from three major Turkish outlets spanning 2023-2026.Thereby, it aims to enrich the studies moving from controlled experimentation to empirical measurement in the Turkish media context.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Data</head><p>We scraped 2000 randomly selected news articles published in 2021 from the three most frequently visited online newspapers in Turkey. The collected news was about current affairs happening in the selected time period. The visiting information of newspapers is obtained from the Reuters Report 2026. Since the newspapers in Turkey are politically polarized <ref type="bibr" target="#b20">[21]</ref>, we selected these papers based on their political standing. To provide a relatively comprehensive insight, we opted for one newspaper from the pro-opposition, one newspaper from the pro-government, and one newspaper located in the center. Due to the privacy issues, the newspapers' names are not shared.</p><p>The reason behind the choice of 2021 is that it is a year where we believe that all news were written by reporters and there was no help from any language models. With this choice, we aim to introduce a human-written news pattern to the model. So, these news articles constitute the human-written labels in our dataset.</p><p>ChatGPT is the most-frequently used LLM in Turkey <ref type="bibr" target="#b21">[22]</ref>. Thus, we get use from it to create the AI-written &amp; AI-corrected labeled data. We write the following prompt to ChatGPT 5.2 to rewrite or revise the gathered news.</p><p>You are an experienced newspaper editor of the newspaper [newspapers' name]. Your task is to rewrite or revise the provided news in line with the language, tone, and editorial style of [newspaper's name]. Follow the rules below.</p><p>• Do not change the meaning under any circumstances. Facts, dates and times, numerical values, and names of individuals and institutions must be preserved exactly.</p><p>• Do not alter the text length. The rewritten article should remain very close to the original length.</p><p>• Analyze and apply the newspaper style. Sentence structure, word choice, level of formality, emphasis, and news rhythm should reflect [newspaper's name] editorial language.</p><p>• Improve fluency, reduce repetition, simplify phrasing, and correct grammatical and punctuation errors. The output should be an editorial rewrite, not a copy.</p><p>• Do not add new information, interpretation, or inference. Use only the information explicitly stated in the original text.</p><p>• Do not deviate from journalistic language; avoid subjective judgments or commentary.</p><p>• If quotations are present, preserve all quoted material verbatim. You may revise only the sentences introducing or concluding the quotation to match the newspaper style.</p><p>The news generated by ChatGPT was labeled as AI-generated (revised) and added to the dataset. The following figure shows that the text length between human-written and AI-generated (revised) are close to each other, which is one indication of the verifiability of our prompt. Figure 3: The Distribution of Word Counts in Human-Written and AI-Rewritten &amp; Revised News</p><p>In addition to text length, similarity between texts was also measured. The primary goal was to generate news articles that are hard to distinguish from genuine news, thereby ensuring a robust and well-performing model. We used the cosine similarity measure, and it equals 0.9 on average. This value indicates that the measured set of text vectors has a high degree of semantic similarity. It means they are very closely related, and usually represent the same concept or carry the same intent.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Method</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Bidirectional Encoder Representation from Transformers (BERT)</head><p>Bidirectional Encoder Representation from Transformers (BERT) is a pretrained language model proposed by <ref type="bibr" target="#b22">[23]</ref> and developed based on the transformer architecture <ref type="bibr" target="#b23">[24]</ref>. In contrast to the traditional unidirectional language models, the BERT architecture employs a bidirectional attention mechanism, and it encodes each token to attend to all other tokens simultaneously. Thereby, it achieves richer semantic representation.</p><p>The principle of BERT mainly consists of two phases: pre-training and fine-tuning <ref type="bibr" target="#b24">[25]</ref>. The pre-training phase is based on two semi-supervised tasks, which are Masked Language Model (MLM) and Next Sentence Prediction (NSP).</p><p>In MLM, a random portion of the input sequence, roughly 15%, is masked, and the model learns to predict them from their bidirectional context. This forces the model to model the contextual information and learn better word representation <ref type="bibr" target="#b24">[25]</ref>. On the other hand, the model learns to decide whether two sentences are consecutive in the original corpus in NSP, enabling understanding the correlation between sentences that brings better insight for text sequence.</p><p>In short, the dual-objective pre-training procedures produce contextual word embeddings that encode both synthetic and semantic information, enabling effective transfer learning across a wide range of tasks. The BERT model can be adapted to a supervised learning task after adding one layer, combined with labeled data. The base model architecture consists of 12 Transformer encoder layers, 768 hidden dimensions, 12 self-attention heads, and approximately 110 million parameters. Each encoder layer comprises a multi-head self-attention sub-layer followed by a position-wise feed-forward network, with layer normalization and residual connections applied after each sub-layer. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Turkish BERT</head><p>While the original BERT models were pre-trained primarily on English corpora, language-specific models have been shown to significantly outperform multilingual variants on monolingual tasks <ref type="bibr" target="#b25">[26,</ref><ref type="bibr" target="#b26">27]</ref>. For Turkish NLP tasks, we employ dbmdz/bert-base-turkish-cased, a Turkish-specific BERT model developed by the Munich Digitization Center (MDZ) at the Bavarian State Library in collaboration with the Technical University of Munich <ref type="bibr" target="#b27">[28]</ref>. This model was pre-trained on a large-scale Turkish corpus comprising approximately 35 GB of text, including data from the Turkish subset of OSCAR <ref type="bibr" target="#b28">[29]</ref>, the Turkish Wikipedia, and the OPUS corpus <ref type="bibr" target="#b29">[30]</ref>. Crucially, the model utilizes a Turkish-specific vocabulary of 32.000 WordPiece tokens generated through a dedicated tokenization procedure, which preserves the morphological richness and agglutinative structure of Turkish. The cased variant preserves capitalization information, which is particularly important for Turkish due to the distinction between dotted and undotted letters (I/ı and İ/i). This model has demonstrated state-of-the-art performance across various Turkish NLU benchmarks, including sentiment analysis, named entity recognition, and text classification tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Fine-Tuning for Text Classification</head><p>Transfer learning via fine-tuning has become the de facto paradigm for adapting pre-trained language models to task-specific objectives <ref type="bibr" target="#b30">[31]</ref>.In the fine-tuning framework, the pre-trained model weights serve as an initialization, and the entire model, including both the pre-trained encoder and a newly added task-specific classification head, is updated end-to-end on the labeled downstream dataset. For the binary text classification task in this study, we append a single linear classification layer on top of the [CLS] token representation from the final encoder layer:</p><formula xml:id="formula_0">ŷ = softmax W • h [CLS] + b<label>(1)</label></formula><p>where h [CLS] ∈ R 768 is the pooled output representation of the [CLS] token, W ∈ R 2×768 is the weight matrix of the classification head, and b ∈ R 2 is the bias vector. The softmax function maps the logits to a probability distribution over the two classes. The classification loss is computed using the cross-entropy objective with label smoothing <ref type="bibr" target="#b31">[32]</ref>.</p><formula xml:id="formula_1">L = - N i=1 [ȳ i log (ŷ i ) + (1 -ỹi ) log (1 -ŷi )]<label>(2)</label></formula><p>where ȳ = (1 -α).y i + α/K is the smoothed label, α = 0.1 is the smoothing factor, K = 2 is the number of classes, and n is the number of training samples. Label smoothing serves as a regularization mechanism that prevents the model from becoming overconfident in its predictions, thereby mitigating overfitting.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Data Pre-Processing and Model Training</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">Data Cleaning</head><p>Before modeling, the collected data are subjected to cleaning operations. Since news items are randomly selected, some overlap, resulting in duplicates. To get rid of these, we filtered the news based on the date and removed the duplicates by keeping an equal distribution between the journals. In the end, we have 1800 news items left, almost equally distributed across the three newspapers. In data exploration, we observed that some scraped news items also contain headlines that distort the narrative. We also removed them based on the text pattern. We lowercased every news item and removed the unnecessary punctuation and stopwords. Last, we cleaned the news agency name placed at the end of the news texts from one newspaper particulary since it may lead to a bias in inference.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Data Splitting</head><p>The cleaned dataset was divided into training, validation, and test subsets using a stratified split to preserve label proportions across all partitions. The allocation followed an 80/10/10 ratio, yielding 2,880 training samples, 360 validation samples, and 360 test samples. Stratification was enforced using the class labels as the stratifying variable to ensure balanced representation, which is critical for training stability and unbiased evaluation <ref type="bibr" target="#b32">[33]</ref>. The distribution of classes in each dataset is given below.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Data</head><p>Human Written AI Rewritten or Revised Train 0.5 0.5 Validation 0.499 0.501 Test 0.501 0.499 Table <ref type="table">1</ref>: The Class Distribution Across Datasets</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">Tokenization</head><p>All text inputs were tokenized using the WordPiece tokenizer associated with the dbmdz/bert-base-turkish-model. Sequences were padded or truncated to a maximum length of 512 tokens, which corresponds to BERT's architectural limit. This maximum length was selected to preserve as much contextual information as possible from news articles, which tend to be substantially longer than the more commonly used 128 or 256 token lengths.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4">Optimization and Regularization</head><p>The model was optimized using the AdamW optimizer <ref type="bibr" target="#b33">[34]</ref> with a learning rate of 2 × 10 -5 and a weight decay coefficient of 0.01. A linear learning rate scheduler with warm-up was employed, where the learning rate linearly increases from zero during the first 10% of training steps (warm-up phase) and then linearly decays to zero over the remaining steps. Gradient clipping with a maximum norm of 1.0 was applied to prevent gradient explosion. To mitigate overfitting, several regularization strategies were employed.</p><p>• dropout with a probability of 0.2 was applied to both the hidden states and the attention weights (increased from the default 0.1)</p><p>• label smoothing with a factor of 0.1 was used to soften the target distribution.</p><p>• early stopping with a patience of 2 epochs was implemented based on the validation F1 score.</p><p>The model achieving the highest validation F1 score across all epochs was selected as the final model. Mixed-precision training (FP16) was utilized to accelerate training and reduce GPU memory consumption without sacrificing model quality <ref type="bibr" target="#b34">[35]</ref>. The following table summarizes the complete set of hyperparameters used during fine-tuning. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Hyperparameter Value</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.5">Evaluation</head><p>Since it is a classification task, a model's performance was evaluated across four conventional classification measures. Accuracy, precision, recall, and F1 score. Given the balanced dataset, accuracy provides a reliable insight into the model's performance, but the F1 score was preferred as the primary metric for the model selection phase since it provides a more comprehensive assessment of classifier performance, particularly in scenearios where both false positives and false negatives carry significant costs. <ref type="bibr" target="#b35">[36]</ref> Besides these four measures, we also evaluated the reliability score for predictions so that we could measure how confident the model is in prediction.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Accuracy =</head><p>T P + T N T P + T N + F P + F N</p><p>Precision = T P T P + F P</p><p>Recall = T P T P + F N</p><formula xml:id="formula_4">F 1 = 2 • Precision • Recall Precision + Recall (<label>(5)</label></formula><formula xml:id="formula_5">)<label>6</label></formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.6">Implementation Details</head><p>Implementation Details All experiments were conducted on Google Colaboratory using a single NVIDIA Tesla T4 GPU (16 GB VRAM). The implementation was based on the Hugging Face transformers library (v5.0) <ref type="bibr" target="#b36">[37]</ref> with PyTorch (v2.7) as the deep learning backend. The Trainer API was used for training orchestration, including automated logging, checkpoint management, and early stopping. The total training time was approximately 18 minutes</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Results and Discussion</head><p>The fine-tuning of the Turkish BERT was performed over six epochs, with the model exhibiting rapid convergence during the initial training phase. The training loss decreased substantially from 0.8597 in the first epoch to 0.422 in the sixth, reflecting effective parameter adaptation and efficient convergence. Notably, the validation loss reached its minimum of 0.218 at epoch 4, after which a marginal increase was observed in epochs 5 and 6 (0.225 and 0.226, respectively), indicating the onset of overfitting. The best-performing model, selected based on the highest validation F1 score of 0.991, was saved at epoch 4.</p><p>We also test the trade-off between precision and recall in the training. In epoch 1, the model achieved high precision (0.985) but comparatively lower recall (0.8994), suggesting a conservative classification strategy in the early stages.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Accuracy F1 Precision</head><p>Recall 0.991098 0.990596 0.987500 0.993711 Table <ref type="table">3</ref>: The Best Performing Model's Metrics on Training Data By epoch 3, this asymmetry was resolved, with both metrics converging to roughly 0.99, indicating that the model developed a more balanced decision boundary as fine-tuning progressed.</p><p>Although the training period exhibits that the model is learning successfully, an unexpected behaviour is observed, where the validation loss is below the training loss. This situation arises from the strong regularization strategy employed, specifically the combination of Dropout and Label Smoothing. During training, Dropout reduces the model's capacity, and Label Smoothing prevents the loss from reaching zero by introducing soft targets. In contrast, during inference/validation, the full model capacity is utilized without dropout, and performance is evaluated against ground-truth labels. This confirms that the model is effectively regularized against overfitting.</p><p>It appears from the Figure <ref type="figure" target="#fig_3">5</ref> that the employed strategy to reduce the overfitting has contributed to the stability of the training process. The training loss consistently decreased across all six epochs, while the validation loss stabilized after epoch 3, exhibiting only marginal fluctuations. This pattern suggests that the combined regularization approach was effective in moderating the rate of overfitting, though it did not entirely prevent it. The saved model was evaluated on the test set including 360 samples. The detailed evaluation is presented below. The model achieved an overall accuracy of 97.92% on the test set, with perfectly symmetric performance across both classes, for each F1 with 0.9708. The near-identical precision and recall values for both classes confirm that the model does not exhibit systematic bias toward either class. Compared to the validation set performance at epoch 4 (F1 = 0.9941), the test set F1 score of 0.9708 represents a modest decrease of 2.33 percentage points, suggesting a slight degree of overfitting to the validation distribution. Nevertheless, the test performance remains robust and indicates strong generalization within the domain of the training corpus.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Accuracy</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F1 Precision</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.1">External Validation</head><p>Since the main aim of this study is to detect the news rewritten or revised by ChatGPT and calculate the estimated proportion, we applied the fine-tuned model to the external datasets. Thereby, we aim to assess the generalization capability of the model beyond the training distribution. To this end, we gathered 300 randomly selected news items from each of the years 2023, 2024, 2025, and 2026 from the same media outlets. The average proportion over the years across the three newspapers given below. The high reliability score across the media outlets and classes indicates that the model predicts with high confidence. Alongside this, the successful training and validation performance confirms that LLM, ChatGPT, in the context of this study, has been used in the selected Turkish media outlets since the release of ChatGPT. We estimate that the 2.5% of the news are rewritten or revised by ChatGPT over the last 4 year on average. In Figure <ref type="figure" target="#fig_4">6</ref>, the highest usage happened in 2023, a year after the release of ChatGPT. Since then, the usage has dropped until 2026. This year, although we only covered the news in January 2026, the usage of LLM in news production has risen and reached the level of 2023.</p><p>If we look into the table above for a more detailed investigation, the model consistently classified the overwhelming majority of external news articles as human-written, with proportions ranging from 96.4% to 98.7%. The model's predictions were made with high certainty regardless of the source or temporal period, showing that a consistency of prediction patterns across the three media outlets despite their differing editorial orientations. While the differences are modest, the model captures subtle lingustic or content-based variations across sources, reinforcing the robustness of the model's learned representations. The absence of significant year-over-year trends indicates that the classification patterns are not driven by transient events or topical shifts but rather by stable underlying characteristics of the news texts. This result may also indicate an important empirical finding under the assumption that if the external data used in the study genuinely reflect the prevalence of human-written text.</p><p>Besides, several patterns merit attention. First, pro-opposition outlet exhibited the highest human-written news proportion across all years, while pro-goverment newspaper showed the lowest, with central media outlet falling between the two. Second, no clear temporal trend was observed within any source; the year-over-year variations remained within a narrow band of approximately 2 percentage 3 points. Third, the consistency of the mean confidence scores (96%) across all conditions suggests that the model's decision boundary is stable and not subject to substantial uncertainty in the external domain.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7">Limitations and Future Studies</head><p>This study has several limitations that should be acknowledged. First, only three media outlets, although the polarization in media was taken into consideration in selection, may not be fully representative of Turkish media. However, the difficulty of gathering news published in 2021 is another reason for this selection, which is a limitation of this study. If this difficulty is overcome, the trained model could provide better and more comprehensive insights. The dataset of 3600 cleaned samples, while sufficient for demonstrating feasibility, is modest by contemporary fine-tuning standards.</p><p>In the production of AI rewritten or revised texts, the generated results may not be consistent with the current editorial style in the selected newspapers. Second, BERT's 512-token limit necessitates truncation of longer articles, potentially discarding informative content given that the 75th percentile of text length in the corpus exceeds 2500 characters. Third, the external validation lacks ground-truth labels, meaning that the model's out-of-domain accuracy cannot be directly quantified; the consistent human-written class dominance (≥96%) across all sources and years may reflect either the genuine distribution of bias in Turkish media or a systematic generalization limitation. Finally, the absence of baseline comparisons with traditional classifiers (e.g., SVM, Logistic Regression) and alternative transformer models (e.g., multilingual BERT) limits the contextualization of the reported performance.</p><p>Future work should prioritize three directions. The most impactful extension would be the creation of human-annotated external test sets, sampling 100,200 articles per source and having them labeled by multiple independent annotators, to establish rigorous cross-domain performance metrics. Equally important is the gathering more news items from different news categories such as sports, life, health, and investigating AI-generated or revised context proportion under these categories, combined with the time range. Another enrichment is the inclusion of baseline comparisons with both traditional machine learning models and alternative pre-trained language models, supplemented by stratified k-fold cross-validation for robust performance estimation. Beyond these methodological refinements, the binary classification scheme should be extended toward multi-class and multi-label formulations that capture distinct bias dimensions (framing, selection, ideological), and long-context architectures such as Longformer <ref type="bibr" target="#b37">[38]</ref> or sliding-window strategies should be explored to address the truncation limitation. A systematic error analysis using interpretability techniques (LIME, SHAP) would further illuminate the model's decision boundaries and failure modes, strengthening both the scientific contribution and the practical utility of the classifier for real-world media monitoring applications.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8">Conclusion</head><p>This study presents, to the best of our knowledge, the first application of transformer-based classification to AI rewritten or revised news detection in Turkish news media by fine-tuning a Turkish-specific BERT model on a purpose-built dataset of 3,600 articles from three editorially distinct sources. We demonstrate that pre-trained language models can effectively distinguish AI rewritten/revised texts from human-written reporting in Turkish, achieving an F1 score of 97.08% on the held-out test set with symmetric performance across classes. The large-scale external application of the model to over 3,500 unseen articles spanning 2023-2026 reveals consistent cross-source and temporally stable prediction patterns, providing the first computational characterization of bias distributions in the Turkish media ecosystem. Taken together, these contributions, the first labeled data for AI rewritten/revised news in Turkish media, the first deep learning baseline for this task, and the first multi-year exploratory analysis, establish a foundational framework upon which future research can build, extending to richer annotation schemes, additional genres, and multilingual comparative studies.</p><p>Beyond its technical contributions, this study carries a broader implication. At a time when LLM-generated content is rapidly and quietly entering newsrooms worldwide, the absence of transparency mechanisms poses a direct threat to public trust in journalism. Our findings demonstrate that even modest-scale, language-specific efforts can yield meaningful first steps toward computational media accountability in under-resourced languages. We strongly recommend that any news article generated, rewritten, or revised with the assistance of a language model be published with a clear label disclosing the nature and extent of AI involvement. We believe that this practice would protect readers' right to informed consumption, align with the growing international consensus on AI transparency in media <ref type="bibr" target="#b0">[1]</ref>, and preserve the credibility that remains journalism's most valuable and most fragile asset.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="9">Acknowledgement</head><p>I would like to thank Sercan Karakas for this help in the arXiv endorsement.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: The line-ups in the newspaper and ChatGPT</figDesc><graphic coords="2,189.00,490.05,234.00,135.31" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 :Figure 3 :</head><label>23</label><figDesc>Figure 2: The Distribution of Word Counts in Human-Written and AI-Rewritten &amp; Revised News</figDesc><graphic coords="5,189.00,237.49,234.00,146.92" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 4 :</head><label>4</label><figDesc>Figure4: The Pre-training and fine-tuning procedures of BERT<ref type="bibr" target="#b22">[23]</ref> </figDesc><graphic coords="6,189.00,596.07,234.00,103.89" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 5 :</head><label>5</label><figDesc>Figure 5: Training Loss and Validation Loss Over Epochs</figDesc><graphic coords="9,189.00,458.76,234.00,149.01" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 6 :</head><label>6</label><figDesc>Figure 6: The proportion of the news rewritten or revised by LLM The table below shows the model prediction for each class with the corresponding reliability score.</figDesc><graphic coords="10,189.00,513.55,234.00,127.40" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2 :</head><label>2</label><figDesc>Hyperparameter configuration for BERT fine-tuning</figDesc><table><row><cell>Pre-trained model</cell><cell>dbmdz/bert-base-turkish-cased</cell></row><row><cell>Maximum sequence length</cell><cell>512 tokens</cell></row><row><cell>Number of labels</cell><cell>2 (binary classification)</cell></row><row><cell>Optimizer</cell><cell>AdamW</cell></row><row><cell>Learning rate</cell><cell>2 × 10 -5</cell></row><row><cell>Weight decay</cell><cell>0.01</cell></row><row><cell>LR scheduler</cell><cell>Linear with warm-up</cell></row><row><cell>Warm-up ratio</cell><cell>0.1 (10% of total steps)</cell></row><row><cell>Maximum gradient norm</cell><cell>1.0</cell></row><row><cell>Maximum epochs</cell><cell>6</cell></row><row><cell>Batch size (per device)</cell><cell>8</cell></row><row><cell>Gradient accumulation steps</cell><cell>2</cell></row><row><cell>Effective batch size</cell><cell>16</cell></row><row><cell>Hidden dropout probability</cell><cell>0.2</cell></row><row><cell>Attention dropout probability</cell><cell>0.2</cell></row><row><cell>Label smoothing factor</cell><cell>0.1</cell></row><row><cell>Early stopping patience</cell><cell>2 epochs</cell></row><row><cell>Early stopping metric</cell><cell>Validation F1 score</cell></row><row><cell>Precision</cell><cell>FP16 (mixed precision)</cell></row><row><cell>Random seed</cell><cell>42</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 4 :</head><label>4</label><figDesc>Model's Performance on Test Data</figDesc><table><row><cell>Recall</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 5 :</head><label>5</label><figDesc>External validation results: predicted class distributions and mean confidence scores across media sources and years.</figDesc><table><row><cell>Source</cell><cell cols="4">Year Human-Written (%) AI Rewritten or Revised (%) Mean Conf. (%)</cell></row><row><cell></cell><cell>2023</cell><cell>96.7</cell><cell>3.3</cell><cell>96.5</cell></row><row><cell>Central Newspaper</cell><cell>2024 2025</cell><cell>96.7 98.7</cell><cell>3.3 1.3</cell><cell>96.3 96.5</cell></row><row><cell></cell><cell>2026</cell><cell>97.3</cell><cell>2.7</cell><cell>96.4</cell></row><row><cell></cell><cell>2023</cell><cell>98.3</cell><cell>1.7</cell><cell>96.4</cell></row><row><cell>Pro-Opposition Newspaper</cell><cell>2024 2025</cell><cell>98.3 98.0</cell><cell>1.7 2.0</cell><cell>96.3 96.5</cell></row><row><cell></cell><cell>2026</cell><cell>98.0</cell><cell>2.0</cell><cell>96.5</cell></row><row><cell></cell><cell>2023</cell><cell>96.4</cell><cell>3.6</cell><cell>96.4</cell></row><row><cell>Pro-Goverment Newspaper</cell><cell>2024 2025</cell><cell>97.5 97.2</cell><cell>2.5 2.8</cell><cell>96.1 96.2</cell></row><row><cell></cell><cell>2026</cell><cell>97.3</cell><cell>2.7</cell><cell>96.2</cell></row></table></figure>
+		</body>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title level="m">Generative AI and news report 2025: How people think about AI&apos;s role in journalism and society | Reuters Institute for the Study of Journalism</title>
+		<imprint>
+			<date type="published" when="2025-10">October 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title level="m" type="main">Generative ai in journalism: The evolution of newswork and ethics in a generative information ecosystem</title>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Diakopoulos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannes</forename><surname>Cools</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charlotte</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Natali</forename><surname>Helberger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ernest</forename><surname>Kung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aimee</forename><surname>Rinehart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><surname>Gibbs</surname></persName>
+		</author>
+		<imprint>
+			<biblScope unit="volume">04</biblScope>
+			<biblScope unit="page">2024</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Ai adoption by uk journalists and their newsrooms: Surveying applications, approaches, and attitudes</title>
+		<author>
+			<persName><forename type="first">Neil</forename><surname>Thurman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sina</forename><surname>Thäsler-Kordonouri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Fletcher</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">SSRN Electronic Journal</title>
+		<imprint>
+			<biblScope unit="volume">01</biblScope>
+			<biblScope unit="page">2025</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Use of Artificial Intelligence in Turkey&apos;s Alternative News Media</title>
+		<author>
+			<persName><forename type="first">Barış</forename><surname>Çoban</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Interface -Journal of European Languages and Literatures</title>
+		<imprint>
+			<biblScope unit="volume">26</biblScope>
+			<biblScope unit="issue">0</biblScope>
+			<date type="published" when="2025-09">September 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Use of generative ai in news production in türkiye: &apos;a threat or an opportunity?</title>
+		<author>
+			<persName><forename type="first">Gülden</forename><surname>Demir</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melek</forename><surname>Kılıçgedik</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Connectist: Istanbul University Journal of Communication Sciences</title>
+		<imprint>
+			<biblScope unit="volume">68</biblScope>
+			<biblScope unit="page" from="36" to="53" />
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Yapay zekâ ve gazetecilik: Türk medyasında chatgpt kullanımı</title>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Murat Kırık</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oguz</forename><surname>Göksu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ceren</forename><surname>Yegen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">İletişim Kuram ve Araştırma Dergisi</title>
+		<imprint>
+			<biblScope unit="issue">68</biblScope>
+			<biblScope unit="page" from="90" to="109" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">From Field to Desk: AI and the Reporter-editor Rebalance in Turkish Digital Newsrooms</title>
+		<author>
+			<persName><forename type="first">Mustafa</forename><surname>Mutlu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">European Journal of Communication and Media Studies</title>
+		<imprint>
+			<biblScope unit="volume">4</biblScope>
+			<biblScope unit="issue">5</biblScope>
+			<biblScope unit="page" from="1" to="9" />
+			<date type="published" when="2025-12">December 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Bias of ai-generated content: an examination of news produced by large language models</title>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shangkun</forename><surname>Che</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minjia</forename><surname>Mao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongzhe</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaohang</forename><surname>Zhao</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Scientific Reports</title>
+		<imprint>
+			<biblScope unit="volume">14</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page">5224</biblScope>
+			<date type="published" when="2024-03">March 2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title level="m" type="main">Implementing bert and fine-tuned roberta to detect ai generated news by chatgpt</title>
+		<author>
+			<persName><forename type="first">Zecong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaxi</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chen</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenhao</forename><surname>Yu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Ai-generated text detection and classification based on bert deep learning algorithm</title>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianwei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhengyu</forename><surname>Li</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Textual authenticity in the ai era: Evaluating bert and roberta with logistic regression and neural networks for text classification</title>
+		<author>
+			<persName><forename type="first">Layth</forename><surname>Rafea</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hazim</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oguz</forename><surname>Ata</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">2024 International Symposium on Electronics and Telecommunications (ISETC)</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="1" to="6" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Beyond binary: Towards fine-grained llm-generated text detection via role recognition and involvement measurement</title>
+		<author>
+			<persName><forename type="first">Zihao</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Feng</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benyou</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haizhou</forename><surname>Li</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the ACM on Web Conference 2025, WWW &apos;25</title>
+		<meeting>the ACM on Web Conference 2025, WWW &apos;25</meeting>
+		<imprint>
+			<publisher>ACM</publisher>
+			<date type="published" when="2025-04">April 2025</date>
+			<biblScope unit="page" from="2677" to="2688" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Ai use in american newspapers is widespread, uneven, and rarely disclosed</title>
+		<author>
+			<persName><forename type="first">Jenna</forename><surname>Russell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marzena</forename><surname>Karpinska</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Destiny</forename><surname>Akinode</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Thai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bradley</forename><surname>Emi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Spero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohit</forename><surname>Iyyer</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Developing a fake news identification model with advanced deep language transformers for turkish covid-19 misinformation data</title>
+		<author>
+			<persName><forename type="first">Mehmet</forename><surname>Bozuyla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akin</forename><surname>Ozcift</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Turkish Journal of Electrical Engineering and Computer Sciences</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="page">2022</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Detection of Turkish Fake News From Tweets With BERT Models</title>
+		<author>
+			<persName><forename type="first">Gülsüm</forename><surname>Kayabaşi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Koru</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Çelebı</forename><surname>Uluyol</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE Access</title>
+		<imprint>
+			<biblScope unit="volume">12</biblScope>
+			<biblScope unit="page" from="14918" to="14931" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Ahmet Alp Orakçı, Selin Sagdıç, and Ebu Yusuf Güven. Machine learningbased detection and comparative analysis of fake news in turkish and english</title>
+		<author>
+			<persName><forename type="first">Tuna</forename><surname>Osman Baran Ayaydın</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Orhan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">2025 International Conference on Advanced Machine Learning and Data Science (AMLDS)</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="630" to="635" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Fake news detection with credibility scoring on turkish twitter data</title>
+		<author>
+			<persName><forename type="first">Emir</forename><surname>Özlem Aydin Fidan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hüsein</forename><surname>Öztürk</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Kantarci</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE Access</title>
+		<imprint>
+			<biblScope unit="volume">13</biblScope>
+			<biblScope unit="page" from="134943" to="134954" />
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Attention based neural network for cross domain fake news detection in turkish language</title>
+		<author>
+			<persName><forename type="first">Mustafa</forename><surname>Kevser Ovaz Akpinar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Olga</forename><surname>Akpinar</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Pavlovskaya</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Scientific Reports</title>
+		<imprint>
+			<biblScope unit="volume">16</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page">2092</biblScope>
+			<date type="published" when="2025-12">December 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">Turkish fake news prediction with word embeddings and transformer-based classifiers</title>
+		<author>
+			<persName><forename type="first">Şaban</forename><surname>Murat Altun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sefa</forename><surname>Tunca</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sevinç</forename><surname>İlhan Omurca</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Meltem</forename><surname>Kurt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pehlivanoglu</forename></persName>
+		</author>
+		<editor>Muhammet Nuri Seyman</editor>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<publisher>Springer Nature Switzerland</publisher>
+			<biblScope unit="page" from="383" to="396" />
+			<pubPlace>Cham</pubPlace>
+		</imprint>
+		<respStmt>
+			<orgName>Electrical and Computer Engineering</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">A deep learning approach to classify ai-generated and human-written texts</title>
+		<author>
+			<persName><forename type="first">Ayla</forename><surname>Kayabas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmet</forename><forename type="middle">Ercan</forename><surname>Topcu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yehia</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ibrahim</forename><surname>Alzoubi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mehmet</forename><surname>Yıldız</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Applied Sciences</title>
+		<imprint>
+			<biblScope unit="volume">15</biblScope>
+			<biblScope unit="issue">10</biblScope>
+			<biblScope unit="page">2025</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">Çigdem</forename><surname>Bozdag</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suncem</forename><surname>Koçer</surname></persName>
+		</author>
+		<title level="m">Skeptical Inertia in the Face of Polarization: News Consumption and Misinformation in Turkey. Media and Communication</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">10</biblScope>
+			<biblScope unit="page" from="169" to="179" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Kemp</surname></persName>
+		</author>
+		<title level="m">Digital 2026: Global overview report -datareportal -global digital insights</title>
+		<imprint>
+			<date type="published" when="2025-10">October 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</title>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming-Wei</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kenton</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kristina</forename><surname>Toutanova</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1810.04805</idno>
+		<imprint>
+			<date type="published" when="2019-05">May 2019</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title level="m" type="main">Attention Is All You Need</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niki</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1706.03762</idno>
+		<imprint>
+			<date type="published" when="2023-08">August 2023</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">AI-Generated Text Detection and Classification Based on BERT Deep Learning Algorithm</title>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianwei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhengyu</forename><surname>Li</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.16422</idno>
+		<imprint>
+			<date type="published" when="2024-05">May 2024</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">What the [MASK]? Making Sense of Language-Specific BERT Models</title>
+		<author>
+			<persName><forename type="first">Debora</forename><surname>Nozza</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Federico</forename><surname>Bianchi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Hovy</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2003.02912</idno>
+		<imprint>
+			<date type="published" when="2020-03">March 2020</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title level="m" type="main">Multilingual is not enough: BERT for Finnish</title>
+		<author>
+			<persName><forename type="first">Antti</forename><surname>Virtanen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jenna</forename><surname>Kanerva</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rami</forename><surname>Ilo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jouni</forename><surname>Luoma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Juhani</forename><surname>Luotolahti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tapio</forename><surname>Salakoski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Filip</forename><surname>Ginter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sampo</forename><surname>Pyysalo</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1912.07076</idno>
+		<imprint>
+			<date type="published" when="2019-12">December 2019</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<title level="m">Turkish BERT/DistilBERT, ELECTRA, ConvBERT and T5 models</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title level="m" type="main">Asynchronous Pipeline for Processing Huge Corpora on Medium to Low Resource Infrastructures</title>
+		<author>
+			<persName><forename type="first">Pedro</forename><surname>Ortiz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suarez</forename></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2017-01">January 2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Parallel data, tools and interfaces in OPUS</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Tiedemann</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of LREC, 2214-2218. -Google&apos;da Ara</title>
+		<meeting>LREC, 2214-2218. -Google&apos;da Ara</meeting>
+		<imprint>
+			<date type="published" when="2012">2012</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Universal Language Model Fine-tuning for Text Classification</title>
+		<author>
+			<persName><forename type="first">Jeremy</forename><surname>Howard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Ruder</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1801.06146</idno>
+		<imprint>
+			<date type="published" when="2018-05">May 2018</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Rethinking the Inception Architecture for Computer Vision</title>
+	</analytic>
+	<monogr>
+		<title level="m">IEEE Conference Publication | IEEE Xplore</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">A study of cross-validation and bootstrap for accuracy estimation and model selection</title>
+		<author>
+			<persName><forename type="first">Ron</forename><surname>Kohavi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 14th International Joint Conference on Artificial Intelligence</title>
+		<meeting>the 14th International Joint Conference on Artificial Intelligence<address><addrLine>San Francisco, CA, USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Morgan Kaufmann Publishers Inc</publisher>
+			<date type="published" when="1995">1995</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page" from="1137" to="1143" />
+		</imprint>
+	</monogr>
+	<note>IJCAI&apos;95</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<title level="m" type="main">Decoupled Weight Decay Regularization</title>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Loshchilov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Frank</forename><surname>Hutter</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1711.05101</idno>
+		<imprint>
+			<date type="published" when="2019-01">January 2019</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<title level="m" type="main">Mixed Precision Training</title>
+		<author>
+			<persName><forename type="first">Paulius</forename><surname>Micikevicius</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonah</forename><surname>Alben</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gregory</forename><surname>Diamos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erich</forename><surname>Elsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Garcia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Boris</forename><surname>Ginsburg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Houston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oleksii</forename><surname>Kuchaiev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ganesh</forename><surname>Venkatesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Wu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1710.03740</idno>
+		<imprint>
+			<date type="published" when="2018-02">February 2018</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">A systematic analysis of performance measures for classification tasks</title>
+		<author>
+			<persName><forename type="first">Marina</forename><surname>Sokolova</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guy</forename><surname>Lapalme</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Information Processing &amp; Management</title>
+		<imprint>
+			<biblScope unit="volume">45</biblScope>
+			<biblScope unit="issue">4</biblScope>
+			<biblScope unit="page" from="427" to="437" />
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<title level="m" type="main">HuggingFace&apos;s Transformers: State-of-the-art Natural Language Processing</title>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lysandre</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Victor</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clement</forename><surname>Delangue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anthony</forename><surname>Moi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierric</forename><surname>Cistac</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tim</forename><surname>Rault</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rémi</forename><surname>Louf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Morgan</forename><surname>Funtowicz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joe</forename><surname>Davison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Shleifer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clara</forename><surname>Patrick Von Platen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yacine</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Jernite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Canwen</forename><surname>Plu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teven</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sylvain</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mariama</forename><surname>Gugger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Drame</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><forename type="middle">M</forename><surname>Lhoest</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Rush</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1910.03771</idno>
+		<imprint>
+			<date type="published" when="2020-07">July 2020</date>
+		</imprint>
+	</monogr>
+	<note>cs</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<title level="m" type="main">Longformer: The long-document transformer</title>
+		<author>
+			<persName><forename type="first">Iz</forename><surname>Beltagy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><forename type="middle">E</forename><surname>Peters</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arman</forename><surname>Cohan</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

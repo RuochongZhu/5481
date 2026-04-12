@@ -1,0 +1,915 @@
+{
+  "paperId": "doi:10.1093/med/9780190607555.003.0006",
+  "title": "When Less is More: Investigating Data Pruning for Pretraining LLMs at Scale",
+  "year": 2023,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.1093_med_9780190607555.003.0006.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.1093_med_9780190607555.003.0006.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.1093_med_9780190607555.003.0006.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Large volumes of text data have contributed significantly to the development of large language models (LLMs) in recent years. This data is typically acquired by scraping the internet, leading to pretraining datasets comprised of noisy web text. To date, efforts to prune these datasets down to a higher quality subset have relied on hand-crafted heuristics encoded as rule-based filters. In this work, we take a wider view and explore scalable estimates of data quality that can be used to systematically measure the quality of pretraining data. We perform a rigorous comparison at scale of the simple data quality estimator of perplexity, as well as more sophisticated and computationally intensive estimates of the Error L2-Norm and memorization. These metrics are used to rank and prune pretraining corpora, and we subsequently compare LLMs trained on these pruned datasets. Surprisingly, we find that the simple technique of perplexity outperforms our more computationally expensive scoring methods. We improve over our no-pruning baseline while training on as little as 30% of the original training dataset. Our work sets the foundation for unexplored strategies in automatically curating high quality corpora and suggests the majority of pretraining data can be removed while retaining performance.",
+      "word_count": 197
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "A reigning belief in machine learning is that more data leads to better performance. Recent years of progress in scaling large language models (LLMs) have shown strong evidence to support this with remarkable gains in language understanding and generation capabilities (Brown et al., 2020; Touvron et al., 2023; Kaplan et al., 2020; Anil et al., 2023) . When training language models, common practice is to use massive datasets such as C4 (Raffel et al., 2020) , RefinedWeb (Penedo et al., 2023) , and The Pile (Gao et al., 2021) . These datasets are typically compiled by scraping raw web pages from the internet, leading to a substantial portion of the text being noisy and of low quality (Dodge et al., 2021; Kreutzer et al., 2022; Luccioni & Viviano, 2021) .\n\nPractitioners have established a number of standard filtering techniques to remove low-quality examples from these datasets. These techniques are predominantly rule-based heuristics: removing Figure 1 : Demonstration of our pruning methodology.For each sequence z i , sized equally as the model's context length, a pruning algorithm ξ generates score s i . We then choose which subset of the distribution of scores to keep: bottom, middle, or top. Finally, a new model is pretrained with the pruned data Dξ .\n\ndocuments containing repetitive text (Zhang et al., 2022; Raffel et al., 2020; Rae et al., 2022; Hernandez et al., 2022; Penedo et al., 2023) , special characters, or non-English text (Wenzek et al., 2020) ; ignoring data from a manually curated list of \"blocklist\" websites (Dodge et al., 2021; Rae et al., 2022) ; or eliminating documents based on certain length thresholds. While these hand-curated filters can eliminate certain noisy examples, they are not a substitute for a measure of \"quality\" for individual training examples, for which there are currently no established best practices (Mitchell et al., 2023) .\n\nIn this work, we take a wider view and ask if we can arrive at a rigorous estimator of data quality through data pruning.\n\nData pruning attempts to isolate a subset of a larger training dataset such that a model trained on said subset preserves or improves performance over a model trained on the full dataset. To date, the majority of work on data pruning has centered on supervised computer vision settings (Qin et al., 2023; Sorscher et al., 2023; Raju et al., 2021; Paul et al., 2023; He et al., 2023) , with far fewer works focusing on language. Those that have either studied the fine-tuning setting, which typically has an order of magnitude less data and thus tolerates more computational complexity (Fayyaz et al., 2022; Attendu & Corbeil, 2023; Cao et al., 2023) or based their method on hand picking highquality corpora (Gao, 2021; Wenzek et al., 2020; Brown et al., 2020) . Specifically, we try to answer the following: Can we remove the least impactful examples from a pretraining dataset and achieve similar or better performance? Do simpler techniques for estimating data quality outperform more sophisticated and computationally expensive methods? What aspects of training dynamics signal data quality the best?\n\nWe answer these questions by rigorously evaluating three automatic pruning metrics. One simple estimator of quality, perplexity, and two more complex, and EL2N (Paul et al., 2023) memorization factor. These methods all rely solely on model outputs and do not require a preselected high-quality dataset. This lack of dependence on human judgments of data quality make them a promising direction for automatic selection of high quality corpora. We perform extensive experiments evaluating models ranging from 124M to 1.5B parameters across different pretrained corpora. Our contributions are the following:\n\n1. We extensively benchmark data pruning based on perplexity, EL2N, and memorization in the LLM pretraining setting. Surprisingly, we find the simple technique of ranking examples based on their perplexity outperforms far more complex techniques such as memorization. A model trained on 50% of the dataset pruned based on perplexity achieves 1.33% and 1.77% improvement over the most performant models pruned to 50% of the dataset with EL2N and memorization factor respectively. A model trained on 30% of the dataset pruned with perplexity achieves a 2.1% and 1.6% improvement over the most performant models pruned to 30% of the dataset with EL2N and memorization factor.\n\n2. To comprehensively cover multiple facets of data pruning, we provide a unified and general framework to identify and treat different data subsets present in a dataset. We compare models trained on datasets pruned to 10, 30, 50, and 70% of the training set while retaining either the bottom, middle, or top of the pruning scores' distributions. We test seven different reference models across pruning variations, investigating the impact of parameter count, training dataset, and total training steps on the reference models' pruning capabilities. Finally, we finetune a selection of our models on six tasks from the GLUE benchmark (Wang et al., 2019) to evaluate the effect of pruning on downstream generalization.\n\n3. We test our pruning methods at scale, achieving a 1% improvement in test set perplexity using half of the dataset over a baseline model trained on the entire dataset. We show this scales to 1.5B parameter models, achieving 1.5% improvement in test set perplexity over a no-pruning baseline of the same size.",
+      "word_count": 870
+    },
+    {
+      "index": 3,
+      "title": "Methodology",
+      "kind": "methods",
+      "text": "Given a large-scale dataset D, we tokenize all documents and append a special <eod> token to their end. We then concatenate and split them into n sequences z i of fixed length t equal to the model's context length: D = {z 1 , . . . , z n }. Consider the subset of training instances P ξ where ξ refers to the algorithm used to select the subset. We build this subset by computing the pruning score Score ξ (z i ) for each data point z i . We then populate P ξ with instances that fit our selection criteria:\n\nP ξ = {z i ∈ D | Criteria(Score ξ (z i ))} (1)\n\nBy removing P ξ from D, the remaining instances are described as:\n\nDξ = D \\ P ξ ( 2\n\n)\n\nOur goal is to choose the pruning algorithm ξ such that when training a language model on the remaining subset of training instances, Dξ , the model's performance is not diminished:\n\nP τ (M Dξ ) ≥ P τ (M D ) (3)\n\nwhere M Dξ is the model trained on Dξ and P τ is the performance on task τ . We explore three metrics, perplexity, Error L2-Norm (EL2N), and memorization which we detail below in Section 2.1, and evaluate the different ways in which the metric can be employed to determine P ξ .\n\nIn particular, we evaluate different reference models M that are used to calculate pruning scores.\n\nBoth reference models M and trained models M share the same context length to ensure consistency between the contexts for which pruning metrics are calculated and trained models are trained.\n\nFor each metric, we consider three different selection criteria to determine P ξ as seen in Equation 1 : isolating the top, middle, or bottom percentiles of D as the data to be kept. We pretrain separate models using these criteria with different percentages of the dataset to understand the dynamics and impact of each pruning metric. Since the effectiveness of these metrics in this specific context remains uncertain, we opt for these contrasting subsets to clarify the relationship between each metric and the overall model performance. Figure 1 demonstrates our experimental setup. We focus on static pruning, in which data is pruned once before training. This is in contrast to adaptive pruning, in which data is pruned as training is happening, such as in (Fayyaz et al., 2022; Park et al., 2022) .",
+      "word_count": 413
+    },
+    {
+      "index": 4,
+      "title": "Pruning Methods",
+      "kind": "methods",
+      "text": "Here, we briefly describe data pruning algorithms that we benchmark in this work. Our goal is to rigorously compare simple and computationally inexpensive ranking approaches such as perplexity and random ranking against more sophisticated and computationally expensive techniques such as memorization scores and EL2N.",
+      "word_count": 44
+    },
+    {
+      "index": 5,
+      "title": "Selection via Perplexity",
+      "kind": "body",
+      "text": "Perplexity measures how probable a given piece of text is based on a particular language model. For each instance z i in D, we compute the perplexity metric as:\n\nP P L(z i ) = exp 1 |z i | t j ∈z i N LL(t j ) (4)\n\nwhere N LL(t j ) is the negative log likelihood of token t j in sequence z i :\n\nN LL(t j ) = -log P (t j |t <j ; θ) (5)\n\nA lower perplexity score indicates that the model assigns a high probability to the text.",
+      "word_count": 97
+    },
+    {
+      "index": 6,
+      "title": "Selection via EL2N",
+      "kind": "body",
+      "text": "The Error L2-Norm (EL2N) score was originally proposed in a computer vision setting to identify which samples are important for learning (Paul et al., 2023) . It measures each sample's importance using the model's early learning signals. We define the EL2N score on text sequences as the average L 2 norm of the error vector, where ŷi is the reference model's predicted probability distribution over the vocabulary and y t is the one-hot encoded representation of the ground truth:\n\nEL2N(z i ) = 1 t t i ∥ŷ t -y t ∥ 2 (6)\n\nWe first evaluate the pruning efficacy of EL2N scores obtained from a single reference model at two different checkpoints, trained on 14% and 55% of the training dataset D corresponding to 250 and 1000 steps respectively, to determine the required number of steps needed before a usable pruning signal emerges. We then train ten different reference models with different random initializations and average the EL2N score from all ten models to obtain our final EL2N score. The authors suggest that exhibiting a low EL2N score are typically those the model learns in its early stages of training, likely because they are relatively easier. Inversely, examples with higher EL2N scores are hypothesized to indicate that the model continues to incur a significant loss for them and may require additional iterations to learn.",
+      "word_count": 225
+    },
+    {
+      "index": 7,
+      "title": "Memorization Ranking",
+      "kind": "body",
+      "text": "Memorization in language models is a well-studied phenomenon (Carlini et al., 2023; 2021; Biderman et al., 2023a) . In this work we explore memorization scores applied as a data pruning ranking. We use the memorization score as defined by Biderman et al. (2023a) :\n\nscore(M, N ) = 1 N N i 1(z M +i = ẑM+i ) ( 7\n\n)\n\nwhere z is a data point, ẑ is a sequence of tokens predicted by the reference model, and 1(•) is an indicator function. A reference model is prompted with the first M tokens of a data point z to calculate the memorization score. We then greedily generate N additional tokens, ẑ. The memorization score is the fraction of the N greedily generated tokens (ẑ M :M +N ) that match exactly with the original data point (z M :M +N ). For our experiments, M = N = 32. We note that the authors did not originally propose this as data pruning metric, but we hypothesize that it can be a valuable ranking to identity examples which require additional learning. We use reference models guaranteed to have seen the full training set to ensure the applicability of memorization scores. A high memorization score indicates the model reproduces more of the text verbatim.",
+      "word_count": 213
+    },
+    {
+      "index": 8,
+      "title": "Random Pruning",
+      "kind": "body",
+      "text": "We also evaluate a lower bound of expected performance: pruning a random selection of samples. This allows us to ask the question \"are proposed pruning methods any better than a random guess?\"",
+      "word_count": 32
+    },
+    {
+      "index": 9,
+      "title": "Model",
+      "kind": "body",
+      "text": "We train autoregressive decoder-only Transformer models (Vaswani et al., 2023) with a standard language modeling objective. Given an input sequence of z i = [r 1 , • • • , r t ] from training data D, a language model with parameters θ is trained to minimize the negative log-likelihood loss as defined in Equation 5. Our language models follow the traditional GPT-style architecture (Radford et al., 2018) .\n\nWhile training our models, we use AdamW (Loshchilov & Hutter, 2019) with linear cosine scaling and a batch size of 2048. The 124M parameter models are trained for 8000 steps, which amounts to a total of 33B tokens with a learning rate that linearly increases from 0 to 1.5e-4 over the course of training. This is approximately 4.4 epochs over the unpruned dataset. We tokenize the data with Byte Pair Encoding (Sennrich et al., 2016) with a vocabulary of 51200. Due to the memory and\n\nExperimental axes Choices Pruning Metric Perplexity, EL2N, Memorization Pct. Data Remaining 10, 30, 50, 70 Pruning Subset Bottom, Middle, Top Reference Model Size 124M, 6B, 13B, 52B Reference Model Epoch Perc. 14%, 55%, 440%, Full Reference Model Tr. Data CC, Wiki, Web-scale Trained Model Size 124M, 1.5B Table 1: Pruning choices explored in the experiments. Under \"Reference Model Training Steps\", \"Full\" refers to the fully trained Cohere LLMs. Under \"Reference Model Training Data\", \"Web-scale\" refers to the significantly larger training datasets used by the Cohere reference models. computational costs of training 1.5B parameter models, our experiments at this size are trained with a batch size of 512 for 14568 steps. As such, the models see only 7.6B tokens, equivalent to a single epoch of our unpruned dataset. The learning rate for 1.5B parameter models linearly increases from 0 to 1.2e-4 over the course of training. All models use a context window length of 2048.",
+      "word_count": 309
+    },
+    {
+      "index": 10,
+      "title": "Data",
+      "kind": "body",
+      "text": "We use a random sample of the May 2022 snapshot of CommonCrawl foot_0 in our experiments. After downsampling the unpruned dataset has 7.6B tokens, about 20% of the full snapshot. This downsampling is required due to the computational cost of our various ablation experiments, which each require pretraining a new model from random initialization. This dataset is prefiltered using a combination of automatic and hand-crafted filters, as we aim to further improve data quality beyond common rule-based filters. The filters exclude repetitive documents, documents with percentages of special characters, and documents that contain explicit words and toxic text, similar to deduplication steps seen in Taylor et al. (2022) ; Kocetkov et al. (2022) . Our Wikipedia dataset contains 5.3M tokens and only includes English pages.",
+      "word_count": 125
+    },
+    {
+      "index": 11,
+      "title": "Ablations",
+      "kind": "body",
+      "text": "For all techniques, we compare performance when only 10%, 30%, 50%, and 70% of all data is preserved. We compare retaining the top, middle, and bottom subsets according to the pruning ranking, e.g., when retaining 30% of the bottom of the pruning metric's distribution over the training set, we calculate the 30th percentile of the pruning metric's distribution and remove all data points with perplexity above it. When retaining the middle 30%, we calculate the 35th and 65th percentile and remove all data points above and below those numbers respectively. Each ablation study(pruning method, percent data remaining, section of distribution preserved) requires training a new model from random initialization. We train a minimum of nine models with 124M parameters from scratch for each experimental variant.\n\nTable 1 summarizes the perplexity pruning variations we explore in this paper. For perplexity, we use a separate model to compute perplexity from the model trained on the pruned data. We call models used to compute the perplexity ranking reference models and the models trained on the pruned datasets pruned models. We conduct a rigorous evaluation of what impacts the quality of the ranking by varying different factors that affect the perplexity distribution:\n\n1. Reference Model Size To explore how reference model size impacts the rating quality, we compare perplexity computations using 6B, 13B, and 52B Cohere models trained on full web-scale datasets.",
+      "word_count": 228
+    },
+    {
+      "index": 12,
+      "title": "Reference Model Training Data",
+      "kind": "body",
+      "text": "To isolate the impact of training data, we compute perplexity using 124M parameter reference models trained on either CommonCrawl or Wikipedia.",
+      "word_count": 21
+    },
+    {
+      "index": 13,
+      "title": "Total Reference Model Training Steps",
+      "kind": "body",
+      "text": "To isolate the impact of early training signals, we compute perplexity and EL2N using 124M parameter models trained on CommonCrawl data for approximately 14% and 55% of total training steps. Reference models trained on CommonCrawl are trained on a non-overlapping subset from the CommonCrawl dataset that is pruned and used to train the student model.",
+      "word_count": 55
+    },
+    {
+      "index": 14,
+      "title": "Evaluation",
+      "kind": "results",
+      "text": "We report perplexity on a test set from the same CommonCrawl snapshot with identical prefiltering as the training data. This test set contains 266M tokens, equivalent to about 3.5% of the training set.\n\nWe also finetune a subset of our models on six different classification tasks from GLUE (Wang et al., 2019) .We do not prune the task dataset, as our aim is to analyze the pruning methods' effects on pretraining. We compare performance after 8000 steps (approximately 4.4 epochs of the pretraining dataset), chosen to compare performance after models have saturated their capacity by training enough steps to plateau on validation metrics.",
+      "word_count": 103
+    },
+    {
+      "index": 15,
+      "title": "Removing Easy Instances Improves Performance",
+      "kind": "body",
+      "text": "Though the most competitive variant for each pruning method varies based on the subset of the scoring distribution retained (top, middle, or bottom), we observe a consistent pattern: the highest performant variants are not the subsets that correspond to the \"easier\" data. The interpretation of the term \"easy\" varies according to the measurement employed. When employing the Perplexity metric, it refers to the bottom samples with the lowest perplexity. With the EL2N metric, it also pertains to the bottom samples exhibiting the lowest initial loss. In the context of memorization, it relates to the top samples that have been most thoroughly memorized.\n\nFigure 2 demonstrates this pattern when using Perplexity. In contrast to the middle or top subsets, the bottom subset has much less variance in results between reference models of varying sizes, indicating the bottom subset may not be suitable for training. The middle experiments achieve consistently low test set perplexities for various reference model sizes and pruning ratios. Generally, performance monotonically degrades as the amount of data remaining shrinks -except for the middle subset for the best-performing reference models. In these cases, retaining only 50% and even 30% of the dataset outperforms retaining 70% of the dataset.\n\nNext, Figure 3b (a) shows the results for the EL2N metric.The middle subset is also the best variant for EL2N. While the best performing run does not outperform the baseline, the best performance is achieved when retaining 50% of the middle subset, outperforming the model trained on 70% of the dataset, similar to the results when using perplexity. As the middle subset grows, it begins to overlap with the easiest examples, degrading performance. In section 4.5, we discuss how different model checkpoints influence the effectiveness of the EL2N metric.\n\nFinally, when using memorization factor as a pruning metric, keeping the least memorized samples (bottom subset) generally performs best. Figure 3b (b) shows model performances for this metric. We observe that the most competitive variant of the memorization metric is the bottom 70% of the distribution. Memorization never outperforms the no-pruning baseline.",
+      "word_count": 340
+    },
+    {
+      "index": 16,
+      "title": "Simple Pruning Metrics Outperform More Sophisticated Approaches",
+      "kind": "methods",
+      "text": "In Figure 4 we present results comparing the performance of the best variant of each pruning metric: (1) retaining the middle of the distribution of Perplexity scores by the fully trained 52B reference model, (2) retaining the bottom of the distribution of the Memorization Factor (least memorized samples), and (3) retaining the middle of the distribution of EL2N scores from the 1000 step checkpoint. We also include results for our baselines: a model trained on the entirety of the training data D and models trained on randomly pruned data. Our results show that training on the middle subset using Perplexity outperforms other pruning metrics across all dataset sizes. For some variants, it also outperforms training on the entire dataset. For example, at 30% and 50% of the original dataset size, Perplexity outperforms the full dataset size. Compared with the no-pruning baseline, pruning to the middle 50% of the perplexity distribution leads to a 0.97% improvement in perplexity. Using only the middle 30% of the data achieves nearly the same performance, with a 0.80% improvement over the no-pruning baseline. Compared with random selection, pruning using Perplexity results in significantly higher model performance than random pruning across all data ratios (Figure 4 ). For memorization and EL2N pruning metrics, both achieve similar performances to random pruning despite being far more computationally expensive.",
+      "word_count": 220
+    },
+    {
+      "index": 17,
+      "title": "Pruning Benefits from Using Larger Reference Models",
+      "kind": "body",
+      "text": "Given that the most competitive variant perplexity uses a reference model to compute scores, we expect that the size of the reference model will have a significant impact on the data pruned.\n\nFigure 2 shows the trained model performances after pruning with perplexity calculated with reference models ranging from 124M to 52B parameters. We find that increasing reference model size improves trained model performance over the no-pruning baseline when either the middle or top subsets are used. Data pruning using the perplexity scores generated from a 52B parameter reference model achieves a 2.2% improvement in perplexity over the best-performing trained model from the 124M parameter reference model experiments. Furthermore, for 13B and 52B reference models, we observe better performances with less training data when keeping the middle and top subsets. For both of these larger models, retaining the middle 30% and 50% of the training data produces pruned models that outperform the pruned models trained on the middle 70% of the training set.\n\nWe note that the effects of subset selection, such as the bottom subset performing worse, approximately scale with the size of the reference models. The larger reference models' bottom subset training runs perform even worse than their smaller counterparts when retaining the same percentage of the training set. This overall points to the consistent finding that larger models are better calibrated at computing a useful data pruning ranking.",
+      "word_count": 231
+    },
+    {
+      "index": 18,
+      "title": "Improved Pruning Signals Result from Reference Models Trained on Cleaner Data",
+      "kind": "results",
+      "text": "In this section we ask: does the data the reference model is trained on impact the quality of the ranking? We compare the perplexity rankings generated by reference models trained on two different corpora: Wikipedia and CommonCrawl. We investigate whether a model trained on Wikipedia, a dataset frequently hand-picked as a high-quality dataset (Xie et al., 2023b; Wenzek et al., 2020) , generates more effective pruning signals for perplexity rankings. In Figure 5 , we compare the performance of the two variants across different pruning percentages and subset selections. We observe that in the two optimal selection variants from the general reference models (middle and top) a model trained on Wikipedia consistently yields lower validation perplexity compared to a model trained on CommonCrawl. Wikipedia's best variant, pruning to the middle 70%, outperforms CommonCrawl's best variant, also pruning to the middle 70%, by 0.69%. This finding overall suggests that investing in a high quality reference model to generate rankings results in more effective data pruning. Reference models trained on higher quality data are better at identifying a subset of data points most conducive to model performance. Motivated by several works that have found that there is a signal in early training checkpoints (Paul et al., 2023; Agarwal et al., 2022; Siddiqui et al., 2022) , we investigate whether early checkpoint of a reference model during training offers adequate signal for calculating discriminative pruning scores.",
+      "word_count": 233
+    },
+    {
+      "index": 19,
+      "title": "Early Reference Model Checkpoints Serve as Effective Scoring Models",
+      "kind": "body",
+      "text": "We study perplexity and EL2N scores obtained from two early checkpoints: after training on approximately 14% and 55% of the full training dataset (250 and 1000 training steps respectively). Figure 6 showcases the results of these experiments. Examining the 14% checkpoint for both perplexity and EL2N, we notice minimal variance across percentages and subset selection criteria. Performance across subsets changes considerably less than either the 55% checkpoint or the fully trained models.\n\nGiven this, we deduce that training on only 14% of the data is inadequate for our reference model to offer precise pruning scores. In contrast, the 55% reference models perform in a similar manner to the fully trained models, performing best with the middle subset, worst with the bottom subset, and comparably with the top subset. Fully training the reference model is shown not to be necessary to uphold comparable performance. Halving the reference model training steps proves effective, enabling the utilization of early checkpoints. In practice, we expect many practitioners to use off the shelf models for computing perplexity and may not need to carry the cost of pretraining a reference model from random initialization.\n\nWe also show performance for EL2N scores averaged across 10 reference models, initialized with different random seeds. We selected the 55% reference models given our previous result.\n\nWhile the best pruned models using the averaged EL2N score did not outperform the best pruned models trained on only one reference model's EL2N score, the pattern of performance more similarly mirrors what we see with the larger, fully trained reference models. Specifically, in the middle subset, using 50% of the dataset outperforms using 70%. When constrained to the bottom subset, performance more clearly monotonically degrades when using less data than when using the 55% reference model, whereas the earlier checkpoint has comparable performance when retaining 30, 50, and 70% of the data. This implies that averaging scores across reference models helps hone the pruning signal, identifying subsets \"easy\" or \"hard\" subsets in more similar ways to larger models.",
+      "word_count": 334
+    },
+    {
+      "index": 20,
+      "title": "Perplexity-based Pruning Improvements Generalize to Larger Scale Models",
+      "kind": "body",
+      "text": "Figure 7 : Comparing the best performing pruning method (keeping the middle subset using a 52B parameter reference model) with random pruning at two distinct pruned model scales. The improvement in performance of a perplexity-based pruning approach carries from 124M to 1.5B parameter models.\n\nWe take our strongest pruning variantperplexity computed using a 52B parameter reference model while retaining the middle subset -to explore the robustness of our findings at a larger scale by validating our findings on a 1.5B model. Figure 7 shows pruning scaling from 124M to 1.5B parameter models. Training a 1.5B model, we observe that random pruning performs considerably well, even reaching levels below the no-pruning run. Nonetheless, perplexity-based pruning achieves better results than random pruning across all pruning percentages. The improvement observed with perplexity-based pruning over random pruning follows a consistent pattern for both the 124M and 1.5B models. This demonstrates the scalability of our approach to a large-scale pretraining setting.",
+      "word_count": 156
+    },
+    {
+      "index": 21,
+      "title": "Downstream Evaluation on GLUE",
+      "kind": "results",
+      "text": "Previously, we demonstrated various ways of pruning the pretraining data and training models with different data sizes. Considering that the pretraining stage primarily focuses on knowledge acquisition (Zhou et al., 2023) , we inquire about the potential ripple effects of pruning data during pretraining when these models are subsequently finetuned on downstream tasks. To analyze the impact of different pruning strategies on LLM capabilities, we finetune and evaluate models on a subset of the GLUE tasks (Wang et al., 2019) . Results are presented in Table 2 . We observe that pruning the pretraining dataset consistently improves performance across all tasks. While no single pruning strategy (combining both pruning metric and percentage of remaining data) stands out as superior across all tasks, the absence of a universally dominant approach is consistent with earlier findings in the literature (Gao, 2021) . We observe that retaining only 30% of the least memorized instances yields optimal results for SST2 and WNLI tasks. With perplexity based pruning, the best performance is obtained on QQP and QNLI tasks by keeping 50% and 70% of the training data, respectively. Even random pruning shows improvements in certain tasks, underscoring the significance of downsampling when handling noisy data during the pretraining stage to mitigate 5 Related Work",
+      "word_count": 209
+    },
+    {
+      "index": 22,
+      "title": "Rule-Based Data Pruning in NLP",
+      "kind": "body",
+      "text": "Significant portions of web-scraped data used for language model pretraining have been shown to be of low quality, machine-generated spam, pornographic content (Kreutzer et al., 2022) . Selection processes to determine what should be included in large-scale datasets have centered on rule-based filters and heuristics (Bane et al., 2022) , such as keeping only text written in English (Raffel et al., 2020; Rae et al., 2022) or removing sequences containing blocklisted words (Raffel et al., 2020) .\n\nThere are also quality-based rules such as removing duplicated samples (Zhang et al., 2022) or filtering sentences that do not fit a certain amount of words (Raffel et al., 2020; Rae et al., 2022) .\n\nRule-based approaches for data filtering have shown controversial effects on model performance, with some works advertising improvements on language modeling capabilities (Penedo et al., 2023; Raffel et al., 2020) , while others do not (Black et al., 2022; Biderman et al., 2023b) . Also, heuristics are prone to undesired outcomes due to their simplicity. For instance Dodge et al. (2021) show how removing blocklisted words disproportionately removes text from and about minority individuals.",
+      "word_count": 185
+    },
+    {
+      "index": 23,
+      "title": "Metric-Based Data Pruning in NLP",
+      "kind": "body",
+      "text": "Recent work on metric-based pruning has mainly focused on pruning data from the fine-tuning stage of LLMs (Attendu & Corbeil, 2023; Xie et al., 2023b) most probably due to the prohibitive cost of pruning at the pretraining scale. Attendu & Corbeil (2023) perform dynamic pruning during the fine-tuning stage by establishing a curriculum of samples based on their EL2N scores (Paul et al., 2023) . Similarly, we benchmark EL2N as a static data-pruning metric for language datasets. Our work joins the few others that aim to reduce pretraining dataset sizes (Xie et al., 2023a; Chen, 2023; Abbas et al., 2023) . Abbas et al. (2023) apply their deduplication method based on embeddings to further improve the performance of a previously filtered dataset. We also perform pruning on previously filtered datasets, aiming to enhance performance further. Previously, perplexity has been used to filter datasets (Muennighoff et al., 2023; Wenzek et al., 2020; Laurençon et al., 2023) , but its pruning capabilities have been underexplored. Laurençon et al. (2023) and Muennighoff et al. (2023) filter out high-perplexity samples from their corpus as those are framed as unnatural language and harmful for performance according to their reference domain, which is Wikipedia. In contrast, we benchmark pruning to low perplexity values and high and medium-valued subsets of a dataset's distribution to understand which is the most valuable section for pretraining at scale. We also explore different reference model sizes and training sets.",
+      "word_count": 238
+    },
+    {
+      "index": 24,
+      "title": "Data pruning in Computer Vision",
+      "kind": "body",
+      "text": "The majority of work to date on data pruning (Sorscher et al., 2023) and isolating data subsets (Siddiqui et al., 2022; Mindermann et al., 2022) using model signal has centered on computer vision. These are typically structured in a supervised setting. In contrast, our focus is on a large-scale NLP pretraining where the objective is unsupervised pretraining. Most relevant to our method is work by Sorscher et al. (2023) which empirically studies reducing datasets in a teacher/trained regime, using a teacher model's margin as a pruning metric. They find that, with abundant data, training only on the hardest examples yields better performance, while conversely when data is scarce, training on only the easiest example yields better performance.",
+      "word_count": 117
+    },
+    {
+      "index": 25,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this study, we thoroughly investigate diverse data pruning methods for pretraining LLMs with billions of parameters and with datasets containing billions of tokens. We showed that when properly applied, data pruning consistently improves model performance. We also find that training on the \"easiest\" examples in a dataset degrades performance, where \"easiest\" is defined as the lowest scoring examples according to a metric based on a reference model. Simple methods that rank instances based on their perplexity demonstrate superior performance compared to more elaborate approaches such as memorization. Models trained on as little as half of the data selected by perplexity achieve up to 1.5% improvement over models trained on the full dataset. Additionally, we establish the consistency of our findings as we scale the model sizes. While scaling up the amount of data LLMs are trained on remains a popular avenue for improving models, our work demonstrates that carefully pruning these large training corpora is also a fruitful direction for making models better. to which coverage is thereby to be granted; and (2) Shall insure the person named therein and any other person, as insured, using any such motor vehicle or motor vehicles with the express or implied permission of such named insured against loss from the liability imposed by law for damages arising out of the ownership, maintenance, or use of such motor vehicle or motor vehicles within the United [...] Also, I have attached a brief presentation of our work for better understanding.A two-year solar energy project at the University of Sheffield has shown almost all of the 2,000 systems in the scheme are still performing better than expected. Researchers running Sheffield Solar Farm, which was launched in August 2010, say 98 per cent of more than 2,000 systems involved in the scheme are working [...] It exposes a design and construction system for horizontal plates to work as slabs in regular concrete buildings. Based to an evolutionary finite-element analysis of the topological configuration to get a curved design with a 50% reduction of traditional volume, that provide lower cost, less carbon foot-print, better performance and innovative ceiling. A library of profiles is elaborated according [...] Most past attemptsto define socioeconomics as a science in its own right may have been motivated tocounter such a simplistic understanding of socioeconomics.In this chapter, we review past attempts to define socioeconomics before theapproach is chosen that we applied in this book. This book, by a leading expert in urban agriculture, offers a genuine solution to today's global food crisis. By [...] which adopted our buttons such that when we went to Boston.com (part of NY times) branding was not part of our discussions. Of course, we had matured in our thinking and offered them a cobranded offer hosted by Coola. When Switchboard did not work for us, we went to their competition Infospace.com, which was much larger than them. They accepted a branded Coola button but offered a complex deal [...] Trend.com: I had no idea this was coming. There'd been talk over the years about setting up a sort of business portal that integrated all of Trend's regular and annual publications, but there was never enough momentum to actually get it going. Trend had a regular spot on the Times' online Business section, but it was a pretty low-impact thing (even though quite a bit of traffic would come to the [...]",
+      "word_count": 563
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Semdedup: Data-efficient learning at web-scale through semantic deduplication",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Amro Abbas",
+        "Kushal Tirumala",
+        "Dániel Simig",
+        "Surya Ganguli",
+        "Ari S Morcos"
+      ],
+      "raw_text": "Semdedup: Data-efficient learning at web-scale through semantic deduplication Amro Abbas Kushal Tirumala Dániel Simig Surya Ganguli Ari S Morcos 2023"
+    },
+    {
+      "index": 2,
+      "title": "Estimating example difficulty using variance of gradients",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Chirag Agarwal",
+        "D Daniel",
+        "Sara Hooker"
+      ],
+      "raw_text": "Estimating example difficulty using variance of gradients Chirag Agarwal D Daniel Sara Hooker Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) June 2022"
+    },
+    {
+      "index": 3,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Rohan Anil",
+        "Andrew M Dai",
+        "Orhan Firat",
+        "Melvin Johnson",
+        "Dmitry Lepikhin",
+        "Alexandre Passos",
+        "Siamak Shakeri",
+        "Emanuel Taropa"
+      ],
+      "raw_text": "Rohan Anil Andrew M Dai Orhan Firat Melvin Johnson Dmitry Lepikhin Alexandre Passos Siamak Shakeri Emanuel Taropa Paige Bailey Zhifeng Chen Eric Chu Jonathan H Clark Laurent El Shafey Yanping Huang Kathy Meier-Hellstern Gaurav Mishra Erica Moreira Mark Omernick Kevin Robinson Sebastian Ruder Yi Tay Kefan Xiao Yuanzhong Xu Yujing Zhang Gustavo Hernandez Abrego Junwhan Ahn Jacob Austin Paul Barham Jan Botha James Bradbury Siddhartha Brahma Kevin Brooks Michele Catasta Yong Cheng Colin Cherry Christopher A Choquette-Choo Aakanksha Chowdhery Clément Crepy Shachi Dave Mostafa Dehghani Sunipa Dev Jacob Devlin Mark Díaz Nan Du Ethan Dyer Vlad Feinberg Fangxiaoyu Feng Vlad Fienber Markus Freitag Xavier Garcia Sebastian Gehrmann Lucas Gonzalez Guy Gur-Ari Steven Hand Hadi Hashemi Le Hou Joshua Howland Andrea Hu Jeffrey Hui Jeremy Hurwitz Michael Isard Abe Ittycheriah Matthew Jagielski Wenhao Jia Kathleen Kenealy Maxim Krikun Sneha Kudugunta Chang Lan Katherine Lee Benjamin Lee Eric Li Music Li Wei Li Yaguang Li Jian Li Hyeontaek Lim Hanzhao Lin Zhongtao Liu Frederick Liu Marcello Maggioni Aroma Mahendru Joshua Maynez Vedant Misra Maysam Moussalem Zachary Nado John Nham Eric Ni, Andrew Nystr"
+    },
+    {
+      "index": 4,
+      "title": "Nlu on data diets: Dynamic data subset selection for nlp classification tasks",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Jean-Michel Attendu",
+        "Jean-Philippe Corbeil"
+      ],
+      "raw_text": "Nlu on data diets: Dynamic data subset selection for nlp classification tasks Jean-Michel Attendu Jean-Philippe Corbeil 2023"
+    },
+    {
+      "index": 5,
+      "title": "A comparison of data filtering methods for neural machine translation",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Fred Bane",
+        "Celia Soler Uguet",
+        "Wiktor Stribiżew",
+        "Anna Zaretskaya"
+      ],
+      "raw_text": "A comparison of data filtering methods for neural machine translation Fred Bane Celia Soler Uguet Wiktor Stribiżew Anna Zaretskaya Proceedings of the 15th Biennial Conference of the Association for Machine Translation in the Americas the 15th Biennial Conference of the Association for Machine Translation in the Americas Orlando, USA September 2022 2 Users and Providers Track and Government Track) Association for Machine Translation in the Americas"
+    },
+    {
+      "index": 6,
+      "title": "Emergent and predictable memorization in large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Stella Biderman",
+        "Lintang Usvsn Sai Prashanth",
+        "Hailey Sutawika",
+        "Quentin Schoelkopf",
+        "Shivanshu Anthony",
+        "Edward Purohit",
+        "Raff"
+      ],
+      "raw_text": "Emergent and predictable memorization in large language models Stella Biderman Lintang Usvsn Sai Prashanth Hailey Sutawika Quentin Schoelkopf Shivanshu Anthony Edward Purohit Raff 2023"
+    },
+    {
+      "index": 7,
+      "title": "Lintang Sutawika, and Oskar van der Wal. Pythia: A suite for analyzing large language models across training and scaling",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Stella Biderman",
+        "Hailey Schoelkopf",
+        "Quentin Anthony",
+        "Herbie Bradley",
+        "O' Kyle",
+        "Eric Brien",
+        "Mohammad Hallahan",
+        "Shivanshu Aflah Khan"
+      ],
+      "raw_text": "Lintang Sutawika, and Oskar van der Wal. Pythia: A suite for analyzing large language models across training and scaling Stella Biderman Hailey Schoelkopf Quentin Anthony Herbie Bradley O' Kyle Eric Brien Mohammad Hallahan Shivanshu Aflah Khan Purohit Edward Usvsn Sai Prashanth Aviya Raff Skowron 2023"
+    },
+    {
+      "index": 8,
+      "title": "GPT-NeoX-20B: An open-source autoregressive language model",
+      "doi": "10.18653/v1/2022.bigscience-1.9",
+      "year": "2022",
+      "authors": [
+        "Sidney Black",
+        "Stella Biderman",
+        "Eric Hallahan",
+        "Quentin Anthony",
+        "Leo Gao",
+        "Laurence Golding",
+        "Horace He",
+        "Connor Leahy"
+      ],
+      "raw_text": "GPT-NeoX-20B: An open-source autoregressive language model Sidney Black Stella Biderman Eric Hallahan Quentin Anthony Leo Gao Laurence Golding Horace He Connor Leahy Kyle Mcdonell Jason Phang Michael Pieler Usvsn Sai Prashanth Shivanshu Purohit Laria Reynolds Jonathan Tow Ben Wang Samuel Weinbach 10.18653/v1/2022.bigscience-1.9 Proceedings of BigScience Episode #5 -Workshop on Challenges & Perspectives in Creating Large Language Models BigScience Episode #5 -Workshop on Challenges & Perspectives in Creating Large Language Models Association for Computational Linguistics May 2022 virtual+Dublin"
+    },
+    {
+      "index": 9,
+      "title": "Language models are few-shot learners",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "B Tom",
+        "Benjamin Brown",
+        "Nick Mann",
+        "Melanie Ryder",
+        "Jared Subbiah",
+        "Prafulla Kaplan",
+        "Arvind Dhariwal",
+        "Pranav Neelakantan"
+      ],
+      "raw_text": "Language models are few-shot learners B Tom Benjamin Brown Nick Mann Melanie Ryder Jared Subbiah Prafulla Kaplan Arvind Dhariwal Pranav Neelakantan Girish Shyam Amanda Sastry Sandhini Askell Ariel Agarwal Gretchen Herbert-Voss Tom Krueger Rewon Henighan Aditya Child Daniel M Ramesh Jeffrey Ziegler Clemens Wu Christopher Winter Mark Hesse Eric Chen Mateusz Sigler Scott Litwin Benjamin Gray Jack Chess Christopher Clark Sam Berner Alec Mccandlish Ilya Radford Dario Sutskever Amodei 2020"
+    },
+    {
+      "index": 10,
+      "title": "Instruction mining: High-quality instruction data selection for large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yihan Cao",
+        "Yanbin Kang",
+        "Lichao Sun"
+      ],
+      "raw_text": "Instruction mining: High-quality instruction data selection for large language models Yihan Cao Yanbin Kang Lichao Sun 2023"
+    },
+    {
+      "index": 11,
+      "title": "Ulfar Erlingsson, Alina Oprea, and Colin Raffel. Extracting training data from large language models",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Nicholas Carlini",
+        "Florian Tramer",
+        "Eric Wallace",
+        "Matthew Jagielski",
+        "Ariel Herbert-Voss",
+        "Katherine Lee",
+        "Adam Roberts",
+        "Tom Brown"
+      ],
+      "raw_text": "Ulfar Erlingsson, Alina Oprea, and Colin Raffel. Extracting training data from large language models Nicholas Carlini Florian Tramer Eric Wallace Matthew Jagielski Ariel Herbert-Voss Katherine Lee Adam Roberts Tom Brown Dawn Song 2021"
+    },
+    {
+      "index": 12,
+      "title": "Quantifying memorization across neural language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Nicholas Carlini",
+        "Daphne Ippolito",
+        "Matthew Jagielski",
+        "Katherine Lee",
+        "Florian Tramer",
+        "Chiyuan Zhang"
+      ],
+      "raw_text": "Quantifying memorization across neural language models Nicholas Carlini Daphne Ippolito Matthew Jagielski Katherine Lee Florian Tramer Chiyuan Zhang 2023"
+    },
+    {
+      "index": 13,
+      "title": "Large language models are few(1)-shot table reasoners",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Wenhu Chen"
+      ],
+      "raw_text": "Large language models are few(1)-shot table reasoners Wenhu Chen Findings of the Association for Computational Linguistics: EACL 2023 Dubrovnik, Croatia Association for Computational Linguistics May 2023"
+    },
+    {
+      "index": 14,
+      "title": "Documenting large webtext corpora: A case study on the colossal clean crawled corpus",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Jesse Dodge",
+        "Maarten Sap",
+        "Ana Marasović",
+        "William Agnew",
+        "Gabriel Ilharco",
+        "Dirk Groeneveld",
+        "Margaret Mitchell",
+        "Matt Gardner"
+      ],
+      "raw_text": "Documenting large webtext corpora: A case study on the colossal clean crawled corpus Jesse Dodge Maarten Sap Ana Marasović William Agnew Gabriel Ilharco Dirk Groeneveld Margaret Mitchell Matt Gardner 2021"
+    },
+    {
+      "index": 15,
+      "title": "Bert on a data diet: Finding important examples by gradient-based pruning",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Mohsen Fayyaz",
+        "Ehsan Aghazadeh",
+        "Ali Modarressi",
+        "Mohammad Taher Pilehvar",
+        "Yadollah Yaghoobzadeh",
+        "Samira Ebrahimi Kahou"
+      ],
+      "raw_text": "Bert on a data diet: Finding important examples by gradient-based pruning Mohsen Fayyaz Ehsan Aghazadeh Ali Modarressi Mohammad Taher Pilehvar Yadollah Yaghoobzadeh Samira Ebrahimi Kahou 2022"
+    },
+    {
+      "index": 16,
+      "title": "An empirical exploration in quality filtering of text data",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Leo Gao"
+      ],
+      "raw_text": "An empirical exploration in quality filtering of text data Leo Gao 2021"
+    },
+    {
+      "index": 17,
+      "title": "The pile: An 800gb dataset of diverse text for language modeling",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Leo Gao",
+        "Stella Biderman",
+        "Sid Black",
+        "Laurence Golding",
+        "Travis Hoppe",
+        "Charles Foster",
+        "Jason Phang",
+        "Horace He"
+      ],
+      "raw_text": "The pile: An 800gb dataset of diverse text for language modeling Leo Gao Stella Biderman Sid Black Laurence Golding Travis Hoppe Charles Foster Jason Phang Horace He Anish Thite Noa Nabeshima Shawn Presser Connor Leahy CoRR, abs/2101.00027 2021"
+    },
+    {
+      "index": 18,
+      "title": "Large-scale dataset pruning with dynamic uncertainty",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Muyang He",
+        "Shuo Yang",
+        "Tiejun Huang",
+        "Bo Zhao"
+      ],
+      "raw_text": "Large-scale dataset pruning with dynamic uncertainty Muyang He Shuo Yang Tiejun Huang Bo Zhao 2023"
+    },
+    {
+      "index": 19,
+      "title": "Scaling laws and interpretability of learning from repeated data",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Danny Hernandez",
+        "Tom Brown",
+        "Tom Conerly",
+        "Nova Dassarma",
+        "Dawn Drain",
+        "Sheer El-Showk",
+        "Nelson Elhage",
+        "Zac Hatfield-Dodds"
+      ],
+      "raw_text": "Scaling laws and interpretability of learning from repeated data Danny Hernandez Tom Brown Tom Conerly Nova Dassarma Dawn Drain Sheer El-Showk Nelson Elhage Zac Hatfield-Dodds Tom Henighan Tristan Hume Scott Johnston Ben Mann Chris Olah Catherine Olsson Dario Amodei Nicholas Joseph Jared Kaplan Sam Mccandlish 2022"
+    },
+    {
+      "index": 20,
+      "title": "Scaling laws for neural language models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jared Kaplan",
+        "Sam Mccandlish",
+        "Tom Henighan",
+        "Tom B Brown",
+        "Benjamin Chess",
+        "Rewon Child",
+        "Scott Gray",
+        "Alec Radford"
+      ],
+      "raw_text": "Scaling laws for neural language models Jared Kaplan Sam Mccandlish Tom Henighan Tom B Brown Benjamin Chess Rewon Child Scott Gray Alec Radford Jeffrey Wu Dario Amodei 2020"
+    },
+    {
+      "index": 21,
+      "title": "Leandro von Werra, and Harm de Vries. The stack: 3 tb of permissively licensed source code",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Denis Kocetkov",
+        "Raymond Li",
+        "Loubna Ben Allal",
+        "Jia Li",
+        "Chenghao Mou",
+        "Carlos Muñoz Ferrandis",
+        "Yacine Jernite",
+        "Margaret Mitchell"
+      ],
+      "raw_text": "Leandro von Werra, and Harm de Vries. The stack: 3 tb of permissively licensed source code Denis Kocetkov Raymond Li Loubna Ben Allal Jia Li Chenghao Mou Carlos Muñoz Ferrandis Yacine Jernite Margaret Mitchell Sean Hughes Thomas Wolf Dzmitry Bahdanau 2022"
+    },
+    {
+      "index": 22,
+      "title": "Quality at a Glance: An Audit of Web-Crawled Multilingual Datasets",
+      "doi": "10.1162/tacl_a_00447",
+      "year": "2022",
+      "authors": [
+        "Julia Kreutzer",
+        "Isaac Caswell",
+        "Lisa Wang",
+        "Ahsan Wahab",
+        "Daan Van Esch",
+        "Nasanbayar Ulzii-Orshikh",
+        "Allahsera Tapo",
+        "Nishant Subramani"
+      ],
+      "raw_text": "Quality at a Glance: An Audit of Web-Crawled Multilingual Datasets Julia Kreutzer Isaac Caswell Lisa Wang Ahsan Wahab Daan Van Esch Nasanbayar Ulzii-Orshikh Allahsera Tapo Nishant Subramani Artem Sokolov Claytone Sikasote Monang Setyawan Supheakmungkol Sarin Sokhar Samb Benoît Sagot Clara Rivera Annette Rios Isabel Papadimitriou Salomey Osei Pedro Ortiz Suarez Iroro Orife Kelechi Ogueji Andre Niyongabo Rubungo Toan Q Nguyen Mathias Müller André Müller Hassan Shamsuddeen Nanda Muhammad Ayanda Muhammad Jamshidbek Mnyakeni Tapiwanashe Mirzakhalov Colin Matangira Nze Leong Sneha Lawson Yacine Kudugunta Mathias Jernite Orhan Jenny Firat F P Bonaventure Sakhile Dossou Dlamini 10.1162/tacl_a_00447 Transactions of the Association for Computational Linguistics Sakine Nisansa De Silva Stella Çabuk Ballı Alessia Biderman Ahmed Battisti Ankur Baruwa Pallavi Bapna Baljekar Ayodele Israel Abebe Azime Duygu Awokoya Orevaoghene Ataman Oghenefego Ahia Sweta Ahia Mofetoluwa Agrawal Adeyemi 10 01 2022"
+    },
+    {
+      "index": 23,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Lucile Hugo Laurençon",
+        "Thomas Saulnier",
+        "Christopher Wang",
+        "Albert Akiki",
+        "Teven Villanova Del Moral",
+        "Leandro Le Scao",
+        "Chenghao Von Werra",
+        "Eduardo González Mou"
+      ],
+      "raw_text": "Lucile Hugo Laurençon Thomas Saulnier Christopher Wang Albert Akiki Teven Villanova Del Moral Leandro Le Scao Chenghao Von Werra Eduardo González Mou Huu Ponferrada Jörg Nguyen Mario Frohberg Quentin Šaško Angelina Lhoest Gerard Mcmillan-Major Stella Dupont Anna Biderman Loubna Rogers Francesco De Ben Allal Giada Toni Olivier Pistilli Somaieh Nguyen Maraim Nikpoor Pierre Masoud Javier Colombo Paulo De La Rosa Tristan Villegas Shayne Thrush Sebastian Longpre Leon Nagel Manuel Weber Jian Muñoz Daniel Zhu Zaid Van Strien Khalid Alyafeai Minh Chien Almubarak Itziar Vu Aitor Gonzalez-Dios Kyle Soroa Manan Lo Pedro Ortiz Dey Aaron Suarez Shamik Gokaslan David Bose Long Adelani Hieu Phan Ian Tran Suhas Yu Jenny Pai Violette Chim Suzana Lepercq Margaret Ilic Sasha Alexandra Mitchell Yacine Luccioni Jernite 2023 The bigscience roots corpus: A 1.6tb composite multilingual dataset"
+    },
+    {
+      "index": 24,
+      "title": "Decoupled weight decay regularization",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Ilya Loshchilov",
+        "Frank Hutter"
+      ],
+      "raw_text": "Decoupled weight decay regularization Ilya Loshchilov Frank Hutter International Conference on Learning Representations 2019"
+    },
+    {
+      "index": 25,
+      "title": "What's in the box? an analysis of undesirable content in the Common Crawl corpus",
+      "doi": "10.18653/v1/2021.acl-short.24",
+      "year": "2021",
+      "authors": [
+        "Alexandra Luccioni",
+        "Joseph Viviano"
+      ],
+      "raw_text": "What's in the box? an analysis of undesirable content in the Common Crawl corpus Alexandra Luccioni Joseph Viviano 10.18653/v1/2021.acl-short.24 Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing Association for Computational Linguistics August 2021 2 Short Papers)"
+    },
+    {
+      "index": 26,
+      "title": "Prioritized training on points that are learnable, worth learning, and not yet learnt",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Sören Mindermann",
+        "Jan Brauner",
+        "Muhammed Razzak",
+        "Mrinank Sharma",
+        "Andreas Kirsch",
+        "Winnie Xu",
+        "Benedikt Höltgen",
+        "Aidan N Gomez"
+      ],
+      "raw_text": "Prioritized training on points that are learnable, worth learning, and not yet learnt Sören Mindermann Jan Brauner Muhammed Razzak Mrinank Sharma Andreas Kirsch Winnie Xu Benedikt Höltgen Aidan N Gomez Adrien Morisot Sebastian Farquhar Yarin Gal 2022"
+    },
+    {
+      "index": 27,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Margaret Mitchell",
+        "Alexandra Sasha Luccioni",
+        "Nathan Lambert",
+        "Marissa Gerchick",
+        "Angelina Mcmillan-Major",
+        "Ezinwanne Ozoani",
+        "Nazneen Rajani",
+        "Tristan Thrush"
+      ],
+      "raw_text": "Margaret Mitchell Alexandra Sasha Luccioni Nathan Lambert Marissa Gerchick Angelina Mcmillan-Major Ezinwanne Ozoani Nazneen Rajani Tristan Thrush Yacine Jernite Douwe Kiela 2023 Measuring data"
+    },
+    {
+      "index": 28,
+      "title": "Nouamane Tazi, Sampo Pyysalo, Thomas Wolf, and Colin Raffel. Scaling data-constrained language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Niklas Muennighoff",
+        "Alexander M Rush",
+        "Boaz Barak",
+        "Teven Le Scao",
+        "Aleksandra Piktus"
+      ],
+      "raw_text": "Niklas Muennighoff Alexander M Rush Boaz Barak Teven Le Scao Aleksandra Piktus Nouamane Tazi, Sampo Pyysalo, Thomas Wolf, and Colin Raffel. Scaling data-constrained language models 2023"
+    },
+    {
+      "index": 29,
+      "title": "Active learning is a strong baseline for data subset selection",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Dongmin Park",
+        "Dimitris Papailiopoulos",
+        "Kangwook Lee"
+      ],
+      "raw_text": "Active learning is a strong baseline for data subset selection Dongmin Park Dimitris Papailiopoulos Kangwook Lee Has it Trained Yet? NeurIPS 2022 Workshop 2022"
+    },
+    {
+      "index": 30,
+      "title": "Deep learning on a data diet: Finding important examples early in training",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Mansheej Paul",
+        "Surya Ganguli",
+        "Gintare Karolina",
+        "Dziugaite"
+      ],
+      "raw_text": "Deep learning on a data diet: Finding important examples early in training Mansheej Paul Surya Ganguli Gintare Karolina Dziugaite 2023"
+    },
+    {
+      "index": 31,
+      "title": "The refinedweb dataset for falcon llm: Outperforming curated corpora with web data, and web data only",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Guilherme Penedo",
+        "Quentin Malartic",
+        "Daniel Hesslow",
+        "Ruxandra Cojocaru",
+        "Alessandro Cappelli",
+        "Hamza Alobeidli",
+        "Baptiste Pannier",
+        "Ebtesam Almazrouei"
+      ],
+      "raw_text": "The refinedweb dataset for falcon llm: Outperforming curated corpora with web data, and web data only Guilherme Penedo Quentin Malartic Daniel Hesslow Ruxandra Cojocaru Alessandro Cappelli Hamza Alobeidli Baptiste Pannier Ebtesam Almazrouei Julien Launay 2023"
+    },
+    {
+      "index": 32,
+      "title": "Infobatch: Lossless training speed up by unbiased dynamic data pruning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ziheng Qin",
+        "Kai Wang",
+        "Zangwei Zheng",
+        "Jianyang Gu",
+        "Xiangyu Peng",
+        "Daquan Zhou",
+        "Yang You"
+      ],
+      "raw_text": "Infobatch: Lossless training speed up by unbiased dynamic data pruning Ziheng Qin Kai Wang Zangwei Zheng Jianyang Gu Xiangyu Peng Daquan Zhou Yang You 2023"
+    },
+    {
+      "index": 33,
+      "title": "Improving language understanding by generative pre-training",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Alec Radford",
+        "Karthik Narasimhan",
+        "Tim Salimans",
+        "Ilya Sutskever"
+      ],
+      "raw_text": "Improving language understanding by generative pre-training Alec Radford Karthik Narasimhan Tim Salimans Ilya Sutskever 2018"
+    },
+    {
+      "index": 34,
+      "title": "",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jack W Rae",
+        "Sebastian Borgeaud",
+        "Trevor Cai",
+        "Katie Millican",
+        "Jordan Hoffmann",
+        "Francis Song",
+        "John Aslanides",
+        "Sarah Henderson"
+      ],
+      "raw_text": "Jack W Rae Sebastian Borgeaud Trevor Cai Katie Millican Jordan Hoffmann Francis Song John Aslanides Sarah Henderson Roman Ring Susannah Young Eliza Rutherford Tom Hennigan Jacob Menick Albin Cassirer Richard Powell George Van Den Driessche Lisa Anne Hendricks Maribeth Rauh Po-Sen Huang Amelia Glaese Johannes Welbl Sumanth Dathathri Saffron Huang Jonathan Uesato John Mellor Irina Higgins Antonia Creswell Nat Mcaleese Amy Wu Erich Elsen Siddhant Jayakumar Elena Buchatskaya David Budden Esme Sutherland Karen Simonyan Michela Paganini Laurent Sifre Lena Martens Lorraine Xiang Adhiguna Li Aida Kuncoro Elena Nematzadeh Domenic Gribovskaya Angeliki Donato Arthur Lazaridou Jean-Baptiste Mensch Maria Lespiau Nikolai Tsimpoukelli Doug Grigorev Thibault Fritz Mantas Sottiaux Toby Pajarskas Zhitao Pohlen Daniel Gong Cyprien Toyama Yujia De Masson D'autume Tayfun Li Vladimir Terzi Igor Mikulik Aidan Babuschkin Diego Clark De Las Aurelia Casas Chris Guy James Jones Matthew Bradbury Blake Johnson Laura Hechtman Weidinger Iason Gabriel, William Isaac, Ed Lockhart, Simon Osindero, Laura Rimell, Chris Dyer, Oriol Vinyals, Kareem Ayoub, Jeff Stanway, Lorrayne Bennett 2022 Demis Hassabis, Koray Kavukc"
+    },
+    {
+      "index": 35,
+      "title": "Exploring the limits of transfer learning with a unified text-to-text transformer",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Colin Raffel",
+        "Noam Shazeer",
+        "Adam Roberts",
+        "Katherine Lee",
+        "Sharan Narang",
+        "Michael Matena",
+        "Yanqi Zhou",
+        "Wei Li"
+      ],
+      "raw_text": "Exploring the limits of transfer learning with a unified text-to-text transformer Colin Raffel Noam Shazeer Adam Roberts Katherine Lee Sharan Narang Michael Matena Yanqi Zhou Wei Li Peter J Liu 2020"
+    },
+    {
+      "index": 36,
+      "title": "Accelerating deep learning with dynamic data pruning",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Kyle Ravi S Raju",
+        "Mikko Daruwalla",
+        "Lipasti"
+      ],
+      "raw_text": "Accelerating deep learning with dynamic data pruning Kyle Ravi S Raju Mikko Daruwalla Lipasti 2021"
+    },
+    {
+      "index": 37,
+      "title": "Neural machine translation of rare words with subword units",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "Rico Sennrich",
+        "Barry Haddow",
+        "Alexandra Birch"
+      ],
+      "raw_text": "Neural machine translation of rare words with subword units Rico Sennrich Barry Haddow Alexandra Birch 2016"
+    },
+    {
+      "index": 38,
+      "title": "Metadata archaeology: Unearthing data subsets by leveraging training dynamics",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Ahmed Shoaib",
+        "Nitarshan Siddiqui",
+        "Tegan Rajkumar",
+        "David Maharaj",
+        "Sara Krueger",
+        "Hooker"
+      ],
+      "raw_text": "Ahmed Shoaib Nitarshan Siddiqui Tegan Rajkumar David Maharaj Sara Krueger Hooker Metadata archaeology: Unearthing data subsets by leveraging training dynamics 2022"
+    },
+    {
+      "index": 39,
+      "title": "Beyond neural scaling laws: beating power law scaling via data pruning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ben Sorscher",
+        "Robert Geirhos",
+        "Shashank Shekhar",
+        "Surya Ganguli",
+        "Ari S Morcos"
+      ],
+      "raw_text": "Beyond neural scaling laws: beating power law scaling via data pruning Ben Sorscher Robert Geirhos Shashank Shekhar Surya Ganguli Ari S Morcos 2023"
+    },
+    {
+      "index": 40,
+      "title": "Galactica: A large language model for science",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Ross Taylor",
+        "Marcin Kardas",
+        "Guillem Cucurull",
+        "Thomas Scialom",
+        "Anthony Hartshorn",
+        "Elvis Saravia",
+        "Andrew Poulton",
+        "Viktor Kerkez"
+      ],
+      "raw_text": "Ross Taylor Marcin Kardas Guillem Cucurull Thomas Scialom Anthony Hartshorn Elvis Saravia Andrew Poulton Viktor Kerkez Robert Stojnic Galactica: A large language model for science 2022"
+    },
+    {
+      "index": 41,
+      "title": "Llama: Open and efficient foundation language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Hugo Touvron",
+        "Thibaut Lavril",
+        "Gautier Izacard",
+        "Xavier Martinet",
+        "Marie-Anne Lachaux",
+        "Timothée Lacroix",
+        "Baptiste Rozière",
+        "Naman Goyal"
+      ],
+      "raw_text": "Llama: Open and efficient foundation language models Hugo Touvron Thibaut Lavril Gautier Izacard Xavier Martinet Marie-Anne Lachaux Timothée Lacroix Baptiste Rozière Naman Goyal Eric Hambro Faisal Azhar Aurelien Rodriguez Armand Joulin Edouard Grave Guillaume Lample 2023"
+    },
+    {
+      "index": 42,
+      "title": "",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer",
+        "Niki Parmar",
+        "Jakob Uszkoreit",
+        "Llion Jones",
+        "Aidan N Gomez",
+        "Lukasz Kaiser",
+        "Illia Polosukhin"
+      ],
+      "raw_text": "Ashish Vaswani Noam Shazeer Niki Parmar Jakob Uszkoreit Llion Jones Aidan N Gomez Lukasz Kaiser Illia Polosukhin 2023 Attention is all you need"
+    },
+    {
+      "index": 43,
+      "title": "Glue: A multi-task benchmark and analysis platform for natural language understanding",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Alex Wang",
+        "Amanpreet Singh",
+        "Julian Michael",
+        "Felix Hill",
+        "Omer Levy",
+        "Samuel R Bowman"
+      ],
+      "raw_text": "Glue: A multi-task benchmark and analysis platform for natural language understanding Alex Wang Amanpreet Singh Julian Michael Felix Hill Omer Levy Samuel R Bowman 2019"
+    },
+    {
+      "index": 44,
+      "title": "CCNet: Extracting high quality monolingual datasets from web crawl data",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Guillaume Wenzek",
+        "Marie-Anne Lachaux",
+        "Alexis Conneau",
+        "Vishrav Chaudhary",
+        "Francisco Guzmán",
+        "Armand Joulin",
+        "Edouard Grave"
+      ],
+      "raw_text": "CCNet: Extracting high quality monolingual datasets from web crawl data Guillaume Wenzek Marie-Anne Lachaux Alexis Conneau Vishrav Chaudhary Francisco Guzmán Armand Joulin Edouard Grave Proceedings of the Twelfth Language Resources and Evaluation Conference the Twelfth Language Resources and Evaluation Conference Marseille, France May 2020 European Language Resources Association"
+    },
+    {
+      "index": 45,
+      "title": "Optimizing data mixtures speeds up language model pretraining",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sang Michael Xie",
+        "Hieu Pham",
+        "Xuanyi Dong",
+        "Nan Du",
+        "Hanxiao Liu",
+        "Yifeng Lu",
+        "Percy Liang",
+        "V Quoc"
+      ],
+      "raw_text": "Sang Michael Xie Hieu Pham Xuanyi Dong Nan Du Hanxiao Liu Yifeng Lu Percy Liang V Quoc Tengyu Le Adams Wei Ma Yu Doremi arXiv:2305.10429 Optimizing data mixtures speeds up language model pretraining 2023 arXiv preprint"
+    },
+    {
+      "index": 46,
+      "title": "Data selection for language models via importance resampling",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sang Michael Xie",
+        "Shibani Santurkar",
+        "Tengyu Ma",
+        "Percy Liang"
+      ],
+      "raw_text": "Data selection for language models via importance resampling Sang Michael Xie Shibani Santurkar Tengyu Ma Percy Liang 2023"
+    },
+    {
+      "index": 47,
+      "title": "",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Susan Zhang",
+        "Stephen Roller",
+        "Naman Goyal",
+        "Mikel Artetxe",
+        "Moya Chen",
+        "Shuohui Chen",
+        "Christopher Dewan",
+        "Mona Diab"
+      ],
+      "raw_text": "Susan Zhang Stephen Roller Naman Goyal Mikel Artetxe Moya Chen Shuohui Chen Christopher Dewan Mona Diab Xian Li Xi Victoria Lin Todor Mihaylov Myle Ott Sam Shleifer Kurt Shuster Daniel Simig Punit Singh Koura Anjali Sridhar Tianlu Wang Luke Zettlemoyer 2022 Opt: Open pre-trained transformer language models"
+    },
+    {
+      "index": 48,
+      "title": "Less is more for alignment",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Chunting Zhou",
+        "Pengfei Liu",
+        "Puxin Xu",
+        "Srini Iyer",
+        "Jiao Sun",
+        "Yuning Mao",
+        "Xuezhe Ma",
+        "Avia Efrat"
+      ],
+      "raw_text": "Chunting Zhou Pengfei Liu Puxin Xu Srini Iyer Jiao Sun Yuning Mao Xuezhe Ma Avia Efrat Ping Yu Lili Yu Susan Zhang Gargi Ghosh Mike Lewis Luke Zettlemoyer Omer Levy Lima Less is more for alignment 2023"
+    }
+  ],
+  "section_count": 25,
+  "reference_count": 48,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:59.373978+00:00"
+}

@@ -1,0 +1,894 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">TSGP: Two-Stage Generative Prompting for Unsupervised Commonsense Question Answering</title>
+				<funder ref="#_FgBuS8d">
+					<orgName type="full">National Natural Science Foundation of China</orgName>
+				</funder>
+				<funder ref="#_DW28QxR">
+					<orgName type="full">unknown</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Yueqing</forename><surname>Sun</surname></persName>
+							<email>yqsun@ir.hit.edu.cn</email>
+							<affiliation key="aff0">
+								<orgName type="department">Research Center for Social Computing and Information Retrieval</orgName>
+								<orgName type="institution">Harbin Institute of Technology</orgName>
+								<address>
+									<settlement>Harbin</settlement>
+									<country key="CN">China</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yu</forename><surname>Zhang</surname></persName>
+							<email>zhangyu@ir.hit.edu.cn</email>
+							<affiliation key="aff0">
+								<orgName type="department">Research Center for Social Computing and Information Retrieval</orgName>
+								<orgName type="institution">Harbin Institute of Technology</orgName>
+								<address>
+									<settlement>Harbin</settlement>
+									<country key="CN">China</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Le</forename><surname>Qi</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Research Center for Social Computing and Information Retrieval</orgName>
+								<orgName type="institution">Harbin Institute of Technology</orgName>
+								<address>
+									<settlement>Harbin</settlement>
+									<country key="CN">China</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Qi</forename><surname>Shi</surname></persName>
+							<email>qshi@ir.hit.edu.cn</email>
+							<affiliation key="aff0">
+								<orgName type="department">Research Center for Social Computing and Information Retrieval</orgName>
+								<orgName type="institution">Harbin Institute of Technology</orgName>
+								<address>
+									<settlement>Harbin</settlement>
+									<country key="CN">China</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">TSGP: Two-Stage Generative Prompting for Unsupervised Commonsense Question Answering</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">E6D1DC4A4CBD54B5A1CC91EA8499AAB5</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:18+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Unsupervised commonsense question answering requires mining effective commonsense knowledge without the rely on the labeled task data. Previous methods typically retrieved from traditional knowledge bases or used pre-trained language models (PrLMs) to generate fixed types of knowledge, which have poor generalization ability. In this paper, we aim to address the above limitation by leveraging the implicit knowledge stored in PrLMs and propose a two-stage prompt-based unsupervised commonsense question answering framework (TSGP). Specifically, we first use knowledge generation prompts to generate the knowledge required for questions with unlimited types and possible candidate answers independent of specified choices. Then, we further utilize answer generation prompts to generate possible candidate answers independent of specified choices. Experimental results and analysis on three different commonsense reasoning tasks, CommonsenseQA, OpenBookQA, and SocialIQA, demonstrate that TSGP significantly improves the reasoning ability of language models in unsupervised settings 1 .</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Commonsense question answering (CSQA) requires systems to acquire different types of commonsense knowledge, consisting of widely known facts that humans use to reason and respond to everyday situations, but are challenging for machines <ref type="bibr" target="#b20">(Talmor et al., 2019;</ref><ref type="bibr" target="#b18">Sap et al., 2019)</ref>. As illustrated in Figure <ref type="figure" target="#fig_0">1</ref>, humans consider their own experience or education when answering questions, and their answers can vary from person to person.</p><p>Existing studies commonly focus on acquiring relevant knowledge by retrieving external knowledge bases and then fine-tuning pre-trained language models (PrLMs) in a supervised manner on task-specific data <ref type="bibr" target="#b9">(Lin et al., 2019;</ref><ref type="bibr" target="#b7">Feng et al., 2020;</ref><ref type="bibr" target="#b22">Yasunaga et al., 2021)</ref>. Recently, unsupervised commonsense question answering has attracted the attention of researchers because it does not rely on any labeled downstream task data and does not require fine-tuning of pre-trained models.</p><p>Unsupervised commonsense question answering presents two challenges: (i) eliciting the required commonsense knowledge from a pre-trained language model; and (ii) scoring the answers reasonably. Correspondingly, previous works can be divided into two categories. One is to use preset templates to allow PrLMs to generate specific types of knowledge or to generate the meaning of questions <ref type="bibr" target="#b19">(Shwartz et al., 2020;</ref><ref type="bibr" target="#b1">Bosselut et al., 2021)</ref>. However, the type of knowledge generated by this method is limited, making it difficult to transfer to new task domains. Another class of methods design scoring functions to rank answer choices, such as using cross-entropy or mutual information to score each answer choice directly or calculating the semantic similarity between choices and generated pseudo-answers <ref type="bibr" target="#b13">(Niu et al., 2021)</ref>. However, they are limited to modeling using the implicit parameters of PrLMs, without explicitly capturing question-related knowledge from PrLMs and using them to guide inference.</p><p>To alleviate the above limitations, in this paper, we propose a general prompt-based unsupervised commonsense question answering framework called Two-Stage Generative Prompting (TSGP). We design knowledge and answer generation prompts that can prompt the language model to flexibly generate commonsense knowledge required for questions and their multiple corresponding candidate answers. Under the assistance of the prompts, our TSGP can generate unrestricted types of knowledge, making implicit intermediate reasoning steps explicit to bridge the gap between questions and choices. Furthermore, our TSGP can generate many diverse candidate answers independently of the fixed choices.</p><p>Specifically, we design simple prompts for knowledge generation and answer generation. First, we use knowledge prompts to let the language model generate some question-conditioned knowledge statements. The generated knowledge statements may contain noise since we do not fine-tune the language model. So we only select the most relevant piece of knowledge by calculating the mutual information between the generated knowledge and the question. Then, we leverage the language model again to generate pseudo-answers conditioned on questions and knowledge based on the answer prompts. Finally, we compute the generated pseudo-answers with semantic scores for each choice, and vote for the most semantically relevant answer. Experimental results on three commonsense QA benchmarks containing Common-senseQA, OpenBookQA and SocialIQA demonstrate the effectiveness of our proposed TSGP framework.</p><p>Our contributions in this paper are summarized as follows:</p><p>• We propose a general two-stage generative prompting framework (TSGP) to fully exploit the knowledge implicit in PrLMs for unsupervised commonsense question answering.</p><p>• We design knowledge and answer generation prompts in TSGP to make implicit intermediate reasoning steps explicit and generate pos-sible candidate answers independent of specified choices.</p><p>• We conduct experiments on three question answering datasets focusing on different types of commonsense, and find that TSGP significantly improves the reasoning ability of language models in unsupervised settings.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Method</head><p>We focus on the unsupervised multiple-choice commonsense question answering task, which is formalized as follows: given a question q and a set of choices A, the model should choose the correct option â: â = argmax a∈A P (a|q).</p><p>As shown in Figure <ref type="figure" target="#fig_1">2</ref>, we aim to fully exploit the knowledge encoded in PrLMs and propose the TSGP framework, that mainly contain 3 parts: 1) Knowledge Generation, that using GPT to generate question-conditioned knowledge statements; 2) Answer Generation, that use a language model to generate pseudo-answers conditioned by the question and the generated knowledge; and 3) Answer Prediction, that compute the semantic scores of the generated pseudo-answers with each option, and vote for the most semantically relevant option. In this subsection, we will describe these in detail.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1">Knowledge Generation</head><p>We first use knowledge generation prompts to let GPT generate knowledge (a series of coherent short sentences) related to the concepts or events in the question. Its essence is to fill knowledge gaps and clarify implicit intermediate reasoning steps to arrive at answers to reasoning questions. Instead of generating answers directly, we generate short sentences that imply the relationship between the concepts in the question and the answer, similar to a thought process or solution.</p><p>Figure <ref type="figure" target="#fig_1">2</ref>(a) shows the design of the knowledge generation prompt for the SocialIQA dataset. The knowledge generation prompt consists of instruction, some demos fixed for each task, and a new question placeholder. Demonstrations are handwritten, and each demonstration contains a taskstyle question and a knowledge statement that helps answer that question. When generating knowledge for a new question q, we insert the question into a placeholder and repeatedly sample the generated continuation of that prompt to obtain a set of knowledge statements K q = {k 1 , k 2 , ..., k m }.</p><p>Since we did not train the knowledge generator to generate coherent and factually correct knowledge, it can be assumed that some of the generated knowledge did not provide helpful information for the model. So we propose to use point-wise mutual information (PMI) to quantify the correlation between question q and each generated knowledge k.</p><formula xml:id="formula_1">P M I(q; k) = log p(q|k) p(k) = log p(k|q) p(q)<label>(2)</label></formula><p>Since both q and k are sentences, we use a PrLM to estimate the probabilities. Conditional probabilities are calculated by treating conditional sentences as prefixes. It is important to note that while PMI can by definition be computed in two equivalent ways, language model estimates do not guarantee:</p><formula xml:id="formula_2">P rLM (q|k) P rLM (k) = P rLM (k|q) P rLM (q)<label>(3)</label></formula><p>Therefore, we use question q as the condition to calculate the mutual information between the knowledge and the question.</p><formula xml:id="formula_3">P M I(k; q) def = log P rLM (k|q) P rLM (q) (<label>4</label></formula><formula xml:id="formula_4">)</formula><p>It measures the dependency between questions and knowledge. A positive score means that the question is positively related to this piece of knowledge.</p><p>A score of zero means that the question and this piece of knowledge are independent. A negative score means that the question and this piece of knowledge may be contradictory. We only select the piece of knowledge with the largest mutual information.</p><formula xml:id="formula_5">k = argmax k∈Kq P M I(k; q) (<label>5</label></formula><formula xml:id="formula_6">)</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2">Answer Generation</head><p>In order to take full advantage of the commonsense reasoning potential of the pre-trained language model, we did not simply use the language model to score the concatenation of knowledge and questions. Further, we design the answer generation prompts, again using the language model to generate possible fake answers.</p><p>Our answer prompts are much the same as knowledge prompts, including an instruction, some demos fixed for each task, a new knowledge placeholder, and a new question placeholder, as shown in Figure <ref type="figure" target="#fig_1">2</ref>(b). Each demo is aligned with the knowledge generation prompt and contains the same question and knowledge statement. When generating an answer for a new question q, we insert the question and knowledge generated in the previous step into placeholders and repeatedly sample the generated continuation of that prompt to obtain a set of answers S q = {s 1 , s 2 , ..., s n }. Especially, to ensure the generation's quality, the question may needs to be rewritten for different tasks, and the answer prefix is added after the question.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3">Answer Prediction</head><p>After getting a series of fake answers generated by the language model, we use them to score each option. The standard practice of scoring for previous models is to concatenate each answer option a i with the question q, and then use the cross-entropy loss of the sentence modeled by the language model as the answer score <ref type="bibr" target="#b19">(Shwartz et al., 2020)</ref>.</p><formula xml:id="formula_7">â = argmax a i ∈A L PrLM (q, a i )<label>(6)</label></formula><p>Although the language model is successful in scoring, it will be affected by many interfering factors such as word frequency and sentence structure. These factors can interfere with the scoring function to a large extent.</p><p>In order to mitigate the influence of these interference factors, we borrowed the practice of SEQA <ref type="bibr" target="#b13">(Niu et al., 2021)</ref> to score options from the perspective of semantic similarity between pseudo-answers and options, and finally selected the option with the highest score as the answer.</p><formula xml:id="formula_8">P (a i |S) = 1 n • Z(T ) n j=1 exp[ cos(h s j , h a i ) T ] (7)</formula><p>where a i represents the i-th option corresponding to the question, and s j represents the generated j-th pseudo-answer. h a i represents the semantic representation of option a i , h s j represents the semantic representation of the j-th pseudo-answer, and cos(, ) represents the cosine similarity. T is the temperature, and Z(T ) = exp() is the standardization term.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Experiment</head><p>In this section, we first describe our experiments on three commonsense question answering datasets, followed by further analysis and case studies.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Datasets</head><p>We evaluate the consistency improvement of our model using three different commonsense question answering datasets. Since the test sets are hidden, we report all results on the dev sets. Note that the labels are not visible and are only used for the final accuracy evaluation.</p><p>CommonsenseQA <ref type="bibr" target="#b20">(Talmor et al., 2019</ref>) is a multiple-choice question answering task that requires commonsense knowledge to reason, with a total of 12,102 pieces of data (training/validation/test: 9741/1221/1140). Each piece of data contains one question and five candidate answers. These questions and candidate answers are constructed using entities in ConceptNet and aim to explore potential commonsense relationships between entities.</p><p>OpenBookQA <ref type="bibr" target="#b12">(Mihaylov et al., 2018)</ref> is a question answering dataset that mimics the open book exam for assessing human understanding of a subject. It consists of 5957 multiple-choice elementary science questions (training/validation/test: 4957/500/500). It is designed to explore the understanding of a small "book" of 1326 core scientific facts and the application of facts to new situations. Answering questions requires other extensive public knowledge than is covered in this book.</p><p>SocialIQA <ref type="bibr" target="#b18">(Sap et al., 2019)</ref> is a question answering benchmark that tests commonsense intelligence on social interactions. It focuses on reasoning about people's behaviour and social impact. It contains more than 37,000 question-answer pairs used to evaluate a model's ability to reason about the social impact of everyday events and situations.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Compared Methods</head><p>We investigate the impact of our TSGP framework by comparing with the following methods: Baseline Our baseline model is constructed to assign each answer option a i to a combination of context and question, using only a pre-trained language model (GPT2) as a scorer without explicit knowledge injection. Self-talk <ref type="bibr" target="#b19">(Shwartz et al., 2020)</ref> acquires knowledge from PrLM through a two-stage generation. It uses a preset template to prompt PrLM to generate Information Search Questions (ISQs), the ISQs will be put back a second time, prompting PrLM to generate their answers as a clarification. Although this method is strictly unsupervised, the preset template does not Universal and must be carefully designed for different tasks. SEQA <ref type="bibr" target="#b13">(Niu et al., 2021)</ref> applies PrLM to generate hundreds of pseudo-answers and compares them with each option, but it does so only once with PrLM and does not take full advantage of the implicit knowledge in PrLM. DynaGen <ref type="bibr" target="#b1">(Bosselut et al., 2021)</ref> uses COMET <ref type="bibr" target="#b2">(Bosselut et al., 2019)</ref> to generate intermediate inferences, which are then used to score choices.</p><p>GKP <ref type="bibr" target="#b10">(Liu et al., 2022)</ref> selects some samples from the task data to prompt the knowledge required for GPT-3 <ref type="bibr" target="#b3">(Brown et al., 2020)</ref> model generation, then splices each generated knowledge and question into LM for scoring.</p><p>For Self-talk and SEQA, we rerun their code on GPT-2 at different scales using the parameter settings provided by the authors and report the results of our reruns. For DynaGen and GKP, we only report the results on the same dataset given in the paper, since we do not have access to the model source code or have permission to use GPT-3.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Implementation Details</head><p>The examples included in two-stage prompts are randomly sampled from the training set of the dataset. In order to ensure the generality of the framework, we do not carefully design and select the prompts. See the appendix A for all prompts. We use GPT-2 as the baseline model. In order to obtain reliable and reproducible results, we conduct four different scale experiments on GPT-2: GPT-2 Small (117M), GPT-2 Medium (345M), GPT-2 Large (762M) and GPT-2 XL (1.5B). For knowledge generation, we generate M = 20 knowledge statements per question, kernel sampling p = 0.5, and discard duplicates and empty strings. Generation terminates when more than 64 tokens are exceeded, or a '.' token is hit. For question generation, we use GPT-2 with the same size as in knowledge generation to generate candidate answers by kernel sampling p = 0.9, and the sample size N of candidate answers is set to 500. Following the setting of SEQA, we use SRoBERTa-large <ref type="bibr" target="#b16">(Reimers and Gurevych, 2019)</ref>, which is further fine-tuned on the NLI dataset, to calculate the semantic similarity between the generated candidate answers and the individual options. We set the parameter T = 0.1 on the validation set of all three datasets.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">Main Results</head><p>Table <ref type="table" target="#tab_0">1</ref> shows the results for the three benchmarks. Our TSGP model achieves the best performance among the unsupervised models on all datasets. We outperform baseline by 16.8% on the Common-senseQA dataset and 5.2% higher than the previous best model SEQA; on OpenBookQA On So-cialIQA, we outperform baseline by 21.6% and 10.2% higher than the previous best model SEQA; on SocialIQA, we outperform baseline by 8.7% and 4.0% higher than the previous best model SEQA. Furthermore, our model steadily brings positive improvements over the baseline models on GPT at different scales.</p><p>Compared to our model, Self-talk fails to maintain effectiveness, and its accuracy is sometimes even slightly lower than the baseline, especially on the CommonsenseQA dataset, suggesting that the knowledge generated by Self-talk may be noisy and mislead model evaluation. With the help of SRoBERTa-NLI large, SEQA can achieve better results on these three datasets, but it does not fully exploit the implicit knowledge encoded in GPT and is less effective than our model. We also observed a common phenomenon in our TSGP, baseline, and comparison models: when GPT-2 was improved from Large (750M) to Xlarge (1500M), the model performance did not improve as much as expected. We speculate that there may be limitations to using only model parameters to improve the performance of language models as sentence evaluators or generators.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.5">Analysis</head><p>In this subsection, we perform more analysis to show the impact on the performance of two-stage generative prompting and the sample size of generated answers. We then perform the human evaluation of the quality of the generated knowledge and answers. Finally, we present some case studies.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ablation Studies</head><p>To identify the source of the performance increase, we perform an ablation study on TSGP.</p><p>As shown in Table <ref type="table">2</ref>, the baseline model GPT2-XL performs poorly and cannot answer common sense questions well. Our models outperform the baseline by 8% to 20% on all tasks. It can be seen that both knowledge prompts and answer prompts are significantly improved compared to the baseline model, and our framework achieves the best results after integrating the two. Furthermore, through knowledge generation, our method can effectively derive commonsense knowledge implicit in GPT parameters, helping to improve performance on commonsense question answering tasks, where knowledge is an essential factor.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Sample Size for Generating Answers Then, we conduct an comparison experiment to investigate the effect of the generated answer sample size N on accuracy.</head><p>As shown in Figure <ref type="figure" target="#fig_2">3</ref>, we compared our TSGP and SEQA models. Both TSGP and SEQA use Table 2: Ablation study on model components.</p><p>GPT2-XL to generate answers, but TSGP also uses GPT2-XL to generate explicit knowledge. As expected, accuracy increases with sample size. Specifically, for TSGP, the performance improves rapidly when K &lt; 50, and then the growth slows down or almost no growth when K &gt; 50. Ultimately, TSGP achieves stable and relatively high performance. It is clear that TSGP only needs to generate fewer answers to achieve better accuracy than SEQA, proving that previous models do not fully exploit the knowledge implicit in language model parameters. Explicitly generating the knowledge encoded in the model parameters can, in turn, guide the language model to reason in the direction of the answer.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Human evaluation</head><p>We conduct human evaluations to investigate the interpretability of the quality of generated knowledge and generated answers and their impact on task performance.</p><p>We evaluate the quality of the generated knowledge in three dimensions: 1) Grammatical: whether it is grammatical; 2) Relevant: whether it is relevant to the topic or concept mentioned in the question; 3) Usefulness: whether it is helpful to directly or indirectly way to answer questions. We only use relevance and usefulness to evaluate the generated answers. Since the generated candidate answers are generally words or phrases and rarely complete sentences, we do not evaluate the answers for grammar.</p><p>We sample 100 generated knowledge and 100 generated answers from the CommonsenseQA dataset, and the evaluation results are shown in Figure <ref type="figure" target="#fig_3">4</ref>. 91% of the generated knowledge conforms to the basic grammar, 82% is related to the entities in the question, but only 64% contributes 973 Model Question / Generated Knowledge / Generated Answer Predicted Score Baseline Which large land mass is home to the most monkeys? amazon basin (×) 0.35 TSGP The world's largest monkey colony lives on Madagascar. african continent (✓) 0.51 "Madagascar, Africa", "Africa", "Madagascar, Democratic Republic of the Congo" . . . Baseline What green area is a marmot likely to be found in? north america (×) 0.21 TSGP Marmots live near water sources so they need plenty of vegetation around their habitat. countryside (✓) 0.34 "rural area", "country side", "village" . . . Baseline Where do all animals live? zoos (×) 0.43 TSGP Animals exist on every continent except Antarctica (where they're frozen). surface of earth (✓) 0.46 "the oceans and land", "all over the earth", "wherever they can find the food and shelter" . . .</p><p>Table <ref type="table">3</ref>: Some examples where our model corrects the baseline (GPT2-XL) predictions. The first line of each part is the original question and the prediction result of the baseline; the second line is the knowledge statement generated by TSGP, and the third line is the pseudo-answer generated by TSGP. We show the correct answer with a check mark (✓) and the wrong answer with a wrong mark (×). to the answer. 87% of the generated answers were question-related, slightly higher than knowledge, suggesting that knowledge can guide the model to reason toward the answer. However, only 68% of the answers generated are useful, indicating that there is still much room for improvement in guiding the model to answer common sense questions in an unsupervised setting. At the same time, we noticed that the usefulness of the answers from the human evaluation is lower than the accuracy of the model prediction. The reason may be that many commonsense questions have divergent answers, and reasonable answers may not be within the given five options.</p><p>Case Study Finlly, we perform a case study to more intuitively demonstrate the changes that the knowledge generated by our framework and the generated answers bring to model predictions.</p><p>We select some examples from the Common-senseQA dataset, as shown in Table <ref type="table">3</ref>. These examples come from the intersection of the baseline model's predictions being wrong and our framework's predictions being correct, i.e. our framework correcting the baseline model's wrong predictions. In all examples, the baseline model rates incorrect answers higher than correct answers, while under our framework, correct answers are rated much higher. Part of the reason is that the generated knowledge can transform commonsense reasoning into explicit reasoning, such as paraphrasing, induction, and analogy. Moreover, part of the reason is that we use answer hints to generate candidates that are semantically similar to the answer, making the model no longer limited by Character-level matching, while focusing more on semantic information.</p><p>4 Related Work</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Extracting knowledge from pre-trained language models</head><p>Recent studies have shown language models trained on corpora large enough to implicitly encode many different types of knowledge in their parameters so that they can act as knowledge bases <ref type="bibr" target="#b14">(Petroni et al., 2019;</ref><ref type="bibr" target="#b21">Tenney et al., 2019)</ref>. Compared with traditional KBs, this method has a significant advantage in requiring no human supervision.</p><p>However, there is also a problem that KBs can be easily accessed by querying specific entity nodes, but LMs are more challenging to access specific knowledge pieces. <ref type="bibr" target="#b3">Brown et al. (2020)</ref> find that LMs can be effective few-shot and zero-shot learners, and the knowledge learned before training can be acquired through fine-tuning or prompting. Fine-tuning LMs on downstream tasks has proven to be an effective way to tune and acquire specific knowledge for evaluation <ref type="bibr" target="#b6">(Dong et al., 2019;</ref><ref type="bibr" target="#b4">Da et al., 2021)</ref>. However, the ever-increasing size of LMs makes them expensive to fine-tune and store in practice. On the other hand, Prompting is an efficient way to directly capture the needed knowledge from LMs without any additional fine-tuning <ref type="bibr" target="#b5">(Davison et al., 2019;</ref><ref type="bibr" target="#b8">Jiang et al., 2020;</ref><ref type="bibr" target="#b11">Liu et al., 2021;</ref><ref type="bibr" target="#b17">Roberts et al., 2020)</ref>. This paradigm provides models with a familiar query format, resulting in better responses <ref type="bibr" target="#b0">(AlKhamissi et al., 2022)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Unsupervised commonsense question answering</head><p>Previous work has explored pre-trained language models for unsupervised commonsense question answering tasks. DynaGen <ref type="bibr" target="#b1">(Bosselut et al., 2021)</ref> uses COMET <ref type="bibr" target="#b2">(Bosselut et al., 2019)</ref> to generate intermediate inferences, which are then used to score choices. However, its use of COMET as a generator limits its applicability to the domain of social commonsense. Self-Talk <ref type="bibr" target="#b19">(Shwartz et al., 2020)</ref> queries GPT <ref type="bibr" target="#b15">(Radford et al., 2019)</ref> through taskspecific templates to extract knowledge. Therefore, Self-Talk can be applied to many domains but requires careful handcrafting to generalize to new tasks. SEQA <ref type="bibr" target="#b13">(Niu et al., 2021)</ref> utilizes generative PrLM to generate hundreds of pseudo-answers, then computes the semantic similarity between candidates and these generated pseudo-answers and votes for the answer. However, since there are no task examples to prompt, SEQA may need to generate hundreds of pseudo-answers for reasoning to achieve good results. <ref type="bibr" target="#b10">Liu et al. (2022)</ref> proposed GKP, which selects some samples from the task data to prompt the knowledge required for GPT-3 <ref type="bibr" target="#b3">(Brown et al., 2020)</ref> model generation, then splices each generated knowledge and question into LM for scoring. Unlike previous methods of acquiring knowledge using task-specific templates or finetuning knowledge generators, GKP only requires a few human-written presentation in task styles, making it very flexible, easily transferable, and engineering efficiency.</p><p>We extend GKP, and the difference is that 1) we design the prompt for answer generation so that GPT can generate multiple candidate answers, reducing the competition of surface form among options; 2) We use a similarity-based method for answer reasoning. The influence of statistical deviations such as word frequency and length of options is reduced; 3) Our framework can achieve good results by using GPT-2, much smaller than GPT-3, and improving parameter efficiency.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Conclusion</head><p>In this paper, we propose a two-stage prompt-based unsupervised commonsense question answering framework that makes implicit intermediate reasoning steps explicit and generates possible candidate answers independent of specified choices. Specifically, we design knowledge and answer generation prompts that can prompt the language model to flexibly generate commonsense knowledge required for a question and its multiple corresponding candidate answers. Experiments show our method's effectiveness across multiple datasets, achieving state-of-the-art results on three commonsense reasoning tasks in an unsupervised setting. In addition, it does not require fine-tuning, does not depend on specific pre-trained models and tasks, and is flexible in transfer. We hope that our framework will facilitate future research in this field.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Limitations</head><p>We explore an unsupervised commonsense question answering framework that leverages knowledge encoded in pre-trained language models. It uses a pre-trained language model to generate knowledge and multiple possible answers for commonsense questions based on multi-stage prompts. As for the limitations, the first is that the design of the prompts may need to be optimized. The examples contained in the two-stage prompts of MSGP are randomly sampled from the train set of the dataset. In order to ensure the generalization of the framework, we have not carefully designed and selected the prompts. The second is the limitation of computing resources. MSGP would theoretically perform better on larger models, such as GPT-3.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure1: Humans can immediately use commonsense knowledge of life to give multiple possible answers to a commonsense question. Unsupervised CSQA models should simulate human behaviour and thinking.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 :</head><label>2</label><figDesc>Figure2: Overview of the proposed method Two-Stage Generative Prompting (TSGP), which contains three parts. 1) Knowledge Generation, using GPT to generate knowledge statements about concepts or events in questions based on the knowledge generation prompts. 2) Answer Generation, leveraging GPT again to generate pseudo-answers conditioned on questions and knowledge based on the answer generation prompts. 3) Answer Prediction, computing the semantic score between the generated pseudo-answer and each choice and voting for the final answer.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 3 :</head><label>3</label><figDesc>Figure3: The effect of the number of generated answers on the accuracy. Our TSGP has the highest accuracy with an answer sample size of 50, while SEQA needs to generate more answers to achieve high accuracy.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4 :</head><label>4</label><figDesc>Figure 4: Human evaluation of generated knowledge and generated answers.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Accuracy (%) on CommonsenseQA, OpenBookQA and SocialIQA. The best results are depicted in boldface. All results except the last column are run by ourselves. ' † ' indicates that Self-talk uses GPT2-Medium to generate knowledge, and then uses GPT2-Large to predict answers. ' ‡ ' indicates that GKP uses GPT-3 to generate knowledge, and then uses T5-11b to make answer predictions. ' ♢ ' indicates that DynaGen uses COMET to generate knowledge and inferences.</figDesc><table><row><cell>Datasets</cell><cell>Models</cell><cell cols="5">GPT-2 Small GPT-2 Medium GPT-2 Large GPT-2 XL Published</cell></row><row><cell></cell><cell>Baseline</cell><cell>29.0</cell><cell>29.1</cell><cell>32.6</cell><cell>32.3</cell><cell>-</cell></row><row><cell>CommonsenseQA</cell><cell>Self-talk SEQA GKP TSGP (Ours)</cell><cell>24.8 26.1 -33.3</cell><cell>27.3 30.7 -42.2</cell><cell>31.5 34.6 -46.8</cell><cell>31.4 34.8 -49.1</cell><cell>32.4  † -47.3  ‡ -</cell></row><row><cell></cell><cell>Baseline</cell><cell>16.4</cell><cell>18.0</cell><cell>20.0</cell><cell>22.8</cell><cell>-</cell></row><row><cell>OpenBookQA</cell><cell>Self-talk SEQA</cell><cell>17.4 27.6</cell><cell>21.0 28.6</cell><cell>23.8 32.0</cell><cell>25.4 33.4</cell><cell>--</cell></row><row><cell></cell><cell>TSGP (Ours)</cell><cell>38.0</cell><cell>43.8</cell><cell>43.0</cell><cell>44.4</cell><cell>-</cell></row><row><cell></cell><cell>Baseline</cell><cell>39.8</cell><cell>41.8</cell><cell>43.0</cell><cell>42.8</cell><cell>-</cell></row><row><cell></cell><cell>Self-talk</cell><cell>41.2</cell><cell>43.3</cell><cell>45.3</cell><cell>46.2</cell><cell>46.2</cell></row><row><cell>SocialIQA</cell><cell>SEQA DynaGen TSGP (Ours)</cell><cell>44.4 -45.9</cell><cell>44.6 -46.7</cell><cell>46.6 -49.7</cell><cell>47.5 -51.5</cell><cell>47.5 50.1 ♢ -</cell></row><row><cell>Methods</cell><cell cols="2">CommonsenseQA OpenBookQA</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>GPT-2 XL</cell><cell>32.3</cell><cell>22.8</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>+ Knowledge Generation</cell><cell>45.5</cell><cell>30.0</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>+ Answer Generation</cell><cell>43.9</cell><cell>42.0</cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>+ Both (Ours)</cell><cell>49.1</cell><cell>44.4</cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgements</head><p>We would like to thank the anonymous reviewers for their helpful comments. This work was supported by the <rs type="funder">National Natural Science Foundation of China</rs> (No.<rs type="grantNumber">61976068</rs>) and "<rs type="projectName">Hundreds, Millions</rs>" <rs type="projectName">Engineering Science and Technology Major Special Project of Heilongjiang Province</rs> (No.<rs type="grantNumber">2020ZX14A02</rs>).</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funded-project" xml:id="_FgBuS8d">
+					<idno type="grant-number">61976068</idno>
+					<orgName type="project" subtype="full">Hundreds, Millions</orgName>
+				</org>
+				<org type="funded-project" xml:id="_DW28QxR">
+					<idno type="grant-number">2020ZX14A02</idno>
+					<orgName type="project" subtype="full">Engineering Science and Technology Major Special Project of Heilongjiang Province</orgName>
+				</org>
+			</listOrg>
+
+			<div type="contribution">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Blue read material outside of his comfort zone because he wanted to gain what? Choices: A. new perspective B. understanding C. entertained D. hunger E. tired eyes Question GPT Knowledge GPT Candidate answers Knowledge Generation Answer Generation (a) Knowledge Generation Prompts Instructions: Generate some knowledge about the events in the input. Examples: Input: Kendall frightened the dogs away by yelling and waving his hands. Why did Kendall do this? Knowledge: Parents will protect their children from dog attacks. ... Input: Kai found one for sale online but it was too much money for her. What does Kai need to do before this? Knowledge: people need to turn on the laptop before going online. Input: &lt;question&gt; Knowledge: (b) Answer Generation Prompts Instructions: For the following knowledge and question, generate the answer to the question. Examples: Knowledge: Parents will protect their children from dog attacks. Question: Kendall frightened the dogs away by yelling and waving his hands. Before, Kendall wanted to protect their children. ... Knowledge: people need to turn on the laptop before going online. Question: Kai found one for sale online but it was too much money for her. Before, Kai needed to open up her laptop. Knowledge: &lt;knowledge&gt; Question: &lt;question&gt; &lt;answer prefix&gt; Choices Similarity Prediction</p></div>
+			</div>
+
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ethics Statement</head><p>This paper proposes a general framework for unsupervised commonsense question answering. We worked within the purview of acceptable privacy practices and strictly followed the data usage policy. In all the experiments, we use public datasets and consist of their intended use. We neither introduce any social/ethical bias to the model nor amplify any bias in the data, so we do not foresee any direct social consequences or ethical issues.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Appendix</head><p>Tables 4, 5, and 6 are the Knowledge Generation Prompts corresponding to the CommonsenseQA, OpenBookQA, and SocialIQA datasets. Tables <ref type="table" target="#tab_4">7</ref>, <ref type="table">8</ref>, and 9 are the Answer Generation Prompts corresponding to the CommonsenseQA, OpenBookQA, and SocialIQA datasets. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>OpenBookQA</head><p>Instructions: Generate some knowledge about the concepts in the input. Examples:</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Knowledge Generation Prompts</head><p>Input: As you look deeper into a marbel you can see? Knowledge: As the size of an object appears larger, that object will be observed better.</p><p>Input: In the wilderness, light pollution is? Knowledge: As distance to a city decreases, the amount of light pollution will increase.</p><p>Input: Earth rotating causes? Knowledge: A planet rotating causes cycles of day and night on that planet. Input: Renewable resources? Knowledge: Renewable resources can be used over again.</p><p>Input: The removal of trees may cause damage to ecosystems such as? Knowledge: Cutting down trees has a negative impact on an organisms living in an ecosystem. Input: Knowledge:</p><p>Table 5: Knowledge Generation Prompts of OpenBookQA.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>SocialIQA</head><p>Instructions: Generate some knowledge about the events in the input. Examples:</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Knowledge Generation Prompts</head><p>Input: Kendall frightened the dogs away by yelling and waving his hands. Why did Kendall do this? Knowledge: Parents will protect their children from dog attacks. Input: Cameron decided to have a barbecue and gathered her friends together. How would others feel as a result? Knowledge: Gathering with friends for a barbecue is a great pleasure. Input: Kendall ran back and thanked Lee for helping her find the dog. How would you describe Kendall? Knowledge: We are grateful that others have helped us. Input: Jan needed to give out jobs for an upcoming project at work. What will Others want to do next? Knowledge: After being assigned a new project people will start working.</p><p>Input: Kai found one for sale online but it was too much money for her. What does Kai need to do before this? Knowledge: People need to turn on the laptop before going online. Input: Knowledge:</p><p>Table 6: Knowledge Generation Prompts of SocialIQA.</p><p>CommonsenseQA Instructions: For each question below, guided by the knowledge, choose the answer from the answer bank corresponding to the question that best answers the question.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Answer Generation Prompts</head><p>Knowledge: Electronic maps are the modern version of paper atlas. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>OpenBookQA</head><p>Instructions: For the following knowledge and question, generate the answer to the question.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Answer Generation Prompts</head><p>Knowledge: As the size of an object appears larger , that object will be observed better. Question: As you look deeper into a marbel you can see minut defects. Knowledge: A tape measure is used to measure length. Question: With which could you tell the exact size of an object? A plastic tape with graduated markings. Knowledge: A planet rotating causes cycles of day and night on that planet. Question: Earth rotating causes the cycling of AM and PM. Knowledge: Mammals give birth to live young. Question: Which animal gives birth to live young? Giraffe. Knowledge: Cutting down trees has a negative impact on an organisms living in an ecosystem. Question: The removal of trees may cause damage to ecosystems such as jungles. Knowledge: Question:</p><p>Table 8: Answer Generation Prompts of OpenBookQA.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>SocialIQA</head><p>Instructions: For the following knowledge and question, generate the answer to the question.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Answer Generation Prompts</head><p>Knowledge: Parents will protect their children from dog attacks. Question: Kendall frightened the dogs away by yelling and waving his hands. Before, Kendall wanted to protect their children. Knowledge: Gathering with friends for a barbecue is a great pleasure. Question: Cameron decided to have a barbecue and gathered her friends together. As a result, Others felt like attending. Knowledge: We are grateful that others have helped us. Question: Kendall ran back and thanked Lee for helping her find the dog. Kendall is seen as grateful. Knowledge: After being assigned a new project people will start working. Question: Jan needed to give out jobs for an upcoming project at work. As a result, Others wanted to get to work. Knowledge: Business restaurants are usually located in business sector. Question: Kai found one for sale online but it was too much money for her. Before, Kai needed to open up her laptop. Knowledge: Question:</p><p>Table 9: Answer Generation Prompts of SocialIQA.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 4 :</head><label>4</label><figDesc>CommonsenseQA Instructions: Generate some knowledge about the concepts in the input. Examples:Knowledge Generation Prompts of CommonsenseQA.</figDesc><table><row><cell></cell><cell>Input: Google Maps and other highway and street GPS services have replaced</cell></row><row><cell>Knowledge Generation Prompts</cell><cell>what? Knowledge: Electronic maps are the modern version of paper atlas. Input: The fox walked from the city into the forest, what was it looking for? Knowledge: Natural habitats are usually away from cities.</cell></row><row><cell></cell><cell>Input: You can sharefiles with someone if you have a connection to a what?</cell></row><row><cell></cell><cell>Knowledge: Files can be shared over the Internet.</cell></row><row><cell></cell><cell>Input: Too many people want exotic snakes. The demand is driving what to</cell></row><row><cell></cell><cell>carry them?</cell></row><row><cell></cell><cell>Knowledge: Some people raise snakes as pets.</cell></row><row><cell></cell><cell>Input: The body guard was good at his duties, he made the person who hired</cell></row><row><cell></cell><cell>him what?</cell></row><row><cell></cell><cell>Knowledge: The job of body guards is to ensure the safety and security of the</cell></row><row><cell></cell><cell>employer.</cell></row><row><cell></cell><cell>Input:</cell></row><row><cell></cell><cell>Knowledge:</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 7 :</head><label>7</label><figDesc>Answer Generation Prompts of CommonsenseQA.</figDesc><table><row><cell>Question: Google Maps and other highway and street GPS services have</cell></row><row><cell>replaced what? Atlas.</cell></row><row><cell>Knowledge: Natural habitats are usually away from cities.</cell></row><row><cell>Question: The fox walked from the city into the forest, what was it looking for?</cell></row><row><cell>Natural habitat.</cell></row><row><cell>Knowledge: Files can be shared over the Internet.</cell></row><row><cell>Question: You can share files with someone if you have a connection to a what?</cell></row><row><cell>Computer network.</cell></row><row><cell>Knowledge: Some people raise snakes as pets.</cell></row><row><cell>Question: Too many people want exotic snakes. The demand is driving what to</cell></row><row><cell>carry them? Pet shops.</cell></row><row><cell>Knowledge: The job of body guards is to ensure the safety and security of the</cell></row><row><cell>employer.</cell></row><row><cell>Question: The body guard was good at his duties, he made the person who</cell></row><row><cell>hired him what? Feel safe.</cell></row><row><cell>Knowledge:</cell></row><row><cell>Question:</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">Badr</forename><surname>Alkhamissi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Millicent</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Asli</forename><surname>Celikyilmaz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mona</forename><surname>Diab</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marjan</forename><surname>Ghazvininejad</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2204.06031</idno>
+		<title level="m">A review on language models as knowledge bases</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Dynamic neuro-symbolic knowledge graph construction for zero-shot commonsense question answering</title>
+		<author>
+			<persName><forename type="first">Antoine</forename><surname>Bosselut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronan</forename><surname>Le Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 35th AAAI Conference on Artificial Intelligence (AAAI)</title>
+		<meeting>the 35th AAAI Conference on Artificial Intelligence (AAAI)</meeting>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">COMET: Commonsense transformers for automatic knowledge graph construction</title>
+		<author>
+			<persName><forename type="first">Antoine</forename><surname>Bosselut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannah</forename><surname>Rashkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chaitanya</forename><surname>Malaviya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Asli</forename><surname>Celikyilmaz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/P19-1470</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 57th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Florence, Italy</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="4762" to="4779" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Language models are few-shot learners</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melanie</forename><surname>Subbiah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><forename type="middle">D</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arvind</forename><surname>Neelakantan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Shyam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="1877" to="1901" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Analyzing commonsense emergence in few-shot knowledge models</title>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Da</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Ronan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ximing</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antoine</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Bosselut</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note>rd Conference on Automated Knowledge Base Construction</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Commonsense knowledge mining from pretrained models</title>
+		<author>
+			<persName><forename type="first">Joe</forename><surname>Davison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Feldman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Rush</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1109</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Confer-ence on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Confer-ence on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="1173" to="1178" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Unified language model pre-training for natural language understanding and generation</title>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenhui</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Furu</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaodong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hsiao-Wuen</forename><surname>Hon</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="s">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="page">32</biblScope>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Scalable multihop relational reasoning for knowledge-aware question answering</title>
+		<author>
+			<persName><forename type="first">Yanlin</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinyue</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bill</forename><surname>Yuchen Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peifeng</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiang</forename><surname>Ren</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.emnlp-main.99</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</title>
+		<meeting>the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="1295" to="1309" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">How can we know what language models know?</title>
+		<author>
+			<persName><forename type="first">Zhengbao</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Frank</forename><forename type="middle">F</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Araki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Graham</forename><surname>Neubig</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Transactions of the Association for Computational Linguistics</title>
+		<imprint>
+			<biblScope unit="volume">8</biblScope>
+			<biblScope unit="page" from="423" to="438" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">KagNet: Knowledge-aware graph networks for commonsense reasoning</title>
+		<author>
+			<persName><forename type="first">Xinyue</forename><surname>Bill Yuchen Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jamin</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiang</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Ren</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1282</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="2829" to="2839" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Generated knowledge prompting for commonsense reasoning</title>
+		<author>
+			<persName><forename type="first">Jiacheng</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alisa</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ximing</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sean</forename><surname>Welleck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>West</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Ronan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Hajishirzi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2022.acl-long.225</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 60th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Dublin, Ireland</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="3154" to="3169" />
+		</imprint>
+	</monogr>
+	<note>Long Papers) Association for Computational Linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Pretrain, prompt, and predict: A systematic survey of prompting methods in natural language processing</title>
+		<author>
+			<persName><forename type="first">Pengfei</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weizhe</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinlan</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhengbao</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hiroaki</forename><surname>Hayashi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Graham</forename><surname>Neubig</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2107.13586</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Can a suit of armor conduct electricity? a new dataset for open book question answering</title>
+		<author>
+			<persName><forename type="first">Todor</forename><surname>Mihaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tushar</forename><surname>Khot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Sabharwal</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D18-1260</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2018 Conference on Empirical Methods in Natural Language Processing<address><addrLine>Brussels, Belgium</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="2381" to="2391" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">A semanticbased method for unsupervised commonsense question answering</title>
+		<author>
+			<persName><forename type="first">Yilin</forename><surname>Niu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaming</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenkai</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoyan</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minlie</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.acl-long.237</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing</title>
+		<meeting>the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="3037" to="3049" />
+		</imprint>
+	</monogr>
+	<note>Long Papers)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Language models as knowledge bases?</title>
+		<author>
+			<persName><forename type="first">Fabio</forename><surname>Petroni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tim</forename><surname>Rocktäschel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Riedel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Lewis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Bakhtin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxiang</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Miller</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1250</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="2463" to="2473" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Language models are unsupervised multitask learners</title>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Sutskever</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">OpenAI blog</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">8</biblScope>
+			<biblScope unit="page">9</biblScope>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Sentence-BERT: Sentence embeddings using Siamese BERTnetworks</title>
+		<author>
+			<persName><forename type="first">Nils</forename><surname>Reimers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iryna</forename><surname>Gurevych</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1410</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="3982" to="3992" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">How much knowledge can you pack into the parameters of a language model?</title>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.emnlp-main.437</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</title>
+		<meeting>the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="5418" to="5426" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Social IQa: Commonsense reasoning about social interactions</title>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannah</forename><surname>Rashkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Derek</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronan</forename><surname>Le Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1454</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="4463" to="4473" />
+		</imprint>
+	</monogr>
+	<note>Association for Computational Linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Unsupervised commonsense question answering with self-talk</title>
+		<author>
+			<persName><forename type="first">Vered</forename><surname>Shwartz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>West</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Ronan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chandra</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Bhagavatula</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Choi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2020.emnlp-main.373</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</title>
+		<meeting>the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="4615" to="4629" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title level="a" type="main">CommonsenseQA: A question answering challenge targeting commonsense knowledge</title>
+		<author>
+			<persName><forename type="first">Alon</forename><surname>Talmor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Herzig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Lourie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Berant</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/N19-1421</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<title level="s">Long and Short Papers</title>
+		<meeting>the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies<address><addrLine>Minneapolis, Minnesota</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="4149" to="4158" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">What do you learn from context? probing for sentence structure in contextualized word representations</title>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Tenney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Berlin</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Poliak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Mccoy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Najoung</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Van Durme</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dipanjan</forename><surname>Samuel R Bowman</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Das</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">7th International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2019">2019. 2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">QA-GNN: Reasoning with language models and knowledge graphs for question answering</title>
+		<author>
+			<persName><forename type="first">Michihiro</forename><surname>Yasunaga</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongyu</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antoine</forename><surname>Bosselut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jure</forename><surname>Leskovec</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.naacl-main.45</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</title>
+		<meeting>the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies</meeting>
+		<imprint>
+			<publisher>Online. Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="535" to="546" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

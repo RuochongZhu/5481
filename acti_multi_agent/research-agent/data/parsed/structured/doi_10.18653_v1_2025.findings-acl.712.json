@@ -1,0 +1,397 @@
+{
+  "paperId": "doi:10.18653/v1/2025.findings-acl.712",
+  "title": "Craw4LLM: Efficient Web Crawling for LLM Pretraining",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.18653_v1_2025.findings-acl.712.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.18653_v1_2025.findings-acl.712.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.18653_v1_2025.findings-acl.712.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Web crawl is a main source of large language models' (LLMs) pretraining data, but the majority of crawled web pages are discarded in pretraining due to low data quality. This paper presents CRAW4LLM, an efficient web crawling method that explores the web graph based on the preference of LLM pretraining. Specifically, it leverages the influence of a webpage in LLM pretraining as the priority score of the web crawler's scheduler, replacing the standard graph-connectivity-based priority. Our experiments on a web graph containing 900 million webpages from a commercial search engine's index demonstrate the efficiency of CRAW4LLM in obtaining highquality pretraining data. With just 21% URLs crawled, LLMs pretrained on CRAW4LLM data reach the same downstream performances of previous crawls, significantly reducing the crawling waste and alleviating the burdens on websites. Our code is publicly available at https://github.com/cxcscmu/Craw4LLM .",
+      "word_count": 138
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Massive in size and diverse in topics, web data usually serve as the primary source of pretraining data for large language models (LLMs), providing an extensive and heterogeneous corpus that captures a wide spectrum of human knowledge and real-world information (Baack, 2024; Dubey et al., 2024; Penedo et al., 2024) . Pretraining datasets are typically built from large-scale web crawls such as Common Crawl (CommonCrawl, 2007) , which may contain TBs of data spanning billions of webpages (Penedo et al., 2024; Weber et al., 2024) .\n\nDespite their vast scale, most of the data collected from web crawls are not used in the pretraining of LLMs. Existing work often discards over 90% of the raw data collected from the web (Li et al., 2024; Penedo et al., 2024; Tang et al ., * Work done while visiting Carnegie Mellon University. 2024), highlighting the inefficiency of current web crawlers in collecting LLM pretraining data. Common web crawlers like Common Crawl prioritize pages based on graph connectivity metrics like PageRank (Page et al., 1999; Cho et al., 1998) or harmonic centrality (Boldi and Vigna, 2014; Baack, 2024) , which favor documents with a high number of inlinks (indegree) (Fortunato et al., 2008) rather than those most relevant for pretraining. This misalignment not only leads to waste in computational resources during excessive data processing for LLM developers, but also incentivizes overcrawling, which burdens website operators with redundant traffic and increases ethical and legal risks related to fair use of data and copyright (Longpre et al., 2024; New York Times, 2023) .\n\nTo bridge this gap, we propose Web Crawling for LLM Pretraining (CRAW4LLM). Instead of relying on traditional graph-connectivity-based signals, CRAW4LLM improves crawling efficiency by prioritizing webpages based on their influence on LLM pretraining. Specifically, during each crawling iteration, all newly discovered documents are scored with a pretraining influence scorer derived from data-filtering pipelines for pretraining (Li et al., 2024; Penedo et al., 2024) , and docu-\n\n0 100 200 Indegree 0.000 0.005 0.010 0.015 0.020 Pretraining Influence Score (a) Pretraining (-0.11). 10 0 10 1 10 2 Indegree 10 8 10 7 10 6 PageRank (b) PageRank (0.88).\n\nFigure 2 : Correlations between pretraining influence scores from DCLM fastText (Li et al., 2024) and PageRank to indegrees, on randomly sampled ClueWeb22-B documents (Overwijk et al., 2022) . Spearman correlation coefficients are reported in parentheses.\n\nments with the highest scores are used to discover new documents. By prioritizing webpages with high influence scores, as illustrated in Figure 1 , CRAW4LLM explores the web graph in a fundamentally different manner from traditional graphconnectivity-based crawlers, uncovering a distinct subset of the web more useful for pretraining. We conduct large-scale crawling simulations on ClueWeb22-A (Overwijk et al., 2022) , a snapshot of the web containing 900 million English webpages obtained from the central index of a commercial search engine. Results show that, by crawling only 1× of the pretraining dataset size, CRAW4LLM can outperform traditional crawlers which collect 1×, 2×, and 4× data followed by data selection. Compared to the baseline crawler that achieves the same performance, CRAW4LLM crawls only 21% of the webpages. Further analysis reveals that during crawling, CRAW4LLM quickly discovers documents that align with the oracle selection, which selects from the full web graph. As a result, it achieves over 95% of the oracle performance while crawling only 2.2% of the data.",
+      "word_count": 559
+    },
+    {
+      "index": 3,
+      "title": "Methodology",
+      "kind": "methods",
+      "text": "In this section, we introduce Web Data Crawling for LLM Pretraining (CRAW4LLM), an efficient crawling method that integrates LLM pretraining preference into the crawler. The algorithm of CRAW4LLM is presented in Algorithm 1.\n\nSimilar to traditional crawlers (Cho et al., 1998) , CRAW4LLM starts with a set of seed URLs. For each unvisited outlink of them, CRAW4LLM assigns a score using a pretraining-oriented URL scoring function SCORE_URL(•; M), where M is a pretraining influence scorer which rates a docu-\n\nAlgorithm 1 CRAW4LLM Algorithm Input: Seed URLs U seed , number of pages to be crawled N , number of pages to be crawled in each iteration n, pretraining influence scorer M(•) Output: Crawled page set P 1: Initialize URL and score priority queue Q ← ∅ 2: Initialize crawled page set P ← ∅ 3: Initialize visited URL set V ← U seed 4: Uc ← U seed 5: while |P| ≤ N do 6: Pc ← FETCHPAGES(Uc) 7: Merge Pc into P 8: Uout ← EXTRACTURLS(Pc) 9:\n\nfor all v ∈ Uout do 10:\n\nif v / ∈ V then 11: ENQUEUE(Q, v, SCORE_URL(v; M)) 12: ADD(V, v) 13:\n\nend if 14:\n\nend for 15:\n\nUc ← DEQUEUE(Q, n) 16: end while 17: return P ment's influence for pretraining. M can be derived from data classification models for pretraining data, which have been used to decide whether a document should be retained in or filtered out from the raw dataset (Li et al., 2024; Penedo et al., 2024) . Formally, given a pretraining influence scorer M, the score s of a URL u is calculated as\n\ns ← SCORE_URL(u; M) = M(FETCHPAGE(u)), (1)\n\nwhere FETCHPAGE(u) gets the page content of u and M(•) returns the score. Once all outlinks have been scored, following the standard procedures of existing crawlers, they are inserted into a priority queue, which automatically orders them based on their scores. The top n highest-scoring URLs are then dequeued for pretraining and serve as the sources for the next round of crawling. This process repeats until N documents have been collected, forming the final pretraining dataset P.\n\nIn contrast, traditional crawlers typically rely on graph connectivity metrics, such as PageRank (Cho et al., 1998) and harmonic centrality (Baack, 2024) , which basically assign higher priority to pages with higher indegrees (Fortunato et al., 2008) . As shown in Figure 2 (a), the indegrees of webpages exhibit a poor correlation with the scores assigned by the DCLM fastText classifier, a pretraining influence scorer for identifying high-quality pretraining data (Li et al., 2024) . This confirms that graph connectivity-based crawlers are inefficient in crawling pretraining data.\n\nBy incorporating a pretraining influence scorer, CRAW4LLM traverses the web graph in a way (Penedo et al., 2024) (down) is used as the pretraining influence scorer for CRAW4LLM, and to select documents for oracle and crawl-then-select runs (Section 3). All models are pretrained on 1× data (20M documents, 32.9B tokens). The evaluation metric is centered accuracy (0 = random guess) (Li et al., 2024) . Best/2nd best in the last two groups are bolded/underlined. See Appendix D for detailed results.\n\nthat prioritizes high-quality pretraining documents. This makes the crawling more efficient and enables the discovery of documents dramatically different with connectivity-based crawlers.",
+      "word_count": 540
+    },
+    {
+      "index": 4,
+      "title": "Experimental Methodology",
+      "kind": "methods",
+      "text": "In this section, we introduce our experimental setup, with details on the crawler implementation and LLM training provided in Appendix A and B.",
+      "word_count": 23
+    },
+    {
+      "index": 5,
+      "title": "CRAW4LLM.",
+      "kind": "body",
+      "text": "To run experiments in our limited computational budget, we run a simulation of CRAW4LLM on the ClueWeb22 dataset (Overwijk et al., 2022) , a snapshot of the web with graph information from a commercial crawler. We use the English subset of ClueWeb22-A, which is a web graph containing 900M webpages with links. We randomly sampled 10K URLs as our seed URLs. We set the number of total crawled documents N to 20M and crawled documents each iteration n to 10K. In our experiments, we consider using the DCLM fastText classifier (Li et al., 2024) or the FineWeb-Edu classifier (Penedo et al., 2024) as the pretraining influence scorer M(•), whose details can be found in Appendix C.\n\nBaselines. We emulate traditional graphconnectivity-based crawlers by replacing the LLM-oriented URL scoring function (Eq. 1) with a function that returns the indegree for a given URL, since a node's indegree closely correlates with PageRank, a common graph connectivity metric, as shown in Figure 2 (b) and previous findings (Fortunato et al., 2008) . We also introduce a random crawling baseline, where the scorer assigns random scores. We run both of them in a crawl-then-select setting, first crawling 1× or 2× documents and then selecting the top 1× (20M) documents based on scores assigned by the DCLM fastText classifier or the FineWeb-Edu classifier. This process mimics existing data-filtering pipelines, which begin with crawled documents and then apply filtering (Li et al., 2024; Penedo et al., 2024) .\n\nOracle. We introduce an oracle selection run in which we directly apply the pretraining influence scorer to the ClueWeb22-A dataset and randomly sample 20M documents which are scored as the 10% for pretraining, serving as the upper bound.\n\nLLM Training and Evaluation. For all runs, we use the final set of 20M crawled or selected documents to pretrain a 411M Transformer on 4× Chinchilla-optimal tokens (Hoffmann et al., 2022) , totaling 32.9B tokens. The pretraining is conducted using the DCLM codebase (Li et al., 2024) . To evaluate the pretrained LLMs, we follow the DCLM evaluation recipe, assessing performance on 23 (22 unique) core tasks.",
+      "word_count": 347
+    },
+    {
+      "index": 6,
+      "title": "Evaluation Results",
+      "kind": "results",
+      "text": "In this section, we first present the overall performance of CRAW4LLM (Section 4.1), followed by further analysis (Section 4.2).\n\n2 0 2 1 2 2 2 3 Pool Size (×) 0.125 0.150 0.175 0.200 0.225 Core Centered Accuracy Craw4LLM Indegree Random (a) Extended crawling. Craw4LLM Crawled ( ) Craw4LLM Visited ( ) Indegree Crawled (estimated) Document Sets 0.0 0.2 0.4 0.6 0.8 1.0 # of Documents\n\n1e8 2.0e+07 4.6e+07 9.6e+07 (b) Visited documents.",
+      "word_count": 73
+    },
+    {
+      "index": 7,
+      "title": "Overall Performance",
+      "kind": "body",
+      "text": "In this experiment, we compare the performance of CRAW4LLM with baseline crawlers by evaluating LLMs trained on their respective crawled data. As shown in Table 1 , when all methods crawl the same amount of training data (1×), CRAW4LLM significantly outperforms random crawling and indegree crawling using either DCLM fastText or FineWeb-Edu classifier as the pretraining influence scorer. In the crawl-then-select setting, where traditional crawlers are allowed to collect twice as much data (2×) for later selection, they still underperform compared to CRAW4LLM. This suggests that incorporating pretraining-oriented signals early in the crawling process is more beneficial than relying on post-selection. With only 1× of the data, CRAW4LLM retains 95.3% and 95.6% of the performance achieved by the DCLM fastText and FineWeb-Edu oracle run, respectively, which directly selects from the entire ClueWeb22-A dataset, a substantially larger 45× data pool.",
+      "word_count": 139
+    },
+    {
+      "index": 8,
+      "title": "Analysis",
+      "kind": "results",
+      "text": "In this subsection, we further analyze the efficiency of CRAW4LLM compared to traditional crawlers and explore the reasons behind it. We utilize the DCLM fastText classifier in the experiments presented in this subsection.",
+      "word_count": 33
+    },
+    {
+      "index": 9,
+      "title": "Crawling Efficiency.",
+      "kind": "body",
+      "text": "We evaluate the efficiency of CRAW4LLM by comparing the number of documents it crawls or visits against baseline crawlers. As shown in Figure 3(a) , even when the baselines crawl 4× the required pretraining data for selection, they still underperform compared to CRAW4LLM. 0.00 0.02 0.04 Own Score 0.00 0.01 0.02 0.03 0.04 Avg. Outlink Score (a) 1-hop (0.61). 0.00 0.02 0.04 Own Score 0.00 0.01 0.02 0.03 0.04 Avg. 2-hop Outlink Score (b) 2-hop (0.60). Extrapolation suggests that the indegree-based crawler would need to crawl 4.8× documents (96M) to match CRAW4LLM's performance. Figure 3(b) further illustrates that CRAW4LLM achieves the same performance while crawling only 21% of the documents required by the indegree-based crawler, or 48% when considering all visited documents. These results highlight the efficiency of CRAW4LLM, demonstrating its potential to reduce website burdens and mitigate over-crawling.",
+      "word_count": 139
+    },
+    {
+      "index": 10,
+      "title": "Document Coverage.",
+      "kind": "body",
+      "text": "In this experiment, we plot the precision and recall of the oracle-selected documents among those crawled by CRAW4LLM and baseline crawlers throughout the crawling process.\n\nAs shown in Figure 4 , the precision quickly reaches 1.0, while the recall increases linearly, aligning with the theoretical upper bound. The saturated performance remains until 13 million documents have been crawled, after which the performance starts to decline, likely due to the lack of connectivity of the ClueWeb22 subgraph. In contrast, baseline crawlers exhibit minimal overlap with oracleselected data, verifying that most of their crawled content is misaligned with pretraining needs and should be filtered (Li et al., 2024; Penedo et al., 2024) . These results emphasize the importance of targeted crawling strategies for pretraining.\n\nScore Correlations Across Links. CRAW4LLM tracks the outlinks of the highest-scored documents in the current iteration to enrich the queue for future crawls. As shown in Figure 5 , we plot the correlations between the pretraining influence scores of current documents and their 1-and 2-hop outlinks.\n\nThe results indicate a correlation in influence scores across link hops, suggesting that highly-rated documents are interconnected and can be discovered through previously crawled documents.",
+      "word_count": 193
+    },
+    {
+      "index": 11,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "This paper presents CRAW4LLM, a step toward more efficient and responsible web crawling for LLM pretraining. By prioritizing documents based on the pretraining needs, our method improves crawling efficiency and reduces unnecessary crawling, easing the burden on web hosts. While fair use of web data remains a critical challenge, we hope that CRAW4LLM can help mitigate these concerns and promote more compliant and sustainable practices in obtaining pretraining data for LLMs.",
+      "word_count": 71
+    },
+    {
+      "index": 12,
+      "title": "Limitations",
+      "kind": "limitations",
+      "text": "Web crawling raises important concerns regarding copyright and the fair use of web data (Longpre et al., 2024) , necessitating a better solution from the entire LLM community, such as sharing benefits with website owners. In this paper, we propose a more efficient crawling method that mitigates these challenges by reducing crawling, though it does not fully resolve them. Our experiments are conducted on a web graph dataset ClueWeb22 (Overwijk et al., 2022) , thereby avoiding issues associated with actual web crawling. We hope that future advancements in web crawling will better align with ethical and legal standards. While our crawling simulation is a sufficient research setup, further validation is required to assess the effectiveness of CRAW4LLM in realworld crawling scenarios. Our CRAW4LLM and baseline crawlers implement only the selection policy (Cho et al., 1998) of a crawler, which determines which pages to crawl. Although we try to mimic real-world crawling procedures used in systems like Apache Nutch foot_0 , we do not implement other web crawling policies in industriallevel crawlers, such as the re-visit policy (Cho and Garcia-Molina, 2003a) , politeness policy (Cho and Garcia-Molina, 2003b) , and parallelization policy (Cho and Garcia-Molina, 2002) . We leave the integration of CRAW4LLM into real-world crawling engines like Nutch and a comprehensive comparison between CRAW4LLM and traditional crawling methods in real-world crawling scenarios for future work.\n\nHyper-parameter Value n layers 24 n heads 8 d model 1,024 d head 128 Warmup 2,000 Learning Rate 3e-3 Weight Decay 0.033 z-loss 1e-4 Global Batch Size 512 Sequence Length 2048\n\nTable 2: Model and training hyper-parameters. n layers , n layers , d model , and d head denote the number of layers, attention heads, width, and width per attention head, respectively.\n\nrecipe (Li et al., 2024) 3 . The hyper-parameters are presented in Tabel 2. To enhance training stability, we extend the original 411M-1x setting to 411M-4x, meaning the model is trained on 4 times the Chinchilla-optimal number of tokens (Hoffmann et al., 2022) , which amounts to 32.9B tokens. The training process takes 1 day and 12 hours on 8 NVIDIA L40S GPUs. For further details, please refer to the DCLM paper (Li et al., 2024) . Due to computational constraints, each pretraining experiment is conducted only once.\n\nWe use the DCLM evaluation recipe (Li et al., 2024) to evaluate model performance on 23 (22 unique) core tasks.",
+      "word_count": 396
+    },
+    {
+      "index": 13,
+      "title": "C Details on the Pretraining Influence Scorers",
+      "kind": "body",
+      "text": "DCLM fastText Classifier (Li et al., 2024) is a quality filter based on fastText (Joulin et al., 2017) , trained to distinguish between high-and lowquality pretraining data. A dataset size of 400K examples (200K positive, 200K negative) is used for training. Negative samples are random documents from an earlier version of the RefinedWeb reproduction from the DCLM team. Positive samples come from OpenHermes 2.5 (Teknium, 2023) and high-scoring posts from the r/ExplainLikeImFive (ELI5) subreddit. The final DCLM-baseline dataset is created by selecting only the top 10% of documents ranked by the classifier.\n\nFineWeb-Edu Classifier (Penedo et al., 2024) is a model designed to identify and filter ed-3 https://github.com/mlfoundations/dclm ucational content within FineWeb. Based on the Snowflake-arctic-embed-m foot_2 text embedding model, it is trained on 450,000 annotations generated by Llama-3-70B-Instruct, which assigned an educational quality score from 0 to 5 to every document. FineWeb-Edu is built by filtering out samples from FineWeb with scores lower than 3 with the trained classifier.",
+      "word_count": 160
+    },
+    {
+      "index": 14,
+      "title": "D Detailed Results",
+      "kind": "results",
+      "text": "The raw (uncentered) accuracy of all evaluation tasks is presented in Table 3 , 4, 5, 6, and 7. Please refer to Li et al. (2024) for more details on the evaluation tasks.",
+      "word_count": 33
+    },
+    {
+      "index": 15,
+      "title": "E The ClueWeb22 Dataset",
+      "kind": "body",
+      "text": "ClueWeb22 (Overwijk et al., 2022) is distributed under a \"TREC-style\" license for research purpose.\n\nThe dataset can be obtained by signing a data license agreement with Carnegie Mellon University foot_3 . We use ClueWeb22 only for research purpose.",
+      "word_count": 38
+    },
+    {
+      "index": 16,
+      "title": "F Use of AI Assistants",
+      "kind": "body",
+      "text": "We use GitHub Copilot foot_4 to assist with coding and ChatGPT foot_5 (powered by GPT-4o) to enhance the writing of this paper. Table 5: Results for reading comprehension tasks.",
+      "word_count": 29
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "A critical analysis of the largest source for generative AI training data: Common crawl",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Stefan Baack"
+      ],
+      "raw_text": "A critical analysis of the largest source for generative AI training data: Common crawl Stefan Baack FAccT ACM 2024"
+    },
+    {
+      "index": 2,
+      "title": "Axioms for centrality",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "Paolo Boldi",
+        "Sebastiano Vigna"
+      ],
+      "raw_text": "Axioms for centrality Paolo Boldi Sebastiano Vigna Internet Math 10 3-4 2014"
+    },
+    {
+      "index": 3,
+      "title": "Parallel crawlers",
+      "doi": "",
+      "year": "2002",
+      "authors": [
+        "Junghoo Cho",
+        "Hector Garcia-Molina"
+      ],
+      "raw_text": "Parallel crawlers Junghoo Cho Hector Garcia-Molina 2002. 2002"
+    },
+    {
+      "index": 4,
+      "title": "Effective page refresh policies for web crawlers",
+      "doi": "",
+      "year": "2003",
+      "authors": [
+        "Junghoo Cho",
+        "Hector Garcia-Molina"
+      ],
+      "raw_text": "Effective page refresh policies for web crawlers Junghoo Cho Hector Garcia-Molina ACM Trans. Database Syst 28 4 2003"
+    },
+    {
+      "index": 5,
+      "title": "Estimating frequency of change",
+      "doi": "",
+      "year": "2003",
+      "authors": [
+        "Junghoo Cho",
+        "Hector Garcia-Molina"
+      ],
+      "raw_text": "Estimating frequency of change Junghoo Cho Hector Garcia-Molina ACM Trans. Internet Techn 3 3 2003"
+    },
+    {
+      "index": 6,
+      "title": "Efficient crawling through URL ordering",
+      "doi": "",
+      "year": "1998",
+      "authors": [
+        "Junghoo Cho",
+        "Hector Garcia-Molina",
+        "Lawrence Page"
+      ],
+      "raw_text": "Efficient crawling through URL ordering Junghoo Cho Hector Garcia-Molina Lawrence Page Comput. Networks 30 1-7 1998"
+    },
+    {
+      "index": 7,
+      "title": "Common crawl",
+      "doi": "",
+      "year": "2007",
+      "authors": [
+        "Commoncrawl"
+      ],
+      "raw_text": "Common crawl Commoncrawl 2007"
+    },
+    {
+      "index": 8,
+      "title": "The llama 3 herd of models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Abhimanyu Dubey",
+        "Abhinav Jauhri",
+        "Abhinav Pandey",
+        "Abhishek Kadian",
+        "Ahmad Al-Dahle",
+        "Aiesha Letman",
+        "Akhil Mathur",
+        "Alan Schelten"
+      ],
+      "raw_text": "Abhimanyu Dubey Abhinav Jauhri Abhinav Pandey Abhishek Kadian Ahmad Al-Dahle Aiesha Letman Akhil Mathur Alan Schelten Amy Yang Angela Fan arXiv:2407.21783 The llama 3 herd of models 2024 arXiv preprint"
+    },
+    {
+      "index": 9,
+      "title": "Approximating pagerank from in-degree",
+      "doi": "",
+      "year": "2006",
+      "authors": [
+        "Santo Fortunato",
+        "Marián Boguñá",
+        "Alessandro Flammini",
+        "Filippo Menczer"
+      ],
+      "raw_text": "Approximating pagerank from in-degree Santo Fortunato Marián Boguñá Alessandro Flammini Filippo Menczer 2008. 2006"
+    },
+    {
+      "index": 10,
+      "title": "Training computeoptimal large language models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jordan Hoffmann",
+        "Sebastian Borgeaud",
+        "Arthur Mensch",
+        "Elena Buchatskaya",
+        "Trevor Cai",
+        "Eliza Rutherford",
+        "Diego De Las",
+        "Lisa Anne Casas"
+      ],
+      "raw_text": "Training computeoptimal large language models Jordan Hoffmann Sebastian Borgeaud Arthur Mensch Elena Buchatskaya Trevor Cai Eliza Rutherford Diego De Las Lisa Anne Casas Johannes Hendricks Aidan Welbl Clark NeurIPS 2022. 2022"
+    },
+    {
+      "index": 11,
+      "title": "Bag of tricks for efficient text classification",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Armand Joulin",
+        "Edouard Grave",
+        "Piotr Bojanowski",
+        "Tomas Mikolov"
+      ],
+      "raw_text": "Bag of tricks for efficient text classification Armand Joulin Edouard Grave Piotr Bojanowski Tomas Mikolov 2017. 2017"
+    },
+    {
+      "index": 12,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Jeffrey Li",
+        "Alex Fang",
+        "Georgios Smyrnis",
+        "Maor Ivgi",
+        "Matt Jordan",
+        "Samir Yitzhak Gadre",
+        "Hritik Bansal",
+        "Etash Guha"
+      ],
+      "raw_text": "Jeffrey Li Alex Fang Georgios Smyrnis Maor Ivgi Matt Jordan Samir Yitzhak Gadre Hritik Bansal Etash Guha Sedrick Scott Keh Kushal Arora Saurabh Garg Rui Xin Niklas Muennighoff Reinhard Heckel Jean Mercat Mayee F Chen Suchin Gururangan Mitchell Wortsman Alon Albalak Yonatan Bitton Marianna Nezhurina Amro Abbas Cheng-Yu Hsieh Dhruba Ghosh Josh Gardner Maciej Kilian Hanlin Zhang Rulin Shao Sarah M Pratt Sunny Sanyal Gabriel Ilharco Giannis Daras Kalyani Marathe Aaron Gokaslan Jieyu Zhang Khyathi Raghavi Chandu Thao Nguyen Igor Vasiljevic M Sham Shuran Kakade Sujay Song Fartash Sanghavi Sewoong Faghri Luke Oh Kyle Zettlemoyer Alaaeldin Lo Hadi El-Nouby Alexander Pouransari Stephanie Toshev Dirk Wang Luca Groeneveld Pang Soldaini Jenia Wei Koh Thomas Jitsev Kollar Alex Dimakis, Yair Carmon, Achal Dave, Ludwig Schmidt and Vaishaal Shankar. 2024. Datacomp-lm: In search of the next generation of training sets for language models. In NeurIPS 2024"
+    },
+    {
+      "index": 13,
+      "title": "",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shayne Longpre",
+        "Robert Mahari",
+        "Ariel Lee",
+        "Campbell Lund",
+        "Hamidah Oderinwale",
+        "William Brannon",
+        "Nayan Saxena",
+        "Naana Obeng-Marnu"
+      ],
+      "raw_text": "Shayne Longpre Robert Mahari Ariel Lee Campbell Lund Hamidah Oderinwale William Brannon Nayan Saxena Naana Obeng-Marnu Tobin South Cole Hunter Kevin Klyman Christopher Klamm Hailey Schoelkopf Nikhil Singh Manuel Cherep Ahmad Anis An Dinh Caroline Shamiso Chitongo Da Yin Damien Sileo Deividas Mataciunas Diganta Misra Emad A Alghamdi Enrico Shippole Jianguo Zhang Joanna Materzynska Kushagra Kun Qian Lester Tiwary V James Manan Miranda Minnie Dey Mohammed Liang Niklas Hamdy Seonghyeon Muennighoff Seungone Ye Shrestha Kim Vipul Mohanty Vivek Gupta Minh Chien Sharma Xuhui Vu Yizhi Zhou Caiming Li Luis Xiong Stella Villa Hanlin Biderman Daphne Li Sara Ippolito Jad Hooker Alex Kabbara Pentland 2024 Consent in crisis: The rapid decline of the AI data commons. In NeurIPS 2024"
+    },
+    {
+      "index": 14,
+      "title": "Complaint, the new york times company v. microsoft corporation, openai, inc., openai lp, openai gp, llc, openai llc, openai opco llc, openai global llc, oai corporation, llc, and openai holdings",
+      "doi": "",
+      "year": "2023",
+      "authors": [],
+      "raw_text": "Complaint, the new york times company v. microsoft corporation, openai, inc., openai lp, openai gp, llc, openai llc, openai opco llc, openai global llc, oai corporation, llc, and openai holdings New York Times 1 2023 United States District Court, Southern District of New York"
+    },
+    {
+      "index": 15,
+      "title": "Clueweb22: 10 billion web documents with visual and semantic information",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Arnold Overwijk",
+        "Chenyan Xiong",
+        "Xiao Liu",
+        "Cameron Vandenberg",
+        "Jamie Callan"
+      ],
+      "raw_text": "Arnold Overwijk Chenyan Xiong Xiao Liu Cameron Vandenberg Jamie Callan arXiv:2211.15848 Clueweb22: 10 billion web documents with visual and semantic information 2022 arXiv preprint"
+    },
+    {
+      "index": 16,
+      "title": "The pagerank citation ranking: Bringing order to the web",
+      "doi": "",
+      "year": "1999",
+      "authors": [
+        "Lawrence Page",
+        "Sergey Brin",
+        "Rajeev Motwani",
+        "Terry Winograd"
+      ],
+      "raw_text": "The pagerank citation ranking: Bringing order to the web Lawrence Page Sergey Brin Rajeev Motwani Terry Winograd 1999 Technical report Stanford infolab"
+    },
+    {
+      "index": 17,
+      "title": "Leandro von Werra, and Thomas Wolf. 2024. The fineweb datasets: Decanting the web for the finest text data at scale",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Guilherme Penedo",
+        "Hynek Kydlícek",
+        "Loubna Ben Allal",
+        "Anton Lozhkov",
+        "Margaret Mitchell",
+        "Colin A Raffel"
+      ],
+      "raw_text": "Leandro von Werra, and Thomas Wolf. 2024. The fineweb datasets: Decanting the web for the finest text data at scale Guilherme Penedo Hynek Kydlícek Loubna Ben Allal Anton Lozhkov Margaret Mitchell Colin A Raffel NeurIPS 2024"
+    },
+    {
+      "index": 18,
+      "title": "Txt",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Liping Tang",
+        "Nikhil Ranjan",
+        "Omkar Pangarkar",
+        "Xuezhi Liang",
+        "Zhen Wang",
+        "Li An",
+        "Bhaskar Rao",
+        "Linghao Jin"
+      ],
+      "raw_text": "Liping Tang Nikhil Ranjan Omkar Pangarkar Xuezhi Liang Zhen Wang Li An Bhaskar Rao Linghao Jin Huijuan Wang Zhoujun Cheng Suqi Sun Cun Mu Victor Miller Xuezhe Ma Yue Peng Zhengzhong Liu Eric P Xing Txt 360 2024 A top-quality llm pre-training dataset requires the perfect blend"
+    },
+    {
+      "index": 19,
+      "title": "Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Teknium"
+      ],
+      "raw_text": "Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants Teknium 2023"
+    },
+    {
+      "index": 20,
+      "title": "Redpajama: an open dataset for training large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Maurice Weber",
+        "Daniel Y Fu",
+        "Quentin Anthony",
+        "Yonatan Oren",
+        "Shane Adams",
+        "Anton Alexandrov",
+        "Xiaozhong Lyu",
+        "Huu Nguyen"
+      ],
+      "raw_text": "Redpajama: an open dataset for training large language models Maurice Weber Daniel Y Fu Quentin Anthony Yonatan Oren Shane Adams Anton Alexandrov Xiaozhong Lyu Huu Nguyen Xiaozhe Yao Virginia Adams Ben Athiwaratkun Rahul Chalamala Kezhen Chen Max Ryabinin Tri Dao Percy Liang Christopher Ré Irina Rish Ce Zhang NeurIPS 2024. 2024"
+    }
+  ],
+  "section_count": 16,
+  "reference_count": 20,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:50.987590+00:00"
+}

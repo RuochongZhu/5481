@@ -1,4 +1,4 @@
-"""Phase 1: Seed Corpus Assembly — 3-layer search (OpenAlex + S2 citations + arXiv) + import + dedup."""
+"""Phase 1: Seed Corpus Assembly — retrieval + enrichment + dedup."""
 
 from __future__ import annotations
 
@@ -6,7 +6,8 @@ import os
 import logging
 import math
 import re
-from .api_client import ArxivClient, CrossrefClient, OpenAlexClient, S2Client
+from pathlib import Path
+from .api_client import ArxivClient, CrossrefClient, LensClient, OpenAlexClient, S2Client
 from .importers import import_file
 from .dedup import deduplicate
 from .paper_identity import (
@@ -35,10 +36,14 @@ CATEGORY_KEYWORDS = {
     },
     "B": {
         "anchors": [
-            "commoncrawl", "web data", "web pollution", "contamination",
-            "ai generated content", "synthetic text", "bot content",
+            "common crawl", "commoncrawl", "web pollution", "web contamination",
+            "ai generated content", "ai-generated content", "synthetic text",
+            "llm-generated", "bot content", "ai pollutes the web", "retrieval collapses",
         ],
-        "secondary": ["web-scraped", "bot traffic", "internet text", "crawl"],
+        "secondary": [
+            "web-scraped", "bot traffic", "internet text", "crawl", "prevalence",
+            "fraction", "share", "measurement", "retrieval", "search", "online content",
+        ],
     },
     "C": {
         "anchors": ["watermark", "detection", "detector", "ai text detection"],
@@ -63,15 +68,28 @@ CATEGORY_KEYWORDS = {
         "secondary": ["alignment", "human-in-the-loop", "labeling", "reward model"],
     },
     "G": {
-        "anchors": ["provenance", "data lineage", "community platform", "append-only", "platform design"],
-        "secondary": ["verification", "anti-algorithmic", "community", "traceability"],
+        "anchors": [
+            "provenance", "data lineage", "community platform", "platform design",
+            "traceability", "data governance", "citizen science", "data passport",
+        ],
+        "secondary": [
+            "verification", "community", "offline data", "data collection",
+            "citizen science", "participant", "contributor", "data donation",
+            "audit", "transparency", "quality linkage",
+        ],
     },
     "H": {
         "anchors": [
-            "temporal", "longitudinal", "over time", "corpus linguistics",
-            "web quality", "commoncrawl quality",
+            "temporal", "longitudinal", "over time", "web quality",
+            "common crawl quality", "commoncrawl quality", "quality drift",
+            "ai-generated content", "web contamination", "privacy policies over time",
+            "quality change", "online activity", "internet archive",
         ],
-        "secondary": ["trend", "evolution", "quality degradation", "time series"],
+        "secondary": [
+            "trend", "growth", "prevalence", "quality degradation", "time series",
+            "readability", "web document", "policy", "wikipedia", "serp",
+            "archive", "content evolution",
+        ],
     },
     "I": {
         "anchors": [
@@ -83,16 +101,29 @@ CATEGORY_KEYWORDS = {
     "J": {
         "anchors": [
             "lora", "qlora", "fine-tune", "fine-tuning", "data composition",
-            "ablation", "data mixture",
+            "ablation", "data mixture", "instruction tuning",
         ],
-        "secondary": ["instruction tuning", "mixture effect", "quality versus quantity"],
+        "secondary": ["mixture effect", "quality versus quantity", "social reasoning", "socialiqa", "empathy"],
     },
 }
 
 CATEGORY_GROUP_RULES = {
+    "B": [
+        ["ai generated", "ai-generated", "synthetic text", "llm-generated", "bot"],
+        ["web", "common crawl", "commoncrawl", "crawl", "internet", "online"],
+        ["contamination", "pollution", "prevalence", "fraction", "growth", "share", "measurement"],
+        ["content", "text", "answers", "traffic", "retrieval", "search", "corpus", "page"],
+    ],
+    "G": [
+        ["provenance", "traceability", "verification", "data lineage", "passport", "governance"],
+        ["community", "contributor", "participant", "citizen science", "data donation", "crowdsourcing", "human data"],
+        ["data collection", "audit", "transparency", "quality", "linkage", "validation", "curation"],
+    ],
     "H": [
         ["temporal", "longitudinal", "over time", "historical", "evolution"],
-        ["web", "text", "corpus", "commoncrawl", "quality", "readability"],
+        ["web", "common crawl", "commoncrawl", "internet", "privacy policy", "online activity", "internet archive", "wikipedia", "serp", "website"],
+        ["quality", "degradation", "drift", "contamination", "prevalence", "growth", "readability", "change", "diversity", "dominance"],
+        ["text", "content", "document", "corpus", "policy", "page", "archive", "search"],
     ],
     "I": [
         ["social reasoning", "socialiqa", "theory of mind", "social commonsense", "empathetic"],
@@ -100,12 +131,14 @@ CATEGORY_GROUP_RULES = {
     "J": [
         ["lora", "qlora", "fine-tune", "fine-tuning", "instruction tuning", "adapter"],
         ["data composition", "data mixture", "quality", "quantity", "ablation", "training data", "synthetic data"],
+        ["social reasoning", "socialiqa", "social commonsense", "empathy", "dialogue", "social intelligence"],
     ],
 }
 
 
 def run_phase1(state: dict, state_path: str, base_dir: str,
-               oa: OpenAlexClient, s2: S2Client, arxiv: ArxivClient) -> dict:
+               oa: OpenAlexClient, s2: S2Client, arxiv: ArxivClient,
+               lens: LensClient | None = None) -> dict:
     """Orchestrate all Phase 1 steps. Returns updated state."""
     config_dir = os.path.join(base_dir, "config")
     raw_dir = os.path.join(base_dir, "data", "raw")
@@ -134,6 +167,22 @@ def run_phase1(state: dict, state_path: str, base_dir: str,
         oa_results = load_json(oa_path) if os.path.exists(oa_path) else []
         log.info(f"OpenAlex search already done, loaded {len(oa_results)} papers")
     all_papers.extend(oa_results)
+
+    # Step 1.5: Lens targeted supplementation for underfilled categories
+    if not is_step_complete(state, 1, "lens_search"):
+        log.info("=== Phase 1.1.5: Lens targeted supplementation ===")
+        lens_cfg_path = os.path.join(config_dir, "lens_queries.json")
+        lens_cfg = load_json(lens_cfg_path) if os.path.exists(lens_cfg_path) else {"queries": []}
+        lens_results = _run_lens_search(lens, lens_cfg, raw_dir)
+        state = complete_step(state, state_path, 1, "lens_search", {
+            "papers_found": len(lens_results),
+            "queries_completed": len(lens_cfg.get("queries", [])),
+        })
+    else:
+        lens_path = os.path.join(raw_dir, "lens_results.json")
+        lens_results = load_json(lens_path) if os.path.exists(lens_path) else []
+        log.info(f"Lens search already done, loaded {len(lens_results)} papers")
+    all_papers.extend(lens_results)
 
     # Step 2: Layer 2 — S2 citation chain expansion
     if not is_step_complete(state, 1, "s2_citation_expansion"):
@@ -177,30 +226,16 @@ def run_phase1(state: dict, state_path: str, base_dir: str,
         log.info("Manual import already done")
     all_papers.extend(imported)
 
-    # Step 5: Download PDFs for papers needing full-text extraction
-    if not is_step_complete(state, 1, "pdf_download"):
-        log.info("=== Phase 1.5: PDF download (for MinerU) ===")
-        corpus_path = os.path.join(proc_dir, "corpus_unified.json")
-        if os.path.exists(corpus_path):
-            corpus = load_json(corpus_path)
-        else:
-            corpus = all_papers
-        downloaded, skipped = _download_pdfs(corpus, os.path.join(base_dir, "data", "pdfs"))
-        state = complete_step(state, state_path, 1, "pdf_download", {
-            "downloaded": downloaded, "skipped": skipped,
-        })
-    else:
-        log.info("PDF download already done")
-
-    # Step 6: Deduplicate and merge
+    # Step 5: Deduplicate and merge
     if not is_step_complete(state, 1, "dedup_and_merge"):
         log.info("=== Phase 1.5: Dedup & merge ===")
         total_before = len(all_papers)
         corpus = deduplicate(all_papers)
+        corpus = _apply_manual_exclusions(corpus, config_dir)
         output_path = os.path.join(proc_dir, "corpus_unified.json")
         atomic_write_json(output_path, corpus)
         log.info(f"Unified corpus: {len(corpus)} papers saved")
-        core = _select_core_corpus(corpus)
+        core = _select_core_corpus(corpus, config_dir)
         core = _enrich_core_with_crossref(core, crossref)
         core = _resolve_core_source_ids(core, s2)
         atomic_write_json(os.path.join(proc_dir, "corpus_200.json"), core)
@@ -214,6 +249,27 @@ def run_phase1(state: dict, state_path: str, base_dir: str,
         })
     else:
         log.info("Dedup already done")
+        corpus_path = os.path.join(proc_dir, "corpus_unified.json")
+        core_path = os.path.join(proc_dir, "corpus_200.json")
+        corpus = load_json(corpus_path) if os.path.exists(corpus_path) else []
+        core = load_json(core_path) if os.path.exists(core_path) else []
+
+    # Step 6: Download PDFs for the focused core corpus
+    if not is_step_complete(state, 1, "pdf_download"):
+        log.info("=== Phase 1.6: PDF download (core full-text cache) ===")
+        attempted, downloaded, skipped = _download_pdfs(
+            core,
+            os.path.join(base_dir, "data", "pdfs"),
+            manual_overrides_path=os.path.join(config_dir, "manual_pdf_urls.json"),
+        )
+        atomic_write_json(os.path.join(proc_dir, "corpus_200.json"), core)
+        state = complete_step(state, state_path, 1, "pdf_download", {
+            "attempted": attempted,
+            "downloaded": downloaded,
+            "skipped": skipped,
+        })
+    else:
+        log.info("PDF download already done")
 
     return state
 
@@ -249,6 +305,43 @@ def _run_openalex_search(oa: OpenAlexClient, queries_cfg: dict, raw_dir: str) ->
     return papers
 
 
+def _run_lens_search(lens: LensClient | None, queries_cfg: dict, raw_dir: str) -> list[dict]:
+    """Run targeted Lens queries as a precision supplement for missing categories."""
+    if lens is None or not lens.enabled:
+        log.info("Lens API not configured — skipping targeted supplementation")
+        atomic_write_json(os.path.join(raw_dir, "lens_results.json"), [])
+        return []
+
+    papers = []
+    queries = queries_cfg.get("queries", [])
+    for i, q in enumerate(queries):
+        query_text = q["query"]
+        category = q.get("category", "X")
+        max_results = int(q.get("max_results", 50))
+        log.info(f"  [{i+1}/{len(queries)}] Lens: '{query_text[:70]}'")
+        try:
+            results = lens.search(query_text, size=max_results)
+            kept = 0
+            for raw in results:
+                if not raw.get("title"):
+                    continue
+                paper = LensClient.to_unified(raw)
+                paper["query_category"] = category
+                paper["matched_query"] = query_text
+                paper["retrieval_layer"] = "lens"
+                if not _passes_targeted_category_filter(paper, category):
+                    continue
+                papers.append(paper)
+                kept += 1
+            log.info(f"    → raw={len(results)} kept={kept}")
+        except Exception as e:
+            log.error(f"    → Failed: {e}")
+
+    atomic_write_json(os.path.join(raw_dir, "lens_results.json"), papers)
+    log.info(f"Total from Lens: {len(papers)} papers")
+    return papers
+
+
 # ---------------------------------------------------------------------------
 # Layer 2: S2 citation expansion
 # ---------------------------------------------------------------------------
@@ -264,6 +357,7 @@ def _run_s2_citation_expansion(s2: S2Client, seeds_cfg: dict, raw_dir: str) -> l
         if paper:
             paper["_seed_index"] = idx
             paper["_seed_title"] = seed["title"]
+            paper["_seed_category"] = seed.get("category")
             resolved_seeds.append(paper)
             log.info(f"    → Found: {paper.get('paperId', '?')[:20]}")
         else:
@@ -300,7 +394,7 @@ def _run_s2_citation_expansion(s2: S2Client, seeds_cfg: dict, raw_dir: str) -> l
         paper = S2Client.to_unified(s)
         paper["retrieval_layer"] = "s2_seed"
         paper["matched_query"] = s.get("_seed_title", "")
-        paper["query_category"] = "D" if "entropy" in s.get("_seed_title", "").lower() else "A"
+        paper["query_category"] = s.get("_seed_category") or ("D" if "entropy" in s.get("_seed_title", "").lower() else "A")
         seed_papers.append(paper)
     papers.extend(seed_papers)
 
@@ -382,6 +476,48 @@ def _run_manual_imports(raw_dir: str) -> tuple[list[dict], list[str]]:
     return imported, files_imported
 
 
+def _apply_manual_exclusions(corpus: list[dict], config_dir: str) -> list[dict]:
+    """Drop manually curated out-of-scope papers after retrieval/dedup."""
+    cfg_path = os.path.join(config_dir, "manual_exclusions.json")
+    if not os.path.exists(cfg_path):
+        return corpus
+
+    cfg = load_json(cfg_path)
+    excluded_ids = {
+        item.get("paperId", "").strip()
+        for item in cfg.get("papers", [])
+        if item.get("paperId")
+    }
+    title_patterns = [
+        (item.get("pattern", "").strip().lower(), item.get("reason", ""))
+        for item in cfg.get("title_contains", [])
+        if item.get("pattern")
+    ]
+
+    filtered = []
+    removed = []
+    for paper in corpus:
+        pid = (paper.get("paperId") or "").strip()
+        title = (paper.get("title") or "").strip()
+        title_l = title.lower()
+
+        if pid and pid in excluded_ids:
+            removed.append((pid, title, "paperId"))
+            continue
+
+        matched_pattern = next((pattern for pattern, _ in title_patterns if pattern in title_l), None)
+        if matched_pattern:
+            removed.append((pid, title, f"title_contains:{matched_pattern}"))
+            continue
+
+        filtered.append(paper)
+
+    if removed:
+        preview = ", ".join(f"{pid or '<no-id>'} ({why})" for pid, _, why in removed[:8])
+        log.info(f"Manual exclusions removed {len(removed)} papers: {preview}")
+    return filtered
+
+
 # ---------------------------------------------------------------------------
 # Quality check
 # ---------------------------------------------------------------------------
@@ -419,6 +555,15 @@ def _normalize_text(paper: dict) -> str:
     return " ".join(parts).lower()
 
 
+def _passes_targeted_category_filter(paper: dict, category: str, min_score: float = 5.0) -> bool:
+    if category not in CORE_TARGETS:
+        return True
+    text = _normalize_text(paper)
+    year = int(paper.get("year", 0) or 0)
+    cites = int(paper.get("citationCount", 0) or 0)
+    return _score_paper_for_category(text, year, cites, category) >= min_score
+
+
 def _score_paper_for_category(text: str, year: int, citations: int, category: str) -> float:
     group_rules = CATEGORY_GROUP_RULES.get(category, [])
     if group_rules and not all(any(term in text for term in group) for group in group_rules):
@@ -435,7 +580,25 @@ def _score_paper_for_category(text: str, year: int, citations: int, category: st
     return anchor_hits * 5.0 + secondary_hits * 1.5 + recent_bonus + citation_bonus
 
 
-def _select_core_corpus(corpus: list[dict]) -> list[dict]:
+def _load_manual_core_inclusions(config_dir: str) -> dict[str, dict]:
+    cfg_path = os.path.join(config_dir, "manual_core_inclusions.json")
+    if not os.path.exists(cfg_path):
+        return {}
+
+    cfg = load_json(cfg_path)
+    inclusions = {}
+    for item in cfg.get("papers", []):
+        pid = (item.get("paperId") or "").strip()
+        category = (item.get("category") or "").strip()
+        if pid and category in CORE_TARGETS:
+            inclusions[pid] = {
+                "category": category,
+                "reason": item.get("reason", "").strip(),
+            }
+    return inclusions
+
+
+def _select_core_corpus(corpus: list[dict], config_dir: str) -> list[dict]:
     """Build a focused top corpus for Phase 2 instead of classifying the full 4k+ papers.
 
     Strategy:
@@ -443,24 +606,35 @@ def _select_core_corpus(corpus: list[dict]) -> list[dict]:
     - Select the top papers per category according to CORE_TARGETS
     - Deduplicate across categories, then fill remaining slots from global scores
     """
+    forced_inclusions = _load_manual_core_inclusions(config_dir)
     scored = []
     for paper in corpus:
         text = _normalize_text(paper)
         year = int(paper.get("year", 0) or 0)
         cites = int(paper.get("citationCount", 0) or 0)
+        pid = paper.get("paperId")
+        forced = forced_inclusions.get(pid)
         scores = {cat: _score_paper_for_category(text, year, cites, cat) for cat in CORE_TARGETS}
         query_category = paper.get("query_category")
         if query_category in scores and scores[query_category] > 0:
             scores[query_category] += 8.0
         best_cat = max(scores, key=scores.get)
         best_score = scores[best_cat]
-        if best_score <= 0:
+        if best_score <= 0 and not forced:
             continue
 
         item = dict(paper)
-        item["query_category"] = best_cat
-        item["selection_score"] = round(best_score, 3)
-        item["selection_scores"] = {k: round(v, 3) for k, v in scores.items() if v > 0}
+        if forced:
+            forced_cat = forced["category"]
+            item["query_category"] = forced_cat
+            item["selection_score"] = 9999.0
+            item["selection_scores"] = {forced_cat: 9999.0}
+            item["manual_core_include"] = True
+            item["manual_core_reason"] = forced.get("reason", "")
+        else:
+            item["query_category"] = best_cat
+            item["selection_score"] = round(best_score, 3)
+            item["selection_scores"] = {k: round(v, 3) for k, v in scores.items() if v > 0}
         scored.append(item)
 
     ranked_by_cat = {
@@ -478,8 +652,25 @@ def _select_core_corpus(corpus: list[dict]) -> list[dict]:
 
     selected = []
     seen = set()
+
+    manual_items = sorted(
+        [p for p in scored if p.get("manual_core_include")],
+        key=lambda p: (
+            p.get("query_category", "X"),
+            p.get("citationCount", 0),
+            p.get("year", 0),
+        ),
+        reverse=True,
+    )
+    for paper in manual_items:
+        pid = paper.get("paperId")
+        if not pid or pid in seen:
+            continue
+        selected.append(dict(paper))
+        seen.add(pid)
+
     for cat, target in CORE_TARGETS.items():
-        count = 0
+        count = sum(1 for p in selected if p.get("query_category") == cat)
         for paper in ranked_by_cat[cat]:
             pid = paper.get("paperId")
             if not pid or pid in seen:
@@ -515,10 +706,22 @@ def _select_core_corpus(corpus: list[dict]) -> list[dict]:
     selected.sort(
         key=lambda p: (
             p.get("query_category", "X"),
+            -int(bool(p.get("manual_core_include"))),
             -(p.get("selection_scores", {}).get(p.get("query_category", "X"), p.get("selection_score", 0))),
             -(p.get("citationCount", 0)),
         )
     )
+    if manual_items:
+        log.info(
+            "Manual core inclusions applied: %s",
+            [
+                {
+                    "paperId": p.get("paperId"),
+                    "category": p.get("query_category"),
+                }
+                for p in manual_items
+            ],
+        )
     log.info(
         "Core corpus category counts: %s",
         {cat: sum(1 for p in selected if p.get("query_category") == cat) for cat in CORE_TARGETS}
@@ -545,16 +748,20 @@ def _resolve_core_source_ids(core: list[dict], s2: S2Client | None) -> list[dict
             enriched_core.append(item)
             continue
 
-        checked += 1
-        s2_result = None
         doi = ids.get("doi")
         arxiv = ids.get("arxiv")
 
+        # DOI-backed records already have a stable cross-provider identity.
+        # Keep Phase 1 fast by only spending S2 lookups on DOI-less arXiv papers.
+        if doi or not arxiv:
+            enriched_core.append(item)
+            continue
+
+        checked += 1
+        s2_result = None
+
         try:
-            if doi:
-                s2_result = s2.get_paper(f"DOI:{doi}", fields="paperId,externalIds")
-            if not s2_result and arxiv:
-                s2_result = s2.get_paper(f"ARXIV:{arxiv}", fields="paperId,externalIds")
+            s2_result = s2.get_paper(f"ARXIV:{arxiv}", fields="paperId,externalIds")
         except Exception as e:
             log.debug(f"  Core ID resolve failed for {item.get('title', '')[:60]}: {e}")
 
@@ -573,7 +780,7 @@ def _resolve_core_source_ids(core: list[dict], s2: S2Client | None) -> list[dict
         enriched_core.append(item)
 
     if checked:
-        log.info(f"Resolved S2 identities for {resolved}/{checked} core papers missing S2 IDs")
+        log.info(f"Resolved S2 identities for {resolved}/{checked} DOI-less core papers missing S2 IDs")
     return enriched_core
 
 
@@ -657,27 +864,110 @@ def _enrich_core_with_crossref(core: list[dict], crossref: CrossrefClient | None
 # PDF download (for MinerU in Phase 2.5)
 # ---------------------------------------------------------------------------
 
-def _download_pdfs(corpus: list[dict], pdf_dir: str) -> tuple[int, int]:
-    """Download open-access PDFs for papers with short/missing abstracts.
+def _load_manual_pdf_overrides(manual_overrides_path: str | None) -> dict[str, list[str]]:
+    if not manual_overrides_path or not os.path.exists(manual_overrides_path):
+        return {}
+    raw = load_json(manual_overrides_path)
+    overrides: dict[str, list[str]] = {}
+    if not isinstance(raw, dict):
+        return overrides
+    for key, value in raw.items():
+        urls = value if isinstance(value, list) else [value]
+        cleaned = [str(url).strip() for url in urls if str(url).strip()]
+        if cleaned:
+            overrides[str(key).strip()] = cleaned
+    return overrides
 
-    Only downloads papers where:
-    1. Abstract is missing or < 200 chars (needs full text)
-    2. openAccessPdf URL is available
+
+def _extract_arxiv_id(paper: dict) -> str:
+    source_ids = paper.get("source_ids") or {}
+    external_ids = paper.get("externalIds") or {}
+    for candidate in (
+        source_ids.get("arxiv"),
+        external_ids.get("ArXiv"),
+    ):
+        if candidate:
+            return str(candidate).strip()
+    doi = str(paper.get("doi") or "").strip()
+    match = re.search(r"arxiv\.([0-9]{4}\.[0-9]{4,5}(?:v\d+)?)", doi, flags=re.I)
+    return match.group(1) if match else ""
+
+
+def _iter_pdf_candidate_urls(paper: dict, manual_overrides: dict[str, list[str]]) -> list[tuple[str, str]]:
+    candidates: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    def add(label: str, url) -> None:
+        if isinstance(url, dict):
+            url = url.get("url", "")
+        url = str(url or "").strip()
+        if not url or url in seen:
+            return
+        seen.add(url)
+        candidates.append((label, url))
+
+    pid = str(paper.get("paperId") or "").strip()
+    doi = normalize_doi(paper.get("doi")) or ""
+    override_keys = [pid]
+    if doi:
+        override_keys.extend([doi, f"doi:{doi}"])
+    for key in override_keys:
+        for url in manual_overrides.get(key, []):
+            add("manual_override", url)
+
+    add("open_access", paper.get("openAccessPdf"))
+
+    arxiv_id = _extract_arxiv_id(paper)
+    if arxiv_id:
+        add("arxiv", f"https://arxiv.org/pdf/{arxiv_id}.pdf")
+
+    if doi.startswith("10.18653/v1/"):
+        anthology_id = doi.split("10.18653/v1/", 1)[1]
+        add("acl", f"https://aclanthology.org/{anthology_id}.pdf")
+    if doi.startswith("10.1038/"):
+        article_id = doi.split("/", 1)[1]
+        add("nature", f"https://www.nature.com/articles/{article_id}.pdf")
+    if doi.startswith("10.1007/"):
+        add("springer", f"https://link.springer.com/content/pdf/{doi}.pdf")
+
+    return candidates
+
+
+def _download_pdfs(corpus: list[dict], pdf_dir: str,
+                   manual_overrides_path: str | None = None) -> tuple[int, int, int]:
+    """Download open-access PDFs for the focused core corpus.
+
+    Strategy:
+    - Try every core paper with an open-access PDF URL, regardless of abstract length.
+    - Keep PDFs on disk as a local cache for deterministic GROBID parsing.
     """
     import requests as req
 
     os.makedirs(pdf_dir, exist_ok=True)
+    attempted = 0
     downloaded = 0
     skipped = 0
 
+    manual_overrides = _load_manual_pdf_overrides(manual_overrides_path)
     candidates = [
         p for p in corpus
-        if len(p.get("abstract") or "") < 200
-        and p.get("openAccessPdf")
+        if _iter_pdf_candidate_urls(p, manual_overrides)
     ]
-    log.info(f"  {len(candidates)} papers need PDF download (short/missing abstract)")
+    max_papers = int(os.getenv("PDF_DOWNLOAD_MAX_PAPERS", "0") or "0")
+    candidates.sort(
+        key=lambda paper: (
+            int(bool(paper.get("manual_core_include"))),
+            paper.get("citationCount", 0),
+            paper.get("year", 0),
+        ),
+        reverse=True,
+    )
+    if max_papers > 0:
+        candidates = candidates[:max_papers]
+    log.info(f"  {len(candidates)} core papers eligible for PDF download")
 
     for p in candidates:
+        attempted += 1
         pid = p["paperId"]
         safe_name = pid.replace("/", "_").replace(":", "_")
         pdf_path = os.path.join(pdf_dir, f"{safe_name}.pdf")
@@ -685,25 +975,46 @@ def _download_pdfs(corpus: list[dict], pdf_dir: str) -> tuple[int, int]:
             skipped += 1
             continue
 
-        url = p["openAccessPdf"]
-        if isinstance(url, dict):
-            url = url.get("url", "")
-        if not url:
+        pdf_candidates = _iter_pdf_candidate_urls(p, manual_overrides)
+        if not pdf_candidates:
             skipped += 1
             continue
 
-        try:
-            resp = req.get(url, timeout=30, stream=True)
-            if resp.status_code == 200 and "pdf" in resp.headers.get("content-type", "").lower():
+        success = False
+        for label, url in pdf_candidates:
+            try:
+                resp = req.get(
+                    url,
+                    timeout=30,
+                    stream=True,
+                    allow_redirects=True,
+                    headers={"User-Agent": os.getenv("PDF_DOWNLOAD_USER_AGENT", "research-agent/1.0")},
+                )
+                first_chunk = next(resp.iter_content(8192), b"")
+                content_type = (resp.headers.get("content-type", "") or "").lower()
+                is_pdf = resp.status_code == 200 and (
+                    "pdf" in content_type or first_chunk.startswith(b"%PDF")
+                )
+                if not is_pdf:
+                    resp.close()
+                    continue
                 with open(pdf_path, "wb") as f:
+                    if first_chunk:
+                        f.write(first_chunk)
                     for chunk in resp.iter_content(8192):
                         f.write(chunk)
+                resp.close()
+                if not p.get("openAccessPdf"):
+                    p["openAccessPdf"] = url
+                p["resolved_pdf_url"] = url
+                p["pdf_download_source"] = label
                 downloaded += 1
-            else:
-                skipped += 1
-        except Exception as e:
-            log.debug(f"  PDF download failed for {pid}: {e}")
+                success = True
+                break
+            except Exception as e:
+                log.debug(f"  PDF download failed for {pid} via {label}: {e}")
+        if not success:
             skipped += 1
 
-    log.info(f"  PDFs: {downloaded} downloaded, {skipped} skipped")
-    return downloaded, skipped
+    log.info(f"  PDFs: attempted={attempted}, downloaded={downloaded}, skipped={skipped}")
+    return attempted, downloaded, skipped

@@ -1,0 +1,1650 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Entropy-Aware On-Policy Distillation of Language Models</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-03-07">7 Mar 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Woogyeol</forename><surname>Jin</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Taywon</forename><surname>Min</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Yongjin</forename><surname>Yang</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Swanand</forename><forename type="middle">Ravindra</forename><surname>Kadhe</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Yi</forename><surname>Zhou</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Dennis</forename><surname>Wei</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Nathalie</forename><surname>Baracaldo</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Kimin</forename><surname>Lee</surname></persName>
+						</author>
+						<title level="a" type="main">Entropy-Aware On-Policy Distillation of Language Models</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-03-07">7 Mar 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">DC315C9C0E12AD2537B328DFCAC1E743</idno>
+					<idno type="arXiv">arXiv:2603.07079v1[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:12+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>On-policy distillation is a promising approach for transferring knowledge between language models, where a student learns from dense token-level signals along its own trajectories. This framework typically uses reverse KL divergence, encouraging the student to match the teacher's highconfidence predictions. However, we show that the mode-seeking property of reverse KL reduces generation diversity and yields unstable learning signals when the teacher distribution has high entropy. To address this, we introduce Entropy-Aware On-Policy Distillation. Our key idea is augmenting the standard reverse KL objective with forward KL when teacher entropy is high, capturing the full range of plausible outputs while retaining precise imitation elsewhere. It balances mode-seeking precision with mode-covering robustness without sacrificing on-policy training efficiency. Experiments show that our method maintains generation diversity (sustained tokenlevel entropy) and improves student-teacher alignment (lower forward KL on high-entropy tokens). Across six math reasoning benchmarks, this yields Pass@8 accuracy gains of +1.37 for Qwen3-0.6B-Base, +2.39 for Qwen3-1.7B-Base, and +5.05 for Qwen3-4B-Base compared to baseline on-policy distillation methods. These results demonstrate that accounting for teacher uncertainty is essential for maintaining diversity and achieving effective knowledge transfer.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>Knowledge distillation <ref type="bibr" target="#b15">(Hinton et al., 2015)</ref> is a promising approach for transferring the capabilities of large language models (LLMs) to smaller, more efficient models with lower 1 KAIST AI, Seoul, South Korea 2 University of Toronto, Ontario, Canada 3 Vector Institute, Ontario, Canada 4 IBM Research, San Jose, CA, USA. Correspondence to: Kimin Lee &lt;kiminlee@kaist.ac.kr&gt;.</p><p>Preprint. March 10, 2026.</p><p>inference cost and improved deployability. Traditional distillation relies on off-policy teacher data, training students with supervised loss or forward KL divergence <ref type="bibr" target="#b17">(Kim &amp; Rush, 2016)</ref>. However, this introduces a distribution mismatch between training sequences and those generated by the student at inference time.</p><p>On-policy distillation addresses this by having the student generate samples that are corrected by the teacher, typically via reverse KL divergence <ref type="bibr" target="#b9">(Gu et al., 2023;</ref><ref type="bibr" target="#b1">Agarwal et al., 2024;</ref><ref type="bibr">Lu &amp; Lab, 2025)</ref>. As noted by <ref type="bibr">Lu &amp; Lab (2025)</ref>, this objective can be seamlessly integrated into standard reinforcement learning (RL) pipelines. Furthermore, the approach is highly efficient: recent work <ref type="bibr">(Lu &amp; Lab, 2025;</ref><ref type="bibr" target="#b46">Yang et al., 2025)</ref> demonstrates that on-policy distillation can match RL-trained models on math reasoning benchmarks at 10× lower compute cost than GRPO <ref type="bibr" target="#b33">(Shao et al., 2024)</ref>.</p><p>However, reverse KL is a mode-seeking objective: while it effectively captures the teacher's dominant modes, we find that it reduces student diversity and yields unstable learning signals at positions where the teacher distribution has high entropy. This limits the student's ability to preserve the teacher's distributional structure when probability mass is spread across multiple tokens. It is particularly problematic in reasoning tasks, where high-entropy tokens often represent key decision points with multiple valid paths <ref type="bibr" target="#b39">(Wang et al., 2025;</ref><ref type="bibr" target="#b5">Cheng et al., 2025)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Contribution.</head><p>To address this limitation, we propose Entropy-Aware On-Policy Distillation (EOPD), a distillation framework that balances efficiency and diversity. Our key insight is that reverse KL and forward KL are complementary: reverse KL enables efficient learning on confident predictions, while forward KL's mode-covering property transfers uncertainty and global structure. Our specific contributions are as follows:</p><p>• Analysis of Diversity Degradation and Training Instability. We conduct a systematic analysis of token-level entropy ( §3.1), revealing that standard on-policy distillation causes diversity collapse, retaining only 6.8% of high-entropy tokens compared to 18.5% in the teacher. Furthermore, through a controlled toy experiment ( §3.2), we demonstrate that the reverse KL objective provides unstable gradient signals when the teacher is uncertain, preventing proper convergence.</p><p>• Entropy-Aware On-Policy Distillation (EOPD). We introduce an entropy-aware strategy that dynamically adapts the training objective. By selectively applying reverse KL in low-entropy regions for efficiency and forward KL in high-entropy regions to preserve diversity, EOPD effectively transfers the teacher's uncertainty without the computational overhead of naive forward KL.</p><p>• Improvements on Reasoning Benchmarks. Empirically, EOPD maintains substantially higher generation diversity, preserving the teacher's uncertainty by retaining more probability mass in high-entropy regions than standard on-policy distillation. This improvement translates into consistent downstream gains: averaged over six mathematical reasoning benchmarks, EOPD improves Avg@8 accuracy by +1.16 and Pass@8 by +1.37 for Qwen3-0.6B-Base, with larger gains of +0.99/+2.39 for the 1.7B model and +1.80/+5.05 for the 4B model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Preliminaries</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.">KL-Based Divergences</head><p>Let P and Q be probability distributions defined over the same sample space X . The Kullback-Leibler (KL) divergence is a non-symmetric measure of difference between two distributions, quantifying how well Q approximates the reference distribution P .</p><formula xml:id="formula_0">KL(P ∥ Q) = E x∼P log P (x) Q(x) .<label>(1)</label></formula><p>Due to its asymmetry, KL(P ∥ Q) and KL(Q ∥ P ) induce different optimization behaviors, depending on which distribution is used as the reference.</p><p>For auto-regressive sequence models like Large Language Models (LLMs), the probability distribution of a token x is conditioned on a context c, where c is the sequence generated before x. In distillation, we have two models, a student model denoted by π θ (• | c), and a teacher model π te (• | c).</p><p>We now define forward and reverse KL divergences in terms of these models.</p><p>(2) Minimizing ( <ref type="formula">2</ref>) is equivalent to standard supervised learning (maximizing likelihood on teacher samples). It penalizes the student for assigning low probability to any token the teacher considers likely. This induces mode-covering behavior, where the student attempts to match the entire support of the teacher, potentially leading to overly diffuse distributions if the student has limited capacity <ref type="bibr" target="#b26">(Minka, 2005)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Reverse KL (Student-to-Teacher).</head><p>The reverse KL divergence is defined as an expectation over the student's distribution:</p><formula xml:id="formula_1">KL(π θ (• | c) ∥ π te (• | c)) = E x∼π θ (•|c) log π θ (x | c) π te (x | c) .</formula><p>(3) Since the expectation is taken over student samples, (3) penalizes generated tokens that the teacher considers unlikely, but ignores teacher modes that the student does not visit. It induces mode-seeking behavior, encouraging the student to concentrate probability mass on a single high-likelihood mode of the teacher while ignoring others <ref type="bibr" target="#b26">(Minka, 2005)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.">On-Policy Distillation</head><p>On-policy distillation (OPD) <ref type="bibr" target="#b1">(Agarwal et al., 2024)</ref> is a post-training method in which a student model learns by matching a teacher's token-level probability distribution on its own generated sequences. By training on on-policy rollouts rather than teacher-generated trajectories, OPD enables precise credit assignment and mitigates compounding errors inherent in off-policy imitation.</p><p>Recent OPD methods optimize the reverse KL divergence <ref type="bibr" target="#b9">(Gu et al., 2023;</ref><ref type="bibr">Lu &amp; Lab, 2025)</ref>, encouraging modeseeking behavior that helps the student focus on the teacher's dominant modes. Specifically, given inputs q ∼ D, we denote x = (x 1 , x 2 , . . . , x |x| ) as the student-generated token sequence. With c t = (q, x &lt;t ) as the context for token t, we have x t ∼ π θ (• | c t ). The on-policy reverse-KL objective is then defined as:</p><formula xml:id="formula_2">E q∼D   E x∼π θ (•|q)   1 |x| |x| t=1 L RKL t (θ; c t )     ,<label>(4)</label></formula><p>where L RKL t (θ; c t ) is the per-token reverse KL from (3):</p><formula xml:id="formula_3">L RKL t (θ; c t ) = KL(π θ (• | c t ) ∥ π te (• | c t )).<label>(5)</label></formula><p>In practice, Lu &amp; Lab (2025) use a single-sample Monte-Carlo estimate of the expectation in (3) and plug it into a policy-gradient-style update. This is done by defining the token-level reward as the log-probability difference between the teacher and student:</p><formula xml:id="formula_4">A t = log π te (x t | c t ) -log π θ (x t | c t ).<label>(6)</label></formula><p>This reward measures how preferred the student-selected token is under the teacher distribution in the same context, assigning positive values when the teacher assigns a higher probability to the token than the student, and negative values otherwise. The student then essentially optimizes the objec-</p><formula xml:id="formula_5">tive max θ E π θ [ t A t ].</formula><p>The result is an effective on-policy distillation method based on policy gradient optimization.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3.">OPD with Clipped-Reverse KL</head><p>To stabilize training, the OPD objective can be implemented with standard PPO-style importance sampling and clipping <ref type="bibr" target="#b32">(Schulman et al., 2017)</ref>. We sample trajectories using a behavior policy π θold instantiated from the student policy π θ , query the teacher for log-probabilities of the sampled student tokens, and define a per-token advantage Ât = log π te (x t | c t ) -log π θold (x t | c t ), substituting the behavior policy in (6). We then update π θ by minimizing the clipped PPO surrogate over generated tokens. To simplify notation, we omit the expectations over q and x in (4) and focus on single tokens. The surrogate objective is then</p><formula xml:id="formula_6">L OPD t (θ; c t ) = E xt∼π θ old (•|ct) A t ,<label>(7)</label></formula><p>where A t is the clipped reverse KL loss:</p><formula xml:id="formula_7">A t = max -r t Ât , -clip(r t , 1 -ϵ, 1 + ϵ) Ât . (8)</formula><p>Here, r t = π θ (xt|ct) π θ old (xt|ct) corrects for sampling under π θold , while clipping limits overly large policy updates.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Diversity Degradation and Instability in On-Policy Distillation</head><p>In §3.1, we first analyze token-level entropy distributions to identify diversity degradation after on-policy distillation due to reverse KL. We then show that reverse KL produces unstable learning signals when teacher entropy is high, with the student's top-k predictions failing to converge in §3.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">Token-Level Entropy Analysis</head><p>In domains that require complex reasoning, such as mathematical and multi-step reasoning tasks, high-entropy tokens<ref type="foot" target="#foot_0">foot_0</ref> in the teacher model are not merely noise but encode important knowledge in the form of multiple plausible reasoning paths and meaningful uncertainty <ref type="bibr" target="#b39">(Wang et al., 2025;</ref><ref type="bibr" target="#b5">Cheng et al., 2025)</ref>. However, on-policy distillation may fail to properly capture this knowledge. As discussed in §2.2, it typically minimizes the reverse KL divergence, a modeseeking objective that favors fast convergence at the cost of reduced exploration, thereby hindering the transfer of the teacher's uncertainty to the student.</p><p>To examine this effect, we generate responses from the 0 200 400 600 800 1000 Training Steps 0.00 0.05 0.10 0.15 0.20 0.25 Top-10 Change Rate Low Entropy High Entropy Figure 1. Top-10 change rate for Scenario A (blue), where the teacher distribution has low entropy, and Scenario B (red), where the teacher distribution has high entropy across 3 seeds. For Scenario B, a student optimized with reverse KL fails to capture the teacher's distribution, as evidenced by persistently high and fluctuating Top-10 change rates.</p><p>teacher model (Qwen3-8B <ref type="bibr" target="#b46">(Yang et al., 2025)</ref>) and an onpolicy-distilled student (Qwen3-1.7B-Base) and evaluate on AIME24 and AIME25 prompts <ref type="bibr" target="#b25">(MAA, 2025)</ref>, and analyze their token entropy distributions (see §5.1 for more details on the experimental setup). We find that the distilled student retains fewer high-entropy tokens (entropy ≥ 1.0) than the teacher, specifically only 6.8% compared to 18.5% of the teacher (see Figure <ref type="figure" target="#fig_1">3</ref> in §5.4 for full histogram). This suggests that reverse KL drives aggressive mode-seeking behavior rather than preserving the teacher's inherent uncertainty. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2.">Instability of Reverse KL-based Reward</head><p>To gain insight, we first conduct a simplified toy experiment to analyze how reverse KL-based reward optimization behaves under different levels of teacher uncertainty.</p><p>Toy setup. We study how a student learns from a teacher via reverse KL policy gradients, in a setting that retains the essential characteristics of having a teacher distribution with multiple modes and a student with limited coverage. To simplify matters, we remove the autoregressive conditioning on context c t . This reduces the distributions to categorical distributions over V indices (here V = 80) and no longer requires complex LLMs.</p><p>The teacher distribution P te is constructed as follows. We sample logits z ∈ R V i.i.d. from N (0, 1), then overwrite five randomly chosen entries with larger values {1.7, 1.9, 2.1, 2.3, 2.5} to create five modes. We then apply temperature scaling:</p><formula xml:id="formula_8">P te (x) = softmax(z/T ) x .</formula><p>We consider two scenarios: (A) T = 0.3, yielding a lowentropy (peaked) teacher, and (B) T = 1.0, yielding a highentropy (diverse) teacher. The teacher is fixed throughout training (see Appendix B for a detailed summary and visualization of the distribution).</p><p>The student distribution P S is parameterized by learnable logits s ∈ R V initialized i.i.d. from N (0, 1). To mimic limited model capacity, we restrict sampling to the student's top-10 indices. We denote this capacity-limited (top-10) student distribution as P S 10 .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Optimization.</head><p>At each step, we sample an index x ∼ P S 10 and compute the reward</p><formula xml:id="formula_9">r(x) = log P te (x) -log P S 10 (x),</formula><p>corresponding to a sample-based estimate of the negative reverse KL. We then update the sampled logit via s x ← s x + ηr(x) where η denotes the learning rate.</p><p>Metrics. We track two metrics during training: (1) the top-10 change rate, defined as the Jaccard distance <ref type="bibr" target="#b16">(Jaccard, 1901)</ref> 1 -|St∩St-1| |St∪St-1| between the sets of top-10 tokens S t-1 , S t at steps t -1 and t; and (2) the top-1 change count, the number of times the student's most probable index changes between updates.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Results.</head><p>As shown in Figure <ref type="figure">1</ref> and Table <ref type="table" target="#tab_0">1</ref>, under the low-entropy teacher (Scenario A), the top-10 change rate decreases steadily and top-1 changes are rare. In contrast, under the high-entropy teacher (Scenario B), training exhibits persistent instability: the top-1 index changes frequently and the top-10 set fails to converge. These results demonstrate that reverse-KL rewards provide unstable learning signals when the teacher distribution is uncertain. This motivates training objectives that more directly transmit the teacher's distributional structure to the student.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Entropy-Aware On-Policy Distillation</head><p>To address the limitations of reverse KL in on-policy distillation, we propose Entropy-Aware On-Policy Distillation (EOPD). Our key insight is that reverse KL and forward KL offer complementary strengths: reverse KL enables efficient, stable learning on confident teacher predictions, while forward KL's mode-covering property transfers the teacher's uncertainty and global structure. However, naively applying forward KL forces the student to cover the teacher's full distribution, including low-probability tails. This can degrade training efficiency, especially for students with limited capacity <ref type="bibr" target="#b9">(Gu et al., 2023;</ref><ref type="bibr" target="#b4">Cha &amp; Cho, 2025)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 1 Entropy-Aware On-Policy Distillation</head><p>Require: Teacher policy π te , student policy π θ Require: Entropy threshold τ , Top-k size k Require: PPO clip ϵ, learning rate η Require: Training dataset D 1: for each training iteration do</p><formula xml:id="formula_10">2: Set π θold ← π θ 3: Sample a prompt batch B = {q i } B i=1 ⊂ D 4: Rollout buffer R ← ∅ 5: for each prompt q ∈ B do 6: Sample x = (x 1 , . . . , x |x| ) ∼ π θold (• | q) 7: for t = 1 to | x | do 8: Context c t = (q, x &lt;t ) 9: Query teacher Q t : (log π te (x t | c t ), H te t , S k t )</formula><p>10:</p><p>Store trajectory-level data:</p><formula xml:id="formula_11">q, x, {Q t } |x| t=1 → R 11: for each mini-batch gradient step do 12: Sample a mini-batch of prompts B mini ⊂ R 13: L(θ) = 1 (q,x)∈Bmini |x| (q,x)∈Bmini |x| t=1 L EOPD t (θ; c t )</formula><p>using ( <ref type="formula" target="#formula_13">9</ref>)</p><formula xml:id="formula_12">14: Update parameters: θ ← θ -η∇ θ L(θ)</formula><p>To leverage the best of both objectives, we propose an entropy-aware strategy that selectively applies forward KL based on the teacher's token-level uncertainty. Specifically, we define our token-level objective as:</p><formula xml:id="formula_13">L EOPD t (θ; c t ) = L OPD t (θ; c t ) + I H te t &gt; τ L FKL t (θ; c t ),<label>(9)</label></formula><p>where H te t = -x∈V π te (x|c t ) log π te (x|c t ) denotes the teacher's token-level entropy at position t, V denotes the vocabulary, and the forward KL divergence is</p><formula xml:id="formula_14">L FKL t (θ; c t ) = KL(π te (• | c t ) ∥ π θ (• | c t )).</formula><p>The first term L OPD t (θ; c t ) in ( <ref type="formula" target="#formula_13">9</ref>) corresponds to the clipped reverse KL loss defined in (8). The second term L FKL t (θ; c t ) is activated only when H te t &gt; τ , encouraging the student to preserve probability mass over multiple plausible continuations. In low-entropy regions where the teacher is confident, the objective reduces to standard reverse KL, retaining its efficiency and fast convergence. In high-entropy regions, forward KL prevents mode collapse and preserves the teacher's distributional diversity. The hyperparameter τ controls this transition; we study its effect in §5.6.</p><p>The full objective function for EOPD is like (4), where we bring back the expectations over prompts q and generated tokens x, but with L RKL t (θ; c t ) replaced by L EOPD t (θ; c t ) in (9). We use Algorithm 1 to optimize this objective. The expectations over q and x are approximated by sampling batches B (line 3 in Algorithm 1) and generating rollouts using the behavior policy π old (line 6). The teacher is then queried to collect quantities needed to compute the objective (line 9). For the L OPD t (θ; c t ) term in (9), the expectation in (7) is approximated by a single-sample Monte Carlo estimate as discussed previously. In effect, the clipped reverse KL loss ( <ref type="formula">8</ref>) is evaluated at the token x t sampled during the rollouts. The forward KL L FKL t (θ; c t ) is approximated not by sampling, but as an expectation computed over the teacher's top-k tokens S k t :</p><formula xml:id="formula_15">L FKL t (θ; c t ) ≈ x∈S k t πte (x | c t ) log πte (x | c t ) π θ (x | c t ) ,<label>(10)</label></formula><p>where πte (• | c t ) denotes the teacher distribution renormalized over the top-k tokens S k t , defined as</p><formula xml:id="formula_16">πte (x | c t ) = π te (x | c t ) x ′ ∈S k t π te (x ′ | c t ) , x ∈ S k t .</formula><p>We restrict to the teacher's top-k tokens to ensure that the student does not have to learn from the low-probability tails of the teacher, along with improving computational efficiency <ref type="bibr" target="#b36">(Shum et al., 2024;</ref><ref type="bibr" target="#b28">Peng et al., 2025)</ref>. In Appendix F, we analyze the tradeoff between cumulative probability mass and memory cost across different k, and show that k = 16 offers a practical balance between the two.</p><p>By adapting to the teacher's local uncertainty, EOPD balances training stability with diversity preservation, enabling effective knowledge transfer across both confident and ambiguous regions of the output distribution.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Experiments</head><p>We address the following research questions:</p><p>RQ1: Does EOPD improve mathematical reasoning performance compared to existing baselines? ( §5.2) RQ2: Does EOPD improve out-of-domain performance compared to existing baselines? ( §5.3) RQ3: How does EOPD affect the transfer of token-level uncertainty from the teacher to the student? ( §5.4) RQ4: How does EOPD differ from other entropypromoting methods in transferring teacher uncertainty? ( §5.5)</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1.">Experimental Settings</head><p>Models and Training Datasets. We conduct experiments using three Qwen3 <ref type="bibr" target="#b46">(Yang et al., 2025)</ref> student models of different sizes, Qwen3-0.6B-Base, Qwen3-1.7B-Base, and Qwen3-4B-Base. We use Qwen3-8B as the teacher model, without enabling thinking mode. For the 0.6B and 1.7B student model, training was performed using the MATH <ref type="bibr" target="#b14">(Hendrycks et al., 2021)</ref> dataset, while for the 4B student model, the more challenging DAPO <ref type="bibr" target="#b48">(Yu et al., 2025)</ref> dataset is used.</p><p>Evaluation Benchmarks and Metrics. We evaluate our models on MATH500 <ref type="bibr" target="#b14">(Hendrycks et al., 2021)</ref>, AIME24/25 (MAA, 2025), AMC23 (MAA, 2023), Minerva <ref type="bibr" target="#b19">(Lewkowycz et al., 2022)</ref>, and OlympiadBench <ref type="bibr" target="#b12">(He et al., 2024)</ref>, using a rollout temperature of 1.0, top-p sampling with p = 0.8, and a maximum response length of 8192 tokens. We sample 8 responses per question and report the average accuracy (Avg@8) and pass rate (Pass@8).</p><p>Baselines. We compare our method with several baselines:</p><p>1. Knowledge Distillation <ref type="bibr" target="#b15">(Hinton et al., 2015;</ref><ref type="bibr" target="#b17">Kim &amp; Rush, 2016)</ref>: KD trains the student model by minimizing forward KL divergence with respect to the teacher's distribution, along with a cross-entropy loss on hard labels from an off-policy dataset generated by the teacher.</p><p>2. On-Policy Distillation <ref type="bibr">(Lu &amp; Lab, 2025)</ref>: The student is trained using on-policy trajectories, following the formulation described in §2.3.</p><p>3. Group Relative Policy Optimization (GRPO) <ref type="bibr" target="#b33">(Shao et al., 2024)</ref>: GRPO optimizes the policy by comparing verifiable rewards across multiple sampled outputs for the same input.</p><p>Implementation. For off-policy distillation (KD), we utilize the DistillKit <ref type="bibr" target="#b7">(Goddard &amp; Atkins, 2024)</ref> framework. On-policy distillation and GRPO are implemented using the verl <ref type="bibr" target="#b34">(Sheng et al., 2024)</ref> framework. We train with a batch size of B = 128 and a mini-batch size of B mini = 32, resulting in 4 gradient steps per training iteration. Full implementation details are provided in Appendix A.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2.">Main Results</head><p>Performance on Mathematical Reasoning. As shown in Table <ref type="table" target="#tab_1">2</ref>, EOPD demonstrates stable performance improvements across six mathematical reasoning benchmarks, achieving improved or competitive results in terms of Avg@8 and Pass@8. In particular, compared to OPD, EOPD improves Avg@8 by +1.16 and Pass@8 by +1.37 on average across the six benchmarks for the Qwen3-0.6B-Base model, Avg@8 by +0.99 and Pass@8 by +2.39 for the Qwen3-1.7B-Base model, and +1.80 in Avg@8 and +5.05 in Pass@8 for the Qwen3-4B-Base model. These improvements highlight the effectiveness of EOPD, particularly its ability to better transfer the teacher's local uncertainty.</p><p>Pass@k Performance. Pass@k measures the probability of obtaining at least one correct solution among k sampled rollouts. While Avg@k reflects average reasoning quality, Pass@k more directly captures the model's problem-  solving capability by approximating best-case performance under multiple samples. In Figure <ref type="figure" target="#fig_0">2</ref>, we report Pass@k for AIME24 and AIME25 with k ranging from 8 to 128, and for AMC23 with k ranging from 4 to 64. EOPD achieves consistently higher Pass@k compared to OPD. Notably, on harder benchmarks such as AIME, the gap between the two methods widens as k increases. This suggests that EOPD more effectively explores diverse reasoning trajectories, thereby increasing the likelihood of reaching a correct solution. See Appendix D for more results on Pass@k performance.</p><p>Table <ref type="table">3</ref>. Out-of-domain benchmark results on Qwen3-1.7B-Base, covering general reasoning and instruction following. Our method achieves higher average accuracy and pass@8 on general reasoning, and is competitive or superior in win rate (WR) and lengthcontrolled win rate (LC-WR). Best and second-best results are shown in bold and underline, respectively.</p><p>Benchmark Metric KD GRPO OPD EOPD GPQA-Diamond Avg@8 27.01 27.86 30.08 31.50 Pass@8 75.20 77.83 77.78 81.31 MMLU-Pro Pass@1 37.54 41.46 42.26 43.20 AlpacaEval 2.0 LC-WR 19.30 16.86 22.86 23.83 WR 23.63 20.55 29.92 29.54</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3.">Out-of-domain Evaluation</head><p>Table <ref type="table">3</ref> reports performance on out-of-domain benchmarks for the Qwen3-1.7B-Base student: GPQA-Diamond <ref type="bibr" target="#b30">(Rein et al., 2024)</ref>, MMLU-Pro <ref type="bibr" target="#b41">(Wang et al., 2024)</ref>, and AlpacaEval 2.0 <ref type="bibr" target="#b6">(Dubois et al., 2024)</ref>, which evaluate general reasoning and instruction-following abilities. Although trained exclusively on math data, OPD and EOPD exhibit stable performance increases over KD and GRPO across these benchmarks, indicating that on-policy distillation transfers useful reasoning behaviors beyond the training distribution.</p><p>Furthermore, EOPD outperforms OPD on all out-of-domain benchmarks except for AlpacaEval 2.0 win rate. This suggests that selectively incorporating teacher guidance on high-uncertainty tokens also provides additional benefits for general reasoning and instruction-following as well.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4.">Token-Level Entropy Analysis</head><p>To support the hypothesis that EOPD more effectively explores diverse reasoning trajectories, we conduct a tokenlevel analysis of uncertainty transfer from the Qwen3-8B teacher to the Qwen3-1.7B-Base student. Following §3.1, we compare students trained with OPD and EOPD on the AIME24 and AIME25 benchmarks.</p><p>For each generated token, we compute the entropy of the model's predicted distribution conditioned on the preceding context. 0 25 50 75 100 125 150 175 Step 0.0 0.5 1.0 1.5 2.0 2.5 Entropy EOPD OPD + Advantage Shaping OPD + Entropy Bonus values (entropy ≥ 1.0): EOPD retains substantially more probability mass in this region and stays much closer to the teacher, whereas OPD markedly under-represents it.</p><p>High-entropy tokens correspond to intrinsically ambiguous decision points where the teacher assigns non-negligible probability to multiple plausible continuations. Therefore, preserving a teacher-like distribution at these positions is likely important. We hypothesize that EOPD's improved preservation of high-entropy tokens mitigates premature over-confidence and mode collapse, contributing to the downstream performance gains observed in §5.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.5.">Comparison with Entropy-Driven Baselines</head><p>We compare our method with entropy-based approaches commonly used to encourage exploration in reinforcement learning. Specifically, we evaluate the Qwen3-1.7B-Base student using two strategies: an entropy bonus <ref type="bibr" target="#b32">(Schulman et al., 2017)</ref>, which explicitly regularizes the policy toward</p><p>0 25 50 75 100 125 150 175 Step 0.0 0.5 1.0 1.5 Forward KL Divergence EOPD OPD + Advantage Shaping OPD + Entropy Bonus  higher entropy, and advantage shaping <ref type="bibr" target="#b5">(Cheng et al., 2025)</ref>, which augments the advantage with an entropy-dependent term to bias updates toward high-uncertainty actions. Detailed implementation details are provided in Appendix A.</p><p>As shown in Table <ref type="table" target="#tab_2">4</ref>, EOPD outperforms both baselines across several benchmarks. To explain these gains, we analyze entropy dynamics (Figure <ref type="figure" target="#fig_2">4</ref>) and forward KL at high-entropy positions (Figure <ref type="figure" target="#fig_3">5</ref>). OPD + Advantage Shaping exhibits substantially lower training entropy than other methods, indicating limited diversity and explaining its poor performance. However, EOPD and OPD + Entropy Bonus maintain similar entropy levels, so entropy alone does not explain EOPD's advantage. Looking at the forward KL at positions where the teacher's entropy exceeds τ = 0.8, EOPD achieves consistently lower values than OPD + Entropy Bonus, indicating better alignment with the teacher in uncertain regions. Overall, these results show that preserving entropy alone is insufficient for the student to match the teacher's diversity, especially in high-entropy regions. Impact of Entropy Threshold τ . The entropy threshold τ is a hyperparameter that controls when the forward KL objective is activated based on the teacher model's tokenlevel uncertainty. A lower τ activates forward KL at more tokens, thereby increasing its overall influence during training, while a higher τ restricts forward KL to only a small subset of tokens where the teacher exhibits the highest uncertainty. As shown in Table <ref type="table" target="#tab_3">5</ref>, EOPD demonstrates stable performance across a wide range of τ values, indicating that the method is not highly sensitive to this hyperparameter. Also, we observe an overall trend where Pass@8 performance decreases as τ increases. This suggests that restricting the application of forward KL can inhibit the transfer of the teacher's uncertainty and diverse reasoning trajectories. Overall, the best performance is obtained at τ = 0.8, and we use this value for all other experiments in this paper.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.6.">Additional Ablations</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Impact of Forward KL Placement.</head><p>To study the impact of token selection for application of forward KL, we compare EOPD against two alternative forward KL augmentation strategies for the Qwen3-1.7B-Base student: full forward KL, applied at all token positions 2 , and random forward 2 This can be viewed as a variant of GKD <ref type="bibr" target="#b1">(Agarwal et al., 2024</ref>) that jointly optimizes the forward and reverse KL divergences. KL, applied to a randomly selected 20% of positions<ref type="foot" target="#foot_1">foot_1</ref> . As shown in Table <ref type="table" target="#tab_4">6</ref>, EOPD shows competitive performance compared to full and random forward KL. Notably, random forward KL underperforms the other two approaches across all benchmarks, suggesting that the placement of forward KL on appropriate positions, like EOPD is important.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">Related Work</head><p>Knowledge Distillation <ref type="bibr" target="#b3">(Buciluǎ et al., 2006;</ref><ref type="bibr" target="#b15">Hinton et al., 2015)</ref> trains a smaller model to approximate a larger model's output distribution. For auto-regressive models, various approaches have been proposed, including matching tokenlevel distributions <ref type="bibr" target="#b31">(Sanh et al., 2019)</ref>, teacher-generated sequences <ref type="bibr" target="#b17">(Kim &amp; Rush, 2016)</ref>, attention scores <ref type="bibr" target="#b40">(Wang et al., 2020)</ref>, and alternative divergence objectives <ref type="bibr" target="#b43">(Wen et al., 2023;</ref><ref type="bibr" target="#b18">Ko et al., 2024;</ref><ref type="bibr" target="#b35">Shing et al., 2025)</ref> to overcome limitations of forward and reverse KL. To address exposure bias from the mismatch between teacher-generated training data and self-generated sequences at inference <ref type="bibr" target="#b2">(Bengio et al., 2015;</ref><ref type="bibr" target="#b29">Ranzato et al., 2015)</ref>, several on-policy methods have been proposed, including combining off-policy and on-policy data <ref type="bibr" target="#b21">(Lin et al., 2020;</ref><ref type="bibr" target="#b1">Agarwal et al., 2024)</ref>, reverse KL over student-generated contexts <ref type="bibr" target="#b9">(Gu et al., 2023;</ref><ref type="bibr">Lu &amp; Lab, 2025)</ref>, and interleaved sampling <ref type="bibr" target="#b44">(Xu et al., 2024)</ref>. In this paper, we build upon on-policy distillation <ref type="bibr">(Lu &amp; Lab, 2025)</ref> by leveraging dense teacher supervision and effectively transferring the teacher's uncertainty based on its entropy.</p><p>Reasoning Abilities of Language Models have advanced through prompting <ref type="bibr" target="#b42">(Wei et al., 2022;</ref><ref type="bibr" target="#b47">Yao et al., 2023)</ref>, testtime scaling <ref type="bibr" target="#b27">(Muennighoff et al., 2025;</ref><ref type="bibr" target="#b37">Snell et al., 2024)</ref>, and distillation from larger models <ref type="bibr" target="#b10">(Guha et al., 2025;</ref><ref type="bibr" target="#b13">He et al., 2025;</ref><ref type="bibr" target="#b11">Guo et al., 2025)</ref>. Recently, RL methods have received particular attention, including methods that optimize verifiable rewards <ref type="bibr" target="#b33">(Shao et al., 2024;</ref><ref type="bibr" target="#b48">Yu et al., 2025;</ref><ref type="bibr" target="#b22">Liu et al., 2025)</ref> or apply step-level supervision using process reward models <ref type="bibr" target="#b38">(Uesato et al., 2022;</ref><ref type="bibr" target="#b20">Lightman et al., 2023)</ref>. In addition, <ref type="bibr" target="#b5">Cheng et al. (2025)</ref>; <ref type="bibr" target="#b39">Wang et al. (2025)</ref> have proposed entropy-based methods to encourage exploration during training. Instead of relying on intrinsic entropy for exploration, our method uses teacher-guided KL selection to transfer uncertainty and distributional structure.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7.">Conclusion</head><p>We study on-policy distillation for language models and identify a key limitation of the reverse-KL objective: its mode-seeking nature can collapse generation diversity and destabilize learning at token positions where the teacher distribution has high entropy. To address this, we introduce EOPD, which adapts the on-policy distillation objective and selectively applies forward-KL for high-entropy teacher tokens. Empirically, EOPD better preserves the teacher-like distribution while retaining on-policy training efficiency, yielding consistent gains over standard on-policy distillation on six mathematical reasoning benchmarks. Overall, our results demonstrate that explicitly modeling teacher uncertainty is essential for stable, diverse, and effective knowledge transfer.</p><p>Impact Statement This work improves on-policy knowledge distillation for transferring reasoning capabilities from large language models to smaller, more efficient models. We identify that reverse KL-based distillation, while effective for learning dominant modes, fails to preserve distributional structure and diversity in high-uncertainty regions that are critical for reasoning. To address this, we propose an entropy-aware framework that adaptively applies KL objectives based on the teacher's token-level uncertainty. The proposed method preserves the efficiency of on-policy distillation while more faithfully transferring the teacher's uncertainty and global structure. More broadly, this work contributes to the development of efficient and deployable language models, which may reduce computational and environmental costs associated with large-scale model deployment. As with prior advances in language modeling, the societal impact of this work depends on downstream applications, and we do not identify any new ethical concerns beyond those commonly associated with large language models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A. Implementation Details</head><p>Off-policy Training. We perform off-policy distillation using DistillKit <ref type="bibr" target="#b7">(Goddard &amp; Atkins, 2024)</ref>. The hyperparameters for all off-policy distillation experiments are summarized in Table <ref type="table" target="#tab_5">7</ref>. In this setting, we first sample a response from the teacher model for each question, and then train the student model on the resulting teacher context using a combination of cross-entropy loss and forward KL loss. On-policy Training. On-policy distillation and GRPO are implemented using the verl <ref type="bibr" target="#b34">(Sheng et al., 2024)</ref> framework. As shown in Table <ref type="table" target="#tab_6">8</ref>, we use a batch size of B = 128 and a mini-batch size of B mini = 32, which results in four gradient update steps per training iteration. For on-policy distillation, we generate a single rollout per problem during training. In contrast, for GRPO, we generate eight rollouts per problem to enable relative comparison among trajectories. This mechanism encourages the model to reinforce uncertain decisions when A t &gt; 0 by providing additional reward, while reducing the penalty for uncertain decisions when A t &lt; 0, thereby promoting more exploratory reasoning behavior.</p><p>Here, the shaping function ψ(•) is defined as</p><formula xml:id="formula_17">ψ (H t ) = min αH detach t , |A t | κ ,<label>(11)</label></formula><p>where α &gt; 0 and κ &gt; 1 are hyperparameters. In the experiment described in §5.6, we follow the setup of <ref type="bibr" target="#b5">(Cheng et al., 2025)</ref> and set α = 0.1 and κ = 2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B. Toy Experiment Visualizations</head><p>In this section, we present visualizations of the toy experiment under each scenario. As shown in Figure <ref type="figure" target="#fig_4">6</ref>, when the teacher distribution exhibits low entropy, the student model converges closely to the teacher distribution. However, when the teacher distribution has high entropy, optimization using a reverse-KL-based reward causes the student to concentrate on a small number of dominant indices. As a result, the global structure of the teacher distribution is not fully captured. When the teacher distribution has low entropy, the student model accurately converges to the teacher. In contrast, when the teacher distribution has high entropy, optimization with reverse KL based reward leads the student to align with a few dominant indices of the teacher distribution, while the global structure is not fully approximated.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C. Evaluation Details</head><p>Math reasoning benchmarks (six datasets) and the GPQA-Diamond <ref type="bibr" target="#b30">(Rein et al., 2024)</ref> evaluation were conducted using the evaluation pipeline released with Qwen2.5-Math <ref type="bibr" target="#b45">(Yang et al., 2024)</ref>. All experiments were performed in a zero-shot setup. During sampling, the maximum sequence length was set to 8192, with temperature = 1.0 and top-p = 0.8. We report both average@k and pass@k as evaluation metrics. For all problems, the same prompt template was appended at the end: ''Please reason step by step, and put your final answer within \boxed{}.'' For out-of-distribution (OOD) evaluation, MMLU-Pro <ref type="bibr" target="#b41">(Wang et al., 2024)</ref> was evaluated under the default 5-shot setting (examples are sampled from the validation set), while all other configurations were kept identical to those used in the math reasoning benchmarks. The prompt template for MMLU-Pro is specified below. For AlpacaEval <ref type="bibr" target="#b6">(Dubois et al., 2024)</ref>, we followed the default evaluation protocol and used the annotator model weighted alpaca eval gpt4 turbo to report both win rate and length-controlled win rate against gpt4 turbo <ref type="bibr" target="#b0">(Achiam et al., 2023)</ref>.</p><p>The following are multiple choice questions (with answers) about {$}. Think step by step and then finish your answer with ''the answer is (X)'' where X is the correct letter choice. 8 16 32 64 128 K 30 40 50 60 Pass@K EOPD OPD (a) AIME24 8 16 32 64 128 K 30 40 50 60 Pass@K EOPD OPD (b) AIME25 4 8 16 32 64 K 80 90 100 Pass@K EOPD OPD (c) AMC23 Figure 8. Pass@k performance comparison between OPD and EOPD on the AIME and AMC benchmarks of the Qwen3-4B Base model. EOPD achieves higher Pass@k compared to OPD, with the performance gap becoming more pronounced as k increases.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D. Pass@k Experiments</head><p>Figure <ref type="figure">7</ref> and Figure <ref type="figure">8</ref> show the Pass@k performance across different values of k for the Qwen3-0.6B-Base and Qwen3-4B-Base models. Compared to OPD, EOPD achieves better performance on AIME24/25 (MAA, 2025) and AMC23 (MAA, 2023). On harder benchmarks such as AIME, the performance gap between the two methods widens as k increases. This suggests that EOPD more effectively explores diverse reasoning trajectories, thereby increasing the likelihood of reaching a correct solution.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E. High Entropy Token Ratio</head><p>Figure <ref type="figure" target="#fig_6">9</ref> shows the ratio of high-entropy tokens measured on rollouts generated by the student model during EOPD training, where entropy is computed from the teacher model. High-entropy tokens are defined as token positions whose teacher entropy exceeds a threshold τ (= 0.8), indicating regions where the teacher exhibits higher uncertainty.</p><p>As shown in the figure, the proportion of high-entropy tokens is relatively high during the early stages of training and decreases as training progresses. After convergence, the ratio stabilizes at approximately 15% to 20%. This observation motivates the random forward KL setting in §5.6, where forward KL is applied to a randomly selected 20% of token positions. In this setting, the ratio of tokens receiving forward KL is matched to EOPD, while the token selection is independent of the teacher's uncertainty, serving as a controlled baseline. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F. Tradeoff Between Cumulative Probability Mass and Memory in Top-k Truncation</head><p>Forward KL is defined as an expectation over the teacher's full vocabulary distribution, but computing it over the entire vocabulary incurs substantial memory overhead. We therefore approximate the forward KL using only the teacher's top-k tokens in EOPD. To analyze whether a small k preserves sufficient probability mass, we measure the following for different values of k: (i) the average cumulative probability mass covered by the top-k tokens; and (ii) the memory required to store the top-k token probabilities and token indices for each batch. Figure <ref type="figure" target="#fig_7">10</ref> shows the tradeoff between cumulative probability mass and memory usage as k varies. While memory increases linearly with k, the cumulative probability mass quickly saturates. Empirically, k = 16 retains most of the probability mass while incurring a relatively small memory overhead of 144 MiB. Accordingly, we use k = 16 in our main experiments. </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 2 .</head><label>2</label><figDesc>Figure2. Pass@k performance comparison between OPD and EOPD on the AIME and AMC benchmarks using the Qwen3-1.7B model. EOPD achieves higher Pass@k compared to OPD, with the performance gap becoming more pronounced as k increases.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 3 .</head><label>3</label><figDesc>Figure3. Token-level entropy histograms comparing the Qwen3-8B teacher with Qwen3-1.7B-Base trained using OPD and EOPD on the AIME 2024 and 2025 benchmarks. While both methods exhibit similar distributions to the teacher in the mid-entropy range, EOPD preserves more probability mass in the high-entropy region, staying closer to the teacher than OPD.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. Average policy entropy during training for the Qwen3-1.7B-Base student trained with OPD + Entropy Bonus, OPD + Advantage Shaping, and EOPD. Advantage Shaping converges to a lower entropy regime, while Entropy Bonus maintains entropy levels comparable to EOPD.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5. Average forward KL divergence measured during training at token positions where the teacher distribution exhibits high entropy (entropy ≥ 0.8) for the Qwen3-1.7B-Base student. Compared to OPD + Entropy Bonus and OPD + Advantage Shaping, EOPD maintains lower forward KL values throughout training, indicating closer alignment with the teacher distribution in regions of high uncertainty.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 6 .</head><label>6</label><figDesc>Figure6. Teacher-student distributions under low and high-entropy scenarios. When the teacher distribution has low entropy, the student model accurately converges to the teacher. In contrast, when the teacher distribution has high entropy, optimization with reverse KL based reward leads the student to align with a few dominant indices of the teacher distribution, while the global structure is not fully approximated.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 7 .Figure 8 .</head><label>78</label><figDesc>Figure 7. Pass@k performance comparison between OPD and EOPD on the AIME and AMC benchmarks of the Qwen3-0.6B Base model. EOPD achieves higher Pass@k compared to OPD.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 9 .</head><label>9</label><figDesc>Figure9. Ratio of tokens with high teacher entropy in rollouts produced by the student model during EOPD training.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 10 .</head><label>10</label><figDesc>Figure 10. Tradeoff between cumulative probability mass and memory usage under top-k truncation. Memory increases linearly with k, while the cumulative probability mass quickly saturates.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Top-1 Change Count for low teacher entropy scenario and a high teacher entropy scenario. We observe that when the teacher entropy is high, the top-1 index frequently changes.</figDesc><table><row><cell cols="3">Teacher Entropy Temp. Top-1 Change Count</cell></row><row><cell>(A) Low</cell><cell>0.3</cell><cell>7.3 ± 1.6</cell></row><row><cell>(B) High</cell><cell>1.0</cell><cell>84.0 ± 16.7</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>Main results (accuracy %) on six mathematical reasoning benchmarks. EOPD demonstrates consistent improvements across benchmarks and model scales. Parentheses indicate training data. Bold indicates best performance and underline indicates second-best.</figDesc><table><row><cell>Benchmark</cell><cell>Metric</cell><cell></cell><cell cols="3">Qwen3-0.6B-Base (MATH)</cell><cell></cell><cell cols="3">Qwen3-1.7B-Base (MATH)</cell><cell cols="4">Qwen3-4B-Base (DAPO-Math-14k)</cell></row><row><cell></cell><cell></cell><cell>KD</cell><cell cols="3">GRPO OPD EOPD (ours)</cell><cell>KD</cell><cell cols="3">GRPO OPD EOPD (ours)</cell><cell>KD</cell><cell cols="3">GRPO OPD EOPD (ours)</cell></row><row><cell>MATH500</cell><cell cols="2">Avg@8 47.80 Pass@8 69.60</cell><cell>51.83 74.40</cell><cell>50.09 73.20</cell><cell>52.02 76.00</cell><cell>63.80 84.20</cell><cell>68.83 84.60</cell><cell>67.76 84.80</cell><cell>68.73 87.60</cell><cell>74.73 92.20</cell><cell>80.47 91.00</cell><cell>78.81 90.80</cell><cell>80.20 93.00</cell></row><row><cell>AMC23</cell><cell cols="2">Avg@8 23.43 Pass@8 52.50</cell><cell>25.25 55.00</cell><cell>24.69 57.50</cell><cell>27.81 55.00</cell><cell>38.11 70.00</cell><cell>40.62 70.00</cell><cell>39.06 70.00</cell><cell>41.88 75.00</cell><cell>48.13 85.00</cell><cell>58.44 75.00</cell><cell>57.33 80.06</cell><cell>60.94 87.50</cell></row><row><cell>Minerva</cell><cell cols="2">Avg@8 18.61 Pass@8 36.03</cell><cell>20.08 35.66</cell><cell>19.98 34.93</cell><cell>20.82 37.13</cell><cell>28.14 44.10</cell><cell>29.46 48.16</cell><cell>29.83 47.06</cell><cell>30.15 50.74</cell><cell>34.65 55.15</cell><cell>40.81 55.51</cell><cell>40.08 54.00</cell><cell>39.71 56.99</cell></row><row><cell>OlympiadBench</cell><cell cols="2">Avg@8 18.15 Pass@8 36.59</cell><cell>18.91 34.96</cell><cell>20.15 37.19</cell><cell>19.52 39.56</cell><cell>27.66 48.40</cell><cell>29.89 50.81</cell><cell>30.09 51.56</cell><cell>30.28 51.11</cell><cell>37.33 62.52</cell><cell>43.37 60.74</cell><cell>42.10 58.80</cell><cell>43.24 63.11</cell></row><row><cell>AIME24</cell><cell>Avg@8 Pass@8</cell><cell>2.19 6.67</cell><cell>4.58 10.00</cell><cell>2.50 10.00</cell><cell>4.17 13.33</cell><cell>10.06 20.00</cell><cell>9.17 20.00</cell><cell>8.33 20.00</cell><cell>10.42 23.33</cell><cell>12.50 30.00</cell><cell>14.85 30.00</cell><cell>18.33 26.67</cell><cell>17.92 36.67</cell></row><row><cell>AIME25</cell><cell>Avg@8 Pass@8</cell><cell>0.83 6.67</cell><cell>0.83 10.00</cell><cell>1.25 6.67</cell><cell>1.25 6.67</cell><cell>3.36 16.67</cell><cell>4.58 16.67</cell><cell>6.25 16.67</cell><cell>5.83 16.67</cell><cell>12.08 23.33</cell><cell>12.66 26.67</cell><cell>12.08 30.00</cell><cell>17.50 33.33</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 4 .</head><label>4</label><figDesc>Comparison with entropy-driven exploration baselines for the Qwen3-1.7B-Base student. EOPD achieves higher Avg@8 and Pass@8 compared to OPD + Entropy Bonus and OPD + Advantage Shaping. Bold indicates best performance and underline indicates second-best.</figDesc><table><row><cell cols="2">Benchmark Metric</cell><cell cols="3">Entropy Advantage EOPD Bonus Shaping</cell></row><row><cell>MATH500</cell><cell>Avg@8 Pass@8</cell><cell>66.87 86.00</cell><cell>67.90 85.20</cell><cell>68.73 87.60</cell></row><row><cell>AMC23</cell><cell>Avg@8 Pass@8</cell><cell>39.69 75.00</cell><cell>36.56 75.00</cell><cell>41.88 75.00</cell></row><row><cell>AIME24</cell><cell>Avg@8 Pass@8</cell><cell>9.58 20.00</cell><cell>8.75 23.33</cell><cell>10.42 23.33</cell></row><row><cell>AIME25</cell><cell>Avg@8 Pass@8</cell><cell>4.58 16.67</cell><cell>5.83 20.00</cell><cell>5.83 16.67</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 5 .</head><label>5</label><figDesc>Performance variation with respect to the entropy threshold τ for the Qwen3-1.7B-Base student. EOPD is not highly sensitive to τ , while we observe an overall trend where Pass@8 performance decreases as τ increases.</figDesc><table><row><cell>τ</cell><cell cols="2">MATH500</cell><cell cols="2">AMC23</cell></row><row><cell></cell><cell cols="4">Avg@8 Pass@8 Avg@8 Pass@8</cell></row><row><cell>0.6</cell><cell>68.24</cell><cell>86.80</cell><cell>39.69</cell><cell>75.00</cell></row><row><cell>0.8</cell><cell>68.73</cell><cell>87.60</cell><cell>41.88</cell><cell>75.00</cell></row><row><cell>1.0</cell><cell>67.58</cell><cell>84.00</cell><cell>41.53</cell><cell>72.50</cell></row><row><cell>1.2</cell><cell>64.82</cell><cell>84.80</cell><cell>39.69</cell><cell>75.00</cell></row><row><cell>1.4</cell><cell>67.61</cell><cell>83.80</cell><cell>38.72</cell><cell>72.50</cell></row><row><cell>1.6</cell><cell>68.10</cell><cell>84.00</cell><cell>39.62</cell><cell>70.00</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 6 .</head><label>6</label><figDesc>Comparison with different forward KL placement strategies for the Qwen3-1.7B-Base student. EOPD shows competitive performance against full and random forward KL, while random forward KL underperforms the other two approaches. Bold indicates the best performance and underline indicates second-best.</figDesc><table><row><cell cols="2">Benchmark Metric</cell><cell cols="3">Full Random EOPD</cell></row><row><cell>MATH500</cell><cell cols="2">Avg@8 67.58 Pass@8 86.20</cell><cell>67.33 84.80</cell><cell>68.73 87.60</cell></row><row><cell>AMC23</cell><cell cols="2">Avg@8 39.39 Pass@8 75.00</cell><cell>36.88 67.50</cell><cell>41.88 75.00</cell></row><row><cell>AIME24</cell><cell cols="2">Avg@8 Pass@8 23.33 8.75</cell><cell>7.92 20.00</cell><cell>10.42 23.33</cell></row><row><cell>AIME25</cell><cell cols="2">Avg@8 Pass@8 20.00 5.00</cell><cell>5.42 13.33</cell><cell>5.83 16.67</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 7 .</head><label>7</label><figDesc>Hyperparameters used for Off-policy distillation.</figDesc><table><row><cell>Hyperparameter</cell><cell>Value</cell></row><row><cell>Learning rate</cell><cell>1e-5</cell></row><row><cell>LR scheduler type</cell><cell>cosine</cell></row><row><cell>Optimizer</cell><cell>AdamW</cell></row><row><cell>CE loss weight</cell><cell>0.5</cell></row><row><cell>KL loss weight</cell><cell>0.5</cell></row><row><cell>Training Batch size</cell><cell>128</cell></row><row><cell>Training epoch</cell><cell>3</cell></row><row><cell>Cutoff length</cell><cell>4096</cell></row><row><cell>Top-k (for FKL)</cell><cell>16</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 8 .</head><label>8</label><figDesc>Hyperparameters used for On-policy distillation and GRPO.</figDesc><table><row><cell>Hyperparameter</cell><cell>OPD, EOPD</cell><cell>GRPO</cell></row><row><cell>Learning rate</cell><cell>3e-6</cell><cell>3e-6</cell></row><row><cell>LR scheduler type</cell><cell>cosine</cell><cell>cosine</cell></row><row><cell>Optimizer</cell><cell>AdamW</cell><cell>AdamW</cell></row><row><cell>Training batch size</cell><cell>128</cell><cell>128</cell></row><row><cell>Mini batch size</cell><cell>32</cell><cell>32</cell></row><row><cell>Samples per prompt</cell><cell>1</cell><cell>8</cell></row><row><cell>Temperature</cell><cell>1.0</cell><cell>1.0</cell></row><row><cell>Top-p</cell><cell cols="2">1.0 (Qwen), 0.8 (Llama) 1.0 (Qwen), 0.8 (Llama)</cell></row><row><cell>Max response length</cell><cell>4096</cell><cell>4096</cell></row><row><cell>Top-k (for FKL)</cell><cell>16</cell><cell>-</cell></row><row><cell>Training temperature</cell><cell>1.0</cell><cell>1.0</cell></row><row><cell>Training epoch</cell><cell>3 (MATH), 2 (DAPO)</cell><cell>3 (MATH), 2 (DAPO)</cell></row><row><cell cols="3">Chat Template. During model training, for knowledge distillation, we used the same chat template as the teacher model to</cell></row><row><cell cols="3">effectively learn the teacher distribution. Since the teacher model used in our experiments was the Qwen3-Instruct (Yang</cell></row><row><cell cols="3">et al., 2025) model in non-thinking mode, the chat template was defined as follows:</cell></row><row><cell cols="3">&lt;|im start|&gt;user\n{query}&lt;|im end|&gt;\n&lt;|im start|&gt;assistant\n&lt;think&gt;\n\n&lt;/think&gt;</cell></row><row><cell cols="3">For GRPO training, we used the default chat template of the Qwen3-Base model. The template used is as follows:</cell></row><row><cell cols="3">&lt;|im start|&gt;user\n{query}&lt;|im end|&gt;\n&lt;|im start|&gt;assistant\n</cell></row></table><note><p>Entropy Bonus. Entropy Bonus<ref type="bibr" target="#b32">(Schulman et al., 2017)</ref> </p><p>adds the policy entropy directly to the optimization objective, discouraging premature policy convergence and encouraging stochastic action selection during training.</p><p>Advantage Shaping. Advantage Shaping<ref type="bibr" target="#b5">(Cheng et al., 2025)</ref> </p><p>augments the advantage function by adding a gradient-detached entropy term shaped by ψ(•):</p><p>A t ← A t + ψ(H t ).</p></note></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>We use high-entropy token as shorthand for a token at a position where the teacher's conditional distribution has high entropy.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_1"><p>This choice is motivated by experiments with EOPD at τ = 0.8. As shown in Figure9, forward KL is applied to approximately 15-20% of tokens on average.</p></note>
+		</body>
+		<back>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G. Results on the Llama Model</head><p>Table <ref type="table">9</ref>. Comparison with other baselines on mathematical reasoning benchmarks using a Llama series model. EOPD achieves competitive performance across benchmarks. Bold indicates the best performance and underline indicates second-best.</p><p>Benchmark Metric KD GRPO OPD EOPD MATH500 Avg@8 42.60 45.01 43.60 44.90 Pass@8 65.80 66.00 64.80 67.20 AMC23 Avg@8 18.43 20.31 19.06 22.18 Pass@8 52.50 50.00 47.50 52.50 AIME24 Avg@8 1.66 2.91 2.08 2.91 Pass@8 13.33 10.00 10.00 13.33 AIME25 Avg@8 1.25 2.08 1.25 2.08 Pass@8 6.66 10.00 6.66 10.00</p><p>To verify that the proposed EOPD is not limited to a specific model family and can operate effectively on other architectures, we conduct additional experiments on the Llama series <ref type="bibr" target="#b8">(Grattafiori et al., 2024)</ref>. Specifically, we use Llama-3.2-3B-Instruct as the student model and Llama-3.1-8B-Instruct as the teacher model, and perform training under the same framework. The baseline setup follows §5.1, including KD, GRPO, and OPD. Experimental results reported in the Table <ref type="table">9</ref> show that EOPD achieves competitive performance compared to other baselines on the Llama model as well, suggesting that EOPD can be generally applied.</p><p>Additionally, we analyze the training dynamics by measuring the forward KL divergence between the teacher and student distributions at token positions where the teacher exhibits high entropy (entropy ≥ 0.8). As shown in Figure <ref type="figure" target="#fig_8">11</ref>, under OPD, the forward KL remains high in these regions and exhibits substantial fluctuations throughout training. This implies that reverse KL-based reward produces unstable signals in regions where the teacher distribution has high entropy, as observed in the toy experiment in §3.2. In contrast, EOPD maintains lower forward KL values in the same high-entropy regions and exhibits more stable training behavior, indicating better preservation of the teacher's distributional structure and uncertainty, which is reflected in the benchmark performance gains. </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 11 .</head><label>11</label><figDesc>Average forward KL divergence measured during training at token positions where the teacher distribution exhibits high entropy (entropy ≥ 0.8) for the Llama-3.2-3B-Instruct student.</figDesc></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Achiam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Adler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ahmad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Akkaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">L</forename><surname>Aleman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Altenschmidt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Altman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Anadkat</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.08774</idno>
+		<title level="m">Gpt-4 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">On-policy distillation of language models: Learning from self-generated mistakes</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Vieillard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Stanczyk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">R</forename><surname>Garea</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Geist</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Bachem</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Scheduled sampling for sequence prediction with recurrent neural networks</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bengio</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Jaitly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shazeer</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Model compression</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Buciluǎ</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Caruana</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Niculescu-Mizil</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">ACM SIGKDD international conference on Knowledge discovery and data mining</title>
+		<imprint>
+			<date type="published" when="2006">2006</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Why knowledge distillation works in generative models: A minimal working explanation</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Cha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Cho</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.13111</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Reasoning with exploration: An entropy perspective</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">X</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.14758</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Dubois</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Galambosi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.04475</idno>
+		<title level="m">Length-controlled alpacaeval: A simple way to debias automatic evaluators</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">Distillkit: Flexible knowledge distillation for large language models</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Goddard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Atkins</surname></persName>
+		</author>
+		<ptr target="https://github.com/arcee-ai/distillkit" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Grattafiori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Vaughan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.21783</idno>
+		<title level="m">The llama 3 herd of models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Minillm</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.08543</idno>
+		<title level="m">Knowledge distillation of large language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">E</forename><surname>Guha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Marten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Keh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Raoof</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Smyrnis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Nezhurina</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Mercat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Vu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Sprague</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.04178</idno>
+		<title level="m">Data recipes for reasoning models</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.12948</idno>
+		<title level="m">Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Olympiadbench: A challenging benchmark for promoting agi with olympiadlevel bilingual multimodal scientific problems</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Thai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Annual Meeting of the Association for Computational Linguistics</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.11456</idno>
+		<title level="m">Deepmath-103k: A large-scale, challenging, decontaminated, and verifiable mathematical dataset for advancing reasoning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">Measuring mathematical problem solving with the math dataset</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hendrycks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Arora</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Basart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2103.03874</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m" type="main">Distilling the knowledge in a neural network</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Hinton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Dean</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1503.02531</idno>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Étude comparative de la distribution florale dans une portion des alpes et des jura</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Jaccard</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Bulletin de la Société Vaudoise des Sciences Naturelles</title>
+		<imprint>
+			<date type="published" when="1901">1901</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Sequence-level knowledge distillation</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">M</forename><surname>Rush</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Conference on Empirical Methods in Natural Language Processing</title>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S.-Y</forename><surname>Yun</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Distillm</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.03898</idno>
+		<title level="m">Towards streamlined distillation for large language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Solving quantitative reasoning problems with language models</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lewkowycz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Andreassen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Dohan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Dyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Michalewski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Ramasesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Slone</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Anil</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Schlag</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Gutman-Solo</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title level="a" type="main">Let&apos;s verify step by step</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Lightman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Kosaraju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Burda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Edwards</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Baker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Cobbe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Autoregressive knowledge distillation through imitation learning</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wohlwend</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2009.07253</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Understanding r1-zero-like training: A critical perspective</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Qi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">S</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Lin</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2503.20783" />
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title level="m" type="main">On-policy distillation. Thinking Machines Lab: Connectionism</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">M</forename><surname>Lab</surname></persName>
+		</author>
+		<idno type="DOI">10.64434/tml.20251026</idno>
+		<ptr target="https://thinkingmachines.ai/blog/on-policy-distillation" />
+		<imprint>
+			<biblScope unit="page">2025</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">American mathematics competitions -amc</title>
+		<author>
+			<persName><surname>Maa</surname></persName>
+		</author>
+		<ptr target="https://maa.org/" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">American invitational mathematics examinationaime</title>
+		<author>
+			<persName><surname>Maa</surname></persName>
+		</author>
+		<ptr target="https://maa.org/" />
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">P</forename><surname>Minka</surname></persName>
+		</author>
+		<idno>arXiv:0507022</idno>
+		<title level="m">Divergence measures and message passing</title>
+		<imprint>
+			<date type="published" when="2005">2005</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">B. s1: Simple test-time scaling</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><forename type="middle">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Fei-Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Candès</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Hashimoto</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Conference on Empirical Methods in Natural Language Processing</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Pre-training distillation for large language models: A design space exploration</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Lv</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Annual Meeting of the Association for Computational Linguistics</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">Sequence level training with recurrent neural networks</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Ranzato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Chopra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Auli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zaremba</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1511.06732</idno>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Gpqa: A graduate-level google-proof q&amp;a benchmark</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Rein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><forename type="middle">L</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">C</forename><surname>Stickland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Petty</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">Y</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Dirani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Michael</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">R</forename><surname>Bowman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Conference on Language Modeling</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Distilbert, a distilled version of bert: smaller, faster, cheaper and lighter</title>
+		<author>
+			<persName><forename type="first">V</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Wolf</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1910.01108</idno>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wolski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Klimov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1707.06347</idno>
+		<title level="m">Proximal policy optimization algorithms</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.03300</idno>
+		<title level="m">Deepseekmath: Pushing the limits of mathematical reasoning in open language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<author>
+			<persName><forename type="first">G</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Hybridflow</surname></persName>
+		</author>
+		<idno>arXiv: 2409</idno>
+		<title level="m">A flexible and efficient rlhf framework</title>
+		<imprint>
+			<date type="published" when="2024">19256. 2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Shing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Misaki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yokoi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Akiba</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Taid</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.16937</idno>
+		<title level="m">Temporally adaptive interpolated distillation for efficient knowledge transfer in language models</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<author>
+			<persName><forename type="first">K</forename><surname>Shum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Diao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">O</forename><surname>Raza</surname></persName>
+		</author>
+		<author>
+			<persName><surname>First</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2408.12168</idno>
+		<title level="m">Teach a reliable large language model through efficient trustworthy distillation</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<title level="m" type="main">Scaling llm testtime compute optimally can be more effective than scaling model parameters</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Snell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kumar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2408.03314</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">Solving math word problems with process-and outcome-based feedback</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Kushman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Siegel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Creswell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Irving</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Higgins</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2211.14275</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Dang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.01939</idno>
+		<title level="m">Beyond the 80/20 rule: High-entropy minority tokens drive effective reinforcement learning for llm reasoning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Deep self-attention distillation for task-agnostic compression of pre-trained transformers</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Minilm</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Mmlu-pro: A more robust and challenging multi-task language understanding benchmark</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Ni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chandra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Arulraj</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Jiang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Chain-of-thought prompting elicits reasoning in large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Schuurmans</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Chi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><forename type="middle">V</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Zhou</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title level="m" type="main">F-divergence minimization for sequence-level knowledge distillation</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Mou</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.15190</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<author>
+			<persName><forename type="first">W</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">T</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Madeka</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C.-Y</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Pfister</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.11325</idno>
+		<title level="m">Speculative knowledge distillation: Bridging the teacherstudent gap through interleaved sampling</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Hui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.10671</idno>
+		<title level="m">Qwen2 technical report</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Hui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Lv</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.09388</idno>
+		<title level="m">Qwen3 technical report</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<analytic>
+		<title level="a" type="main">Tree of thoughts: Deliberate problem solving with large language models</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shafran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Griffiths</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Narasimhan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<title level="m" type="main">Dapo: An open-source llm reinforcement learning system at scale</title>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zuo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.14476</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

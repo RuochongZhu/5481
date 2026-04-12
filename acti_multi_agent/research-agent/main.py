@@ -42,9 +42,10 @@ from dotenv import load_dotenv
 from src.utils import setup_logging, load_json
 from src.state_manager import (
     load_state, save_state, start_phase, complete_phase,
-    get_current_phase, is_phase_complete, PHASE_ORDER,
+    get_current_phase, is_phase_complete, PHASE_ORDER, reset_phase_tree,
+    merge_usage_delta,
 )
-from src.api_client import OpenAlexClient, S2Client, ArxivClient, DEFAULT_MODEL
+from src.api_client import OpenAlexClient, S2Client, ArxivClient, LensClient, DEFAULT_MODEL
 
 STATE_PATH = os.path.join(BASE_DIR, "state.json")
 LOG_DIR = os.path.join(BASE_DIR, "agent_logs")
@@ -68,6 +69,62 @@ NEEDS_ANTHROPIC = {"2", "2.5", "3", "3.5", "3.7", "4", "5"}
 # Phases that benefit from S2 client
 NEEDS_S2 = {"1", "3", "3.5", "3.8", "4"}
 
+PHASE_OUTPUTS = {
+    "1": [
+        "data/processed/corpus_unified.json",
+        "data/processed/corpus_200.json",
+    ],
+    "2": [
+        "data/processed/classified.json",
+        "data/processed/disagreements.json",
+    ],
+    "2.5": [
+        "data/processed/parsed_full_text.json",
+        "data/processed/deep_extracted.json",
+    ],
+    "3": [
+        "data/processed/relationship_graph.json",
+        "data/processed/citation_intents.json",
+        "data/processed/research_knowledge_graph.json",
+        "analysis/graph_metrics.json",
+        "analysis/intersection_matrix.json",
+        "analysis/category_stats.json",
+        "analysis/relationship_analysis.json",
+        "analysis/gaps_ranked.json",
+        "analysis/research_knowledge_graph_summary.json",
+        "output/research_knowledge_graph.md",
+    ],
+    "3.5": [
+        "data/processed/full_citation_map.json",
+        "analysis/narrative_chains.json",
+        "output/writing_outline.md",
+    ],
+    "3.7": [
+        "analysis/contradictions.json",
+        "output/contradiction_map.md",
+    ],
+    "3.8": [
+        "data/processed/specter_embeddings.npy",
+        "data/processed/specter_metadata.json",
+    ],
+    "4": [
+        "analysis/evidence_inventory.json",
+        "output/evidence_sufficiency.md",
+        "output/evidence_inventory.md",
+        "output/corpus_by_category.md",
+    ],
+    "5": [
+        "analysis/data_scores.json",
+        "analysis/reviewer_results.json",
+        "analysis/evaluation_result.json",
+        "output/evaluation_report.md",
+    ],
+}
+
+PHASE_OUTPUT_DIRS = {
+    "3": ["output/knowledge_wiki"],
+}
+
 
 def get_anthropic_client():
     """Initialize Anthropic client."""
@@ -80,14 +137,15 @@ def get_anthropic_client():
 
 
 def get_search_clients():
-    """Initialize 3-layer search clients: OpenAlex, S2, arXiv."""
+    """Initialize retrieval clients: OpenAlex, Lens, S2, arXiv."""
     mailto = os.environ.get("OPENALEX_MAILTO", os.environ.get("MAILTO", "user@example.com"))
     oa_key = os.environ.get("OPENALEX_API_KEY")
     oa = OpenAlexClient(mailto=mailto, api_key=oa_key)
+    lens = LensClient(api_key=os.environ.get("LENS_API_KEY"))
     s2_key = os.environ.get("S2_API_KEY")
     s2 = S2Client(api_key=s2_key)
     arxiv = ArxivClient()
-    return oa, s2, arxiv
+    return oa, s2, arxiv, lens
 
 
 def check_deps(state: dict, phase: str) -> bool:
@@ -99,14 +157,30 @@ def check_deps(state: dict, phase: str) -> bool:
     return True
 
 
-def run_phase(phase: str, state: dict, client, oa, s2, arxiv, resume: bool = False):
+def invalidate_outputs(base_dir: str, start_phase: str) -> None:
+    """Delete generated artifacts for a phase and everything downstream."""
+    start_idx = PHASE_ORDER.index(start_phase)
+    for phase in PHASE_ORDER[start_idx:]:
+        for rel_path in PHASE_OUTPUTS.get(phase, []):
+            path = os.path.join(base_dir, rel_path)
+            if os.path.exists(path):
+                os.remove(path)
+                log.info(f"Removed stale artifact: {rel_path}")
+        for rel_dir in PHASE_OUTPUT_DIRS.get(phase, []):
+            path = os.path.join(base_dir, rel_dir)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+                log.info(f"Removed stale artifact directory: {rel_dir}")
+
+
+def run_phase(phase: str, state: dict, client, oa, s2, arxiv, lens, resume: bool = False):
     """Dispatch to the appropriate phase module.
 
     Wraps execution in try/except so that:
     - Fatal errors (wrong key, wrong model, quota) print a clear message and exit
     - Transient errors save state so you can --resume
     """
-    from src.api_client import APIKeyMissing, QuotaExhausted, ModelNotFound
+    from src.api_client import APIKeyMissing, QuotaExhausted, ModelNotFound, drain_usage_delta
 
     if not check_deps(state, phase):
         return state
@@ -116,7 +190,7 @@ def run_phase(phase: str, state: dict, client, oa, s2, arxiv, resume: bool = Fal
     try:
         if phase == "1":
             from src.phase1_corpus import run_phase1
-            state = run_phase1(state, STATE_PATH, BASE_DIR, oa, s2, arxiv)
+            state = run_phase1(state, STATE_PATH, BASE_DIR, oa, s2, arxiv, lens)
 
         elif phase == "2":
             from src.phase2_extraction import run_phase2
@@ -196,11 +270,16 @@ def run_phase(phase: str, state: dict, client, oa, s2, arxiv, resume: bool = Fal
         log.error(f"  State saved — resume with: python main.py --phase {phase} --resume")
         save_state(STATE_PATH, state)
         raise  # Re-raise so traceback is visible for debugging
+    finally:
+        usage_delta = drain_usage_delta()
+        if usage_delta:
+            state = merge_usage_delta(state, usage_delta)
+            save_state(STATE_PATH, state)
 
     return state
 
 
-def run_full_pipeline(state: dict, client, oa, s2, arxiv):
+def run_full_pipeline(state: dict, client, oa, s2, arxiv, lens):
     """Run all phases sequentially."""
     for phase in PHASE_ORDER:
         if is_phase_complete(state, phase):
@@ -209,13 +288,13 @@ def run_full_pipeline(state: dict, client, oa, s2, arxiv):
         log.info(f"\n{'='*60}")
         log.info(f"  PHASE {phase}")
         log.info(f"{'='*60}\n")
-        state = run_phase(phase, state, client, oa, s2, arxiv)
+        state = run_phase(phase, state, client, oa, s2, arxiv, lens)
     log.info("\nPipeline complete!")
     _print_summary(state)
     return state
 
 
-def run_auto_loop(state: dict, client, oa, s2, arxiv, max_iterations: int = 5):
+def run_auto_loop(state: dict, client, oa, s2, arxiv, lens, max_iterations: int = 5):
     """Auto-loop: run pipeline → Phase 5 evaluate → backtrack → repeat.
 
     Invariants:
@@ -236,7 +315,7 @@ def run_auto_loop(state: dict, client, oa, s2, arxiv, max_iterations: int = 5):
         log.info(f"{'#'*60}\n")
 
         # Step 1: Run full pipeline (skips completed phases)
-        state = run_full_pipeline(state, client, oa, s2, arxiv)
+        state = run_full_pipeline(state, client, oa, s2, arxiv, lens)
 
         # Step 2: Reset Phase 5 for fresh evaluation
         for step in state["phases"].get("5", {}).get("steps", {}):
@@ -350,9 +429,21 @@ def show_status(state: dict):
         print(f"    {exists} {f}")
 
     stats = state.get("stats", {})
-    print(f"\n  API calls — Anthropic: {stats.get('total_api_calls_anthropic', 0)}, "
-          f"S2: {stats.get('total_api_calls_s2', 0)}")
-    print(f"  Tokens used: {stats.get('total_tokens_used', 0)}")
+    print(
+        f"\n  LLM API calls — Anthropic: {stats.get('total_api_calls_anthropic', 0)}, "
+        f"OpenAI: {stats.get('total_api_calls_openai', 0)}"
+    )
+    print(
+        f"  Retrieval/API calls — OpenAlex: {stats.get('total_api_calls_openalex', 0)}, "
+        f"S2: {stats.get('total_api_calls_s2', 0)}, Lens: {stats.get('total_api_calls_lens', 0)}, "
+        f"Crossref: {stats.get('total_api_calls_crossref', 0)}, "
+        f"OpenCitations: {stats.get('total_api_calls_opencitations', 0)}, "
+        f"arXiv: {stats.get('total_api_calls_arxiv', 0)}"
+    )
+    print(
+        f"  Tokens — input: {stats.get('total_tokens_input', 0)}, "
+        f"output: {stats.get('total_tokens_output', 0)}, total: {stats.get('total_tokens_used', 0)}"
+    )
     print(f"  Est. cost: ${stats.get('estimated_cost_usd', 0):.2f}\n")
 
 
@@ -455,9 +546,21 @@ def _print_summary(state: dict):
     print(f"\n{'='*60}")
     print(f"  PIPELINE SUMMARY")
     print(f"{'='*60}")
-    print(f"  API calls — Anthropic: {stats.get('total_api_calls_anthropic', 0)}, "
-          f"S2: {stats.get('total_api_calls_s2', 0)}")
-    print(f"  Tokens: {stats.get('total_tokens_used', 0)}")
+    print(
+        f"  LLM API calls — Anthropic: {stats.get('total_api_calls_anthropic', 0)}, "
+        f"OpenAI: {stats.get('total_api_calls_openai', 0)}"
+    )
+    print(
+        f"  Retrieval/API calls — OpenAlex: {stats.get('total_api_calls_openalex', 0)}, "
+        f"S2: {stats.get('total_api_calls_s2', 0)}, Lens: {stats.get('total_api_calls_lens', 0)}, "
+        f"Crossref: {stats.get('total_api_calls_crossref', 0)}, "
+        f"OpenCitations: {stats.get('total_api_calls_opencitations', 0)}, "
+        f"arXiv: {stats.get('total_api_calls_arxiv', 0)}"
+    )
+    print(
+        f"  Tokens — input: {stats.get('total_tokens_input', 0)}, "
+        f"output: {stats.get('total_tokens_output', 0)}, total: {stats.get('total_tokens_used', 0)}"
+    )
     print(f"  Est. cost: ${stats.get('estimated_cost_usd', 0):.2f}")
     print(f"\n  Key outputs:")
     key_outputs = [
@@ -555,19 +658,22 @@ if __name__ == "__main__":
 
     # Initialize clients
     client = get_anthropic_client() if os.environ.get("ANTHROPIC_API_KEY") else None
-    oa, s2, arxiv = get_search_clients()
+    oa, s2, arxiv, lens = get_search_clients()
 
     # Run
     if args.auto:
         log.info("Running auto-loop mode")
         os.environ["TARGET_SCORE"] = str(args.target_score)
-        state = run_auto_loop(state, client, oa, s2, arxiv,
+        state = run_auto_loop(state, client, oa, s2, arxiv, lens,
                               max_iterations=args.max_iterations)
     elif args.phase:
+        if not args.resume:
+            state = reset_phase_tree(state, STATE_PATH, args.phase)
+            invalidate_outputs(BASE_DIR, args.phase)
         log.info(f"Running Phase {args.phase}" + (" (resume)" if args.resume else ""))
-        state = run_phase(args.phase, state, client, oa, s2, arxiv, resume=args.resume)
+        state = run_phase(args.phase, state, client, oa, s2, arxiv, lens, resume=args.resume)
     else:
         log.info("Running full pipeline (9 phases)")
-        state = run_full_pipeline(state, client, oa, s2, arxiv)
+        state = run_full_pipeline(state, client, oa, s2, arxiv, lens)
 
     show_status(state)

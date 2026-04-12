@@ -1,0 +1,1693 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Demystifying Synthetic Data in LLM Pre-training: A Systematic Study of Scaling Laws, Benefits, and Pitfalls</title>
+				<funder ref="#_fJuBaZU #_nbAb8cD #_2k36aNw">
+					<orgName type="full">National Science Foundation</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-10-03">October 3, 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Feiyang</forename><surname>Kang</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Newsha</forename><surname>Ardalani</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Michael</forename><surname>Kuchnik</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Youssef</forename><surname>Emad</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Mostafa</forename><surname>Elhoushi</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Cerebras Systems</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Shubhabrata</forename><surname>Sengupta</surname></persName>
+							<affiliation key="aff1">
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Shang-Wen</forename><surname>Li</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Ramya</forename><surname>Raghavendra</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Ruoxi</forename><surname>Jia</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Carole-Jean</forename><surname>Wu</surname></persName>
+						</author>
+						<author>
+							<persName><surname>Fair At Meta</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Virginia</forename><surname>Tech</surname></persName>
+						</author>
+						<title level="a" type="main">Demystifying Synthetic Data in LLM Pre-training: A Systematic Study of Scaling Laws, Benefits, and Pitfalls</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-10-03">October 3, 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">817AA4D72E0F3BD1BE47294DE97A809C</idno>
+					<idno type="arXiv">arXiv:2510.01631v1[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:11+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Training data plays a crucial role in Large Language Models (LLM) scaling, yet high quality data is of limited supply. Synthetic data techniques offer a potential path toward sidestepping these limitations.We conduct a large-scale empirical investigation (&gt;1000 LLMs with &gt;100k GPU hours) using a unified protocol and scaling laws, comparing natural web data, diverse synthetic types (rephrased text, generated textbooks), and mixtures of natural and synthetic data. Specifically, we found pre-training on rephrased synthetic data alone is not faster than pre-training on natural web texts; while pre-training on 1/3 rephrased synthetic data mixed with 2/3 natural web texts can speed up 5-10x (to reach the same validation loss) at larger data budgets. Pre-training on textbook-style synthetic data alone results in notably higher loss on many downstream domains especially at small data budgets. "Good" ratios of synthetic data in training data mixtures depend on the model size and data budget, empirically converging to ∼30% for rephrased synthetic data. Larger generator models do not necessarily yield better pre-training data than ∼8B-param models. These results contribute mixed evidence on "model collapse" during large-scale single-round (n=1) model training on synthetic data-training on rephrased synthetic data shows no degradation in performance in foreseeable scales whereas training on mixtures of textbook-style pure-generated synthetic data shows patterns predicted by "model collapse". Our work demystifies synthetic data in pre-training, validates its conditional benefits, and offers practical guidance.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>The remarkable advancements in Large Language Models (LLMs) are closely tied to the scale and, critically, the quality of their training data. As computational demands for training state-of-the-art models escalate and the finite nature of high-quality natural text becomes increasingly apparent <ref type="bibr" target="#b39">(Villalobos et al., 2024)</ref>, significant interest has turned towards synthetic data <ref type="bibr" target="#b2">(Ben Allal et al., 2024;</ref><ref type="bibr" target="#b8">Eldan and Li, 2023;</ref><ref type="bibr" target="#b31">Patel et al., 2024;</ref><ref type="bibr">Chen et al., 2024;</ref><ref type="bibr" target="#b25">Long et al., 2024;</ref><ref type="bibr" target="#b36">Thrush et al., 2024;</ref><ref type="bibr" target="#b13">Havrilla et al., 2024;</ref><ref type="bibr" target="#b27">Maini et al., 2024;</ref><ref type="bibr">Li et al., 2023b;</ref><ref type="bibr">Abdin et al., 2024;</ref><ref type="bibr" target="#b15">Javaheripi et al., 2023;</ref><ref type="bibr" target="#b4">Cheng et al., 2024;</ref><ref type="bibr" target="#b12">Gu et al., 2023)</ref>. Defined as text generated by pre-existing models or automated pipelines, synthetic data presents a compelling potential avenue for augmenting-or perhaps eventually replacing-traditional human-generated corpora during the foundational pre-training phase.</p><p>While the utility of synthetic data is increasingly established in post-training stages like instruction-tuning and alignment <ref type="bibr" target="#b35">(Taori et al., 2023;</ref><ref type="bibr">Li et al., 2023a;</ref><ref type="bibr" target="#b10">Ge et al., 2024)</ref>-where objectives are targeted and natural data may be scarce-its role and effects during the crucial pre-training phase remain largely uncharacterized and poorly understood <ref type="bibr">(Liu et al., 2024b)</ref>. This knowledge gap represents a significant barrier to optimizing LLM development pipelines and motivates fundamental questions:</p><p>(RQ1) Can synthetic data effectively enhance LLM pre-training performance at large data scales and under what conditions?</p><p>Despite the straightforward nature of these questions, clear answers remain elusive. This ambiguity stems from several factors. Firstly, the landscape is marked by inconsistent empirical findings and considerable methodological heterogeneity <ref type="bibr" target="#b25">(Long et al., 2024;</ref><ref type="bibr">Liu et al., 2024b)</ref>. Proposed approaches often rely on bespoke setups, obscuring direct comparability and generalizability. Even for simple open-sourced methods, <ref type="bibr" target="#b43">Yang et al. (2024)</ref> reports models trained on synthetic data from <ref type="bibr" target="#b27">Maini et al. (2024)</ref> saturates early on in continued pre-training without much performance gain. Secondly, synthetic data generation involves complex tradeoffs between targeted quality enhancement and broad distributional diversity. Recent studies present a contradiction regarding synthetic data: while some argue it improves training data quality at the expense of diversity <ref type="bibr" target="#b13">(Havrilla et al., 2024)</ref>, others suggest that diversity itself is a key predictor of model performance <ref type="bibr">(Chen et al., 2024)</ref>. Thirdly, theoretical concerns persist, notably "model collapse" from recursive training <ref type="bibr">(Dohmatob et al., 2024b,a)</ref>, even if catastrophic failures are not yet widespread. This confluence of potential benefits, inconsistent evidence, methodological variance, and theoretical risks underscores a critical need for systematic investigation.</p><p>To address this critical gap and provide empirically grounded answers , we undertake a systematic, large-scale investigation into the role and effective use of synthetic data in LLM pre-training. Our study involves training over 1000 LLM variants (up to 3B parameters) on datasets comprising up to 200B tokens, utilizing over 100,000 GPU hours, enabling evaluation on the effect of model size and data regimes in its scaling laws.</p><p>Our principal findings reveal that:</p><p>1. Strategically incorporating specific synthetic data types can significantly accelerate pre-training convergence. Compared to pre-training on natural web texts, training on 1/3 rephrased synthetic data mixed with 2/3 natural web texts can speed up 5-10x (to reach the same validation loss) at larger data budgets.</p><p>2. However, the impact is highly dependent on the synthetic data's type and characteristics: Pre-training on rephrased synthetic data alone is not faster than pre-training on natural web texts; whereas pre-training on textbook-style synthetic data alone results in notably higher validation loss.</p><p>3. "Good" ratios of synthetic data in training data mixtures are nuanced, varying with data type, target model scale, and budget, converging to ∼ 30% for rephrased synthetic data. Counter-intuitively, larger or more capable generator models do not necessarily yield superior synthetic data than ∼8B-param models for pre-training downstream models.</p><p>4. We interpret the results with a focus on low-level statistics. Some unigrams that are frequent in test datasets but rare or absent in training datasets result in higher evaluation loss, whereas no single training set offers complete coverage. CommonCrawl has wider unigram coverage and the lowest KL-divergence to test datasets; however, it did not yield superior performance, suggesting "good" training data mixtures depend on factors beyond simple similarity and pointing to more complex diversity-quality trade-offs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Related Work</head><p>Our research intersects with several key areas in LLM development, particularly concerning the generation and use of synthetic data for pre-training, data mixture strategies, the application of scaling laws, and concerns around model collapse.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Synthetic Data in LLM Pre-training</head><p>The utility of synthetic data is well-recognized in targeted later stages of training, such as instruction tuning <ref type="bibr" target="#b35">(Taori et al., 2023)</ref>, alignment <ref type="bibr">(Li et al., 2023a;</ref><ref type="bibr" target="#b10">Ge et al., 2024)</ref>, and increasingly for enhancing reasoning capabilities <ref type="bibr" target="#b29">(Muennighoff et al., 2025)</ref>. Meta (2025) detail a dedicated "mid-training" stage using synthetic reasoning data, occurring after initial pre-training and prior to subsequent post-training with reinforcement learning (RL). In contrast, synthetic data's role in foundational pre-training for general capabilities is less established and characterized by varied approaches. The Phi series <ref type="bibr">(Li et al., 2023b;</ref><ref type="bibr" target="#b15">Javaheripi et al., 2023)</ref> pioneered the use of "textbook-style" synthetic data for pre-training productiongrade models. <ref type="bibr">Abdin et al. (2024)</ref>, discussing later Phi models (e.g., Phi-4), argue this approach particularly boosts reasoning with large training budgets where natural web text offers diminishing returns, while also acknowledging potential downsides like limited factual grounding and increased hallucination risks. Other foundational pre-training explorations include <ref type="bibr" target="#b8">Eldan and Li (2023)</ref>'s story generation for smaller models, rephrasing existing texts <ref type="bibr" target="#b27">(Maini et al., 2024)</ref>, and employing diverse prompts for generation <ref type="bibr">(Chen et al., 2024;</ref><ref type="bibr" target="#b31">Patel et al., 2024;</ref><ref type="bibr" target="#b12">Gu et al., 2023)</ref>. Despite these explorations (see survey by <ref type="bibr" target="#b13">Havrilla et al. (2024)</ref>), the landscape is characterized by methodological heterogeneity and sometimes conflicting outcomes (e.g., <ref type="bibr" target="#b25">Long et al. (2024)</ref> and <ref type="bibr">Liu et al. (2024b)</ref> on diversity and quality; <ref type="bibr" target="#b43">Yang et al. (2024)</ref> on saturation with rephrased data from <ref type="bibr" target="#b27">Maini et al. (2024)</ref>). Our study differentiates itself by systematically evaluating multiple distinct synthetic data generation paradigms (rephrased web text, generated "textbooks") and their mixtures with natural data under a unified pre-training protocol and rigorous scaling law analysis across substantial data and model scales, aiming to clarify these ambiguities.</p><p>Data Curation, Mixing Strategies, and Scaling Laws Meticulous data curation and strategic mixing of diverse natural data sources are established as critical for LLM pre-training <ref type="bibr" target="#b37">(Touvron et al., 2023;</ref><ref type="bibr" target="#b33">Raffel et al., 2020;</ref><ref type="bibr" target="#b32">Penedo et al., 2024;</ref><ref type="bibr" target="#b42">Xie et al., 2023;</ref><ref type="bibr" target="#b44">Ye et al., 2024;</ref><ref type="bibr">Liu et al., 2024a)</ref>. However, the systematic integration and scaling behavior of synthetic data with natural corpora remain comparatively underexplored, despite promising initial findings suggesting benefits from such mixtures <ref type="bibr" target="#b27">(Maini et al., 2024;</ref><ref type="bibr" target="#b15">Javaheripi et al., 2023)</ref>. Seminal scaling laws describe predictable relationships between LLM performance and factors like model size, dataset size, and compute <ref type="bibr" target="#b20">(Kaplan et al., 2020;</ref><ref type="bibr" target="#b14">Hoffmann et al., 2022)</ref> and have recently been extended to model natural data mixing strategies <ref type="bibr">(Kang et al., 2024b)</ref>. The scaling dynamics of pre-training specifically with synthetic data have been described as "mysterious" <ref type="bibr">(Liu et al., 2024b)</ref>. For instance, models trained on certain synthetic data types can exhibit early performance saturation <ref type="bibr" target="#b43">(Yang et al., 2024)</ref>, highlighting the need for a clearer understanding. Our work distinctively addresses these gaps by employing scaling law analysis as a primary evaluative tool. We systematically investigate optimal mixture ratios of different synthetic data types with a natural web text baseline, examining how these ratios and overall pre-training effectiveness interact with synthetic data characteristics and varying data budgets. This approach aims to demystify the role of synthetic data in scalable LLM pre-training and provide empirically grounded guidance for its effective integration.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Model Collapse and Generational Degradation</head><p>The prospect of training models predominantly on modelgenerated data has spurred theoretical investigations into "model collapse" or "generational degradation," where recursive training might lead to a decline in model quality due to reduced diversity or amplified biases <ref type="bibr" target="#b34">(Shumailov et al., 2023;</ref><ref type="bibr">Dohmatob et al., 2024b,a)</ref>. While these risks are highlighted in theoretical analyses and simulations, large-scale empirical evidence from practical pre-training scenarios, especially those still incorporating significant natural data, remains limited. Our study contributes direct empirical insights on "model collapse" during large-scale single-round (n=1) training on synthetic data by pre-training models on substantial datasets with varying proportions and types of synthetic data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Synthetic Data Generation Methods</head><p>We investigate two distinct paradigms for generating synthetic data: web rephrasing and textbook-style pure synthetic data. These paradigms represent different philosophies for augmenting or replacing natural text in pre-training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Web Rephrasing</head><p>Inspired by techniques such as WRAP <ref type="bibr" target="#b27">(Maini et al., 2024)</ref>, web rephrasing leverages a pre-trained Language Model (LM) to refine existing web documents into a potentially more valuable pre-training resource. In our study, we implemented web rephrasing by sampling documents from the CommonCrawl dataset. A pre-trained generator LM was prompted to rewrite these documents. Drawing inspiration from variants explored in <ref type="bibr" target="#b27">Maini et al. (2024)</ref>, we generated two distinct styles intended to probe different potential benefits for pre-training:</p><p>• High-Quality (HQ) Rephrasing: Prompts instructed the generator model to rewrite the source text into clear, coherent, well-structured English, mimicking the style often found in high-quality sources like Wikipedia. This targets improving general text quality for foundational pre-training, akin to an aggressive data filtering or quality enhancement step. HQ rephrasing aims to increase the effective density and quality of information already present within the web corpus, aligning with the broader goal of improving data efficiency for pre-training.</p><p>• Question-Answering (QA) Rephrasing: Prompts instructed the generator model to restructure the source text's information into a conversational question-answering format. This explores incorporating instructionfollowing or dialogue-like structures directly into the pre-training phase, potentially accelerating the development of alignment capabilities. This QA rephrasing approach relates to the growing interest in 'instruction pre-training' <ref type="bibr" target="#b4">(Cheng et al., 2024)</ref>, where downstream objectives like instruction-following or dialogue capabilities are incorporated early via synthetic data formatting.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Synthetic Textbooks (TXBK)</head><p>This paradigm is driven by the hypothesis that dense, high-quality, educational content might be more compute-efficient for instilling certain capabilities (e.g., reasoning, coding, factual recall) compared to diffuse web text. The goal is to generate entirely novel content that mimics the structure, style, and information density of textbooks or high-quality educational materials. For our experiments, we generated novel "textbookstyle" documents. The generation process was seeded using keywords randomly sampled from CommonCrawl to provide diverse starting points for various topics. A pre-trained generator LM (e.g., Mistral-7B) was then prompted using structured instructions to produce text resembling textbook chapters or tutorials on the seeded topic. These prompts explicitly encouraged the generation of clear explanations, definitions, illustrative examples (including code snippets with explanations where relevant), and potentially associated exercises or reasoning steps. Throughout the generation process, an emphasis was placed on striving for factual accuracy, coherence, and a clear pedagogical structure.</p><p>4 Empirical Results</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Experimental Setup</head><p>We conduct large-scale pre-training experiments comparing models trained on: (1) a natural web corpus baseline, (2) purely synthetic datasets generated using our distinct Web Rephrasing and Synthetic Textbook paradigms (see Section 3 for generation methodologies), and (3) various mixtures of natural and synthetic data. Approximately 600 LLM variants, with sizes up to 3 billion parameters, were trained on datasets of up to 200 billion tokens. This effort consumed over 70,000 GPU hours on NVIDIA A100 80G hardware.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.1">Datasets</head><p>Natural Data Baseline: Our natural data consists of English text sourced from unfiltered CommonCrawl (CC) dumps, processed via the RedPajama-v2 pipeline <ref type="bibr" target="#b41">(Weber et al., 2024)</ref>.</p><p>Synthetic Data: All synthetic datasets were generated using a Mistral-Instruct-7b-v0.1 model <ref type="bibr" target="#b16">(Jiang et al., 2023)</ref>, with input documents for rephrasing or seeding sampled from our unfiltered CC baseline. Standard generation sampling parameters and light heuristic post-filtering were applied. Generation details, prompt templates, and sample generations are provided in Appendix B.3.</p><p>The following synthetic types were produced:</p><p>• Web Rephrasing <ref type="bibr" target="#b27">(Maini et al. (2024)</ref>-like): Generated by rephrasing CC documents using prompts optimized from <ref type="bibr" target="#b27">Maini et al. (2024)</ref> to produce longer texts in two styles: High-Quality (HQ) &amp; Question-Answering (QA).</p><p>• Synthetic Textbooks <ref type="bibr">(Li et al. (2023b)</ref>-like): Novel multi-chapter "textbooks" (TXBK) generated from CCderived outlines, employing varied prompts targeting different audiences to encourage diversity. Each chapter averaged ∼450 tokens and often included exercises.</p><p>Training Data Mixtures: For each synthetic data type (HQ, QA, or TXBK), we prepared datasets by concatenating and shuffling source data under these conditions: 100% Natural (Unfiltered CC baseline); 100% Synthetic (consisting entirely of one synthetic type: HQ, QA, or Textbook); 67% Synthetic / 33% Natural; 33% Synthetic / 67% Natural. For each experimental point (defined by model size and data budget), models were trained on these different mixtures, enabling direct comparison. 5+ model variants were trained per condition for robust scaling law analysis.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.2">Models, Training, and Evaluation</head><p>We use a standard decoder-only Transformer architecture based on Llama 3 <ref type="bibr" target="#b11">(Grattafiori et al., 2024)</ref>, with model sizes ranging logarithmically from 100M to 3B parameters. All models were trained from scratch using the Meta Lingua library <ref type="bibr" target="#b38">(Videau et al., 2024)</ref> on PyTorch <ref type="bibr" target="#b30">(Paszke, 2019)</ref>. Following the line of research on scaling laws for LLMs <ref type="bibr" target="#b20">(Kaplan et al., 2020)</ref>, we define the size of all models being trained as their count of non-embedding parameters, which are learnable parameters in the model except for those associated with the input and output token embeddings. A consistent training regime was applied for fair comparison, including a cosine learning rate schedule (10% warmup), a context length of 4096 tokens, an effective batch size of 1M tokens, and the Llama 3 pre-trained TikToken tokenizer (128k vocabulary) <ref type="bibr" target="#b11">(Grattafiori et al., 2024)</ref>. The primary performance measure is per-token average perplexity (cross-entropy loss) calculated on a held-out diverse set of 14 non-code/math English text domains from The Pile <ref type="bibr" target="#b9">(Gao et al., 2020)</ref> and the Wikitext-103 dataset <ref type="bibr" target="#b28">(Merity et al., 2016)</ref>, evaluated at the final checkpoint. Complete details are provided in Appendix A.2.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.3">Data Scaling</head><p>For a fixed model size (1B parameters), data scaling is modeled as: L(D) = B D β + E, where L is validation loss, D is training data budget, and B, β, E are fitted coefficients.</p><p>We trained 1B-parameter models on various data mixtures with data budgets from 1B up to 200B tokens. The scaling formula was fitted using data points up to 100B tokens; predictions were then validated on runs trained with 200B tokens. Six data mixtures (CommonCrawl, 33% HQ + 67% CC, 33% QA + 67% CC, Textbook (TXBK), 67% TXBK + 33% CC, and 33% TXBK + 67% CC) were trained to 200B tokens for this validation, as our HQ and QA synthetic datasets were limited to 100B tokens each. The fit demonstrated high precision, as shown in Fig. <ref type="figure" target="#fig_0">1</ref> (left), achieving a low Relative Mean Absolute Error (RMABE) of 0.41% when predicting for 200B tokens. 1. Pure synthetic data is not superior to CommonCrawl (CC): Training solely on HQ or QA synthetic data does not significantly outperform training only on CC. Training only on TXBK performs notably worse than trainng on CC.</p><p>2. Mixtures outperform pure synthetic types: Mixing any synthetic data type with CC substantially improves performance over using that synthetic type alone.</p><p>3. Rephrased data mixtures show low sensitivity to ratio (33% vs. 67% synthetic): For HQ and QA, both 33% and 67% synthetic mixtures with CC yield similar performance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>4.</head><p>Textbook mixtures favor less synthetic data: For TXBK, a 33% synthetic mixture significantly outperforms a 67% mixture. The 33% TXBK mixture surpasses pure CC performance after ∼20B tokens, while the 67% TXBK mixture underperforms pure CC.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.4">Model Scaling</head><p>For a fixed data budget (50B tokens), model scaling is modeled as: L(N ) = A N α + E, where N is model parameter size, and A, α, E are fitted coefficients.</p><p>We trained models from 100M to 3B parameters for 50B tokens on all 10 data mixtures. The formula was fitted using models up to 2B parameters and validated on 3B-parameter models. This fit also proved highly precise (Fig. <ref type="figure" target="#fig_1">2</ref>, left), with an RMABE of 0.30% for 3B-parameter model predictions. Extrapolating model scaling (fitted with models up to 3B parameters) to predict performance for larger models (up to 400B parameters) on a 50B token budget (Fig. <ref type="figure" target="#fig_1">2</ref>, right) revealed several differences from data scaling patterns: 1. Pure synthetic data remains non-advantageous over CC; notably, models trained on pure rephrased synthetic data will underperform those trained on CC at larger models.</p><p>2. For rephrased data mixtures, sensitivity to the mix ratio changes: while a 67% synthetic mix was marginally better for larger data budgets (data scaling), it becomes marginally disadvantageous for larger model sizes (model scaling) compared to a 33% mix.</p><p>3. For TXBK mixtures, 33% synthetic consistently outperforms 67%. The advantage of 33% TXBK over pure CC appears to diminish with larger models, a trend not observed in data scaling.</p><p>Overall, these model scaling results suggest synthetic data appears comparably less favorable for pre-training larger LMs relative to its utility in data scaling scenarios. Despite outperforming training on CC, larger models are not as tolerant to a higher ratio synthetic data as larger data budgets. This observation aligns with practices where synthetic data is effective for smaller LMs or specific pre-training phases, but less predominantly used for the largest models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.5">Compute Scaling and Irreducible Loss</head><p>We also fit joint scaling laws incorporating both model size (N ) and data budget (D) using data from all ∼700 training runs (details in Appendix A): L(N, D) = A N α + B D β + E. An example loss landscape for CC data is shown in Fig. <ref type="figure">6</ref>. The coefficient E represents the irreducible loss-the theoretical minimum loss achievable with infinitely large models and data.</p><p>Estimations of E for each data mixture (Fig. <ref type="figure" target="#fig_2">3</ref>) indicate their ultimate potential. Notably, any mixture involving synthetic data, or pure synthetic data (except pure QA), is projected to achieve a lower irreducible loss than training only on CommonCrawl. This empirically challenges theoretical concerns about "model collapse" in single-round training, which predict any synthetic data inclusion would ultimately degrade performance <ref type="bibr">(Dohmatob et al., 2024a)</ref>. Among the studied mixtures, 33% HQ rephrased data + 67% CC shows the lowest projected irreducible loss. Conversely, pure QA rephrased data exhibits a high irreducible loss, second only to pure CommonCrawl. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Additional Studies: A Broader View</head><p>Beyond the primary scaling law analysis, we conduct targeted experiments to deepen our understanding of specific factors influencing the effective use of synthetic data in pre-training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">"Good" Synthetic Data Mixture Ratios</head><p>Motivation Our main scaling law analysis tested limited discrete mixture ratios (0%, 33%, 67%, 100%) of synthetic and natural data. To identify "good" ratios with finer granularity, we performed a fine-grained grid search, motivated by indications that optimal mixtures vary with synthetic data type, model scale, and data budget.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Methodology</head><p>We trained approximately 400 additional LLMs (200M to 1B parameters) on data budgets from 1B to 50B tokens. For each synthetic data type (HQ, QA, TXBK) and each (model size, data budget) configuration, we varied the percentage of synthetic data mixed with CommonCrawl across ten exponentially spaced points: 0%, 0.5%, 1%, 2%, 5%, 10%, 15%, 20%, 50%, and 100%. The "good" ratio was defined as the mixture yielding the lowest validation loss on the evaluation sets. Findings Figure <ref type="figure" target="#fig_3">4</ref> visualizes the results. Best-found ratios are all below 50% appear to converge ∼30%. Key observations include:</p><p>• HQ Rephrased Data: The optimal mixture is consistently ∼30% HQ synthetic data with 70% CommonCrawl across tested scales. This 30% mixture generally outperformed the 50% mixture suggested by <ref type="bibr" target="#b27">Maini et al. (2024)</ref> in our setups.</p><p>• QA Rephrased Data: The preferred ratio of QA data tends to decrease with increasing model/data sizes, shifting from ∼50% for smaller configurations towards 30% for larger ones.</p><p>• Textbook (TXBK) Data: Benefits are most apparent at larger scales. Optimal ratios are often minimal (&lt;5%) for smaller configurations, increasing with scale but generally remaining below those for rephrased data.</p><p>These findings refine our scaling law observations, emphasizing the sensitivity of effective synthetic data deployment to its type and the training regime.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Impact of Generator Model Capability</head><p>Motivation It is often assumed that larger, more capable generator models produce higher-quality synthetic data, leading to better downstream performance. We empirically tested this hypothesis.</p><p>Methodology We used Llama-3 models of varying scales (3B, 8B, and 70B parameters) as generators to recreate subsets of our HQ (High-Quality) and QA (Question-Answering) rephrased datasets. Generation prompts and source CommonCrawl documents were kept consistent with our original pipeline, which utilized Mistral-7B-Instruct as the generator. A fixed 1B-parameter downstream model, with the same architecture as in previous experiments, was then trained for 5 billion tokens. For each generator (Llama3-3B/8B/70B), we evaluated the synthetic data produced by training the downstream model on mixtures with CommonCrawl. The percentage of synthetic data in these mixtures was varied across eight exponentially spaced points: 0.5%, 1%, 2%, 5%, 10%, 15%, and 20%. Approximately 200 models were trained for this ablation study to compare the efficacy of synthetic data generated by models of different capabilities.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Findings</head><p>The results, illustrated by trends similar to those shown in Figure <ref type="figure">5</ref>, challenge the "bigger is always better" intuition for generator models and reveal a nuanced relationship:</p><p>• A certain level of generator capability appears beneficial: synthetic data from Llama-3-8B generators consistently outperformed data from Llama-3-3B generators. This finding suggests a baseline capability is necessary and contrasts with suggestions from <ref type="bibr" target="#b27">Maini et al. (2024)</ref> that rephrasing costs could be significantly reduced by using smaller generator LMs without a loss in downstream performance.</p><p>• However, increasing generator size further to Llama-3-70B did not yield superior synthetic data for pre-training compared to data from the Llama-3-8B generator, when assessed by the trained model's validation loss.</p><p>• In specific instances, the Llama-3-70B generator proved less effective. For HQ rephrased data, synthetic data generated by Llama-3-70B models led to consistently worse evaluation results than data from Llama-3-8B models. For QA rephrased data, the 70B generator's output resulted in comparable performance than that from the 8B generator.</p><p>This suggests that factors beyond sheer generator scale-such as instruction following fidelity at different scales, the diversity of generated outputs, or potential introduction of stylistic artifacts-play a crucial role in determining the utility of synthetic data for pre-training. Simply employing the largest available generator may not be the most effective or efficient strategy.</p><p>Figure <ref type="figure">5</ref> Generator model capability ablation. Compares validation loss of 1B-parameter models trained for trained for 5B tokens using mixtures of HQ/QA rephrased data from Llama3-3B/8B/70B generators with CommonCrawl. The percentage of synthetic data in these mixtures was varied across seven exponentially spaced points from 0.5% to 20%.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">Interpretation via Low-level Statistics</head><p>The impact of synthetic data on pre-training efficiency, particularly how "good" mixing ratios vary with synthetic data type, budget, and model size, necessitates investigation into underlying mechanisms. While synthetic data may improve "data quality" (e.g., better coherence, reduced noise) at the cost of diversity <ref type="bibr" target="#b25">(Long et al., 2024)</ref>, the generation process reflects the generator LM's output distribution, potentially shrinking the support of distribution from natural expressions or introducing artifacts like model collapse <ref type="bibr">(Dohmatob et al., 2024a)</ref>.</p><p>We investigate via low-level statistical analysis:</p><p>(Q1) Does synthetic data exhibit reduced lexical diversity (i.e., a "shrunk support") compared to natural web text? Q2) Can improvements in test performance with synthetic data be attributed to smaller training-test distributional distance?</p><formula xml:id="formula_0">(</formula><p>(Q3) Are optimal mixing ratios due to minimized distributional distance or a more complex diversity-quality trade-off?</p><p>Inspired by <ref type="bibr" target="#b26">Magnusson et al. (2024)</ref>'s finding that a small fraction of high-frequency strings contributes significantly to LM loss, we conduct unigram frequency analysis across training and test corpora.</p><p>Full results and analyses are provided in Appendix 5.3. We summarize the key findings:</p><p>• Vocabulary Mismatches and High-Loss Tokens: Unigrams frequent in test sets but rare or absent in some training sets (e.g., "\n\n", " hvor" (Danish), " dön" (Turkish), etc.) cause higher evaluation loss. This issue is pervasive; no single training set offers complete coverage.</p><p>• Synthetic Data and Unigram Distribution: Synthetic data slightly shrinks unigram distribution compared to broad web corpora like CommonCrawl-yet CommonCrawl's wider coverage did not yield superior performance.</p><p>• Distributional Distance to Test Sets: KL-divergence on unigram distributions did not show synthetic data closer to test distributions; CommonCrawl appears closest to test datasets.</p><p>Preliminary conclusions are:</p><p>1. Inherent Limitations of Single Data Sources: All data sources, including CommonCrawl, have distributional gaps causing high evaluation losses on underrepresented tokens. This favors mixed corpora with broad lexical coverage with reasonable frequencies, helping explain why mixed-source corpora often outperform single-source ones.</p><p>2. Beyond Distributional Matching for "Good" Mixtures: Models often train best with significant synthetic data proportions (e.g., ≈30%) even if it does not minimize unigram distributional distance to test sets. This suggests factors beyond simple similarity, pointing to more complex diversity-quality trade-offs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Conclusion</head><p>This large-scale empirical investigation (over 1000 LLM variants) demonstrates that synthetic data in foundational pre-training presents a nuanced trade-off. Strategically mixing specific synthetic types (e.g., ∼ 30% high-quality rephrased text with natural data) can significantly accelerate pre-training convergence up to 5-10x and potentially achieve lower irreducible loss than natural data alone. These results contribute mixed evidence on "model collapse" during large-scale single-round (n=1) model training on synthetic data-training on rephrased synthetic data shows no degradation in performance in foreseeable scales whereas training on mixtures of textbook-style pure-generated synthetic data shows patterns predicted by "model collapse". However, effectiveness is also conditional on generation method, mixture strategy, and generator models. Larger generator models did not guarantee superior pre-training data. Downstream model performance cannot be simply explained by training data's diversity or similarity to test corpora, but pointing to more complex diversity-quality tradeoffs.</p><p>Our findings underscore that synthetic data requires careful, empirically-informed deployment, rather than being a universal solution to data constraints. Essential next steps involve developing more targeted synthetic data generation techniques and dynamic mixing strategies. Rigorous evaluation of their long-term impacts on diverse model capabilities (reasoning, robustness, alignment) at frontier scales is crucial, alongside pinpointing key beneficial characteristics of generator models beyond sheer size.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7">Discussions</head><p>On "Model Collapse" for Large-Scale Single-Round (n=1) Model Training on Synthetic Data. This paper contributes new evidence on large-scale single-round (n=1) model training on synthetic data, rejecting certain conjectures from prior research on "model collapse" and helping refine their range of application.</p><p>The notion, "model collapse", was formalized by <ref type="bibr" target="#b34">Shumailov et al. (2023)</ref>, characterizing the effect of iterative training on self-generated (or mixed) data. Subsequent works such as <ref type="bibr">Dohmatob et al. (2024b)</ref> studies the effect for n-fold iterative synthetic training, where the main results show training on synthetic data even for n=1 (one-round) leads to significant flare-up in test perplexity compared to training on the original data. Further, <ref type="bibr">Dohmatob et al. (2024a)</ref> shows that even the smallest fraction of synthetic data (e.g., as little as 1% of the total training dataset) can still lead to model collapse while training 124M-parameter GPT-2 small on BabyStories. Based on theoretical derivations, the authors conjecture that larger "models may mitigate the collapse, although they do not entirely prevent it." With strong conclusions on the important topic, the theoretical analysis is based on stylized models (e.g., regression models) and the language modeling experiments are simplistic (e.g., fine-tuning for one task). There remains a significant gap between these forecasts from "model collapse" and the advancement in generation/training on synthetic data.</p><p>This work brings more clarity to this evolving topic. In this work, we found that for one-round (n=1) model training on synthetic data:</p><p>• when using rephrased synthetic data in pre-training contemporary LMs, we do not see patterns of degradation in performance in foreseeable scales, and pre-training on rephrased synthetic data mixed with natural data can lead to significant speed-up in reducing validation loss.</p><p>• training on mixtures of textbook-style pure-generated synthetic data did lead to notably higher loss on downstream domains, especially at small data budgets. This is largely consistent with the patterns and predictions reported in the "model collapse" papers.</p><p>This shows that in large-scale LM pre-training, training on synthetic data for one-round does not necessarily degrade validation performance, confining the extrapolation of theoretical results from "model collapse" papers.</p><p>• Despite the shrinking support on n-gram distributions, with the right type of synthetic data and a mixing ratio with natural data, the benefits for including synthetic data could outweigh the issues from "model collapse" and deliver substantial benefits. This adds counter evidence to the conjecture that including synthetic data would always lead to worse model performance.</p><p>• However, most benefits observed are from rephrased synthetic data, whereas textbook-style synthetic data often leads to performance degradation even when mixed with a large proportion of natural data. Empirical results on textbook-style synthetic data show patterns characterized in "model collapse", suggesting the generalizability of theoretical results in "model collapse" may depend on the nature of synthetic data.</p><p>Together, results and findings contributed in this work reject certain claims from "model collapse" and help refine their range of application.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Limitations</head><p>Our study, while extensive, has limitations influencing the scope and generalizability of findings:</p><p>• Limited Scope of Synthetic Data: We analyzed three specific synthetic data types (HQ/QA rephrased, TXBK). Findings may not directly apply to other generation methods (e.g., synthetic code, dialogues) or prompting strategies.</p><p>• Evaluation Focus: Analysis heavily relied on perplexity/loss for scaling. It lacked in-depth human evaluations for nuanced capabilities or safety, and assessment on highly specialized tasks. Additional evaluations on NLP benchmarks would be a desirable addition as loss is not our final goal.</p><p>• Temporal Effects: We examined a single pre-training stage. Potential long-term effects, subtle degradation, or multi-generational dynamics ("model collapse") were not investigated.</p><p>• Scale Constraints: Experiments reached 3B parameters and 200B tokens. Scaling trends observed regarding synthetic data utility at larger model sizes require validation at frontier model scales (&gt;100B parameters, &gt;10T tokens).</p><p>• Impact of Tokenizers: Studies in Section 5.3 show that different training datasets have different coverage of tokens, where certain tokens rare in the training data may be associated with a higher loss in evaluation.</p><p>Though not significant enough to affect the main results in this paper (such as the "good" mixing ratios), the impact of tokenizer may become more visible in finer-grained analysis on validation loss.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Synthetic Data Generation: Prompts, Samples, and Parameters</head><p>This section provides further details on the synthetic data generation process, including the prompts used, sample outputs, and specific generation/filtering parameters.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.1 Prompt Templates for Synthetic Data Generation</head><p>For HQ Rephrasing, prompts were adapted from <ref type="bibr" target="#b27">Maini et al. (2024)</ref> and modified to encourage longer, highquality text. For QA Rephrasing, prompts were designed to convert informational text into a question-answer dialogue format, adapted from <ref type="bibr" target="#b27">Maini et al. (2024)</ref> and modified to promote better format-following and conversion for complete information. For Synthetic Textbooks, prompts guided the generation of chapter content based on outlines, with variations for different target audiences (grade school, college, expert, general).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.2 Sample Generations</head><p>This would ideally showcase the stylistic differences and typical output quality.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.3 Generation Parameters and Post-Filtering</head><p>All synthetic data was generated using a Mistral-Instruct-7b-v0.1 model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Sampling Parameters:</head><p>Unless specified otherwise (e.g., for particular prompt explorations not detailed in the main paper), the following sampling parameters were used:</p><p>• Temperature: 0.7</p><p>• Top-p (nucleus sampling): 0.95</p><p>These parameters were chosen to balance creativity and coherence in the generated text.</p><p>Post-Filtering: Light heuristic post-filtering was applied to all generated synthetic datar, removing documents that were excessively short (e.g., less than 50 tokens) or excessively long relative to the target length for that generation type, if such outputs occurred despite prompt length guidance. The goal of this light filtering was to remove egregious generation errors without overly sanitizing the data or significantly altering its distribution.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Supplementary Discussion on Related Work</head><p>This appendix provides supplementary details to the related work discussed in Section 2, offering further context on synthetic data applications, data curation practices, and model collapse theories.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.1 Synthetic Data in Post-training</head><p>The use of synthetic data is particularly well-established and successful in post-training phases, primarily for aligning LLMs with human instructions and preferences. This success stems from the ability to generate large amounts of targeted data for specific, often narrow, objectives where human annotation is costly or slow. Key examples include: B.1.1 Prompt Template HQ Rephrasing</p><p>• System Prompt: Provide direct and detailed response to the instructions without adding additional notes.</p><p>• [USER]: For the following document, regardless of its original content or formatting, write a full article of the same content in high quality English language as in texts on Wikipedia: • [USER]: For the following document, regardless of its original content or formatting, convert it into a comprehensive list of question-answer pairs with multiple tags of "Question:" followed by "Answer:", where questions and answers cover complete information of the original document. Document: • System Prompt: Provide direct and detailed response to the instructions without adding additional notes.</p><p>• [USER] &lt;4 versions&gt;: Imagine you are a prolific author tasked with writing a textbook. You are working on writing a textbook involving the knowledge and information of the following text. Text: [xxxx]\n Your task is to write an outline for the textbook. Your target audiences are &lt;grade school students/college students/field experts/general public&gt;. The textbook has 10 chapters in total plus title, introduction, and appendices. Textbook outline: B.1.4 Prompt Template for Generating Textbook-style Synthetic Data: Step 2, Chapter Generation • Step 2: generate each section based on outline.</p><p>• System Prompt: Provide a direct and detailed response to the instructions without adding additional notes.</p><p>• [USER]: Imagine you are a prolific author tasked with writing a textbook. You are working on writing a textbook with the following outline.\n Outline: [xxxx] \n Your task is to write Chapter x of the textbook. Your target audiences are grade school students. Include exercises at the end of the chapter to test the reader's knowledge of the chapter and then provide reference answers to each question.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D.2 Additional Results on Section 5.3</head><p>Figure <ref type="figure">7</ref> shows analyses of token distributions across datasets and methods. Figure <ref type="figure">8</ref> visualizes per-token loss and rolling avergage in evaluation for models trained on respective corpus.</p><p>10 0 10 1 10 2 10 3 10 4 10 5 Token Rank 10 11 10 9 10 7 10 5 10 3 10 1 Token Frequency zipf(a=1.2, b=3.0) CC HQ QA TXBK Test (a) Unigram analysis with Zipf function fitting for unigram (token) frequencies of different training data corpora. CC appears to have wider and slight more uniform coverage of tokens than other training corpora, whereas the test corpora have wider coverage of tokens than training corpora. TXBK QA HQ CC Dataset 0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 KL Relative to Test (b) KL-divergence beween unigram distributions of the test dataset and each training corpus. CC appears to have the smallest KL-divergence from test data, suggesting the highest distribution similarities, but does not yield high dowmstream model performance. ',' ' the' '.' ' of' ' and' ' to' ' ' ' a' ' in' ' "' ' is' ' that' ' (' '\n' ' for' '."' ' with' '.\n\n' ' was' ' on' ' as' ' I' ')' ' be' ' it' '1' '2' "'s" ' by' ' you' ' The' '-' ' are' ' at' ' from' ':' ' not' ' this' ' or' ' an' ' have' '\\' '\n\n' ' he' '0' ' his' '3' ' were' ' which' ' we' Test Sorted Token 0.00 0.01 0.02 0.03 0.04 0.05 Token Frequency CC HQ QA TXBK Test</p><p>(c) All estimated token frequencies for each training and test corpus, sorted by the frequency of test tokens. Some methods have relatively lower representation of certain tokens (e.g., CC's ".\n\n") and others increase certain token frequencies (e.g., QA's ":").</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Figure 7</head><p>Analysis of token distributions across datasets and methods.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1</head><label>1</label><figDesc>Figure 1 Data Scaling. Left: Validation of the data scaling formula. Predictions for 200B tokens (fitted using up to 100B tokens) achieve an RMABE of 0.41%. Solid dots display actual loss values while the fitted curves shows predicted loss. Validation datapoints are illustrated by diamond marks. Right: Extrapolated data scaling performance for 1B-parameter models across various data mixtures. With reasonably reliable fits validated, we extrapolated data scaling (fitted up to 100B tokens) to predict loss for larger data budgets (up to 8T tokens), covering training regimes of state-of-the-art LLMs (Meta, 2025; DeepSeek-AI, 2024). Key findings are presented in Fig. 1 (right) and summarized below:</figDesc><graphic coords="5,70.87,455.71,235.12,167.63" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2</head><label>2</label><figDesc>Figure 2 Model Scaling. Left: Validation of the model scaling formula. Predictions for 3B-parameter models (fitted using up to 2B-parameter models) achieve an RMABE of 0.30% on validation datapoints illustrated with diamond marks. Solid dots display actual loss values while the fitted curves shows predicted loss. Right: Extrapolated model scaling performance for training on 50B tokens across various data mixtures.</figDesc><graphic coords="6,70.87,340.77,235.12,167.63" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 3</head><label>3</label><figDesc>Figure 3 Estimated irreducible loss (E) for different data mixtures. Lower values are better.</figDesc><graphic coords="7,141.41,268.67,329.20,204.82" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4</head><label>4</label><figDesc>Figure 4 Best-found mixture ratios (percentage of synthetic data with CommonCrawl) from grid search for HQ (Left), QA (Middle), and TXBK (Right) synthetic data types across different model sizes and data budgets. Best-found ratios are all below 50% appear to converge ∼ 30%.</figDesc><graphic coords="8,70.87,63.78,470.27,124.59" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><figDesc>[xxxx]. Provide the rephrased article without any additional notes. Long article with full length and complete details. Rephrased article: B.1.2 Prompt Template QA Rephrasing • System Prompt: Provide direct and detailed response to the instructions without adding additional notes.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><figDesc>[xxxx]. Provide the converted question-answer pairs without any additional notes. Question-answer pairs with corresponding tags ("Question:", "Answer:"): B.1.3 Prompt Template for Generating Textbook-style Synthetic Data: Step 1, Outline Generation • Step 1: generate an outline based on input text.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2</head><label>2</label><figDesc>Training Hyperparameters</figDesc><table><row><cell>Hyperparameter</cell><cell></cell><cell>Value</cell></row><row><cell>Optimizer</cell><cell></cell><cell>AdamW</cell></row><row><cell>Peak Learning Rate</cell><cell></cell><cell>3.0 × 10 -4</cell></row><row><cell>Warmup Steps</cell><cell></cell><cell>10%</cell></row><row><cell>Min. LR Ratio</cell><cell></cell><cell>1.0 × 10 -6</cell></row><row><cell>Gradient Clipping</cell><cell></cell><cell>1.0</cell></row><row><cell cols="2">Batch Size (per device)</cell><cell>4</cell></row><row><cell>Accumulation Steps</cell><cell></cell><cell>8</cell></row><row><cell>Sequence Length</cell><cell></cell><cell>4096</cell></row><row><cell>(Effective Batch Size)</cell><cell></cell><cell>(1M tokens)</cell></row><row><cell>Prefetch Size</cell><cell></cell><cell>1024</cell></row><row><cell>Add BOS token</cell><cell></cell><cell>True</cell></row><row><cell>Add EOS token</cell><cell></cell><cell>True</cell></row><row><cell>Model Data Type</cell><cell></cell><cell>bf16</cell></row><row><cell>Epochs</cell><cell></cell><cell>1</cell></row><row><cell>GPU Hardware</cell><cell cols="2">8x NVIDIA A100 80GB</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 3</head><label>3</label><figDesc>Hyperparameters for Perplexity Evaluation</figDesc><table><row><cell>Hyperparameter</cell><cell>Value</cell></row><row><cell>Max Tokens to Generate</cell><cell>2048</cell></row><row><cell>Generator Data Type (dtype)</cell><cell>bf16</cell></row></table></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgment</head><p><rs type="person">Ruoxi Jia</rs> and the <rs type="institution">ReDS lab</rs> acknowledge support through grants from the <rs type="institution">Amazon-Virginia Tech Initiative for Efficient</rs> and <rs type="person">Robust Machine Learning</rs>, and the <rs type="funder">National Science Foundation</rs> under grants <rs type="grantNumber">IIS-2312794</rs>, <rs type="grantNumber">IIS-2313130</rs>, <rs type="grantNumber">OAC-2239622</rs>.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_fJuBaZU">
+					<idno type="grant-number">IIS-2312794</idno>
+				</org>
+				<org type="funding" xml:id="_nbAb8cD">
+					<idno type="grant-number">IIS-2313130</idno>
+				</org>
+				<org type="funding" xml:id="_2k36aNw">
+					<idno type="grant-number">OAC-2239622</idno>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ethical Considerations</head><p>The generation and use of synthetic data in LLM pre-training warrant careful ethical reflection:</p><p>• Bias Propagation: Synthetic data risks inheriting and amplifying biases from generator models. Auditing generators and generated data for fairness is crucial but was outside this study's scope.</p><p>• Factual Accuracy: Generated content can include inaccuracies (hallucinations). Large-scale use could embed misinformation in models, necessitating robust quality control.</p><p>• Data Diversity: Over-reliance on potentially homogeneous synthetic data could reduce model robustness and diversity compared to training on varied real-world text.</p><p>• Transparency &amp; Reproducibility: We mitigate some concerns by committing to open-sourcing our full recipe to facilitate reproducibility and further community research.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Appendix A Experimental Setup and Implementation Details</head><p>A.1 Datasets</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.1 Natural Data Baseline</head><p>Our natural data baseline consists of English text sourced from unfiltered CommonCrawl (CC) dumps processed via the RedPajama-v2 pipeline <ref type="bibr" target="#b41">(Weber et al., 2024)</ref>. This serves as our reference point representing widely used, large-scale web data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.2 Synthetic Data Generation</head><p>To ensure consistency, a single generator model, Mistral-Instruct-7b-v0.1 <ref type="bibr" target="#b16">(Jiang et al., 2023)</ref>, was used for generating all synthetic datasets described below. Input documents for generation methods requiring a source were sampled from our unfiltered CommonCrawl baseline data. Standard sampling parameters (temperature=0.7, top-p=0.95) were generally used, unless otherwise specified (see Appendix B for more details on prompts and post-filtering).</p><p>Method A: Web Rephrasing (WRAP-like) Inspired by WRAP <ref type="bibr" target="#b27">(Maini et al., 2024)</ref>, we generated two stylistic variants by prompting Mistral-Instruct-7b-v0.1 to rewrite input CC documents (up to 2k tokens):</p><p>• High-Quality (HQ) Rephrasing: Used prompts optimized from the original WRAP work to produce longer (∼550 tokens avg.) and more coherent synthetic texts, mimicking high-quality, well-structured English (e.g., Wikipedia style). The prompt aimed for clarity, coherence, and quality improvement while preserving core information.</p><p>• Question-Answering (QA) Rephrasing: Used prompts optimized to restructure the input document's content into a conversational QA format (∼550 tokens avg.), embedding instruction-following patterns.</p><p>Method B: Synthetic Textbooks (Phi-like) Inspired by Phi <ref type="bibr">(Li et al., 2023b)</ref> and related community efforts (e.g., Cosmopedia (Ben Allal et al., 2024)), we generated novel textbook-style content. This involved a two-step process:</p><p>1. An outline for a 10-chapter "book" was constructed based on keywords or themes extracted from input CC documents.</p><p>2. Based solely on the outline, each chapter was generated (∼450 tokens/chapter, ∼5k tokens/book), often including exercises and reference answers. We employed 4 prompt variations targeting different audiences (e.g., "grade school students", "college students", "domain experts", "general audience") to encourage diversity.</p><p>Light heuristic filtering was applied post-generation to remove clearly malformed outputs (details in Appendix B).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1.3 Data Mixtures</head><p>We created training datasets for various conditions by concatenating and shuffling the source data. For each synthetic data type (HQ, QA, Textbook), we prepared the following conditions relative to the unfiltered CC baseline:</p><p>• 100% Natural (Unfiltered CC)</p><p>• 100% Synthetic (consisting entirely of one synthetic type: HQ, QA, or Textbook)</p><p>• 67% Synthetic / 33% Natural</p><p>• 33% Synthetic / 67% Natural For each experimental point (model size, data budget), models were trained on these different mixture ratios corresponding to one synthetic type, allowing for direct comparison against the 100% natural baseline. We typically trained 3-5 model variants per condition to enable robust scaling law analysis.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2 Models and Training Configuration</head><p>A.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1">Model Architecture</head><p>We employ a standard decoder-only Transformer architecture based on Llama 3 models <ref type="bibr" target="#b11">(Grattafiori et al., 2024)</ref>. Key architectural features include SwiGLU activation functions, RMSNorm for layer normalization, and Rotary Position Embeddings (RoPE). We train models at multiple sizes, ranging logarithmically from approximately 100 Million to 3 Billion parameters, to facilitate scaling law analysis. In the research of scaling laws for large language models (LLMs), model sizes are counted as non-embedding parameters, which refers to all the learnable parameters in the model except for those associated with the input and output token embeddings <ref type="bibr" target="#b20">(Kaplan et al., 2020)</ref>. This work follows this setup and the size of all models being trained refers to their count of non-embedding parameters. Table <ref type="table" target="#tab_2">1</ref> outlines the architectural parameters for various model sizes explored. All models were trained from scratch (random initialization) using the Meta Lingua library <ref type="bibr" target="#b38">(Videau et al., 2024)</ref> on PyTorch <ref type="bibr" target="#b30">(Paszke, 2019)</ref> for efficient distributed training. We used the AdamW optimizer with β 1 = 0.9, β 2 = 0.95, a weight decay of 0.1. A cosine learning rate schedule was used with a linear warmup equivalent to 10% of the total training steps. A consistent context length of 4096 tokens with an effective batch size of 1M tokens was used across all training runs. The Llama 3 pre-trained TikToken tokenizer with a 128k vocabulary size was used <ref type="bibr" target="#b11">(Grattafiori et al., 2024)</ref>. Specific global batch sizes and gradient accumulation strategies were maintained consistently for comparable experimental settings to ensure fair comparisons. The models were trained using the hyperparameters detailed in Table <ref type="table">2</ref>.</p><p>Training time scales linearly with the training data size and scales nearly linearly with the model size (provided that it fits into GPU RAM without changing the batch size). Typically, we were able to train a 1B-parameter model for ≈ 15B tokens per day on a single node with 8x NVIDIA A100 80GB GPUs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2.3 Evaluation Protocol</head><p>Model performance was evaluated using intrinsic metrics during training and a suite of downstream tasks post-training. Validation perplexity (log ppl equivalent to cross-entropy loss) was tracked during training. Final perplexity was calculated on a diverse set of 14 non-code/math English text domains from The Pile <ref type="bibr" target="#b9">(Gao et al., 2020)</ref> (specifically: NIH ExPorter, Pile-CC, Wikipedia (en), USPTO Backgrounds, PubMed Central, PubMed Abstracts, PhilPapers, OpenWebText2, OpenSubtitles, Gutenberg (PG-19), FreeLaw, BookCorpus2, Books3, ArXiv) and also on the Wikitext-103 dataset <ref type="bibr" target="#b28">(Merity et al., 2016)</ref>. Per-token average perplexity across these domains serves as a key intrinsic performance measure. For model evaluation, the generator settings detailed in Table <ref type="table">3</ref> were used.</p><p>B.2.1 Sample Generation for HQ Rephrasing • [Input text]: Porsche® 911 B&amp;B Hi-Capacity Intercooler, 1978-1989 Home / Porsche® 911 B&amp;B Hi-Capacity Intercooler, 1978-1989 Porsche® 911 B&amp;B Hi-Capacity Intercooler, 1978-1989 More Views The B &amp; B intercooler offers 100% more cooling area than the stock unit, and 35% more than any other aftermarket cooler. Due to this increased size, the cooler has greater thermal efficiency, which means cooler air to the engine. This will reduce the chance of detonation and allow for greater boost pressure for more power. Bolts in stock location with minor modifications. Choose from Silver Aluminum or Black Powder Coated (allow 2-weeks). APPLICATIONS <ref type="bibr">PORSCHE 911 (930) 1978</ref><ref type="bibr">PORSCHE 911 (930) , 1979</ref><ref type="bibr">PORSCHE 911 (930) , 1980</ref><ref type="bibr">PORSCHE 911 (930) , 1981</ref><ref type="bibr">PORSCHE 911 (930) , 1982</ref><ref type="bibr">PORSCHE 911 (930) , 1983</ref><ref type="bibr">PORSCHE 911 (930) , 1984</ref><ref type="bibr">PORSCHE 911 (930) , 1985</ref><ref type="bibr">PORSCHE 911 (930) , 1986</ref><ref type="bibr">PORSCHE 911 (930) , 1987</ref><ref type="bibr">PORSCHE 911 (930) , 1988</ref><ref type="bibr">PORSCHE 911 (930) , 1989</ref> • HQ Rephrased: The Porsche® 911 B&amp;B Hi-Capacity Intercooler is a high-performance cooling system designed for the Porsche 911 (930) model from 1978 to 1989. This intercooler offers 100% more cooling area than the stock unit, and 35% more than any other aftermarket cooler. This increased size allows for greater thermal efficiency, which means cooler air to the engine. This, in turn, reduces the chance of detonation and allows for greater boost pressure, resulting in more power. The B&amp;B intercooler is designed to bolt into the stock location with minimal modifications.</p><p>It is available in two finishes: Silver Aluminum and Black Powder Coated. Customers should allow 2-weeks for delivery of the Black Powder Coated finish. The applications for the Porsche® 911 B&amp;B Hi-Capacity Intercooler are the Porsche 911 (930) models from 1978 to 1989. This intercooler is designed to provide superior cooling performance, making it an ideal choice for those looking to improve the performance of their Porsche 911. B.2.2 Sample Generation for QA Rephrasing • [Input text]: Porsche® 911 B&amp;B Hi-Capacity Intercooler, 1978-1989 Home / Porsche® 911 B&amp;B Hi-Capacity Intercooler, 1978-1989 Porsche® 911 B&amp;B Hi-Capacity Intercooler, 1978-1989 More Views The B &amp; B intercooler offers 100% more cooling area than the stock unit, and 35% more than any other aftermarket cooler. Due to this increased size, the cooler has greater thermal efficiency, which means cooler air to the engine. This will reduce the chance of detonation and allow for greater boost pressure for more power. Bolts in stock location with minor modifications. Choose from Silver Aluminum or Black Powder Coated (allow 2-weeks). APPLICATIONS PORSCHE 911 ( <ref type="bibr">930) 1978, 1979, 1980, 1981, 1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989</ref> • QA Rephrased: Question: What is the name of the product? Answer: Porsche® 911 B&amp;B <ref type="bibr">Hi-Capacity Intercooler, 1978</ref><ref type="bibr">-1989</ref> Question: What is the cooling area of the stock unit? Answer: 100% more cooling area than the stock unit Question: What is the cooling area of the B&amp;B intercooler compared to other aftermarket coolers? Answer: 35% more than any other aftermarket cooler Question: What is the purpose of the increased size of the cooler? Answer: Greater thermal efficiency, which means cooler air to the engine Question: What effect will this have on the engine? Answer: Reduced chance of detonation and allow for greater boost pressure for more power Question: Where will the bolts for the cooler be installed? Answer: Bolts in stock location with minor modifications Question: What are the two options for the color of the cooler? Answer: Silver Aluminum or Black Powder Coated Question: How long will it take for the cooler to arrive? Answer: 2-weeks for Black Powder Coated Question: What are the applications of the B&amp;B intercooler? Answer: Porsche 911 (930) <ref type="bibr">1978,</ref><ref type="bibr">1979,</ref><ref type="bibr">1980,</ref><ref type="bibr">1981,</ref><ref type="bibr">1982,</ref><ref type="bibr">1983,</ref><ref type="bibr">1984,</ref><ref type="bibr">1985,</ref><ref type="bibr">1986,</ref><ref type="bibr">1987,</ref><ref type="bibr">1988,</ref><ref type="bibr">1989</ref>.</p><p>B.2.3 Sample Generation for Textbook-style Synthetic Data: Step 1, Outline Generation • [Sample outline &lt;general public&gt;]: Title: The Baltimore Orioles' Spring Training Introduction: * Brief overview of the Orioles' history and recent successes * Importance of spring training in preparing for the regular season * Purpose of the textbook: To provide readers with an in-depth look at the Orioles' spring training activities Chapter 1: Overview of the Orioles' Spring Training Facilities * Description of the team's two main spring training fields: Ed Smith Stadium and the Gulf Coast League * Explanation of the new artificial turf field at Ed Smith Stadium * Importance of having multiple fields for inclement weather and rehabbing injured players Chapter 2: Injury Updates and Rehabilitation * Overview of the Orioles' key injuries and their status during spring training ... Chapter 10: The Future of Orioles Baseball * Overview of the team's current roster and their potential for success in the upcoming season * Description of the team's prospects and their potential to develop into top Major League players * Explanation of the importance of continued investment in player development and team building for long-term success Conclusion: * Recap of the key takeaways from the Orioles' spring training * Final thoughts on the importance of spring training and the team's potential for success in the upcoming season Appendices: * List of Orioles' major league roster and key prospects * Glossary of baseball terms and concepts discussed in the textbook * Additional resources for further reading on baseball and the Orioles.</p><p>Instruction Generation (Self-Instruct): Techniques like Self-Instruct <ref type="bibr" target="#b40">(Wang et al., 2022)</ref> use an LLM to bootstrap instruction-following data (instruction, input, output tuples) from a small seed set, enabling effective instruction fine-tuning without extensive human labeling.</p><p>Preference Data for RLHF: Reinforcement Learning from Human Feedback (RLHF) requires data indicating preferences between model outputs. Synthetic data generation can augment or replace human effort in creating these preference pairs, facilitating large-scale alignment <ref type="bibr" target="#b35">(Taori et al., 2023)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>AI Feedback and Constitutional AI:</head><p>Methods like Reinforcement Learning from AI Feedback (RLAIF) and Constitutional AI <ref type="bibr" target="#b1">(Bai et al., 2022)</ref> utilize AI models themselves, guided by principles or rules, to provide feedback or generate preferred responses, further automating the alignment process.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2 Data Curation Practices</head><p>The quality and composition of pre-training data are paramount. Major dataset development efforts highlight common practices:</p><p>Large-Scale Corpora Examples:</p><p>• C4 (Colossal Clean Crawled Corpus) <ref type="bibr" target="#b33">(Raffel et al., 2020)</ref>: Derived from Common Crawl using heuristics like language filtering (retaining primarily English text), removing code/markup, filtering based on blocklists, and deduplication at the document level.</p><p>• The Pile <ref type="bibr" target="#b9">(Gao et al., 2020)</ref>: A diverse dataset combining 22 different high-quality sources, including academic papers (PubMed, arXiv), books (Books3), code (GitHub), web text (Pile-CC), and conversational data, with source-specific filtering.</p><p>• RefinedWeb <ref type="bibr" target="#b32">(Penedo et al., 2024)</ref>: Focused on rigorous filtering and aggressive fuzzy deduplication of web data from Common Crawl to create a high-quality, large-scale web corpus, arguing against heuristic domain mixing.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Domain Mixing:</head><p>Research actively explores the impact of mixing data from different sources <ref type="bibr">(Liu et al., 2024a;</ref><ref type="bibr" target="#b42">Xie et al., 2023;</ref><ref type="bibr" target="#b17">Kang et al., 2023)</ref>. For example, including code data <ref type="bibr" target="#b37">(Touvron et al., 2023)</ref> or synthetic reasoning data <ref type="bibr">(Abdin et al., 2024)</ref> has been shown to improve reasoning, while the optimal ratio of web text, books, and other domains may vary depending on evaluation metrics and model scale <ref type="bibr" target="#b44">(Ye et al., 2024;</ref><ref type="bibr">Kang et al., 2024b,a)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.3 Model Collapse Mechanisms</head><p>The theoretical concern of model collapse <ref type="bibr" target="#b34">(Shumailov et al., 2023;</ref><ref type="bibr">Dohmatob et al., 2024b,a)</ref> posits that training generative models on their own output can lead to degenerative feedback loops. Proposed mechanisms include:</p><p>Distributional Drift: The distribution of synthetically generated data may subtly differ from the true underlying data distribution. Iterative training can amplify these differences, causing the model's learned distribution to drift further away.</p><p>Loss of Diversity: Models might over-represent common modes in the data they generate, leading to a gradual loss of information about less frequent phenomena or the tails of the distribution ("tail-forgetting").</p><p>Artifact Amplification: Flaws, biases, or stylistic quirks of the generator model may be replicated and amplified in subsequent generations trained on its output. Understanding the empirical conditions under which these theoretical risks manifest in large-scale LLM training is an ongoing research effort.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Additional Experiment Results</head><p>We provide some additional results and analyses to experiments and studies in Sections 4 and 5.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D.1 Additional Results on Section 4.1.5</head><p>Figure <ref type="figure" target="#fig_6">6</ref> shows joint fitted scaling law predictions for models trained only on CommonCrawl (CC) with visualization for loss contours. 'The' ' total' ' aggregate' ' cryptocurrency' ' market' ' cap' ' has' ' reached' ' a' ' new' ' low' ' for' ' ' '201' '8' ',' ' just' ' weeks' ' after' ' dipping' ' below' ' $' '200' ' billion' ' in' ' mid' '-Aug' 'ust' '.' ' Meanwhile' ',' ' Bitcoin' ',' ' the' ' number' ' one' ' cryptocurrency' ' by' ' market' ' cap' ',' ' which' ' makes' ' up' ' the' ' lion' ' s' ' share' ' of' ' the' ' aggregate' ' market' ' cap' ',' ' has' ' increased' ' its' ' dominance' ' to' ' a' ' new' ' one' '-year' ' high' '.\n\n' 'Total' ' Crypto' ' Market' ' Cap' ' Falls' ' below' ' $' '190' ' Billion' '\n\n' 'According' ' to' ' data' ' from' ' Coin' 'Market' 'Cap' ',' ' the' ' leading' ' cryptocurrency' ' price' ' and' ' trading' ' data' ' website' ' that' ' pulls' ' information' ' from' ' over' ' ' '13' ',' '000' ' markets' ' and' ' ' '190' '0' ' cryptocurrencies' ',' ' the' ' total' ' aggregate' ' cryptocurrency' ' market' ' cap' ' has' ' fallen' ' below' ' $' '190' ' billion' ' for' ' the' ' first' ' time' ' in' ' ' '201' '8' ',' ' breaking' ' previous' ' mid' '-a' 'ug' 'ust' ' lows' '.\n\n' 'The' ' last' ' time' ' the' ' cryptocurrency' ' market' ' was' ' under' ' $' '190' ' billion' ' was' ' on' ' November' ' ' '1' ',' ' ' '201' '7' ',' ' right' ' before' ' Bitcoin' ' s' ' price' ' went' ' par' 'abolic' ',' ' more' ' than' ' doubling' ' its' ' price' ' in' ' a' ' little' ' over' ' a' ' month' ' later' '.' ' Bitcoin' ' reached' ' an' ' all' '-time' ' high' ' of' ' just' ' under' ' $' '20' ',' '000' ' on' ' December' ' ' '17' ',' ' ' '201' '7' '.' Token 0 5 10 15 20 Conditional Log Loss Dataset CC HQ QA TXBK 33% HQ+67% CC Figure 8</p><p>Visualization of per-token loss (dots) and rolling average (curves) in evaluation for 1B-parameter models trained for 100B tokens on respective corpus.</p><p>The model trained on CC, which has a low frequency for the token ".\n\n", shows high loss in evaluation when encountering this token, though the rolling average remains stable.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 6</head><label>6</label><figDesc>Joint fitted scaling law predictions for models trained only on CommonCrawl (CC). Yellow lines are loss contours.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 1</head><label>1</label><figDesc>Model Architecture for Different Parameter Sizes</figDesc><table><row><cell cols="2">Model Dimension</cell><cell>Layers</cell><cell>Heads</cell></row><row><cell>Size</cell><cell>(d model )</cell><cell cols="2">(n layers ) (n heads )</cell></row><row><cell>100M</cell><cell>576</cell><cell>7</cell><cell>9</cell></row><row><cell>200M</cell><cell>832</cell><cell>10</cell><cell>13</cell></row><row><cell>500M</cell><cell>1280</cell><cell>16</cell><cell>20</cell></row><row><cell>1B</cell><cell>1792</cell><cell>22</cell><cell>28</cell></row><row><cell>2B</cell><cell>2240</cell><cell>28</cell><cell>35</cell></row><row><cell>3B</cell><cell>2624</cell><cell>32</cell><cell>41</cell></row></table><note><p>A.2.2 Training Hyperparameters</p></note></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Jyoti</forename><surname>Marah Abdin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Harkirat</forename><surname>Aneja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sébastien</forename><surname>Behl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronen</forename><surname>Bubeck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suriya</forename><surname>Eldan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Gunasekar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Russell</forename><forename type="middle">J</forename><surname>Harrison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mojan</forename><surname>Hewett</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piero</forename><surname>Javaheripi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Kauffmann</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.08905</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Phi-4 technical report. arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saurav</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandipan</forename><surname>Kundu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jackson</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Goldie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Azalia</forename><surname>Mirhoseini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cameron</forename><surname>Mckinnon</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2212.08073</idno>
+		<title level="m">Constitutional ai: Harmlessness from ai feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">Loubna</forename><surname>Ben Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Werra</forename></persName>
+		</author>
+		<ptr target="https://huggingface.co/datasets/HuggingFaceTB/cosmopedia" />
+	</analytic>
+	<monogr>
+		<title level="j">Cosmopedia</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<title level="m" type="main">On the diversity of synthetic data and its impact on training large language models</title>
+		<author>
+			<persName><forename type="first">Abdul</forename><surname>Hao Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiang</forename><surname>Waheed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yidong</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jindong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bhiksha</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Raj</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Marah I Abdin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.15226</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Instruction pre-training: Language models are supervised multitask learners</title>
+		<author>
+			<persName><forename type="first">Daixuan</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxian</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shaohan</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junyu</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minlie</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Furu</forename><surname>Wei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.14491</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<author>
+			<persName><forename type="first">Deepseek-Ai</forename></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2412.19437" />
+		<title level="m">Deepseek-v3 technical report</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arjun</forename><surname>Subramonian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.04840</idno>
+		<title level="m">Strong model collapse</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">A tale of tails: Model collapse as a change of scaling laws</title>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pu</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francois</forename><surname>Charton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.07043</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title level="m" type="main">Tinystories: How small can language models be and still speak coherent english</title>
+		<author>
+			<persName><forename type="first">Ronen</forename><surname>Eldan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhi</forename><surname>Li</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.07759</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sid</forename><surname>Black</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurence</forename><surname>Golding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Travis</forename><surname>Hoppe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Foster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Phang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Horace</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anish</forename><surname>Thite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noa</forename><surname>Nabeshima</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2101.00027</idno>
+		<title level="m">The pile: An 800gb dataset of diverse text for language modeling</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Scaling synthetic data creation with 1,000,000,000 personas</title>
+		<author>
+			<persName><forename type="first">Tao</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xin</forename><surname>Chan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoyang</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dian</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haitao</forename><surname>Mi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dong</forename><surname>Yu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.20094</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">Aaron</forename><surname>Grattafiori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhimanyu</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhishek</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmad</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aiesha</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akhil</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alan</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Vaughan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.21783</idno>
+		<title level="m">The llama 3 herd of models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yuxian</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Furu</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minlie</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.09137</idno>
+		<title level="m">Pre-training to learn in context</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Surveying the effects of quality, diversity, and complexity in synthetic data from large language models</title>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Havrilla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laura O'</forename><surname>Mahony</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Koen</forename><surname>Oostermeijer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vera</forename><surname>Zisler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alon</forename><surname>Albalak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fabrizio</forename><surname>Milo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharath</forename><surname>Chandra Raparthy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kanishk</forename><surname>Gandhi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baber</forename><surname>Abbasi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.02980</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">Training compute-optimal large language models</title>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Clark</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.15556</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Phi-2: The surprising power of small language models</title>
+		<author>
+			<persName><forename type="first">Mojan</forename><surname>Javaheripi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sébastien</forename><surname>Bubeck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marah</forename><surname>Abdin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jyoti</forename><surname>Aneja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastien</forename><surname>Bubeck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caio</forename><surname>César</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teodoro</forename><surname>Mendes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weizhu</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allie</forename><surname>Del Giorno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronen</forename><surname>Eldan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sivakanth</forename><surname>Gopi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Microsoft Research Blog</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page">3</biblScope>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<author>
+			<persName><forename type="first">Albert</forename><forename type="middle">Q</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexandre</forename><surname>Sablayrolles</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Bamford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Devendra</forename><surname>Singh Chaplot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Florian</forename><surname>Bressand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gianna</forename><surname>Lengyel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Lample</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucile</forename><surname>Saulnier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Renard</forename><surname>Lélio</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lavaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teven</forename><surname>Stock</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibaut</forename><surname>Le Scao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><forename type="middle">El</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sayed</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.06825</idno>
+		<title level="m">Mistral 7b</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Performance scaling via optimal transport: Enabling data selection from partially revealed sources</title>
+		<author>
+			<persName><forename type="first">Feiyang</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anh</forename><surname>Hoang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anit</forename><surname>Just</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruoxi</forename><surname>Kumar Sahu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Jia</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="61341" to="61363" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">Get more for less: Principled data selection for warming up fine-tuning in llms</title>
+		<author>
+			<persName><forename type="first">Feiyang</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anh</forename><surname>Hoang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifan</forename><surname>Just</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Himanshu</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhi</forename><surname>Jahagirdar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rongxing</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anit</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruoxi</forename><surname>Kumar Sahu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Jia</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.02774</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title level="m" type="main">Autoscale: Automatic prediction of compute-optimal data composition for training llms</title>
+		<author>
+			<persName><forename type="first">Feiyang</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifan</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bingbing</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Si</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafid</forename><surname>Mahmood</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruoxi</forename><surname>Jia</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.20177</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Chess</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2001.08361</idno>
+		<title level="m">Scaling laws for neural language models</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">Xian</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ping</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chunting</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timo</forename><surname>Schick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Omer</forename><surname>Levy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mike</forename><surname>Lewis</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2308.06259</idno>
+		<title level="m">Self-alignment with instruction backtranslation</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yuanzhi</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sébastien</forename><surname>Bubeck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronen</forename><surname>Eldan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allie</forename><surname>Del Giorno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suriya</forename><surname>Gunasekar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yin</forename><surname>Tat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lee</forename></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.05463</idno>
+		<title level="m">Textbooks are all you need ii: phi-1.5 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<author>
+			<persName><forename type="first">Qian</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaosen</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guangtao</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Longxu</forename><surname>Dou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyu</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jing</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Min</forename><surname>Lin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.01492</idno>
+		<title level="m">Regmix: Data mixture as regression for language model pre-training</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">Best practices and lessons learned on synthetic data</title>
+		<author>
+			<persName><forename type="first">Ruibo</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jerry</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fangyu</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenglei</forename><surname>Si</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanzhe</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinmeng</forename><surname>Rao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Steven</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daiyi</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diyi</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Denny</forename><surname>Zhou</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.07503</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">On llms-driven synthetic data generation, curation, and evaluation: A survey</title>
+		<author>
+			<persName><forename type="first">Lin</forename><surname>Long</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rui</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruixuan</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junbo</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gang</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haobo</forename><surname>Wang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.15126</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Paloma: A benchmark for evaluating language model fit</title>
+		<author>
+			<persName><forename type="first">Ian</forename><surname>Magnusson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akshita</forename><surname>Bhagia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentin</forename><surname>Hofmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ananya</forename><surname>Harsh Jha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Schwenk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Evan</forename><surname>Walsh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Lo</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="64338" to="64376" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<author>
+			<persName><forename type="first">Pratyush</forename><surname>Maini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Skyler</forename><surname>Seto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">He</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Grangier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yizhe</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Navdeep</forename><surname>Jaitly</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2401.16380</idno>
+		<title level="m">Rephrasing the web: A recipe for compute and data-efficient language modeling</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title level="m" type="main">AI Meta. The llama 4 herd: The beginning of a new era of natively multimodal ai innovation</title>
+		<author>
+			<persName><forename type="first">Stephen</forename><surname>Merity</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caiming</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Bradbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Socher</surname></persName>
+		</author>
+		<ptr target="https://ai.meta.com/blog/llama-4-multimodal-intelligence/" />
+		<imprint>
+			<date type="published" when="2016">2016. 2025</date>
+		</imprint>
+	</monogr>
+	<note>Pointer sentinel mixture models</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zitong</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weijia</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><surname>Xiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Fei-Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Liang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.19393</idno>
+		<title level="m">Emmanuel Candès, and Tatsunori Hashimoto. s1: Simple test-time scaling</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Pytorch: An imperative style, high-performance deep learning library</title>
+		<author>
+			<persName><surname>Paszke</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1912.01703</idno>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Datadreamer: A tool for synthetic data generation and reproducible llm workflows</title>
+		<author>
+			<persName><forename type="first">Ajay</forename><surname>Patel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Callison-Burch</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.10379</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">The fineweb datasets: Decanting the web for the finest text data at scale</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hynek</forename><surname>Kydlíček</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><forename type="middle">A</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="30811" to="30849" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Exploring the limits of transfer learning with a unified text-to-text transformer</title>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Matena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><forename type="middle">J</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of machine learning research</title>
+		<imprint>
+			<biblScope unit="volume">21</biblScope>
+			<biblScope unit="issue">140</biblScope>
+			<biblScope unit="page" from="1" to="67" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<title level="m" type="main">The curse of recursion: Training on generated data makes models forget</title>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zakhar</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yarin</forename><surname>Gal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Anderson</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.17493</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<author>
+			<persName><forename type="first">Rohan</forename><surname>Taori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ishaan</forename><surname>Gulrajani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yann</forename><surname>Dubois</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuechen</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carlos</forename><surname>Guestrin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<ptr target="https://github.com/tatsu-lab/stanford_alpaca" />
+		<title level="m">Stanford alpaca: An instruction-following llama model</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<title level="m" type="main">Improving pretraining data using perplexity correlations</title>
+		<author>
+			<persName><forename type="first">Tristan</forename><surname>Thrush</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Potts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.05816</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<title level="m" type="main">Llama 2: Open foundation and fine-tuned chat models</title>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louis</forename><surname>Martin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Stone</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Albert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amjad</forename><surname>Almahairi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yasmine</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikolay</forename><surname>Bashlykov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Soumya</forename><surname>Batra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prajjwal</forename><surname>Bhargava</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shruti</forename><surname>Bhosale</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.09288</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">Mathurin</forename><surname>Videau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Youbi</forename><surname>Badr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Idrissi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Haziza</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jade</forename><surname>Wehrstedt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Olivier</forename><surname>Copet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Teytaud</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Lopez-Paz</surname></persName>
+		</author>
+		<ptr target="https://github.com/facebookresearch/lingua" />
+	</analytic>
+	<monogr>
+		<title level="j">Meta Lingua: A minimal PyTorch LLM training library</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<analytic>
+		<title level="a" type="main">Position: Will we run out of data? limits of llm scaling based on human-generated data</title>
+		<author>
+			<persName><forename type="first">Pablo</forename><surname>Villalobos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anson</forename><surname>Ho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jaime</forename><surname>Sevilla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tamay</forename><surname>Besiroglu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lennart</forename><surname>Heim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marius</forename><surname>Hobbhahn</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-first International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Self-instruct: Aligning language models with self-generated instructions</title>
+		<author>
+			<persName><forename type="first">Yizhong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yeganeh</forename><surname>Kordi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Swaroop</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alisa</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Khashabi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2212.10560</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Redpajama: an open dataset for training large language models</title>
+		<author>
+			<persName><forename type="first">Maurice</forename><surname>Weber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Anthony</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Oren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Alexandrov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhong</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huu</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhe</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Virginia</forename><surname>Adams</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="116462" to="116492" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Doremi: Optimizing data mixtures speeds up language model pretraining</title>
+		<author>
+			<persName><forename type="first">Sang</forename><surname>Michael Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hieu</forename><surname>Pham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuanyi</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanxiao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifeng</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><forename type="middle">S</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Quoc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tengyu</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adams</forename><forename type="middle">Wei</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Yu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="69798" to="69818" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<author>
+			<persName><forename type="first">Zitong</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Neil</forename><surname>Band</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuangping</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emmanuel</forename><surname>Candes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.07431</idno>
+		<title level="m">Synthetic continued pretraining</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<title level="m" type="main">Data mixing laws: Optimizing data mixtures by predicting language modeling performance</title>
+		<author>
+			<persName><forename type="first">Jiasheng</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peiju</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianxiang</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Zhan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunhua</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xipeng</forename><surname>Qiu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.16952</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

@@ -1,0 +1,798 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Theoretical Perspectives on Data Quality and Synergistic Effects in Pre-and Post-Training Reasoning Models</title>
+				<funder>
+					<orgName type="full">Adobe Faculty Research Award</orgName>
+				</funder>
+				<funder>
+					<orgName type="full">USC Marshall School of Business</orgName>
+				</funder>
+				<funder ref="#_AAPjpyz #_2XhGucd">
+					<orgName type="full">National Science Foundation</orgName>
+					<orgName type="abbreviated">NSF</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-03-01">1 Mar 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Adel</forename><surname>Javanmard</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">University of Southern</orgName>
+								<address>
+									<country>California</country>
+								</address>
+							</affiliation>
+							<affiliation key="aff2">
+								<orgName type="department">Google Research</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Baharan</forename><surname>Mirzasoleiman</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="institution">University of California Los Angeles</orgName>
+							</affiliation>
+							<affiliation key="aff2">
+								<orgName type="department">Google Research</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Vahab</forename><surname>Mirrokni</surname></persName>
+							<affiliation key="aff2">
+								<orgName type="department">Google Research</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Theoretical Perspectives on Data Quality and Synergistic Effects in Pre-and Post-Training Reasoning Models</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-03-01">1 Mar 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">09DACE31D5C8D9A36866058143A7C3B6</idno>
+					<idno type="arXiv">arXiv:2603.01293v1[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:13+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Large Language Models (LLMs) are pretrained on massive datasets and later instruction-tuned via supervised fine-tuning (SFT) or reinforcement learning (RL). Best practices emphasize large, diverse pretraining data, whereas post-training operates differently: SFT relies on smaller, high-quality datasets, while RL benefits more from scale, with larger amounts of feedback often outweighing label quality. Yet it remains unclear why pretraining and RL require large datasets, why SFT excels on smaller ones, and what defines high-quality SFT data. In this work, we theoretically analyze transformers trained on an in-context weight prediction task for linear regression. Our analysis reveals several key findings: (i) balanced pretraining data can induce latent capabilities later activated during post-training, and (ii) SFT learns best from a small set of examples challenging for the pretrained model, while excessively large SFT datasets may dilute informative pretraining signals. In contrast, RL is most effective on large-scale data that is not overly difficult for the pretrained model. We validate these theoretical insights with experiments on large nonlinear transformer architectures.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Pretraining on massive language datasets, followed by post-training, is essential for unlocking and shaping the capabilities of large language models (LLMs). While pretraining endows models with broad linguistic knowledge and general world understanding, post-training transforms these latent capabilities into usable skills that can be reliably elicited through instructions. This transformation is typically achieved through either supervised fine-tuning (SFT), which trains models to imitate high-quality demonstrations, or reinforcement learning (RL), which optimizes model behavior using scalar feedback to refine global properties such as reasoning quality and preference alignment. Despite their central role, the interaction between pretraining data and post-training data-and how this interaction determines the resulting model capabilities-remains poorly understood.</p><p>In practice, pretraining commonly relies on massive and diverse data mixtures, whereas post-training follows a variety of recipes. For example, OpenAI o1 (OpenAI, 2024) and DeepSeek R1 <ref type="bibr" target="#b4">(Guo et al., 2025)</ref> achieve state-of-the-art reasoning performance through RL applied to large-scale datasets, while s1 <ref type="bibr" target="#b10">(Muennighoff et al., 2025)</ref> demonstrates comparable math reasoning performance using SFT on a small, manually curated set of hard and diverse examples. More recently, Llama 4 (Meta, 2025) adopts iterative rounds of SFT and RL on progressively harder data. Yet, which characteristics of pretraining data unlock superior post-training performance, and what requirements on the quality and scale of post-training data are needed to bring a pretrained model to optimal performance, have remained unclear.</p><p>In this work, we answer the above questions by studying an in-context weight prediction task for linear regression, where the goal is to predict the linear weight vector from the sequence of input prompts. This framework has been used previously for analyzing the mechanism underlying training CoT <ref type="bibr">(Huang et al., 2025b;</ref><ref type="bibr" target="#b7">Javanmard et al., 2025)</ref>. In this work, we propose a novel pipeline where during pretraining, the model performs direct in-context-learning and outputs its prediction of the weight vector. During post-training, the transformer performs CoT with SFT or RL and generates multiple intermediate steps before arriving at its final prediction of the weight vector. We test the model on a combination of pretraining and post-training tasks.</p><p>While our theoretical setup captures the key distinction between outcome supervision (RL, rewarding final answers) and process supervision (SFT, supervising intermediate steps), it significantly abstracts from standard RL algorithms that involve sampling, advantage estimation, and policy gradients. Here, we model RL as outcome-supervised regression on the transformer's in-context prediction task. This simplification enables clean theoretical analysis but limits direct applicability to full RLHF implementations in LLMs.</p><p>Our analysis shed light on several questions: (i) What characteristics of pretraining data enable models to develop latent capabilities that can be effectively unlocked during post-training?</p><p>(ii) Given a pretrained model, what properties define effective SFT data that promote adaptation to new skills, while minimizing interference with capabilities acquired during pretraining?</p><p>(iii) Given a pretrained model, what properties of RL data are most critical? How does the RL optimization landscape differ from that of SFT, and when can RL achieve outcomes comparable to SFT? Our analysis helps to rigorously understand several empirically observed phenomena reported in the literature. Specifically, for our in-context setting, it shows that (i) effective pretraining data contains a balanced mixture of data from all categories. Such data can induce latent capabilities that are activated during post-training. (ii) Post-training with SFT benefits the most from a small set of challenging examples for the pretrained model, and larger SFT data can harm the performance. (iii) RL requires large-scale data that is informative but not overly difficult for the pretrained model.</p><p>We confirm our findings with experiments on an in-context weight prediction task for linear regression on transformer with a single linear self-attention (LSA), as well as large, nonlinear transformer architectures, namely GPT2 <ref type="bibr" target="#b13">(Radford et al., 2019)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Related Work</head><p>Recent work has highlighted several phenomena relevant to our study.</p><p>Pretraining. For pretraining LLMs, common practice is to use a large mixture of language data. Recent studies mostly focused on data filtering <ref type="bibr" target="#b8">(Li et al., 2024)</ref>, data selection <ref type="bibr" target="#b11">(Nguyen et al., 2024;</ref><ref type="bibr" target="#b18">Yang et al., 2024)</ref>, and mixture reweighting <ref type="bibr" target="#b16">(Xie et al., 2023)</ref>. Empirically, high-quality pretraining data should be large and diverse. Such high-quality pretraining data can induce latent capabilities that are not necessarily observed after pretraining but are activated during post-training <ref type="bibr" target="#b0">(Akter et al., 2025)</ref>.</p><p>Post-training. For post-training, recent studies mostly focused on comparing post-training with SFT and RL <ref type="bibr" target="#b1">(Aminian et al., 2025;</ref><ref type="bibr" target="#b17">Xiong et al.;</ref><ref type="bibr" target="#b21">Zhao et al., 2025)</ref>. Theoretically, SFT is mode covering: by minimizing forward KL to demonstration data, it encourages the model to assign probability mass to all plausible responses. In contrast, reinforcement learning (RL) is mode seeking: by optimizing reward (typically under a KL constraint), it concentrates probability on high-reward responses and suppresses lower-ranked alternatives. As a result, SFT defines the space of acceptable behaviors, while RL selects and amplifies the most preferred ones within that space. Empirically, SFT data should be small and high-quality, i.e. hard and diverse <ref type="bibr" target="#b3">(Guha et al., 2025;</ref><ref type="bibr">Huang et al., 2025b;</ref><ref type="bibr" target="#b10">Muennighoff et al., 2025)</ref>, and larger SFT data washes away benefits of high-quality pretraining data <ref type="bibr" target="#b0">(Akter et al., 2025)</ref>. In contrast, RL benefits from larger data that is still challenging but not overly difficult for the pretrained model <ref type="bibr">(Meta, 2025;</ref><ref type="bibr" target="#b19">Yue et al., 2025;</ref><ref type="bibr" target="#b20">Zeng et al., 2025)</ref>.</p><p>Nevertheless, the reasons why certain characteristics of pretraining data unlock superior post-training performance, why SFT benefits from a small set of hard and diverse examples while larger datasets can degrade its effectiveness, and why data scale matters more than apparent quality in RL have remained unclear.</p><p>Our theoretical framework demystifies these observations, bridging the gap between empirical results and a principled understanding of data dynamics.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Problem Setup</head><p>We focus on in-context learning (ICL) setting, where a model is presented with a context dataset D = {(x i , y i )} n i=1 and each (x i , y i ) pair is sampled independently from some underlying distribution P . Here, the input vectors {x i } n i=1 belong to R d , and the corresponding labels {y i } n i=1 may be real numbers (for regression tasks) or binary values such as {0, 1} (for classification tasks). The model is then given a new test input x n+1 ∼ P x and is tasked to predict its associated label or corresponding in-context weight predictor. In other words, in-context learning operates on sequences, called prompts, of input-output pairs (x 1 , y 1 , . . . , x n , y n , x n+1 ) and each prompt may have its own distribution. Linear Self Attention (lSA) Let Z be an embedding formed from the prompt (We will discuss the specific construction later). The softmax self-attention module takes as input an embedding matrix and outputs a matrix of the same size,</p><formula xml:id="formula_0">f Attn (Z; W K , W Q , W V , W P ) = Z + W P W V Z ⋅ softmax ( (W K Z) ⊺ W Q Z λ )</formula><p>where softmax is applied column-wise. In Linear-Self-Attention (LSA) the softmax nonlinearity is removed.</p><formula xml:id="formula_1">By defining W ∶= W ⊺ K W Q , V = W P W V and θ = (W, V ) we arrive at: f LSA (Z; θ) = Z + V Z ⋅ Z ⊺ W Z λ (3.1)</formula><p>We will focus on in-context linear predictors. Each prompt is of the form P τ = (x τ,1 , y τ,1 , . . . , x τ,n , y τ,n , x τ,n+1 ), with y τ,i = ⟨w τ , x τ,i ⟩, where w τ ∼ N(0, I d ).</p><p>Supervised Fine-Tuning and Outcome Supervision. We begin by describing outcome supervision (OS) training with k steps of chain-of-thought reasoning. As noted in the introduction, this formulation simplifies standard RL-which involves sampling, advantage estimation, and policy gradients-by modeling it as outcome-supervised regression that rewards final answers, while still capturing the core distinction from process-supervised SFT.</p><p>Suppose we are given a prompt P τ = (x τ,1 , y τ,1 , . . . , x τ,n , y τ,n ). We construct the embedding</p><formula xml:id="formula_2">Ẑτ,0 = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ x τ,1 . . . x τ,n 0 y τ,1 . . . y τ,n 0 0 . . . 0 w τ,0 0 . . . 0 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.2) and iteratively define Ẑτ,i+1 = [ Ẑτ,i , f LSA ( Ẑτ,i ) [∶,-1] ]. We initialize w τ,0 = 0 d×1 and set ŵτ,i+1 ∶= f LSA ( Ẑτ,i ) [d+2∶2d+1,-1] .</formula><p>This yields</p><formula xml:id="formula_3">Ẑτ,i = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ x τ,1 . . . x τ,n 0 * . . . * y τ,1 . . . y τ,n 0 * . . . * 0 . . . 0 w τ,0 ŵτ,1 . . . ŵτ,i 0 . . . 0 1 1 . . . 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.3)</formula><p>Let w * τ be the ground-truth weight for prompt P τ , for τ ∈ <ref type="bibr">[B]</ref>. The outcome supervision (OS) loss is</p><formula xml:id="formula_4">L OS (V, W ) = 1 2B B ∑ τ =1 ∥ ŵτ,k -w * τ ∥ 2 ℓ2 ,<label>(3.4)</label></formula><p>i.e., OS penalizes only the final step of the k-step reasoning process. For Supervised fine-tuning (SFT), we use ground-truth chain-of-thought (CoT) sequences</p><formula xml:id="formula_5">Z i,τ = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ x 1 . . . x n 0 * . . . * y 1 . . . y n 0 * . . . * 0 . . . 0 w 0,τ w 1,τ . . . w i,τ 0 . . . 0 1 1 . . . 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.5)</formula><p>where w i,τ = (1 -(1 -η) i )w * τ with w 0,τ = 0 provides exponentially converging intermediate targets, with an arbitrary but fixed rate η. The model is trained to predict the next token Z i+1,τ [∶, -1] ∶= (0 d , 0, w i+1,τ , 1) given Z i,τ . Over B training prompts, the SFT loss is</p><formula xml:id="formula_6">L SFT (V, W ) ∶= 1 2B B ∑ τ =1 k ∑ i=0 ∥f LSA (Z i,τ ) [∶,-1] -(0, 0, w i+1,τ , 1)∥ 2 ℓ2 .</formula><p>Pipeline: Pre-training, Post-training, Post-testing. Our pipeline has three stages distinguished by data covariances: pre-training on Σ 0 , post-testing on Σ = Σ 0 + ∆ (low-rank ∆), and post-training on a chosen intermediate distribution (discussed later for optimal post-test performance). Inputs x ∈ R d are Gaussian throughout.</p><p>Assuming infinite pre-training prompts, population analysis of <ref type="bibr">(Huang et al., 2025a)</ref> shows that with proper initialization, the pretrained parameters are given by:</p><formula xml:id="formula_7">V0 = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 0 0 0 0 0 0 -Γ -1 0 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , Ŵ0 = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 I 0 0 0 0 -1 0 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.6)</formula><p>where</p><formula xml:id="formula_8">Γ 0 ∶= (1 + 1 n ) Σ 0 + 1 n tr(Σ 0 )I d ∈ R d×d , (3.7)</formula><p>with n the prompt length. Post-training initializes from ( V0 , Ŵ0 ), and updates the transformer weights by minimizing either the SFT loss or the OS loss. Sparsity structure motivated by the population regime. <ref type="bibr">(Huang et al., 2025a)</ref> shows that training with chain-of-thought (paralleling our SFT loss) in the population regime (B → ∞ before d, n) preserves sparsity in the weights from initialization (3.6). Specifically, Lemma C.2 in <ref type="bibr">(Huang et al., 2025a)</ref> proves that the gradient flow trajectory preserves the following sparsity structure:</p><formula xml:id="formula_9">V (t) = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 0 0 0 0 0 0 V 31 (t) 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , W (t) = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 0 W 13 (t) 0 0 0 0 -1 0 0 0 0 0 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ , (3.8)</formula><p>where V 31 (t), W 13 (t) ∈ R d×d are the parameters at time t. While their analysis assumes identity-covariance Gaussians and intermediate weights w i,τ derived from standard gradient descent the proof of Lemma C.2 in <ref type="bibr">(Huang et al., 2025a)</ref> relies only on the symmetry properties of w * τ ∼ N(0, I) and the fact that w i,τ is an odd function of w * τ . Consequently, this structural result extends to our setting of general covariances and supervised sequences. Although our analysis moves beyond the population regime, these insights motivate us to constrain our transformer model to follow similar sparsity pattern. Throughout, we use the shorthands Ṽ and W to indicate the nonzero blocks of V and W .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Analysis of the SFT loss</head><p>Let S τ ∶= 1 n ∑ n i=1 x i,τ x T i,τ be the empirical features covariance for τ ∈ <ref type="bibr">[B]</ref>. We also define the following matrices:</p><formula xml:id="formula_10">Ω ∶= [w * 1 , . . . , w * B ] ∈ R d×B Φ ∶= [S 1 w * 1 , . . . , S B w * B ] ∈ R d×B , M ∶= ΦΦ T ∈ R d×d</formula><p>The next theorem characterizes the minimizer of the SFT loss that is closest to the initialization (-Γ -1 0 , I).</p><p>Theorem 4.1 Define</p><formula xml:id="formula_11">( Ṽλ , Wλ ) = arg min ( Ṽ , W ) L SFT ( Ṽ , W ) + λ ∥ Ṽ + Γ -1 0 ∥ 2 F + λ ∥ W -I∥ 2 F .</formula><p>We then have lim λ→0 + ( Ṽλ , Wλ ) = ( Ṽ * , W * ), where</p><formula xml:id="formula_12">W * = I, Ṽ * = -ηΩΦ † -Γ -1 0 (I -ΦΦ † ) (4.1)</formula><p>Our next theorem shows that the solution ( Ṽ * , W * ) can be attained by gradient descent initialized at (-Γ -1 0 , I), and establishes conditions on the step size for convergence along with its convergence rate.  M ) , then the GD updates converges to Ṽ * at the following rate:</p><formula xml:id="formula_13">c k ∶= ∑ k i=0 ρ 2i &lt; 1 1-ρ 2 = 1 2η-η 2 . If γ &lt; 2B c k λmax(</formula><formula xml:id="formula_14">∥ Ṽt -Ṽ * ∥ F ≤ α t ∥Γ -1 0 + Ṽ * ∥ F , α ∶= max (|1 - γc k B λ max (M )| , |1 - γc k B λ + min (M )|)</formula><p>where λ max (M ) and λ + min (M ) respectively denote the maximum and the minimum (nonzero) eigenvalues of M . In particular, setting γ = B c k λmax(M ) , we obtain</p><formula xml:id="formula_15">∥ Ṽt -Ṽ * ∥ F ≤ (1 - λ + min (M ) λ max (M ) ) t ∥Γ -1 0 + Ṽ * ∥ F</formula><p>Remark 4.1 Note that the loss minimizer ( Ṽ * , W * ) given by (4.1) depends on n (prompt length) and B (number of prompts), the step size η in the supervised weight path, but not on k (length of reasoning paths). However, if we fix the gradient step size γ &lt; 2B(2η-η 2 ) λmax(M ) , by Theorem 4.2 larger k implies larger c k and so faster convergence rate.</p><p>It is worth deriving the limit of Ṽ * in the population regime, where B → ∞, while n, d are kept fixed.</p><p>Proposition 4.3 Suppose that the features are generated as x i,τ ∼ N(0, A) for a positive semidefinite matrix A ∈ R d×d . Suppose n, d are fixed but the number of prompts B → ∞. Then Ṽ * will converge to a limit Ṽ∞ given by</p><formula xml:id="formula_16">Ṽ∞ = -η ( n + 1 n A + tr(A) n AA † ) † -Γ -1 0 (I -AA † ) (4.2)</formula><p>5 Data Selection for Post-training via SFT Proposition 5.1 Consider an LSA model with parameters ( Ṽ , W ). We fix W = I and assume a test prompt of the form P = (x 1 , ⟨w, x 1 ⟩, . . . , x m , ⟨w, x m ⟩). Initializing the in-context learning with w 0 = 0, the predicted weight is given by</p><formula xml:id="formula_17">ŵ = -1 n Ṽ XX ⊺ w * with X = [x 1 | . . . |x n ] ∈ R d×n . In addition, if x i ∼ N(0, Σ), we have E X,w * [∥ ŵ -w * ∥ 2 ] = E X [∥I + Ṽ Σ∥ 2 F ] = = ∥I + Ṽ Σ∥ 2 F + 1 n (tr( Ṽ Σ 2 Ṽ T ) + tr( Ṽ Σ Ṽ T )tr(Σ)) (5.1)</formula><p>where the expectation is with respect to randomness in X and w * ∼ N(0, I d ).</p><p>In the test error (5.1), we focus on the dominant term ∥I + Ṽ Σ∥ F for large prompt length n. Assuming post-training features are i.i.d. from N(0, A) for some A ⪰ 0, the post-training weights Ṽ * (A) depend on the covariance A via Φ in (4.1). Thus, optimal data selection reduces to choosing covariance A that minimizes the post-test error.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">Optimal Data Allocation</head><p>To analyze the interaction between pre-training and post-training, we consider the test-time covariance Σ = Σ 0 + ∆, where Σ 0 represents the distribution seen during pre-training and ∆ denotes the adaptation task shift. We now characterize how the choice of the post-training covariance A affects the post-test error across different subspaces.</p><p>Let U = range(A). From (4.1), the term Φ shares the range U , while on the orthogonal complement U ⊥ , the weight matrix Ṽ * acts simply as the pre-trained inverse -Γ -1 0 . Furthermore, outside the range of the adaptation shift ∆, the test-time covariance Σ coincides with the pre-training covariance Σ 0 . Since Γ -1 0 Σ 0 ≈ I by the definition of Γ 0 in (3.7), the residual error I + Ṽ Σ on U ⊥ becomes negligible if we align U with range(∆). This alignment ensures that the post-training resources are concentrated exclusively on the subspace where the pre-trained model exhibits a deficit.</p><p>Restricted to the adaptation subspace U = range(∆), the population-limit error operator is expressed as:</p><formula xml:id="formula_18">P U (I + V ∞ Σ)P U = I -η ( n + 1 n A + tr(A) n I) -1 (P U Σ 0 P U + ∆)</formula><p>In the high-dimensional regime (large n), the trace term and the 1/n scaling factors become secondary, implying that the optimal choice for the post-training covariance is approximately A ≈ η(P U Σ 0 P U + ∆).</p><p>Connection to example hardness. In practice, post-training is often employed to address "gaps" in the model-specifically, skills or topics that were missing or underrepresented during pre-training. To capture such scenarios, we assume that the range of the pre-training covariance Σ 0 and the range of the adaptation shift ∆ have a small inner product (i.e., they are nearly orthogonal). Consequently, P U Σ 0 P U constitutes only a small component of Σ 0 . We argue that in these scenarios, the most effective strategy is to select post-training examples that the pre-trained model finds "hard". Specifically, Proposition 5.1 establishes that the error of a pre-trained model on a task with prompts x i,τ ∼ N (0, A) is approximately L pre ≈ ∥I -Γ -1 0 A∥ 2 F . Because the support of Σ 0 is small on range(∆), the operator Γ -1 0 -which essentially acts as the inverse of the pre-training density-takes its largest values on this space. Therefore, examples whose covariance is spanned by range(∆) represent directions where the pre-trained model has the least confidence and highest residual error. This leads to our first key insight:</p><p>Insight 1: Selecting examples that are "hard" for the pre-trained model (i.e., those aligned with the adaptation shift ∆) is the most effective strategy for post-training.   </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Data Scaling in SFT</head><p>We study how SFT data size affects post-training performance by analyzing the expected error (Proposition 5.1) on post-test prompts N(0, Σ).We examine how this error varies with the number of prompts B and the prompt length n during SFT. We first present experiments, followed by theory supporting the resulting insights. The pretraining distribution is N(0, Σ 0 ) with Σ 0 = diag(ρ1 m , 0 n-m ), d = 400 and m = 200. The post-test distribution uses Σ = Σ 0 + ∆, where ∆ = diag(1 m , 0 d-m ). During post-training, data is drawn from N(0, A) with A = diag(η(ρ + 1)1 m , r1 n-m ), matching ηΣ on the first m coordinates and using r on the rest. We set ρ and r small so the first m directions are underrepresented in pretraining and can be strengthened during post-training. When r = 0, the post-train distribution matches the optimal allocation of Section 5.1. However, nonzero r introduces interference between post-training and pretraining data, which is often the case in practice. By (4.1), the transformer parameters depend on the pseudo-inverse of the empirical covariance, so smaller nonzero r yields stronger interference.</p><p>In the first experiment, we vary the number of prompts B from 50 to 2000, for prompt lengths n ∈ {400, 800, 1200}, fix ρ = 0.1, and consider interference levels r ∈ {0, 0.01, 0.1}. Fig. <ref type="figure" target="#fig_3">1</ref> shows that the error exhibits double descent, with an overshoot at B = m when r = 0 and at B = d when r ≠ 0. The error first decreases with B, then increases again, and the crossover point grows with the prompt length n. When interference is strong, the error remains above its value at optimal B even in large B limit (Fig. <ref type="figure" target="#fig_3">1b</ref>).</p><p>In the second experiment, we vary the prompt length n from 20 to 1000 and evaluate post-test error at B ∈ {50, 150, 300, 500}. As shown in Figure <ref type="figure" target="#fig_0">2</ref>, the error trends differ across choice ofB. Under interference and for small to moderate values of B, it first decreases with n and then becomes monotonically increasing, yielding a U-shaped curve and indicating an optimal prompt length that minimizes test error. These results show that increasing SFT data volume-either the number of prompts B or the prompt length n-can paradoxically degrade performance in the presence of interference. The key trade-off is that more SFT data helps the model learn underrepresented dimensions from pretraining, but also amplifies interference that erodes pretrained capabilities. Our findings therefore suggest an optimal data size that balances these competing effects. This further supports the empirical preference for small, high-quality datasets, whose high information density enables effective adaptation without the catastrophic costs of over-parameterization and interference. We formalize this observation as follows:</p><p>Insight 2: To mitigate the effects of interference between pretraining and post-training, SFT datasets should be curated to be relatively small in volume and high in quality. <ref type="table">100 200 300 400 500 600 700 800 900</ref>   Figure 2: Behavior of the post-test error as we varying the prompt length n, under the same setup as in Figure <ref type="figure" target="#fig_3">1</ref>.</p><p>In Appendix B we analyze the post-test error. The analysis, consistent with our experiments, predicts that the test error diverges as B → d when interference is present (r ≠ 0) and as B → m when r = 0. We further characterize the asymptotic limit of the post-test error in the scaling regime where d, m, and B → ∞ while their relative ratios remain constant. This analysis demystifies the quantitative effect of different factors on the test error behavior.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Analysis of the OS loss</head><p>We begin by deriving a more direct characterization of the outcome supervision (OS) loss.</p><p>Proposition 6.1 For the LSA model with k-step of thinking during the post-training the OS loss can be written as</p><formula xml:id="formula_19">L OS ( Ṽ , W )= 1 2B B ∑ τ =1 ∥(I + k-1 ∑ i=0 ( Ṽ S τ W + I) i Ṽ S τ ) w * τ ∥ 2 ℓ2</formula><p>The parameters ( Ṽ , W ) are initialized at (-Γ -1 0 , I) from the pretraining stage. We next study the landscape of the OS loss which demystifies several intriguing characteristics of post-training via OS and how it compares with SFT post training. To simplify our discussions and derivations, we fix W = I and only update Ṽ via gradient descent. However, we expect our discussion to extend to the general case of updating both parameters, albeit with a more complicated derivations. In our experiments, we update all of the transformer weights and showing our insights from analysis are empirically observed as well.</p><p>By fixing W = I, the OS loss simplifies to:</p><formula xml:id="formula_20">L OS ( Ṽ , I) = 1 2B B ∑ τ =1 ∥(I + Ṽ S τ ) k w * τ ∥ 2 ℓ2 .</formula><p>Let M τ = I + Ṽ S τ . As derived in Appendix E, the gradient of the OS loss with respect to the operator V is given by:</p><formula xml:id="formula_21">∇ V L OS = 1 B B ∑ τ =1 k-1 ∑ j=0 (M T τ ) j M k τ w * τ (w * τ ) T (M T τ ) k-1-j S T τ .</formula><p>Vanishing and growing gradients in OS Loss. The gradient contains the term M k τ , which acts as a powerful scaling factor. In the stable region (ρ(M τ ) &lt; 1), the term M k τ shrinks the gradient toward zero exponentially fast as the chain length k increases. In this regime, the model is already stable on the task, but the vanishing gradient makes it increasingly difficult to "nudge" the matrix Ṽ into the optimal subspace for further refinement. Conversely, if ρ(M τ ) &gt; 1, the gradient has an exponential growth in k. This creates a sharp "cliff" in the loss landscape near the edge of stability (ρ ≈ 1), and training requires infinitesimally small step sizes to prevent numerical divergence. Sharpness and curvature of the landscape. Because the OS loss is effectively a degree-2k polynomial, the Hessian ∇ 2 L is highly sensitive to the operator's spectral properties. As shown in Appendix E, near a global minimum where M k τ w * τ ≈ 0, the Hessian spectral norm λ max scales as:</p><formula xml:id="formula_22">λ max (H) ∝ 1 B B ∑ τ =1 k 2 ⋅ ρ(M τ ) 2k-2 (6.1)</formula><p>This indicates that the curvature grows quadratically with the number of iterations k near the boundary of stability. If gradient descent is not run for a sufficient duration, the model remains near this highcurvature "cliff." In this state, small variations-arising from finite n, B, or sample noise during post-test evaluations-can push the model back into the unstable region, leading to "overthinking", even if it pulled into the stable region during training.</p><p>Insight 3: High sensitivity to sample variation. The sharp curvature near ρ ≈ 1 suggests that Outcome Supervision (OS) is prone to instability unless trained with large amounts of data (n, B) and many gradient steps. Insufficient training leaves the model at a "sharp" minimum where minor distribution shifts cause large errors.</p><p>Pretraining and Generalization. The pretrained model, which serves as the initialization for the OS loss, plays a critical role in OS stability. Consider a new task drawn from the test-time covariance Σ = Σ 0 + ∆, with Σ 0 the pretraining covariance and ∆ the adaptation shift. Near initialization, and assuming a sufficiently large prompt length n such that</p><formula xml:id="formula_23">S τ → Σ, the learned operator V is dominated by the prior V 0 ≈ -Γ -1 0 . Consequently, we have V S τ ≈ -Γ -1 0 (Σ 0 + ∆) ≈ -I -Γ -1 0 ∆.</formula><p>Thus, the transition matrix becomes:</p><formula xml:id="formula_24">M τ = I + V S τ ≈ -Γ -1 0 ∆ ⇒ ρ(M τ ) ≈ ρ(Γ -1 0 ∆</formula><p>). This relationship reveals two distinct optimization regimes based on the spectral alignment between the pretraining distribution and the adaptation shift:</p><p>• Case 1: Incremental adaptation (spectral alignment). When Γ 0 is large in the directions where ∆ is prominent-implying the pretraining distribution effectively covers the shift-the spectral radius ρ(M τ ) remains small. In this regime, the model initializes within the stable region (ρ &lt; 1), permitting a safe, albeit gradual, refinement of the model parameters.</p><p>• Case 2: New task adaptation (spectral misalignment). If the task involves novel subspaces where Γ 0 is small but ∆ is large, the spectral radius becomes large, i.e., ρ(Γ -1 0 ∆) ≫ 1. The model starts deep in the unstable region, requiring a drastically reduced step size η to maintain stability:</p><formula xml:id="formula_25">η &lt; 2 λ max (H) ∝ C k 2 ρ(M τ ) 2k-2 ,</formula><p>by (6.1). These observations are summarized below:</p><p>Insight 4: Synergy of pretraining and Outcome Supervision. OS is most effective at improving performance on tasks already partially learned during pretraining. For novel tasks, the high initial spectral radius necessitates a slow and potentially unstable training procedure.</p><p>Practical Implications for Training. The requirement for stability dictates several constraints on Outcome Supervision and RL. To ensure the eigenvalues remain within the stable regime, the learning rate must be carefully tuned to the sharpest direction of the Hessian. This creates a stark disparity in the optimization landscape: the step size η, forced to be infinitesimally small by the unstable directions, can be too small to make meaningful progress in the data-aligned directions. In addition, while RL does not require the high-quality, human-curated labels necessary for SFT, it compensates by requiring massive data diversity and volume. A large number of gradient steps is needed to overcome the slow progress in "flat" directions, while a high volume of data ensures the model is pushed deep into the stable region across a broad spectrum of tasks, reducing the risk of "overthinking" during inference.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="7">Data Diversity and Distributional Balance in Pretraining</head><p>In our analysis, the influence of the pretrained model on post-trained model is mathematically encapsulated in the initialization V 0 = -Γ -1 0 , where by definition (3.7), Γ 0 ≈ Σ 0 the pretraining covariance. The post-test error, characterized by Proposition 5.1, is governed by the product V Σ = V (Σ 0 + ∆); at initialization, this yields V Σ ≈ -I -Γ -1 0 ∆. Consequently, an imbalanced pretraining distribution-characterized by a singular or ill-conditioned Γ 0 -imposes a severe penalty on adaptation in new directions where Γ 0 is small but ∆ is large. While SFT can partially mitigate a misaligned prior through the stabilizing influence of supervised signals, the OS and RL optimization is strictly bottlenecked by the spectral alignment between Γ 0 and ∆. If Γ 0 lacks sufficient diversity, even minor shifts in novel subspaces trigger an exponential escalation of the Hessian's spectral norm, scaling as k 2 ρ 2k-2 . This spectral divergence necessitates infinitesimally small step sizes and renders the model sensitive to variations in sample prompts in training. Such instability often manifests as "overthinking" during inference. Therefore, pretraining must prioritize distributional balance and data diversity as essential mechanisms for optimization stability. A broad spectral prior ensures the model initializes within the stable regime (ρ &lt; 1), effectively smoothing the high-curvature "cliffs" of the RL landscape into manageable, flat regions for downstream adaptation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8">Experiments</head><p>In this section, we conduct experiments to validate our theoretical results.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Setting.</head><p>We conduct experiments in two settings. First, we consider a transformer with a single linear self-attention (LSA) to confirm the results of our theorems. Then, we consider large, nonlinear transformer architecture namely GPT2 to validate the generality of our conclusions.</p><p>In both sets of experiments, the data distribution follows our in-context weight prediction task in Sec. 3, where in the pre-training, data has a covariance of Σ 0 , and in the post-testing with SFT or OS we have Σ = Σ 0 + ∆. During post-training, we let the model to output multiple steps before returning the final predicted weight vector, i.e., at each step i we concatenate the embedding with [0 d , ŵi , 1] as in Eq. ( <ref type="formula" target="#formula_4">3</ref>.3) and input the concatenated embedding matrix to the model. The estimated ŵk will be returned after k steps of Chain of Thought (CoT). We report the average results and error bars over 10 runs.</p><p>Pretrain, post-train, and test data. We generate pretraining data using Σ 0 where Σ i,i = 0.1 for i ∈ {1, . . . , d/5} and Σ i,i = 1 for i ∈ {d/5, . . . , d}. Then, we post-train the transformer on the synthetic data generated with ∆, where ∆ is a low rank PSD matrix with ∆ i,i = 1. For testing the model, we use Σ = Σ 0 + ∆.</p><p>Large, nonlinear transformer architectures. We use a decoder-only Transformer architecture <ref type="bibr" target="#b15">(Vaswani et al., 2017)</ref> from the GPT-2 family <ref type="bibr" target="#b13">(Radford et al., 2019)</ref>, consisting of 12 layers, 8 attention heads and a 256-dimensional embedding space. In total model contains 9.5M parameters. This architecture takes as input a sequence of vectors in its embedding space and predicts the weight vector within the same space. We apply this architecture to prompts of form (x τ,1 , y τ,1 , ⋯, x τ,m , y τ,m , w 0 , 1) in the following manner. In line with <ref type="bibr" target="#b2">(Garg et al., 2022)</ref>, we map each y τ,i to the same dimension as x τ,i by appending zeros, and map x τ,i , y τ,i into the latent embedding space of the Transformer through a (learnable) linear transformation. We get the predicted w τ as the model output. Similarly, we map the model output, i.e., w τ from the latent embedding space of the Transformer to a d-dimensional vector through another (learnable) linear transformation. Training is performed with a batch size of 64 over 100 steps for SFT and 12k steps for OS. The model is first pretrained with a CoT length k = 8. During both training and test, we apply CoT with length k = 3. We used curriculum learning <ref type="bibr" target="#b2">(Garg et al., 2022)</ref> to speed up training.</p><p>Fig. <ref type="figure">3</ref> (a)-(c) show the results when post-training is done with the SFT loss. Fig. <ref type="figure">3a</ref>,3b show that increasing the sample size (B) or context length (n) initially yields a lower test loss but further increasing the sample size or context length increases the test loss. Fig. <ref type="figure">3c</ref> shows that the test loss is relatively robust and not sensitive to the length of post-training CoT (k). Fig <ref type="figure">3 (d</ref>)-(f) show the results when post-training is done with the OS loss. In contrast to SFT, we see that OS benefits from larger sample size (B) and context length (n). In addition, longer CoT (k) during post-training increases the test loss and degrades the performance, confirming insight 4 in Section 6.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Linear self-attention (LSA) experiments.</head><p>We next present our results on transformers with a single linear self-attention (LSA) layer. We choose the token dimensions d = 100, and post-train the model for 130 epochs using Adam with learning rate η = 0.001. During inference, we return the final predicted weight vector without CoT, i.e. at test time we use k = 1.</p><p>Fig. <ref type="figure" target="#fig_7">4</ref> (a)-(c) show the results when post-training is done with the SFT loss. Fig. <ref type="figure" target="#fig_7">4a</ref>, <ref type="figure" target="#fig_7">4b</ref> show that increasing the sample size (B) or context length (n) initially yields a lower test loss but further increasing the sample size or context length increases the test loss. Fig. <ref type="figure" target="#fig_7">4c</ref> shows that the test loss is relatively robust and not sensitive to the length of post-training CoT (k). Fig <ref type="figure" target="#fig_7">4 (d)-(f</ref>) show the results when post-training is done with the OS loss. In contrast to SFT, Fig. <ref type="figure" target="#fig_7">4d</ref>, 4e show that OS benefits from larger sample size (B) and context length (n), and Fig. <ref type="figure" target="#fig_7">4f</ref> shows that longer CoT (k) during post-training increases the test loss and degrades the performance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="9">Conclusion</head><p>Our work provides a theoretical and empirical framework for jointly designing pretraining and post-training for LLMs. Balanced pretraining creates latent capabilities best activated by SFT on small numbers of carefully selected, hard examples aligned with the target shift. Scaling up SFT data introduces interference that erodes pretrained structure, favoring small, high-quality datasets. Outcome Supervision and RL have a sharply curved, unstable landscape that make them data-hungry, yet effective for refining partially learned pretrained capabilities. These insights guide optimal combined use: targeted SFT for efficient adaptation on challenging examples, complemented by large-scale RL (Outcome Supervision) for robust skill refinement. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Proof of theorems and technical lemmas</head><p>A.1 Proof of Theorem 4.1</p><p>As λ → 0 + , the minimizer ( Ṽλ , Wλ ) must converge to a point ( Ṽ * , W * ) in the zero-loss manifold of L( Ṽ , W ) that is closest to the initialization (-Γ -1 0 , I) in the Frobenius norm. We first simplify the dynamic of LSA into a recurrent update on the estimated weight ŵi . We have We have</p><formula xml:id="formula_26">f LSA (Z i , θ * ) [∶,-1] = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + V Z i ⋅ Z ⊺ i W Z i[∶,-1] n = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n V Z i Z ⊺ i ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ W ŵi -1 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×n 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 Ṽ X 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ X 0 0 . . . 0 y 0 0 . . . 0 0 d×n w 0 ŵ1 . . . ŵi 0 1×n 1 1 . . . 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ T ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ W w 0 -1 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×n 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 Ṽ X 0 d×1 0 d×1 0 d×1 0 1×n 0 0 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ [ X T W ŵi -y T 0 ] = ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 ŵi 1 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ + 1 n ⎡ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎢ ⎣ 0 d×1 0 Ṽ XX T ( W ŵi -w * ) 0 ⎤ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎥ ⎦ .</formula><p>Hence, we obtain the following recursions for each of the prompt weight vectors:</p><formula xml:id="formula_27">ŵi+1,τ = ŵi,τ + Ṽ S τ ( W ŵi,τ -w * τ ) . (A.1)</formula><p>Now note that in the SFT loss, at each step we give the model the CoT ground-truth sequence (w 1,τ , . . . , w i,τ ) and compute the error ∥w i+1,τ -ŵi,τ ∥ 2 ℓ2 . Let ρ = 1 -η. Given w i,τ = (1 -ρ i )w * τ , we define the residual R i,τ for i = 0, . . . , k and τ = 1, . . . , B as follows:</p><formula xml:id="formula_28">R i,τ = w i,τ + Ṽ S τ ( W w i,τ -w * τ ) -w i+1,τ = (1 -ρ i )w * τ + Ṽ S τ ( W (1 -ρ i )w * τ -w * τ ) -(1 -ρ i+1 )w * τ = Ṽ S τ ( W -I)w * τ -ρ i ( Ṽ S τ W + ηI)w * τ</formula><p>We characterize this manifold by analyzing the residual R i,τ for each block τ and iteration i ∈ {0, . . . , k}. The loss function can be written as</p><formula xml:id="formula_29">L SFT ( Ṽ , W ) = 1 2B B ∑ τ =1 k ∑ i=0 ∥R i,τ ∥ 2 ℓ2 .</formula><p>To characterize the zero-loss manifold, note that for L( Ṽ , W ) = 0, we require R i,τ = 0 for all i. Since 1 and ρ i are linearly independent for i ≠ 0, the coefficients of the polynomial in ρ i must vanish independently:</p><formula xml:id="formula_30">1. Ṽ S τ ( W -I)w * τ = 0 2. ( Ṽ S τ W + ηI)w * τ = 0 ⇒ Ṽ S τ W w * τ = -ηw * τ</formula><p>Substituting the second condition into the first, we obtain:</p><formula xml:id="formula_31">Ṽ S τ W w * τ -Ṽ S τ w * τ = 0 ⇒ -ηw * τ -Ṽ S τ w * τ = 0 ⇒ Ṽ S τ w * τ = -ηw * τ , for all τ = 1, . . . , B. Let Ω = [w * 1 , . . . , w * B ] and Φ = [S 1 w * 1 , . . . , S B w * B ].</formula><p>The system is expressed as Ṽ Φ = -ηΩ. The limit Ṽ * minimizes ∥ Ṽ + Γ -1 0 ∥ 2 F subject to Ṽ Φ = -ηΩ, which is solved via the Moore-Penrose pseudoinverse:</p><formula xml:id="formula_32">Ṽ * = -ηΩΦ † -Γ -1 0 (I -ΦΦ †</formula><p>).</p><p>The term (I -ΦΦ † ) is the orthogonal projection onto the null space of Φ ⊺ , ensuring Ṽ follows the initialization -Γ -1 0 in directions not spanned by the data. Now that Ṽ * is characterized, we proceed with proving that W * = I. Note that this choice of Ṽ * , W * satisfies both of the gradient condition (1) and ( <ref type="formula">2</ref>) above. In addition, due to the penalty λ ∥ W -I∥ 2 F , we get W * = I as the unique minimizer.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2 Proof of Theorem 4.2</head><p>Let ρ = 1 -η and</p><formula xml:id="formula_33">c k = ∑ k i=0 ρ 2i . Given W = I and w i,τ = (1 -ρ i )w * τ , the residual is R i,τ = -ρ i ( Ṽ S τ + ηI)w * τ</formula><p>and the loss can be written as</p><formula xml:id="formula_34">L SFT ( Ṽ , I) = c k 2B ∥ Ṽ Φ + ηΩ∥ 2 F , where we recall Φ = [S 1 w * 1 , . . . , S B w * B ] and Ω = [w * 1 , . . . , w * B ].</formula><p>The gradient of the loss is given by</p><formula xml:id="formula_35">∇ Ṽ L SF = c k B ( Ṽ Φ + ηΩ)Φ ⊺</formula><p>Defining ∆ t = Ṽt -Ṽ * and noting Ṽ * Φ = -ηΩ, the GD update Ṽt+1 = Ṽt -γ∇ Ṽ L SF ( Ṽt , I) yields:</p><formula xml:id="formula_36">∆ t+1 = ∆ t (I - γc k B M ) , M = ΦΦ ⊺</formula><p>The error norm evolves as ∥∆ t+1 ∥ F ≤ ∥∆ t ∥ F ⋅ ∥I -γc k B M ∥ op , with ∥⋅∥ op indicating the operator norm. Note that the condition γ &lt; 2B c k λmax(M ) ensures that ∥I -γc k B M ∥ op &lt; 1 and so the GD updates converges to Ṽ * . Specifically, the contraction factor is determined by the most extreme eigenvalues that the error ∆ t sees in the subspace spanned by the data Φ. On the range of Φ, the contraction factor is given by M ) , the rate simplifies to</p><formula xml:id="formula_37">α ∶= max (|1 - γc k B λ max (M )| , |1 - γc k B λ + min (M )|) By choosing γ = B c k λmax(</formula><formula xml:id="formula_38">α = 1 - λ + min (M ) λ max (M ) Substituting ∆ 0 = Ṽ0 -Ṽ * = -Γ -1</formula><p>0 -Ṽ * , we obtain the desired bound:</p><formula xml:id="formula_39">∥ Ṽt -Ṽ * ∥ F ≤ (1 - λ + min (M ) λ max (M ) ) t ∥Γ -1 0 + Ṽ * ∥ F ,</formula><p>which completes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.3 Proof of Proposition 4.3</head><p>Recalling from (4.1), V * satisfies the system Ṽ Φ = -ηΩ. To find the explicit limit as B → ∞, we analyze the normal equations:</p><formula xml:id="formula_40">Ṽ ( 1 B ΦΦ ⊺ ) = - η B ΩΦ ⊺</formula><p>Recall w * τ ∼ N (0, I) and S τ being the empirical covariance of n samples from N (0, A). In addition, w * τ and S τ are independent.</p><p>We have</p><formula xml:id="formula_41">E [ 1 B ΩΦ ⊺ ] = E [ 1 B B ∑ τ =1 w * τ (S τ w * τ ) ⊺ ] = E[w * w * ⊺ S ⊺ τ ]</formula><p>By independence and the fact that E[w * w * ⊺ ] = I and E[S τ ] = A, we get</p><formula xml:id="formula_42">E [ 1 B ΩΦ ⊺ ] = A In addition, E [ 1 B ΦΦ ⊺ ] = E [ 1 B B ∑ τ =1 (S τ w * τ )(S τ w * τ ) ⊺ ] = E[S τ w * w * ⊺ S ⊺ τ ] = E[S 2 τ ]</formula><p>Using the properties of the Wishart distribution for</p><formula xml:id="formula_43">S τ = 1 n ∑ n i=1 x i x ⊺ i with x i ∼ N (0, A), (see Lemma A.2 in (Javanmard et al., 2025)) we have E[S 2 τ ] = n + 1 n A 2 + 1 n tr(A)A</formula><p>First consider the case A is invertible. By Slutsky's Theorem and the consistency of the sample covariance, as B → ∞, the learned operator Ṽ converges in probability to:</p><formula xml:id="formula_44">Ṽ∞ = -ηA (E[S 2 τ ]) -1</formula><p>Substituting the explicit form of E[S 2 τ ]:</p><formula xml:id="formula_45">Ṽ∞ = -ηA ( n + 1 n A 2 + tr(A) n A) -1 = -η ( n + 1 n A + tr(A) n I) -1</formula><p>When A is singular, the same derivation holds in the range of A. In the null space of A, Ṽ∞ stays at its initialization -Γ -1 0 . Both cases can be unified as follows:</p><formula xml:id="formula_46">Ṽ∞ = -η ( n + 1 n A + tr(A) n AA † ) † -Γ -1 0 (I -AA † ) ,</formula><p>which completes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.4 Proof of Proposition 5.1</head><p>Specializing the recursion (A.1) to i = 0 and W = I, we have ŵ = w 0 + 1 n Ṽ XX T (w 0 -w * ). By choosing the initialization w 0 = 0 we arrive at ŵ = -1 n Ṽ XX T w * . Letting Σ = 1 n XX T , we have</p><formula xml:id="formula_47">E[∥ ŵ -w * ∥ 2 ℓ2 ] = E[∥I + Ṽ Σ∥ 2 F ] = ∥I + Ṽ Σ∥ 2 F + 1 n (tr( Ṽ Σ 2 Ṽ T ) + tr( Ṽ Σ Ṽ T )tr(Σ))</formula><p>where the last step follows from Lemma A.1 below.</p><p>Lemma A.1 Let X = [x 1 | . . . |x n ] T with x i ∼ N(0, Σ) with Σ ∈ R d×d . Define Σ ∶= 1 n X T X. Then, for any matrix A ∈ R d×d , we have E[∥I + A Σ∥ 2 F ] = ∥I + AΣ∥ 2 F + 1 n (tr(AΣ 2 A T ) + tr(AΣA T )tr(Σ)) (A.2) Proof (Proof of Lemma A.1) We write E[∥I + A Σ∥ 2 F ] = d + E[∥A Σ∥ 2 F ] -2 E[tr(AΣ)] (A.3) From (Javanmard et al., 2025)(Lemma A.2) we have</p><formula xml:id="formula_48">E[ Σ(A T A) Σ)] = n -1 n Σ(A T A)Σ + 1 n (2Σ(A T A)Σ + tr(ΣA T A)Σ) .</formula><p>Hence, by taking the trace of both sides and changing the orde of expectation and trace (since it is a linear operator), we get</p><formula xml:id="formula_49">E[∥A Σ∥ 2 F ] = n + 1 n tr(AΣ 2 A T ) + 1 n tr(AΣA T )tr(Σ) .</formula><p>Here we also used the identity tr(AB) = tr(BA) for square matrices of the same size. Substituting back in (A.3) we obtain</p><formula xml:id="formula_50">E[∥I + A Σ∥ 2 F ] = d + tr(A T Σ 2 A) -2 E[tr(AΣ)] + 1 n (tr(AΣ 2 A T ) + tr(AΣA T )tr(Σ)) = ∥I + AΣ∥ 2 F + 1 n (tr(AΣ 2 A T ) + 2tr(AΣA T )tr(Σ))</formula><p>which completes the proof of lemma.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.5 Proof of Proposition 6.1</head><p>We begin by recalling the recursion (A.1):</p><formula xml:id="formula_51">ŵi+1,τ = ŵi,τ + Ṽ S τ ( W ŵi,τ -w * τ ) = (I + Ṽ S τ W ) ŵi,τ -Ṽ S τ w * τ Solving this recursion, we obtain ŵk,τ = (I + Ṽ S τ W ) k ŵ0 - k-1 ∑ i=0 (I + Ṽ S τ W ) i Ṽ S τ w * τ . (A.4)</formula><p>Next, using that ŵ0 = w 0 = 0, we get</p><formula xml:id="formula_52">L OS (V, W ) = 1 2B B ∑ τ =1 ∥ ŵτ,k -w * τ ∥ 2 ℓ2 = 1 2B B ∑ τ =1 ∥(I + k-1 ∑ i=0 ( Ṽ S τ W + I) i Ṽ S τ ) w * τ ∥ 2 ℓ2</formula><p>, which completes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Asymptotic Analysis of SFT post-training</head><p>We recall our notations from Section 4. Let S τ ∶= 1 n ∑ n i=1 x i,τ x T i,τ be the empirical features covariance for τ = 1, . . . , B. We also define the following matrices:</p><formula xml:id="formula_53">Ω ∶= [w * 1 , . . . , w * B ] ∈ R d×B , Φ ∶= [S 1 w * 1 , . . . , S B w * B ] ∈ R d×B , (B.1)</formula><p>Also recall that the SFT data are generated as x i ∼ N(0, A) where A = η(P U Σ 0 P U + ∆) + rP U ⊥ , with U = range(∆). When r = 0 this corresponds to the optimal data allocation discussed in Section 5.1 and r ≠ 0 models the interference between SFT data and the pretrained model. We consider the following specific structure for the pretrained covariance Σ 0 and distribution shift covariance ∆ similar to our experiments in Section 5.2, namely</p><formula xml:id="formula_54">Σ 0 = diag(ρ1 m , 1 d-m ), ∆ = diag(1 m , 0 d-m ) .</formula><p>During post-training, SFT data is generated from N(0, A) with</p><formula xml:id="formula_55">A = diag(η(ρ + 1)1 m , r1 d-m ), (B.2)</formula><p>and the post-test distribution is given by the covariance Σ = Σ 0 + ∆. Notably, Our asymptotic framework generalizes to arbitrary covariance structures Γ 0 , ∆, and A, provided the empirical spectral distributions of these matrices converge weakly to probability measures on R ≥0 with finite second moments. Under this Mean-Field regime, the macroscopic behavior of the learned operator Ṽ * is determined by the spectral densities of the data and shift matrices, rather than their specific coordinate-level realizations.</p><p>Decomposition of Ṽ * : Starting from Ṽ * = -ηΩΦ † -Γ -1 0 (I -Π Φ ), with projection Π Φ = ΦΦ † . Let Φ = M + E, where M = AΩ and E is the perturbation of Φ from its expectation AΩ with respect to randomness in the empirical features covariances S τ , for τ ∈ [B]. Using the first-order expansion of the pseudoinverse:</p><formula xml:id="formula_56">Π Φ ≈ (M + E)(M † -M † EM † + . . . )</formula><p>Multiplying this out and keeping only terms up to the first power of E:</p><formula xml:id="formula_57">Π Φ ≈ M M † Π Ω + EM † -M M † EM † First-order correction</formula><p>We can simplify the correction term by factoring M M † :</p><formula xml:id="formula_58">Π Φ ≈ M M † + (I -M M † )EM † , (I -Π Φ ) ≈ (I -M M † ) -(I -M M † )EM † .</formula><p>By substituting this expanded projection back into the definition of Ṽ * , we get the following first-order approximation:</p><formula xml:id="formula_59">Ṽ * ≈ -ηΩ(M † -M † EM † ) -Γ -1 0 [(I -M M † ) -(I -M M † )EM † ] (B.3)</formula><p>Now, group the terms into deterministic (V S ) and stochastic (V N ) components. The Zero order component is given by:</p><formula xml:id="formula_60">V S = -ηΩM † -Γ -1 0 (I -M M † ) The first order component is given by: V N = -V S EM † Equation (B.</formula><p>3) can be written as</p><formula xml:id="formula_61">Ṽ * ≈ Ṽ ∶= V S + V N . (B.4)</formula><p>We next characterize the limit of test error using (5.1). For convenience we rewrite the characterization for the expected test error below:</p><formula xml:id="formula_62">Err( Ṽ ) = 1 d E[∥I + Ṽ Σ∥ 2 F ] Term I + 1 nd E [tr( Ṽ Σ 2 Ṽ T ) + tr( Ṽ Σ Ṽ T )tr(Σ)] Term II (B.5)</formula><p>where expectation is with respect to both the training and the test data. We also normalized the test error by the dimension d. Proportional regime. We consider the proportional asymptotic regime, where d, m, n, B → ∞, with n the prompt length and B the number of prompts. In addition, B/d → β, m/d → µ 1 , d/n → γ for some arbitrary but fixed constants β, µ 1 , γ. We also let µ 2 = 1 -µ 1 .</p><p>Notations. The deterministic feature covariance A is diagonal with block entries a 1 , a 2 . The test covariance Σ is also diagonal with block diagonals Σ 1 , Σ 2 , namely</p><formula xml:id="formula_63">a 1 ∶= η(ρ + 1), a 2 ∶= r Σ 1 ∶= ρ + 1, Σ 2 ∶= 1 (B.6) Let D 1 = I -Γ -1 0 Σ and D pre = Γ -1 0 -ηA -1 .</formula><p>Both are block-diagonal deterministic matrices and in the proportional asymptotic regime, we let α k and δk be their respective scalar values on block k ∈ {1, 2}, and let δ k = δk Σ k . A simple calculation shows that with κ ∶= γ(µρ + 1 -µ), we have</p><formula xml:id="formula_64">α 1 = κ -1 ρ + κ , α 2 = κ κ + 1 δ 1 = 1 -κ ρ + κ , δ1 = δ 1 Σ 1 = 1 -κ (ρ + κ)(ρ + 1) δ 2 = 1 1 + κ - η r , δ2 = δ 2 Σ 2 = δ 2 (B.7)</formula><p>In addition, -Γ -1 0 is also a block-diagonal deterministic matrix and in the asymptotic regime, we let g k be its respective scalar values on block k ∈ {1, 2}. It is easy to see that</p><formula xml:id="formula_65">g 1 = - 1 ρ + κ , g 2 = - 1 1 + κ (B.8) The matrix Σ A ∶= 1 d (tr(A)A + A 2</formula><p>) is also block-diagonal and in the proportional regime, its respective scalar values on block k ∈ {1, 2} converge to</p><formula xml:id="formula_66">s 1 = (µ 1 a 1 + µ 2 a 2 )a 1 = (µ 1 η(ρ + 1) + µ 2 r)η(ρ + 1) s 2 = (µ 1 a 1 + µ 2 a 2 )a 2 = (µ 1 η(ρ + 1) + µ 2 r)r (B.9) Theorem B.1 Consider Ṽ = V S + V N</formula><p>the first order approximation of Ṽ * as in (B.4). Under the proportional asymptotic regime, the following holds true:</p><formula xml:id="formula_67">lim d→∞ Err( Ṽ ) = Bias + γT inv T var + γ ΣT var,Σ + γ 2 ΣT inv,Σ T var (B.10)</formula><p>where the terms are defined as follows, in terms of the notations defined by (B.6), (B.7), (B.8) and (B.9):</p><p>• Bias: For β &lt; 1, let q be the non-negative solution to:</p><formula xml:id="formula_68">β = 2 ∑ k=1 µ k a 2 k q 1 + a 2 k q (B.11)</formula><p>and define w k =</p><formula xml:id="formula_69">a 2 k q 1+a 2 k q , v k = w k (1 -w k ), for k ∈ {1, 2} and T 12 = µ 1 µ 2 v 1 v 2 µ 1 v 1 + µ 2 v 2 (B.12)</formula><p>For β ≥ 1, set w k = 1, v k = 0, and T 12 = 0. We then have</p><formula xml:id="formula_70">Bias ∶= 2 ∑ k=1 µ k [α 2 k (1 -w k ) + (α k + δ k ) 2 w k ] + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) (B.13)</formula><p>• The terms T inv and T inv,Σ are given by</p><formula xml:id="formula_71">T inv = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ 2 k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β &lt; 1) + { 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k } 1(β &gt; 1) (B.14) T inv,Σ = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β &lt; 1) + { 1 β -1 2 ∑ k=1 µ k Σ k a 2 k } 1(β &gt; 1) (B.15)</formula><p>• The terms T var,E and T var,Σ are given by</p><formula xml:id="formula_72">T var = 2 ∑ k=1 µ k s k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 s 1 -δ2 s 2 ) (B.16) T var,Σ = 2 ∑ k=1 µ k Σ k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 Σ 1 -δ2 Σ 2 ) (B.17)</formula><p>We next compare the predicted asymptotic limit of Err with numerical experiment. Recall Ṽ * as the SFT loss minimizer given by (4.1), Ṽ its first order approximation, given by (B.4). In Figure <ref type="figure" target="#fig_8">5</ref> we plot Err( Ṽ * ), Err( Ṽ ) and our theoretical curve (B.10). As we see there is a great match between our theoretical prediction and simulation result for (Err( Ṽ )). In addition, it approximates Err( Ṽ * ) reasonably well and the approximation becomes tighter as the prompt length (n) grows (Figure <ref type="figure" target="#fig_8">5b</ref> shows a better approximation at n = 5000 compared to Figure <ref type="figure" target="#fig_8">5a</ref> for n = 1000). Using Theorem B.10 we prove several properties of the asymptotic error and show that under interference, its minimum is achieved in the regime of β &lt; 1. This confirms our Insight 2 in the main text, namely that SFT datasets should be curated to be relatively small in volume.</p><p>We denote the predicted theoretical error (right hand side of (B.10)) by F (β), as function of β, as we would like to understand its behavior as β varies.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Proposition B.2</head><p>The followings hold true:</p><p>(i) lim β→1 F (β) = ∞. For β &gt; 1, F (β) is strictly decreasing. As β → ∞, it converges to a finite asymptotic floor:</p><formula xml:id="formula_73">F (↑∞) ∶= lim β→∞ F (β) = 2 ∑ k=1 µ k (α k + δ k ) 2 + γ Σ 2 ∑ k=1 µ k Σ k (g k + δk ) 2 (ii) We have F (0) = 2 ∑ k=1 µ k α 2 k + γ Σ 2 ∑ k=1 µ k Σ k g 2 k</formula><p>Also, F (↑∞) -F (0) scales as O(1/r 2 ). Consequently, for sufficiently small r &gt; 0, F (↑∞) &gt; F (0). This guarantees that the global minimum of F (β) is strictly achieved in the overparameterized regime (β &lt; 1).</p><p>(iii) Suppose that µ 1 ≥ ρ 2 1+ρ 2 . For sufficiently small r and γ, the initial derivative is strictly negative (F ′ (0) &lt; 0). Hence, introducing a small number of prompts immediately and strictly decreases the test error. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Proof of Theorem B.1</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.1 Analysis of Term I</head><p>We start by analyzing Term I. We have</p><formula xml:id="formula_74">E[∥I + Ṽ Σ∥ 2 F ] = E[∥I + V S Σ + V N Σ∥ 2 F ] = E[∥I + V S Σ∥ 2 F ] + E[∥V N Σ∥ 2 F ] because conditioned on Ω, E = [(S 1 -A)w * 1 , . . . , (S B -A)w * B ]</formula><p>is zero mean and independent of V S . Hence,</p><formula xml:id="formula_75">lim d→∞ 1 d E[∥I + Ṽ Σ∥ 2 F ] = lim d→∞ 1 d E[∥I + V S Σ∥ 2 F ] + lim d→∞ 1 d E[∥V N Σ∥ 2 F ] . (C.1)</formula><p>Analysis of the Bias term. The deterministic component of the test error (Bias) is governed by the matrix M S = I + V S Σ. We first express V S in terms of the orthogonal projection matrix Π M = M M † . Using the identity A -1 Π M = ΩM † , we have:</p><formula xml:id="formula_76">V S = -ηA -1 Π M -Γ -1 0 (I -Π M ) (C.2) M S = (I -Γ -1 0 Σ) + (Γ -1 0 -ηA -1 )Π M Σ (C.3) Let D 1 = I -Γ -1 0 Σ and D pre = Γ -1 0 -ηA -1 . Thus, M S = D 1 + D pre Π M Σ.</formula><p>Note that D 1 and D pre are block-diagonal deterministic matrices, and in the asymptotic regime, their respective scalar values on block k ∈ {1, 2} converge to α k and δk given by (B.7). Let δ k = δk Σ k .</p><p>Expanding the normalized squared Frobenius norm, we obtain:</p><formula xml:id="formula_77">1 d ∥M S ∥ 2 F = 1 d tr(D 2 1 ) + 2 d tr(D 1 ΣΠ M D pre ) + 1 d tr(D 2 pre Π M Σ 2 Π M ) (C.4)</formula><p>We next note that</p><formula xml:id="formula_78">1 d tr(D 2 1 ) = 2 ∑ k=1 d k d α 2 k = 2 ∑ k=1 µ k α 2 k (C.5)</formula><p>In addition, we have</p><formula xml:id="formula_79">2 d tr(D 1 ΣΠ M D pre ) = 2 d tr(D pre D 1 ΣΠ M ) = 2 d 2 ∑ k=1 α k δ k tr(Π kk ) (C.6)</formula><p>To evaluate the quadratic trace Quad ∶= 1 d tr(D 2 pre Π M Σ 2 Π M ), we partition the projection matrix into blocks Π ij with i, j ∈ {1, 2} with Π 11 of size m and</p><formula xml:id="formula_80">Π 2,2 of size d -m. Let T ij = 1 d tr(Π ij Π ji ).</formula><p>Expanding the trace block-by-block yields:</p><formula xml:id="formula_81">Quad = δ 2 1 T 11 + δ 2 2 T 22 + ( δ2 2 Σ 2 1 + δ2 1 Σ 2 2 ) T 12 . (C.7) Because Π M is a true orthogonal projection, Π 2 M = Π M .</formula><p>Examining the diagonal blocks of this identity gives</p><formula xml:id="formula_82">Π 2 kk + Π kj Π jk = Π kk , (C.8)</formula><p>with k ≠ j ∈ {1, 2}. Our next lemma characterizes the limit of normalized trace of Π kk , using Stieltjes transform and Silverstein equation from the Random Matrix Theory.</p><formula xml:id="formula_83">Lemma C.1 Let w k ∶= lim d k →∞ 1 d k tr(Π kk ).</formula><p>Then, the following holds: For β &lt; 1,</p><formula xml:id="formula_84">w k = a 2 k q 1 + a 2 k q , (C.9)</formula><p>with q being the non-negative solution to:</p><formula xml:id="formula_85">β = 2 ∑ k=1 µ k a 2 k q 1 + a 2 k q (C.10) For β ≥ 1, we have w k = 1.</formula><p>Taking the normalized trace from (C.8) gives:</p><formula xml:id="formula_86">T kk = µ k w k -T 12 , k ∈ {1, 2} (C.11)</formula><p>Substituting this into the quadratic term and simplifying:</p><formula xml:id="formula_87">Quad = µ 1 δ 2 1 w 1 + µ 2 δ 2 2 w 2 + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) (C.12)</formula><p>Also by recalling (C.6) we have</p><formula xml:id="formula_88">lim d→∞ 2 d tr(D 1 ΣΠ M D pre ) = 2 d tr(D 1 ΣΠ M D pre ) = lim d→∞ 2 2 ∑ k=1 ( d k d ) α k δ k ( 1 d k tr(Π kk )) = 2 2 ∑ k=1 µ k α k δ k w k (C.13)</formula><p>Combining the linear and quadratic traces given by (C.5), (C.13) and (C.12), the complete rigorous bias evaluates to:</p><formula xml:id="formula_89">lim d→∞ 1 d ∥M S ∥ 2 F = 2 ∑ k=1 µ k [α 2 k (1 -w k ) + (α k + δ k ) 2 w k ] + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) . (C.14)</formula><p>In the next lemma, we characterize T 12 which completes our analysis of the Bias term.</p><p>Lemma C.2 Let Π M be the orthogonal projection matrix onto the column space of M = AΩ, where Ω ∈ R d×B has i.i.d. entries of variance 1/d, and A is a deterministic block-diagonal matrix with block dimensions d k = µ k d and corresponding squared eigenvalues a 2 k for k ∈ {1, 2}. Let Π ij denote the sub-blocks of Π M . As d, B → ∞ with B/d → β, the normalized cross-subspace leakage trace T 12 = lim d→∞ 1 d tr(Π 12 Π 21 ) is almost surely given by:</p><formula xml:id="formula_90">T 12 = µ 1 µ 2 v 1 v 2 µ 1 v 1 + µ 2 v 2 (C.15)</formula><p>where v k = w k (1 -w k ) is the variance factor of the projection on block k, and w k = a 2 k q 1+a 2 k q are the Stieltjes weights defined by the fixed-point root q.</p><p>Analysis of the noise term. We recall the dimension ratios as µ 1 = m/d and γ = d/n. The noise operator acting on the test covariance is defined exactly as V N Σ = -V S EM † Σ. We seek the limit of the normalized expected squared Frobenius norm:</p><formula xml:id="formula_91">1 d E E [∥V N Σ∥ 2 F ] = 1 d E E [tr(V S EM † Σ 2 (M † ) T E T V T S )] (C.16) Let Q = M † Σ 2 (M † ) T . Because M = E[Φ] is deterministic, Q is constant with respect to the noise realization E. Let ε τ = (S τ -A)w * τ be the τ -th column of E.</formula><p>We first compute the expectation over the feature samples x i,τ conditioned on the weight matrix Ω. Since the feature samples are independent across different weights τ , the columns of E are mutually independent with zero mean:</p><formula xml:id="formula_92">E[ε τ ε ⊺ γ | Ω] = 0 for τ ≠ γ</formula><p>For the diagonal terms, we use the standard identity for the covariance of a Wishart quadratic form. For any fixed vector u and</p><formula xml:id="formula_93">S ∼ W d (n, 1 n A): E[(S -A)uu ⊺ (S -A)] = 1 n ((u ⊺ Au)A + Auu ⊺ A)</formula><p>Summing over the entries of Q:</p><formula xml:id="formula_94">E E|Ω [EQE ⊺ ] = ∑ τ ≠γ Q τ γ E[ε τ ε ⊺ γ | Ω] = 1 n B ∑ τ =1 Q τ τ ((w * ⊺ τ Aw * τ )A + Aw * τ w * ⊺ τ A)</formula><p>We now take the expectation over Ω. By the rotational invariance of the Gaussian distribution, the expectation of any function of Ω that is equivariant under orthogonal transformations must be isotropic. In particular, the term</p><formula xml:id="formula_95">Z = E [∑ τ Q τ τ w * τ w * ⊺ τ ] must satisfy Z = cI d .</formula><p>Taking the trace:</p><formula xml:id="formula_96">cd = E [ B ∑ τ =1 Q τ τ ∥w * τ ∥ 2 ] = dE[tr(Q)] ⇒ c = E[tr(Q)]</formula><p>In the high-dimensional limit, the correlation between the weight-norm quadratic form (w * ⊺ τ Aw * τ ) and the kernel diagonal Q τ τ vanishes, by which we obtain</p><formula xml:id="formula_97">E [ B ∑ τ =1 Q τ τ (w * ⊺ τ Aw * τ )] = E[tr(Q)]tr(A)</formula><p>Combining these, we obtain:</p><formula xml:id="formula_98">E[EQE ⊺ ] = E[tr(Q)] n (tr(A)A + A 2 ) (C.17) We set Σ A ∶= 1 d (tr(A)A + A 2 ).</formula><p>Substituting the above identity into (C.16) we obtain:</p><formula xml:id="formula_99">1 d E E [∥V N Σ∥ 2 F ] = 1 d tr(V S [γtr(Q)Σ A ] V T S ) (C.18)</formula><p>Because tr(Q) is a scalar, it factors entirely out of the matrix product. Using the property (M † ) T M † = (M M T ) † , the expectation rigorously splits into the product of two independent, normalized trace functionals:</p><formula xml:id="formula_100">1 d E[∥V N Σ∥ 2 F ] = γ [tr(Σ 2 (M M T ) † )] Tinv ⋅ [ 1 d tr(V S Σ A V T S )] Tvar (C.19)</formula><p>Derivation of the pseudo-inverse trace (T inv ). We must evaluate the target trace T inv = tr(Σ 2 (M M T ) † ), which governs the variance functional. Because the feature matrix M = AΩ is constructed with Ω ∼ N (0, 1) i.i.d. entries, the unscaled matrix G = M M T has eigenvalues scaling as O(d). To rigorously apply the Stieltjes transform, we define the normalized matrix Ĝ = 1 d G, which has O(1) eigenvalues. The target trace scales as:</p><formula xml:id="formula_101">T inv = tr(Σ 2 (d Ĝ) † ) = 1 d tr(Σ 2 Ĝ † ) (C.20)</formula><p>• Over-parameterized regime (β &lt; 1). Because Ĝ is strictly singular in the over-parameterized regime (B &lt; d), direct inversion is invalid. To evaluate the trace rigorously for any aspect ratio β, we introduce a strictly positive regularization parameter z &gt; 0 and define the perturbed resolvent:</p><formula xml:id="formula_102">R(z, t) = ( Ĝ + tAΣ 2 A + zI d ) -1 (C.21) Let m(z, t) = 1 d tr(R(z, t))</formula><p>be its normalized trace. Because z &gt; 0, R(z, t) is unconditionally invertible and bounded for all B. Taking the derivative of m(z, t) with respect to the continuous perturbation t at t = 0 yields:</p><formula xml:id="formula_103">∂ ∂t m(z, t)| t=0 = - 1 d tr(R(z, 0)(AΣ 2 A)R(z, 0)) (C.22)</formula><p>Because R(z, 0), A, and Σ are all well-defined, finite d × d matrices, we can validly apply cyclic permutation to the trace. We move the rightmost R(z, 0) to the left, and use the fact that the diagonal matrices A and</p><formula xml:id="formula_104">Σ 2 commute (AΣ 2 A = Σ 2 A 2 ): ∂ ∂t m(z, t)| t=0 = - 1 d tr((AΣ 2 A)R(z, 0) 2 ) = - 1 d tr(Σ 2 A 2 R(z, 0) 2 ) (C.23)</formula><p>We now define our target Stieltjes derivative q ′ (0) as the limit of this regularized derivative as z → 0 + . By defining the operator limit lim z→0 + R(z, 0) 2 ≡ ( Ĝ † ) 2 strictly on the non-null subspace, this identically maps to our target variance trace T inv across all parameterization regimes:</p><formula xml:id="formula_105">-q ′ (0) = lim z→0 + 1 d tr(Σ 2 A 2 R(z, 0) 2 ) ≡ 1 d tr(Σ 2 A 2 ( Ĝ † ) 2 ) = T inv (C.24)</formula><p>To find q ′ (0) analytically, we differentiate the fixed-point equation of the perturbed resolvent. The eigenvalues of the perturbed deterministic envelope are a 2 k (1 + tΣ 2 k ). Using the Silverstein equation, we have the following fixed-point equation:</p><formula xml:id="formula_106">β = 2 ∑ k=1 µ k a 2 k (1 + tΣ 2 k )q(t) 1 + a 2 k (1 + tΣ 2 k )q(t) (C.25)</formula><p>Differentiating both sides with respect to t at t = 0 (where q(0) = q) gives:</p><formula xml:id="formula_107">0 = 2 ∑ k=1 µ k a 2 k Σ 2 k q + a 2 k q ′ (0) (1 + a 2 k q) 2 (C.26)</formula><p>Separating the terms and recognizing that the effective block weights are w k = a 2 k q 1+a 2 k q , we observe the algebraic identity</p><formula xml:id="formula_108">a 2 k (1+a 2 k q) 2 = w 2 k a 2 k q 2</formula><p>. Substituting this into the differential equation gives:</p><formula xml:id="formula_109">-q ′ (<label>0</label></formula><formula xml:id="formula_110">) 2 ∑ k=1 µ k w 2 k a 2 k q 2 = q 2 ∑ k=1 µ k Σ 2 k w 2 k a 2 k q 2 (C.27)</formula><p>Multiplying by q 2 and isolating -q ′ (0), we obtain the exact closed-form limit:</p><formula xml:id="formula_111">T inv = q ∑ 2 k=1 µ k Σ 2 k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k (C.28)</formula><p>• Under-parameterized regime (β &gt; 1). The differential Stieltjes approach relies on the fixed-point root q being finite, which holds strictly for the over-parameterized regime (β &lt; 1). When β &gt; 1, the number of samples exceeds the ambient dimension (B &gt; d), causing the rank fraction to saturate at β = 1, which mathematically drives q → ∞. However, in this over-parameterized regime, the unscaled feature covariance matrix G = M M T becomes strictly full rank almost surely. Consequently, the normalized matrix Ĝ = 1 d G is strictly invertible, and its pseudoinverse reduces to the standard inverse Ĝ-1 . We skip the perturbation derivative and evaluate the trace directly using the deterministic equivalent for the inverse of a generalized sample covariance matrix. Note that Ĝ-1 = A -1 W -1 A -1 with W = 1 d ΩΩ T a standard Wishart matrix of size d × B and so by the inverse moments of the Marchenko-Pastur law, its deterministic equivalent is given by W ≍ 1 β-1 I d , which implies that</p><formula xml:id="formula_112">Ĝ-1 ≍ 1 β -1 (A 2 ) -1 (C.29)</formula><p>Substituting this deterministic equivalent directly into the target trace functional yields the exact closed-form limit for β &gt; 1:</p><formula xml:id="formula_113">T inv = 1 d tr (Σ 2 [ 1 β -1 A -2 ]) = 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k (C.30)</formula><p>Equations (C.28) and (C.30) both diverge at the interpolation threshold (β = 1). We combine both equation into one unifying relation:</p><formula xml:id="formula_114">T inv = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ 2 k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β &lt; 1) + { 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k } 1(β &gt; 1) (C.31)</formula><p>Derivation of the trace term (T var ). We evaluate the trace term</p><formula xml:id="formula_115">T var = lim d→∞ 1 d tr(V S Σ A V T S ). Recall the deterministic test operator V S = -Γ -1 0 + D pre Π M , where D pre = Γ -1 0 -ηA -1 .</formula><p>Note that D pre and -Γ -1 0 are both block-diagonal deterministic matrices. Also their respective scalar values on block k ∈ {1, 2} in the proportional asymptotic regime converges to δk and g k given by (B.7) and (B.8). Expanding the trace yields:</p><formula xml:id="formula_116">T var = 1 d tr(Γ -2 0 Σ A ) + 2 d tr(-Γ -1 0 Σ A D pre Π M ) + 1 d tr(D pre Π M Σ A D pre Π M ) (C.32) Let T ij = 1 d tr(Π ij Π ji ).</formula><p>The linear traces evaluate strictly on the diagonal blocks. Similar to derivations (C.5) and (C.13) we have</p><formula xml:id="formula_117">lim d→∞ tr(Γ -2 0 Σ A ) = 2 ∑ k=1 µ k g 2 k s k</formula><p>where s 1 and s 2 are the limit of the scalar on the blocks of Σ A given by (B.9). In addition,</p><formula xml:id="formula_118">lim d→∞ 2 d tr(-Γ -1 0 Σ A D pre Π M ) = 2 2 ∑ k=1 µ k g k δk s k w k</formula><p>The quadratic trace Quad ∶= 1 d tr(D pre Π M Σ A D pre Π M ) expands over the 2 × 2 block partition as:</p><formula xml:id="formula_119">Quad = δ2 1 s 1 T 11 + δ2 2 s 2 T 22 + δ1 δ2 (s 1 + s 2 )T 12 (C.33)</formula><p>Invoking (C.11), we have T kk = µ k w k -T 12 . Substituting these constraints into the quadratic expansion yields:</p><formula xml:id="formula_120">Quad = 2 ∑ k=1 µ k δ2 k s k w k -T 12 [ δ2 1 s 1 + δ2 2 s 2 -δ1 δ2 s 1 -δ1 δ2 s 2 ] (C.34)</formula><p>The bracketed multiplier for T 12 factors analytically into ( δ1 -δ2 )( δ1 s 1 -δ2 s 2 ). Recombining the linear and quadratic components completes the square for the diagonal elements, yielding:</p><formula xml:id="formula_121">T var = 2 ∑ k=1 µ k s k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 s 1 -δ2 s 2 ) (C.35)</formula><p>By recalling (C.19), the noise limit</p><formula xml:id="formula_122">1 d E E [∥V N Σ∥ 2 F ]</formula><p>is given by the product of equations (C.28) and (C.35).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2 Analysis of Term II</head><p>Since tr(Σ) scales as O(d), the tr( Ṽ Σ Ṽ T )tr(Σ) term dominates the tr( Ṽ Σ 2 Ṽ T ) term in the high-dimensional limit. Letting Σ = lim d→∞ 1 d tr(Σ), the dominant component of Term II evaluates to:</p><formula xml:id="formula_123">Term II = γ Σ ⋅ 1 d E [tr( Ṽ Σ Ṽ T )] (C.36)</formula><p>Recall that Ṽ = V S +V N with V N zero mean. Since the cross-terms are zero, we get the following decomposition:</p><formula xml:id="formula_124">Term II = γ Σ 1 d tr(V S ΣV T S ) Term II Signal + γ Σ 1 d E E [tr(V N ΣV T N )]</formula><p>Term II Noise (C.37)</p><p>Derivation of Term II Signal. We evaluate T var,Σ = 1 d tr(V S ΣV T S ). The deterministic operator is V S = -Γ -1 0 + D pre Π M , where D pre = Γ -1 0 -ηA -1 are block-diagonal. Expanding the trace yields:</p><formula xml:id="formula_125">T var,Σ = 1 d tr(Γ -2 0 Σ) + 2 d tr(-Γ -1 0 ΣD pre Π M ) + 1 d tr(D pre Π M ΣD pre Π M ) (C.38)</formula><p>As we observe the expression for T var,Σ is same as T var with Σ A replaced by Σ. Hence, by a similar derivation of (C.35) we get</p><formula xml:id="formula_126">T var,Σ = 2 ∑ k=1 µ k Σ k [g 2 k (1 -w k ) + (g k + δk ) 2 w k ] -T 12 ( δ1 -δ2 )( δ1 Σ 1 -δ2 Σ 2 ) (C.39) Derivation of Term II Noise. We must evaluate 1 d E [tr(V N ΣV T N )].</formula><p>Following similar derivation of (C.19), replacing Σ by Σ 1/2 , we arrive at</p><formula xml:id="formula_127">1 d E[∥V N Σ 1/2 ∥ 2 F ] = γ [tr(Σ(M M T ) † )] T inv,Σ ⋅ [ 1 d tr(V S ΣE V T S )] Tvar (C.40)</formula><p>Notice that we already characterized T var in the analysis of Term I. We next evaluate T inv,Σ = lim d→∞ 1 d tr(ΣG † ), where G = M M † = AΩΩ T A. Note that the expression for T inv,Σ is same as T inv where Σ 2 is replaced by Σ. Following the same derivation for (C.31), we arrive at</p><formula xml:id="formula_128">T inv,Σ = ⎧ ⎪ ⎪ ⎪ ⎨ ⎪ ⎪ ⎪ ⎩ q ∑ 2 k=1 µ k Σ k a 2 k w 2 k ∑ 2 k=1 µ k 1 a 2 k w 2 k ⎫ ⎪ ⎪ ⎪ ⎬ ⎪ ⎪ ⎪ ⎭ 1(β &lt; 1) + { 1 β -1 2 ∑ k=1 µ k Σ k a 2 k } 1(β &gt; 1) (C.41)</formula><p>Combining the above characterizations, the limit for the components of Term II are given by:</p><p>Term II Signal = γ Σ ⋅ T var,Σ (C.42)</p><p>Term II Noise = γ 2 Σ ⋅ T inv,Σ ⋅ T var (C.43)</p><p>where T var,Σ is given by Eq. (C.39), T inv,Σ by Eq. (C.41), and T var is given by (C.35) from the Term I derivation. Putting the characterizations derived for Term I and Term II in (B.5) completes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2.1 Proof of Lemma C.1</head><p>To evaluate the asymptotic trace of Π M , we express the orthogonal projection operator onto the column space of the empirical feature matrix M as the limit of a Ridge-regularized inverse as the regularization parameter z → 0 + :</p><formula xml:id="formula_129">Π M = lim z→0 + M (M T M + zI B ) -1 M T = I d -lim z→0 + z(G + zI d ) -1 (C.44)</formula><p>where G = M M T = AΩΩ T A is the generalized sample covariance matrix, and R(z) = (G + zI d ) -1 is its resolvent. By the Bai-Silverstein theorem, as d, B → ∞ with B/d → β, the random resolvent R(z) is asymptotically equivalent to a deterministic diagonal matrix T (z). For any bounded deterministic matrix D, the normalized trace converges almost surely:</p><formula xml:id="formula_130">lim d→∞ 1 d tr(DR(z)) - 1 d tr(DT (z))</formula><p>a.s.</p><p>→ 0 (C.45)</p><p>where T (z) is given by</p><formula xml:id="formula_131">T (z) = (zI d + v(z)A 2 ) -1 ,</formula><p>and v(z) is the Stieltjes transform of the companion matrix G = Ω T A 2 Ω. We define the effective rank fraction preserved in the k-th block as the normalized trace of the projection matrix restricted to that subspace:</p><formula xml:id="formula_132">w k = lim d→∞ 1 d k tr(Π kk ) (C.46)</formula><p>Substituting the resolvent limit and its deterministic equivalent T (z):</p><formula xml:id="formula_133">w k = 1 -lim z→0 + 1 d k ∑ i∈Block k zT ii (z) = 1 -lim z→0 + z z + a 2 k v(z) = 1 -lim z→0 + 1 1 + a 2 k v(z) z (C.47)</formula><p>We define the strict Stieltjes fixed-point root q as the limit of this ratio near the origin:</p><formula xml:id="formula_134">q = lim z→0 + v(z) z (C.48)</formula><p>Substituting q into the limit yields the following relation for the block weights:</p><formula xml:id="formula_135">w k = 1 - 1 1 + a 2 k q = a 2 k q 1 + a 2 k q (C.49)</formula><p>To determine the fixed-point root q, we utilize the trace identity between the resolvents of the d × d generalized sample covariance matrix G and its B × B companion matrix G = Ω T A 2 Ω. Because their nonzero eigenvalues are strictly identical, the normalized trace of the feature resolvent, m(z)</p><formula xml:id="formula_136">= 1 d tr(R(z)) = 1 d tr[(G + zI d ) -1 ], is given by: zm(z) = 1 -β + βzv(z) .</formula><p>(C.50) By the Bai-Silverstein theorem, m(z) is asymptotically equivalent to the trace of the deterministic matrix T (z). Substituting this deterministic equivalent yields:</p><formula xml:id="formula_137">m(z) = K ∑ k=1 µ k 1 z + a 2 k v(z) (C.51)</formula><p>Multiplying by z and equating this to the trace identity (C.50) establishes the exact relation:</p><formula xml:id="formula_138">1 -β + βzv(z) = K ∑ k=1 µ k z z + a 2 k v(z) = K ∑ k=1 µ k 1 1 + a 2 k v(z) z</formula><p>(C.52)</p><p>We evaluate the strict limit of this equation as z → 0 + . On the right side, we substitute our definition of the root q = lim z→0 + v(z) z . On the left side, the limit of zv(z) is governed by the dimension of the null space of the companion matrix G. The maximum rank of G is bounded by d. If B &gt; d (i.e., β &gt; 1), the companion matrix has exactly Bd strict zero eigenvalues and the resolvent trace scales proportionally to B-d B 1 z . We therefore evaluate the limit exactly as:</p><formula xml:id="formula_139">lim z→0 + zv(z) = max (1 - 1 β , 0) (C.53)</formula><p>Substituting these limits into both sides of the trace identity yields:</p><formula xml:id="formula_140">1 -β + β max (1 - 1 β , 0) = K ∑ k=1 µ k 1 1 + a 2 k q (C.54)</formula><p>The left side mathematically simplifies exactly to max(1 -β, 0). On the right side, we substitute the definition of the block weights w k =</p><formula xml:id="formula_141">a 2 k q 1+a 2 k q , utilizing the identity 1 1+a 2 k q = 1 -w k : max(1 -β, 0) = K ∑ k=1 µ k (1 -w k ) = 1 - K ∑ k=1 µ k w k (C.55)</formula><p>Rearranging the terms immediately yields:</p><formula xml:id="formula_142">K ∑ k=1 µ k w k = 1 -max(1 -β, 0) = min(β, 1) = β (C.56)</formula><p>This derivation holds universally across all parameterization regimes. In the under-parameterized regime (β &gt; 1), the effective rank fraction saturates at β = 1, which mathematically forces w k → 1 and q → ∞. Equations (C.49) and (C.56) completely and deterministically parameterize the finite-dimensional traces of the random projection Π M .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2.2 Proof of Lemma C.2</head><p>We express the orthogonal projection matrix Π M as the limit of the regularized resolvent R(z) = (AΩΩ</p><formula xml:id="formula_143">T A + zI d ) -1 as z → 0 + : Π M = I d -lim z→0 + zR(z) (C.57)</formula><p>Let D 1 and D 2 be the orthogonal block indicator matrices for subspaces 1 and 2, such that D 1 D 2 = 0. Specifically,</p><formula xml:id="formula_144">D 1 = [ I m 0 m×(d-m) 0 (d-m)×m 0 d-m ] , D 2 = [ 0 m 0 m×(d-m) 0 (d-m)×m I d-m ] (C.58)</formula><p>The cross-trace can be written as tr(Π 12 Π 21 ) = tr(D 1 Π M D 2 Π M ). Substituting the resolvent limit into the trace definition yields:</p><formula xml:id="formula_145">T 12 = lim z→0 + lim d→∞ 1 d tr (D 1 (I d -zR(z))D 2 (I d -zR(z))) (C.59)</formula><p>Because D 1 D 2 = 0, expanding the product causes all terms of order lower than R(z) 2 to vanish exactly:</p><formula xml:id="formula_146">T 12 = lim z→0 + z 2 [ lim d→∞ 1 d tr (D 1 R(z)D 2 R(z))] (C.60)</formula><p>In the next lemma, we characterize the inner limit.</p><p>Lemma C.3 Let R(z) = (AΩΩ T A + zI d ) -1 be the resolvent of the generalized sample covariance matrix, and let T (z) = (zI d + v(z)A 2 ) -1 be its deterministic equivalent. Let D 1 and D 2 be d × d diagonal orthogonal block indicator matrices such that D 1 D 2 = 0. In the high-dimensional limit d, B → ∞ with B/d → β, the normalized trace of the product of the two resolvents converges almost surely to:</p><formula xml:id="formula_147">lim d→∞ 1 d tr (D 1 R(z)D 2 R(z)) = v(z) 2 β Ψ 1 (z)Ψ 2 (z) ∆(z) (C.61)</formula><p>where Ψ k and ∆ k are defined as:</p><formula xml:id="formula_148">Ψ k (z) = lim d→∞ 1 d tr (D k A 2 T (z) 2 ) , ∆(z) = 1 - v(z) 2 β lim d→∞ 1 d tr (A 4 T (z) 2 ) .</formula><p>Using Lemma C.3, we have</p><formula xml:id="formula_149">Ψ k (z) = lim d→∞ 1 d tr (D k T (z)A 2 T (z)) = µ k a 2 k (z + a 2 k v(z)) 2 (C.62) ∆(z) = 1 - v(z) 2 β lim d→∞ 1 d tr (A 4 T (z) 2 ) = 1 - v(z) 2 β 2 ∑ k=1 µ k a 4 k (z + a 2 k v(z)) 2</formula><p>(C.63)</p><p>We now evaluate the limit as z → 0 + . Using the Stieltjes fixed-point definition q = lim z→0 + v(z) z , we have v(z) = qz + o(z).</p><p>First, we evaluate the limit of the scaled block traces z 2 Ψ k (z):</p><formula xml:id="formula_150">lim z→0 + z 2 Ψ k (z) = lim z→0 + z 2 µ k a 2 k z 2 (1 + a 2 k q) 2 = µ k a 2 k (1 + a 2 k q) 2 (C.64) Recall that w k = a 2 k q 1+a 2 k q , which implies the variance factor is v k = w k (1 -w k ) = a 2 k q (1+a 2 k q) 2 .</formula><p>Dividing by q, we map the block trace exactly to the variance factor:</p><formula xml:id="formula_151">lim z→0 + z 2 Ψ k (z) = µ k v k q (C.65)</formula><p>Second, we use (C.61) to evaluate T 12 given by (C.60). Distributing the z 2 multiplier from the projection limit alongside the v(z) 2 /z 2 → q 2 convergence yields:</p><formula xml:id="formula_152">lim z→0 + 1 β ( v(z) 2 z 2 ) [z 2 Ψ 1 (z)][z 2 Ψ 2 (z)] = 1 β (q 2 ) ( µ 1 v 1 q ) ( µ 2 v 2 q ) = µ 1 µ 2 v 1 v 2 β (C.66)</formula><p>Third, we evaluate the denominator ∆(0) as z → 0 + :</p><formula xml:id="formula_153">∆(0) = lim z→0 + [1 - 1 β ( v(z) 2 z 2 ) 2 ∑ k=1 µ k a 4 k (1 + a 2 k q) 2 ] = 1 - 1 β 2 ∑ k=1 µ k a 4 k q 2 (1 + a 2 k q) 2 (C.67)</formula><p>Recognizing the squared weight w 2 k = (</p><formula xml:id="formula_154">a 2 k q 1+a 2 k q ) 2 , we get ∆(0) = 1 -1 β ∑ 2 k=1 µ k w 2 k .</formula><p>We apply the identity β = ∑ 2 k=1 µ k w k , given by (C.56), to replace the leading 1:</p><formula xml:id="formula_155">∆(0) = ∑ 2 k=1 µ k w k -∑ 2 k=1 µ k w 2 k β = 1 β 2 ∑ k=1 µ k w k (1 -w k ) = µ 1 v 1 + µ 2 v 2 β (C.68)</formula><p>Finally, taking the ratio of the evaluated numerator and denominator, we get</p><formula xml:id="formula_156">T 12 = µ1µ2v1v2 β µ1v1+µ2v2 β = µ 1 µ 2 v 1 v 2 µ 1 v 1 + µ 2 v 2 (C.69)</formula><p>which concludes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C.2.3 Proof of Lemma C.3</head><p>We evaluate the cross-trace by introducing a continuous, deterministic perturbation t to the resolvent. We define the perturbed resolvent matrix as R(z, t) = (AΩΩ T A + tD 2 + zI d ) -1 . Let m 1 (z, t) = 1 d tr(D 1 R(z, t)) be its normalized trace on the first subspace.</p><p>Taking the derivative of the random trace m 1 (z, t) with respect to the perturbation t at t = 0 directly yields the target cross-trace. Using the matrix derivative identity ∂ ∂t M -1 = -M -1 ∂M ∂t M -1 :</p><formula xml:id="formula_157">∂ ∂t m 1 (z, t)| t=0 = - 1 d tr(D 1 R(z, 0)D 2 R(z, 0)) = - 1 d tr(D 1 R(z)D 2 R(z)) (C.70)</formula><p>By the Bai-Silverstein theorem, R(z, t) is asymptotically equivalent to the perturbed deterministic matrix T (z, t). Because the perturbation tD 2 simply shifts the diagonal, the perturbed Stieltjes root v(z, t) enforces the following exact structural form for the deterministic equivalent:</p><formula xml:id="formula_158">T (z, t) = (zI d + v(z, t)A 2 + tD 2 ) -1 (C.71)</formula><p>Taking the derivative of the deterministic trace m1 (z, t) = 1 d tr(D 1 T (z, t)) at t = 0 gives:</p><formula xml:id="formula_159">m′ 1 (0) = - 1 d tr(D 1 T (z)[v ′ (0)A 2 + D 2 ]T (z)) (C.72)</formula><p>Because D 1 and D 2 are strictly orthogonal (D 1 D 2 = 0) and T (z) is diagonal, the terms commute and the D 2 cross-term becomes zero (D 1 T (z)D 2 T (z) = 0). Therefore,</p><formula xml:id="formula_160">m′ 1 (0) = -v ′ (0) [ 1 d tr(D 1 A 2 T (z) 2 )] = -v ′ (0)Ψ 1 (z) (C.73)</formula><p>To evaluate the scalar derivative v ′ (0), we must construct the fixed-point equation for the perturbed root v(z, t). Also by the Silverstein equation <ref type="bibr" target="#b14">(Silverstein, 1995)</ref>, we have</p><formula xml:id="formula_161">1 v(z, t) = z + 1 βd tr(A 2 T (z, t)) (C.74)</formula><p>We differentiate both sides of this fixed-point equation with respect to t at t = 0:</p><p>-</p><formula xml:id="formula_162">v ′ (0) v(z) 2 = 1 βd tr (A 2 ∂ ∂t T (z, t)| t=0 ) = - 1 βd tr(A 2 T (z)[v ′ (0)A 2 + D 2 ]T (z)) (C.75)</formula><p>Distributing the trace operator linearly across the sum yields:</p><p>-</p><formula xml:id="formula_163">v ′ (0) v(z) 2 = - v ′ (0) βd tr(A 4 T (z) 2 ) - 1 βd tr(D 2 A 2 T (z) 2 ) (C.76)</formula><p>Multiplying both sides by -v(z) 2 and substituting the definition Ψ 2 (z) = 1 d tr(D 2 A 2 T (z) 2 ) gives:</p><formula xml:id="formula_164">v ′ (0) = v ′<label>(0)</label></formula><p>v(z) 2 βd tr(A 4 T (z) 2 ) + v(z) 2 β Ψ 2 (z) (C.77)</p><p>Grouping the v ′ (0) terms on the left side exposes the exact macroscopic fluctuation denominator ∆(z):</p><formula xml:id="formula_165">v ′ (0) [1 - v(z) 2 βd tr(A 4 T (z) 2 )] ∆(z) = v(z) 2 β Ψ 2 (z) ⇒ v ′ (0) = v(z) 2 β Ψ 2 (z) ∆(z) (C.78)</formula><p>Because the asymptotic limit of the random trace derivative (C.70) equals the deterministic trace derivative (C.73), we substitute the analytical solution for v ′ (0) into the equivalencelim 1 d tr(D 1 RD 2 R) = -v ′ (0)Ψ 1 (z). The negative signs cancel, yielding the exact closed-form limit:</p><formula xml:id="formula_166">lim d→∞ 1 d tr (D 1 R(z)D 2 R(z)) = v(z) 2 β Ψ 1 (z)Ψ 2 (z) ∆(z) (C.79)</formula><p>which concludes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Proof of Proposition B.2</head><p>(i) As β → 1 + , the terms T inv and T inv,Σ diverge clearly due to the term 1/(β -1) in (C.28), (C.41). Also as β → 1 -, then q → ∞ and so T inv and T inv,Σ diverge. This shows that lim β→1 F (β) = ∞.</p><p>We next note that for β ≥ 1, the model definitions dictate that w k = 1, v k = 0, and T 12 = 0. We substitute these constants into the components of F (β):</p><formula xml:id="formula_167">Bias(β) = 2 ∑ k=1 µ k (α k + δ k ) 2 T var (β) = 2 ∑ k=1 µ k s k (g k + δk ) 2 T var,Σ (β) = 2 ∑ k=1 µ k Σ k (g k + δk ) 2 T inv (β) = 1 β -1 2 ∑ k=1 µ k Σ 2 k a 2 k T inv,Σ (β) = 1 β -1 2 ∑ k=1 µ k Σ k a 2 k</formula><p>By substituting these components into the objective function F (β), we can write it in the form:</p><formula xml:id="formula_168">F (β) = C 1 + C 2 β -1</formula><p>where C 1 and C 2 are finite, strictly positive constants independent of β. The derivative is F ′ (β) = -C2 (β-1) 2 . Since C 2 &gt; 0, we have F ′ (β) &lt; 0, proving F (β) is strictly decreasing for β &gt; 1. As β → ∞, the term C2 β-1 → 0. The function converges to the constant C 1 given by: F (↑∞):</p><formula xml:id="formula_169">F (↑∞) = 2 ∑ k=1 µ k (α k + δ k ) 2 + γ Σ 2 ∑ k=1 µ k Σ k (g k + δk ) 2</formula><p>(ii) At β = 0, the implicit variable q = 0, which implies w k = 0, v k = 0, and T 12 = 0. Furthermore, the leading q multiplier in T inv and T inv,Σ sets both inverse trace terms exactly to zero. Substituting these into F (β) eliminates all cross-terms, yielding:</p><formula xml:id="formula_170">F (0) = 2 ∑ k=1 µ k α 2 k + γ Σ 2 ∑ k=1 µ k Σ k g 2 k</formula><p>Next, we evaluate the gap ∆F = F (↑∞) -F (0):</p><formula xml:id="formula_171">∆F = 2 ∑ k=1 µ k [(α k + δ k ) 2 -α 2 k ] + γ Σ 2 ∑ k=1 µ k Σ k [(g k + δk ) 2 -g 2 k ]</formula><p>Based on the parameter definitions, a 2 = r and δ 2 = δ2 = 1 1+κ -η r . Expanding the squared perturbations for k = 2 yields:</p><formula xml:id="formula_172">(α 2 + δ 2 ) 2 -α 2 2 = (1 - η r ) 2 -α 2 2 = η 2 r 2 - 2η r + 1 -α 2 2 (g 2 + δ2 ) 2 -g 2 2 = (- η r ) 2 -g 2 2 = η 2 r 2 -g 2 2</formula><p>Substituting these into ∆F , the leading-order behavior as r → 0 + is dominated by the 1/r 2 terms:</p><formula xml:id="formula_173">∆F = η 2 r 2 µ 2 (1 + γ Σ) + O ( 1 r )</formula><p>Because µ 2 (1 + γ Σ)η 2 &gt; 0, the gap diverges to positive infinity as r → 0 + . Thus, there exists a sufficiently small r &gt; 0 such that ∆F &gt; 0, or F (↑∞) &gt; F (0).</p><formula xml:id="formula_174">(iii) We next calculate F ′ (0) = dF dβ | β=0</formula><p>. The asymptotic test error in the β &lt; 1 regime is given by:</p><formula xml:id="formula_175">F (β) = Bias + γT inv T var + γ ΣT var,Σ + γ 2 ΣT inv,Σ T var</formula><p>By applying the product rule with respect to β, the full derivative is:</p><formula xml:id="formula_176">F ′ (β) = Bias ′ + γ (T ′ inv T var + T inv T ′ var ) + γ ΣT ′ var,Σ + γ 2 Σ (T ′ inv,Σ T var + T inv,Σ T ′ var )</formula><p>To evaluate this at β = 0, we must look at the inverse trace terms. Both T inv and T inv,Σ are defined with a leading factor of q. When β → 0, the implicit root q → 0. Because the fraction following q converges to a finite constant as q → 0, we have exactly:</p><p>T inv (0) = 0 and T inv,Σ (0) = 0 Substituting these zeros into the product rule eliminates the T ′ var (0) terms entirely. The derivative simplifies to:</p><formula xml:id="formula_177">F ′ (0) = Bias ′ (0) + γT ′ inv (0)T var (0) + γ ΣT ′ var,Σ (0) + γ 2 ΣT ′ inv,Σ (0)T var (0)</formula><p>We define the rightmost terms collectively as the variance penalty V (γ):</p><formula xml:id="formula_178">V (γ) ∶= γ(T ′ inv (0)T var (0) + ΣT ′ var,Σ (0)) + γ 2 ( ΣT ′ inv,Σ (0)T var (0))</formula><p>Hence, F ′ (0) = Bias ′ (0) + V (γ). Because all the terms in V (γ) are finite for any strictly positive r &gt; 0, the derivatives evaluated at β = 0 are all finite constants. Since every term in V (γ) is scaled by either γ or γ 2 , we have:</p><formula xml:id="formula_179">lim γ→0 V (γ) = 0</formula><p>where for a direction E, we have H[E] = d dt ∇ V L(V + tE)| t=0 . We next upper bound the spectral norm of the Hessian as</p><formula xml:id="formula_180">∥H∥ op ≤ k-1 ∑ j=0 k-1 ∑ l=0 ∥M j ∥ op ∥M l ∥ op ∥M k-1-l ∥ op ∥M k-1-j ∥ op ∥w * ∥ 2 ℓ2 ∥S∥ op ≤ k-1 ∑ j=0 k-1 ∑ l=0 ∥M ∥ j op ∥M ∥ l op ∥M ∥ k-1-l op ∥M ∥ k-1-j op ∥w * ∥ 2 ∥S∥ op = k 2 ρ(M ) 2k-2 ∥w * ∥ 2 ℓ2 ∥S∥ op ,</formula><p>where the second step follows from sub-multiplicativity of the operator norm.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Theorem 4. 2</head><label>2</label><figDesc>Fix W = I. Consider the sequence of weights { Ṽt } t≥0 generated by the gradient descent update Ṽt+1 = Ṽt -γ∇ Ṽ L SFT ( Ṽt , I) with initialization Ṽ0 = -Γ -1 0 and a constant step size 0 &lt; γ. Define ρ ∶= 1 -η and</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><figDesc>Data selection for SFT under interference (r = 0.01).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>selection for SFT under interference (r = 0.1).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Post-test error as the number or prompts B varies. Here, d = 400, m = 200 with different prompt lengths (n). Pre-trained covariance isΣ 0 = diag(ρ1 m , 1 d-m ), ∆ = diag(1 m , 0 n-m ).Left panel represents the optimal SFT data allocation with covariance A = diag(η(ρ + 1)1 m , 0 n-m ), with ρ = 0.1. The right panel represents the case that SFT data distribution interferes with the pretraining distribution. Here, A = diag(η(ρ + 1)1 m , r1 n-m ), with r = 0.01.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><figDesc>Data selection for SFT under interference (r = 0.01).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><figDesc>Data selection for SFT under interference (r = 0.1).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><figDesc>Figure 3: GPT-2 experiments: Test loss for (a)-(c) post-training with SFT, and (d)-(f) post-training with Outcome Supervision (OS). For SFT, there is a turning point where larger sample size (B) and context-length (n) hurt the performance. In contrast, for OS larger B, n improves the performance.</figDesc><graphic coords="11,102.43,191.81,135.72,101.87" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 4 :</head><label>4</label><figDesc>Figure 4: LSA experiments: Test loss for (a)-(c) post-training with SFT, and (d)-(f) post-training with Outcome Supervision (OS). For SFT, there is a turning point where larger sample size (B) and context-length (n) hurt the performance. In contrast, for OS larger B, n improves the performance.</figDesc><graphic coords="12,95.40,195.42,140.40,105.49" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Comparison between theoretical prediction of the asymptotic error Err( Ṽ ), the simulation results for Err( Ṽ ) and Err( Ṽ * ). We see a great match between theoretical prediction and simulation results. Here, d = 600, m = 300, n = 600 (prompt size), ρ = 0.1, η = 0.2, r = 0.1 (interference parameter). The simulations are averaged over 10 realizations.</figDesc></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><p>Acknowledgments AJ was supported in part by the <rs type="funder">NSF</rs> Award <rs type="grantNumber">DMS-2311024</rs>, an <rs type="institution">Amazon Faculty Research Award</rs>, an <rs type="funder">Adobe Faculty Research Award</rs>, and an iORB grant form <rs type="funder">USC Marshall School of Business</rs>. BM was supported in part by the <rs type="funder">NSF</rs> <rs type="programName">CAREER Award 2146492</rs>, <rs type="institution">NSF-Simons AI Institute for Cosmic Origins (CosmicAI)</rs> and <rs type="institution">NSF AI Institute for Foundations of Machine Learning (IFML)</rs>.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_AAPjpyz">
+					<idno type="grant-number">DMS-2311024</idno>
+				</org>
+				<org type="funding" xml:id="_2XhGucd">
+					<orgName type="program" subtype="full">CAREER Award 2146492</orgName>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>We next derive Bias ′ (0). Recall the definition of Bias given by:</p><formula xml:id="formula_181">Bias(β) = 2 ∑ k=1 µ k [α 2 k (1 -w k ) + (α k + δ k ) 2 w k ] + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 )</formula><p>By expanding the inner bracket and grouping the w k terms, we obtain:</p><formula xml:id="formula_182">α 2 k -α 2 k w k + (α 2 k + 2α k δ k + δ 2 k )w k = α 2 k + w k (2α k δ k + δ 2 k )</formula><p>This gives the reformulated Bias equation:</p><formula xml:id="formula_183">Bias(β) = 2 ∑ k=1 µ k α 2 k + 2 ∑ k=1 µ k w k (2α k δ k + δ 2 k ) + T 12 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 )</formula><p>To differentiate this with respect to β, we apply the chain rule via the implicit variable q. First, define the constant c = µ 1 a 2 1 + µ 2 a 2 2 . From the defining equation</p><formula xml:id="formula_184">β(q) = ∑ 2 k=1 µ k a 2 k q 1+a 2</formula><p>k q , we take the derivative with respect to q:</p><formula xml:id="formula_185">dβ dq = 2 ∑ k=1 µ k a 2 k (1 + a 2 k q) 2 Evaluating at q = 0 gives dβ dq | 0 = µ 1 a 2 1 + µ 2 a 2 2 = c. By the inverse function theorem, q ′ (0) = dq dβ | 0 = 1</formula><p>c . Now we sequentially compute the initial derivatives of the sub-components w k and T 12 :</p><formula xml:id="formula_186">Since w k = a 2 k q 1+a 2 k q , the chain rule yields w ′ k (0) = a 2 k q ′ (0) = a 2 k c . In addition, for small q, the variables v k = w k (1 -w k ) expand to first order as v k = a 2 k q + O(q 2 ).</formula><p>Substituting this into the definition of T 12 gives:</p><formula xml:id="formula_187">T 12 (q) = µ 1 µ 2 (a 2 1 q)(a 2 2 q) µ 1 (a 2 1 q) + µ 2 (a 2 2 q) + O(q 2 ) = q µ 1 µ 2 a 2 1 a 2 2 c + O(q 2 )</formula><p>Taking the derivative with respect to β evaluates to</p><formula xml:id="formula_188">T ′ 12 (0) = q ′ (0) µ1µ2a 2 1 a 2 2 c = µ1µ2a 2 1 a 2 2 c 2</formula><p>. Finally, we substitute w ′ k (0) and T ′ 12 (0) directly into the differentiated Bias equation:</p><formula xml:id="formula_189">Bias ′ (0) = 2 ∑ k=1 µ k w ′ k (0)(2α k δ k + δ 2 k ) + T ′ 12 (0)( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 ) = 1 c 2 ∑ k=1 µ k a 2 k (2α k δ k + δ 2 k ) + µ 1 µ 2 a 2 1 a 2 2 c 2 ( δ2 2 -δ2 1 )(Σ 2 1 -Σ 2 2 )</formula><p>For the first class (k = 1), the definitions give δ</p><formula xml:id="formula_190">1 = -α 1 , resulting in 2α 1 δ 1 + δ 2 1 = -α 2 1 . For the second class (k = 2), as r → 0 + , the term a 2 2 (2α 2 δ 2 + δ 2 2 ) → r 2 (η 2 /r 2 ) = η 2 .</formula><p>The cross-term converges to µ2 µ1a 2 1 η 2 ((ρ + 1) 2 -1). Summing these asymptotic components gives:</p><formula xml:id="formula_191">lim r→0 + Bias ′ (0) = 1 µ 1 a 2 1 [µ 1 a 2 1 (-α 2 1 ) + µ 2 η 2 ] + µ 2 η 2 µ 1 a 2 1 ((ρ + 1) 2 -1) = -α 2 1 + µ 2 η 2 µ 1 a 2 1 (ρ + 1) 2</formula><p>Since a 2 1 = η 2 (ρ + 1) 2 , this simplifies to:</p><formula xml:id="formula_192">lim r→0 + Bias ′ (0) = -α 2 1 + µ 2 µ 1</formula><p>Recall that α 1 = (κ -1)/(ρ + κ) and κ = γ(µρ + 1 -µ).</p><formula xml:id="formula_193">Hence d dγ α 2 1 (γ)| 0 &lt; 0. Also, α 2 1 (0) = 1 ρ 2 ≥ 1 -µ 1 µ 1 = µ 2 µ 1 ,</formula><p>by our assumption. By continuity, for small enough γ, we have α 2 1 ≥ µ 2 /µ 1 and so we have lim r→0 + Bias ′ (0) &lt; 0. Because Bias ′ (0) is strictly negative for small r, and the variance penalty V (γ) can be made arbitrarily small for small γ, there must exist constants r 0 &gt; 0 and γ 0 &gt; 0 such that for all r &lt; r 0 and γ &lt; γ 0 , we have F ′ (0) &lt; 0. This completes the proof of the proposition.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Gradient and Hessian Calculations for Outcome Supervision (OS) Loss</head><p>For clarity, let M = I + V S (dropping the index τ for a single batch) and define the loss as f (V ) = 1 2 ∥M k w * ∥ 2 . We use the differential approach. Let dV be a small perturbation in V . Then dM = (dV )S. The differential of the loss is:</p><formula xml:id="formula_194">df = ⟨M k w * , d(M k w * )⟩ = (w * ) T (M k ) T d(M k )w * Using the power rule for differentials, d(M k ) = ∑ k-1 j=0 M j (dM )M k-1-j . Substituting dM = (dV )S: df = k-1 ∑ j=0 (w * ) T (M k ) T M j (dV )SM k-1-j w *</formula><p>Using the property tr(A T BC) = tr(CA T B), we isolate dV :</p><formula xml:id="formula_195">df = tr ⎛ ⎝ dV k-1 ∑ j=0 SM k-1-j w * (w * ) T (M k ) T M j ⎞ ⎠</formula><p>The gradient ∇ V L is the transpose of the matrix multiplying dV :</p><formula xml:id="formula_196">∇ V L = k-1 ∑ j=0 (M T ) j M k w * (w * ) T (M T ) k-1-j S T</formula><p>We next proceed to calculate the Hessian of the loss. The gradient can be viewed as a product of terms:</p><formula xml:id="formula_197">G(V ) = ∑ k-1 j=0 A j (V )M k (V )B j (V ), with A j (V ) = (M T ) j and B j (V ) = w * (w * ) T (M T ) k-1-j S T .</formula><p>Applying the product rule for the differential dG:</p><formula xml:id="formula_198">dG = k-1 ∑ j=0 ((dA j )M k B j + A j (dM k )B j + A j M k (dB j ))</formula><p>Near the global minimum, the term M k w * ≈ 0. In this regime, terms containing M k (the outer factors) vanish, leaving only the term where the differential acts directly on M k . Thus,</p><formula xml:id="formula_199">dG ≈ k-1 ∑ j=0 (M T ) j (dM k )w * (w * ) T (M T ) k-1-j S T Substituting for d(M k ) = ∑ k-1 j=0 M j (dM )M k-1-j , we get H[dM ] ≈ k-1 ∑ j=0 k-1 ∑ l=0 (M T ) j (M l (dM )M k-1-l ) w * (w * ) T (M T ) k-1-j S T</formula></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">N</forename><surname>Akter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Prabhumoye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Nyberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Patwary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Shoeybi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Catanzaro</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2510.03264</idno>
+		<title level="m">Front-loading reasoning: The synergy between pretraining and post-training data</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Kl-regularized rlhf with multiple reference models: Exact solutions and sample complexity</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Aminian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">R</forename><surname>Asadi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shenfeld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Mroueh</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirty-ninth Annual Conference on Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">What can transformers learn in-context? a case study of simple function classes</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Garg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Tsipras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">S</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Valiant</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="30583" to="30598" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<author>
+			<persName><forename type="first">E</forename><surname>Guha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Marten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Keh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Raoof</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Smyrnis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Nezhurina</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Mercat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Vu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Sprague</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.04178</idno>
+		<title level="m">Data recipes for reasoning models</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.12948</idno>
+		<title level="m">Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Transformers learn to implement multi-step gradient descent with chain of thought</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">D</forename><surname>Lee</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.21212</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">m1: Unleash the potential of test-time scaling for medical reasoning with large language models</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhou</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.00869</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">Understanding the role of training data in test-time scaling</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Javanmard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mirzasoleiman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Mirrokni</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2510.03605</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Datacomp-lm: In search of the next generation of training sets for language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Smyrnis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Ivgi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Jordan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">Y</forename><surname>Gadre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Guha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">S</forename><surname>Keh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Arora</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="14200" to="14282" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">The llama 4 herd: The beginning of a new era of natively multimodal ai innovation</title>
+		<ptr target="https://ai.meta.com/blog/llama-4-multimodal-intelligence/" />
+	</analytic>
+	<monogr>
+		<title level="j">Meta</title>
+		<imprint>
+			<date type="published" when="2025-04">April 2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Simple test-time scaling</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><forename type="middle">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Fei-Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Candès</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2025 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="20286" to="20332" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mirzasoleiman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.19580</idno>
+		<title level="m">Mini-batch coresets for memory-efficient language model training on data mixtures</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">Learning to reason with llms</title>
+		<author>
+			<persName><surname>Openai</surname></persName>
+		</author>
+		<ptr target="https://openai.com/index/learning-to-reason-with-llms/" />
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Language models are unsupervised multitask learners</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">OpenAI blog</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">8</biblScope>
+			<biblScope unit="page">9</biblScope>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Strong convergence of the empirical distribution of eigenvalues of large dimensional random matrices</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">W</forename><surname>Silverstein</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Multivariate Analysis</title>
+		<imprint>
+			<biblScope unit="volume">55</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page" from="331" to="339" />
+			<date type="published" when="1995">1995</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ł</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Doremi: Optimizing data mixtures speeds up language model pretraining</title>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">M</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Pham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">S</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><forename type="middle">V</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">W</forename><surname>Yu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="69798" to="69818" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Iterative preference learning from human feedback: Bridging theory and practice for rlhf under kl-constraint</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-first International Conference on Machine Learning</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Smalltolarge (s2l): Scalable data selection for finetuning large language models by summarizing training trajectories of small models</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Mirzasoleiman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="83465" to="83496" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.13837</idno>
+		<title level="m">Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>He</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.18892</idno>
+		<title level="m">Simplerl-zoo: Investigating and taming zero reinforcement learning for open base models in the wild</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Logarithmic regret for online kl-regularized reinforcement learning</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Zhang</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<publisher>CoRR</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

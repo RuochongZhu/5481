@@ -1,0 +1,732 @@
+{
+  "paperId": "doi:10.48550/arxiv.2503.08117",
+  "title": "Convergence Dynamics and Stabilization Strategies of Co-Evolving Generative Models",
+  "year": 2025,
+  "source": "s2+arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2503.08117.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2503.08117.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2503.08117.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "The increasing prevalence of synthetic data in training loops has raised concerns about model collapse, where generative models degrade when trained on their own outputs. While prior work focuses on this self-consuming process, we study an underexplored yet prevalent phenomenon: co-evolving generative models that shape each other's training through iterative feedback. This is common in multimodal AI ecosystems, such as social media platforms, where text models generate captions that guide image models, and the resulting images influence the future adaptation of the text model. We take a first step by analyzing such a system, modeling the text model as a multinomial distribution and the image model as a conditional multi-dimensional Gaussian distribution. Our analysis uncovers three key results. First, when one model remains fixed, the other collapses: a frozen image model causes the text model to lose diversity, while a frozen text model leads to an exponential contraction of image diversity, though fidelity remains bounded. Second, in fully interactive systems, mutual reinforcement accelerates collapse, with image contraction amplifying text homogenization and vice versa, leading to a Matthew effect where dominant texts sustain higher image diversity while rarer texts collapse faster. Third, we analyze stabilization strategies implicitly introduced by real-world external influences. Random corpus injections for text models and user-content injections for image models prevent collapse while preserving both diversity and fidelity. Our theoretical findings are further validated through experiments.",
+      "word_count": 229
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "In recent years, the rapid advancement of generative AI has been propelled by significant increases in computing power and the availability of large-scale datasets. These developments have enabled models to produce high-quality text and images, leading to an increasing prevalence of synthetic data online. In fact, it is estimated that for the publishing year 2023, at least over 1% of all articles were LLM-assisted [13] . Researchers have thus introduced the concept self-consuming generative models to describe models trained on their own generated data. Studies have shown that this process can cause models to lose quality and diversity over time [1, 3, 4, 7, 8, 14, 20, 21, 22, 25, 28, 29, 31] , a phenomenon known as model collapse [28] or model autophagy disorder (MAD) [1] .\n\nDespite these concerns, less attention has been given to how generative models are no longer just passive consumers of data but are now actively shaping each other's training processes. A clear example of this is found in multimodal generative AI ecosystems, where different models train and generate content based on each other's feedback. For instance, on social media platforms like TikTok, a text model might initially suggest hashtags by sampling from a baseline probability distribution over a fixed set of texts, while an accompanying image model generates visual content associated with each hashtag. As users engage with content featuring these hashtags, the platform scrapes the resulting interaction data and uses it to retrain the text model, recalculating the posterior probabilities of each hashtag based on the success of its associated visuals. Simultaneously, the image model leverages a repository of existing visuals, fine-tuning its parameters on these images to iteratively refine its output distribution. As another example, researchers have demonstrated that two artificial intelligences can communicate purely through linguistic means [26] . In this study, one AI learned a task and then provided a linguistic description to a \"sister\" AI, which successfully performed the task based on that description. These instances illustrate how generative models are not just generating data but are actively shaping each other's future learning trajectories through iterative feedback loops. This approach offers practical benefits, such as reducing dependence on human-curated datasets and allowing AI to adapt more quickly to new environments. However, little is known about the long-term effects of this training method. As a few motivating questions, one may ask: (i) What happens when a single model is trained in isolation, will it exhibit collapse similar to self-consuming loops, or can it inherently maintain diversity? (ii) In a closed system where both models are updated, does mutual interaction strike a balance between them, or does it amplify dominant patterns at the expense of emerging trends? (iii) And if such collapse occurs, how to stabilize the system to preserve diversity?\n\nTo the best of our knowledge, the multimodal loop has only been studied empirically before in an inference loop setting [5] , where the authors also raised the question:\"It would be interesting to study the impact of recursive modality changes when different models are used.\" In this paper, we take a first theoretical step towards understanding training loop dynamics by introducing a novel co-evolving system, where a text model and an image model evolve together. We analyze its long-term behavior, characterize its convergence dynamics, and propose stabilization strategies.",
+      "word_count": 549
+    },
+    {
+      "index": 3,
+      "title": "Contributions",
+      "kind": "body",
+      "text": "Our contributions are threefold. (i) We characterize the isolated dynamics of the text and image models by freezing one model and updating another, and establish their collapse. When the image model is frozen, we prove that the text model diversity decreases monotonically in expectation and nearly always collapses to zero (see section 3.1 and theorem 3.1). Conversely, when the text model is frozen, the image model experiences an exponential decay in diversity (see section 3.2 and theorem 3.3). These results generalize prior findings on discrete and Gaussian distributions with a fixed number of samples [28] . Furthermore, we demonstrate that the fidelity of the image model remains bounded despite its diversity shrinking to zero (see section 3.2 and theorem 3.4), which is previously unexplored. (ii) We reveal how the mutual reinforcement between the text and image models accelerates collapse compared to when each model is observed in isolation. Specifically, as the image model collapses, the text model receives sharper feedback, leading to an accelerated loss of diversity that approximates the theoretical upper bound (see section 4.2 and theorem 4.2). In turn, the concentration of the text model probability mass on a small set of texts induces a Matthew effect in the image model, wherein images corresponding to dominant texts retain higher diversity, while those linked to rare texts collapse more rapidly (see section 5.2 and theorem 5.2). (iii) We analyze stabilization strategies based on external information injection and prove that they prevent collapse while maintaining bounded fidelity. First, we investigate corpus injection, where new texts are randomly added to the model to redistribute probability mass. We prove that this prevents text model collapse by ensuring a strictly positive lower bound on text model diversity (see section 6.1 and theorem 6.1). Second, we examine user-content injection, incorporating images drawn from an external distribution into the image model training process. We show that this mechanism not only maintains image model diversity above a nonzero threshold but also ensures that its fidelity remains bounded over time (see section 6.2 and theorems 6.2 and 6.3).",
+      "word_count": 341
+    },
+    {
+      "index": 4,
+      "title": "Notations",
+      "kind": "body",
+      "text": "Matrices are represented by bold capital letters, e.g., A, vectors by bold lowercase letters, e.g., y, and scalars by regular letters, e.g., t. For a matrix A, we denote its trace by tr(A), its nuclear norm (i.e., the sum of its singular values) by ∥A∥ * , and its square root, when positive definite, by A 1/2 . We adopt the Loewner order ≺ or ⪯ for two symmetric matrices A and B. Specifically, we write A ≺ B (resp. A ⪯ B) if and only if B -A is positive definite (resp. positive semidefinite). We use P for the probability operator, E for the expectation operator, Var for the variance, and Cov for the covariance matrix. Within the expectation operator, the expression to the left of | represents the variable whose expectation is taken, while the variables to the right specify the given conditions under which the expectation is evaluated. We use N y; µ, Σ to denote a multi-dimensional Gaussian distribution evaluated at y with mean vector µ and covariance matrix Σ. We use lim inf (resp. lim sup) to denote the limit inferior (resp. limit superior), i.e., the greatest lower bound (resp. the least upper bound) of the set of limit points of a sequence. and finally define diagnostic measures for monitoring the system's behavior, with a focus on diversity and fidelity, in section 2.3.",
+      "word_count": 228
+    },
+    {
+      "index": 5,
+      "title": "The Text Model and the Image Model",
+      "kind": "body",
+      "text": "We model the text model as a multinomial distribution over a fixed corpus X = {x 1 , x 2 , . . . , x K } with p t (x i ) = P(text = x i ),\n\nK i=1 p t (x i ) = 1, (2.1)\n\nwhere t represents the macro time step. This is a natural choice for representing categorical data such as discrete texts or hashtags. At each generation step t, the probability distribution p t (x i ) determines how likely a given text x i is to be generated.\n\nInspired by modern generative models that typically operate in a structured latent space [6, 27] , often learned using variational autoencoders (VAEs) [18] that assume a Gaussian prior, we model the image model as a conditional multi-dimensional Gaussian distribution. Specifically, for each text x i , we assume that the image model generates vectors y ∈ R d from a multi-dimensional Gaussian distribution q t (y|x i ) := N y; µ t (x i ), Σ t (x i ) .\n\n(2.2) Here, µ t (x i ) represents the mean image output for x i and Σ t (x i ) denotes the covariance matrix, capturing the variability in generated images.",
+      "word_count": 210
+    },
+    {
+      "index": 6,
+      "title": "The Co-Evolving Text-Image Training Procedure",
+      "kind": "body",
+      "text": "Algorithm 1 formalizes a co-evolving training procedure in which both the text and image models are updated repeatedly. At the beginning of each macro time step t, the current state of the system is given by the text model probability vector p t and the image model conditional distributions q t (•|x i ) for each text x i . Within a macro time step, the algorithm first updates the text model M t times while the image model remains fixed. In each text model update, the algorithm samples N texts from the current distribution, generates the corresponding images using the fixed image model, and computes the posterior probability given by (2.3). Then the text model is updated by averaging these posteriors over the N samples as in (2.4). This update reinforces those texts that are more likely to have generated the observed images, much like how TikTok reinforces hashtags that result in more engaging content.\n\nAfter the text model has been updated, the algorithm turns to the image model. Here, the image model is updated N t times while sampling texts from the newly updated text model. For each text x i , the algorithm computes the sample mean and the sample covariance through (2.5) and (2.6), respectively. These statistics are then used to update the image model for each text as in (2.7). This update reflects the image model's adaptation to the repository of existing images, refining its output distribution.",
+      "word_count": 242
+    },
+    {
+      "index": 7,
+      "title": "Diagnostic Measures of the Co-Evolving System",
+      "kind": "body",
+      "text": "In order to monitor the behavior of our co-evolving system, we quantify both the diversity and fidelity of the models involved. For the text model, diversity determines whether the system is exploring a wide range of texts or collapsing to a few dominant ones. For the image model, two complementary aspects are critical: (i) its diversity, which captures the variability of generated images; and (ii) its fidelity, which measures how closely the generated images adhere to a desired reference (for example, an initial or canonical distribution). In the sections that follow, we rigorously define these measures.",
+      "word_count": 96
+    },
+    {
+      "index": 8,
+      "title": "Diversity of the text model",
+      "kind": "body",
+      "text": "Drawing inspiration from purity in quantum information theory [17] , we define the diversity of the text model at macro time step t as\n\nH t (p t ) := K i=1 p(x i ) -p(x i ) 2 = 1 - K i=1 p(x i ) 2 , ( 2\n\n.8) where p t = (p t (x 1 ), p t (x 2 ), . . . , p t (x K )) represents the probability distribution of the text model over the corpus. If p t is a one-hot vector, meaning the text model concentrates all probability on a single text (i.e., it always generates the same text), then H t (p t ) = 0. This represents complete mode collapse with no diversity in text generation. If p t is uniform (i.e., p t (x i ) = 1/K for all i), then H t (p t ) = 1 -1/K, which is the maximum achievable diversity. In this case, all texts are equally likely, indicating a fully exploratory model. Intermediate values of H t (p t ) indicate partial diversity, where the model has some degree of preference for certain texts while still allowing variation. Algorithm 1 Co-Evolving Generative Model Training Procedure Require: A text model with initial probability vector p 0 , an image model with initial conditional distributions {q 0 (•|x i ) : 1 ≤ i ≤ K}, and the number of macro time steps T Ensure: A trained text model with probability vector p T , a trained image model with conditional distributions {q T (•|x i ) : 1 ≤ i ≤ K} 1: for macro time step t = 1 to T do 2: Initialize p curr ← p t-1 3: for m = 1 to M t do ▷ Text model update (repeated M t times) 4: Sample N texts x (j) ∼ p curr and generate corresponding images y (j) ∼ q t-1 (y|x (j) ) 5:\n\nCompute posterior probabilities:\n\np curr (x i |y (j) ) = p curr (x i )q t-1 (y (j) |x i ) K k=1 p curr (x k )q t-1 (y (j) |x k ) (2.3) 6:\n\nUpdate text model:\n\np curr (x i ) ← 1 N N j=1 p curr (x i |y (j) ) (2.4\n\n) 7: end for 8: Set p t ← p curr 9: Initialize q curr (•|x i ) ← q t (•|x i ) for each x i 10:\n\nfor n = 1 to N t do ▷ Image model update (repeated N t times) 11:\n\nSample N texts x (j) ∼ p t and generate corresponding images y (j) ∼ q curr (y|x (j) )",
+      "word_count": 454
+    },
+    {
+      "index": 9,
+      "title": "12:",
+      "kind": "body",
+      "text": "for each x i ∈ X do 13:\n\nLet N i ← #{j : x (j) = x i } 14:\n\nCompute sample mean:\n\nµ curr (x i ) = 1 N i j:x (j) =xi y (j) (2.5) 15:\n\nCompute sample covariance:\n\nΣ curr (x i ) = 1 N i -1 j:x (j) =xi y (j) -µ curr (x i ) y (j) -µ curr (x i ) ⊤ (2.6) 16:\n\nUpdate the image model for x i :\n\nq curr (•|x i ) ← N •; µ curr (x i ), Σ curr (x i )\n\n(2.7)\n\n17: end for 18: end for 19: Set q t (•|x i ) ← q curr (•|x i ) for each x i 20: end for",
+      "word_count": 126
+    },
+    {
+      "index": 10,
+      "title": "Fidelity of the image model",
+      "kind": "body",
+      "text": "The fidelity of the image model reflects how closely the generated images adhere to the intended average style associated with the text x i . A common approach is to compare the current output with a reference. In our setting, we take the initial mean µ 0 (x i ) as the reference. Then, the fidelity of the image model at macro time step t is measured by the Euclidean distance of the current mean from the reference as\n\nF t (x i ) := ∥µ t (x i ) -µ 0 (x i )∥ 2 .\n\n(2.9)\n\nA small value of F t (x i ) indicates that the image model preserves the original style, while a large deviation suggests that the model has drifted away from its initial style.",
+      "word_count": 131
+    },
+    {
+      "index": 11,
+      "title": "Diversity of the image model",
+      "kind": "body",
+      "text": "For text x i , we define the image model diversity as\n\nD t (x i ) := tr Σ t (x i ) 1/2 = ∥Σ t (x i )∥ * , (2.10)\n\nwhich is expressed in the same units as the image space 1 . This measure reflects the typical spread of generated images, unlike tr Σ t (x i ) (in squared units) that may overemphasize outlier variances. Intuitively, a large D t (x i ) indicates a wide variety of outputs, whereas D t (x i ) ≈ 0 signals mode collapse.",
+      "word_count": 96
+    },
+    {
+      "index": 12,
+      "title": "Isolating the Dynamics by Freezing One Model",
+      "kind": "body",
+      "text": "We begin by examining a simplified scenario in which only one model is updated while the other remains fixed. In terms of algorithm 1, this corresponds to the extreme cases of either setting M t = 0 (no text updates) or setting N t = 0 (no image updates). Analyzing these limiting cases allows us to isolate the effects of individual updates and gain insight into their respective roles in the training procedure.",
+      "word_count": 73
+    },
+    {
+      "index": 13,
+      "title": "Trainable Text Model with Frozen Image Model",
+      "kind": "body",
+      "text": "We begin our analysis by considering a scenario in which the image model is frozen, i.e., its parameters remain fixed, while the text model continues to update. Although the image model does not change, we still draw random samples from it, so that the only source of randomness in this setting is the variability in the image generation process. We first analyze the expected change in the text model diversity over time in theorem 3.1, which establishes a recursion for the diversity measure and characterizes its limiting behavior.",
+      "word_count": 88
+    },
+    {
+      "index": 14,
+      "title": "Theorem 3.1 (Recursion of text model diversity under frozen image model)",
+      "kind": "body",
+      "text": "In algorithm 1, assume that the image model is frozen, meaning its conditional distributions q(y|x i ) remain fixed (hence, we omit the time subscript t in q t (y|x i )), and that the text model is updated. Then, in expectation, the diversity measure H t given by (2.8) satisfies the recursion\n\nE[Ht+1(pt+1)|pt] = 1 - 1 N • H t (p t ) + 1 N • 1 - K i=1 E y∼rt [Z i (y) 2 ] , (3.1)\n\nwhere\n\nZ i (y) = p t (x i )q(y|x i ) K k=1 p t (x k )q(y|x k ) (3.2)\n\nis the posterior probability, N is the number of generated images in each update, and r t (y) = K k=1 p t (x k )q(y|x k ). As a consequence, the diversity measure is non-increasing in expectation, i.e.,\n\nE[Ht+1(pt+1)] ≤ E[Ht(pt)].\n\n(3.3) Moreover, as t → ∞, the diversity measure stabilizes at a limiting value, which is either (i) 0, which corresponds to p ∞ being a one-hot vector; or (ii) H 0 (p 0 ), which corresponds to q(y|x i ) being identical for all 1 ≤ i ≤ K.\n\nThe proof of theorem 3.1, along with all other proofs, is deferred to appendix B. Theorem 3.1 implies that, unless the image model is uniform across texts, the text model is destined to converge to a degenerate distribution where diversity vanishes. Moreover, from the proof of theorem 3.1, we observe that the sequence of probability vectors {p t } forms a vector-valued martingale foot_2 . Since each p t lies in the K-simplex (which is compact), the martingale convergence theorem [16] guarantees that p t converges almost surely to a random vector p ∞ , which turns out to be either a one-hot vector (i.e., when the image model is non-uniform) or equal to p 0 (i.e., when the image model is uniform).\n\nIn the recursion for the text model diversity, since the term 1 -K i=1 Ey∼r t [Z i (y) 2 ] is nonnegative, it immediately follows that the per-update reduction in diversity is lower bounded by a factor of (1 -N -1 ). In other words, although the diversity is non-increasing, it cannot decrease arbitrarily fast; its reduction is at most as fast as a exponential decay with ratio (1 -N -1 ) (a bound that holds regardless of whether the image model is updated), which we formalize in corollary 3.2. The corresponding empirical results can be found in section 8.1.1.\n\nCorollary 3.2 (Text model diversity decays at most exponentially) Following algorithm 1, the text model diversity H t given by (2.8) satisfies\n\nE[Ht+1(pt+1)] ≥ 1 - 1 N • E[Ht(pt)]. (3.4)\n\nBy iterating the inequality we obtain\n\nE[Ht(pt)] ≥ 1 - 1 N t • H 0 . (3.5)\n\nThat is, the expected diversity decays at most exponentially with rate (1 -N -1 ).",
+      "word_count": 484
+    },
+    {
+      "index": 15,
+      "title": "Trainable Image Model with Frozen Text Model",
+      "kind": "body",
+      "text": "We then consider the scenario in which the text model is frozen, i.e., the probabilities associated with the different texts remain fixed, while the image model continues to update. In theorem 3.3, we show that the image model diversity converges to zero at an exponential rate.\n\nTheorem 3.3 (Image model diversity decays under frozen text model) Let the fixed probabilities of the text distribution be p = (p 1 , p 2 , . . . , p K ) > 0 (where we drop the time subscript t in p t for brevity). Then, there exist constants C > 0 and 0 < ρ < 1 such that the image model diversity D t (x i ) given by (2.10) satisfies\n\nE[Dt(xi)] = E tr Σ t (x i ) 1/2 ≤ Cρ t , (3.6\n\n) i.e., it converges to zero at an exponential rate.\n\nWe remark that this theorem may be viewed as a generalization of [2, Proposition 1], which assumed a fixed N i and potentially relied on the commutativity of Σ t (x i ) 1/2 and W 1/2 (where W denotes a Wishart random matrix foot_3 [19] ) in its proof. Empirical results supporting theorem 3.3 are detailed in section 8.1.2. The exponential collapse of the image model's diversity implies that over time the generated images become increasingly concentrated around their current sample mean. However, while a shrinking covariance suggests that the images are more similar, it does not guarantee that this common mean remains faithful to the reference distribution. This observation naturally raises the question: How does the final fidelity of the image model behave? Specifically, does the collapse in diversity ensure that the images are of high quality (i.e., that the sample mean is close to the reference mean), or can the mean itself drift away, thereby compromising fidelity? We formalize this intuition by deriving an upper bound on the fidelity of the image model in theorem 3.4. This bound depends on the parameters C, ρ, N , and p i , and it quantifies the interplay between the collapse in diversity and the stability of the mean.\n\nTheorem 3.4 (Boundedness of image model fidelity under the frozen text model) Let the fixed probabilities of the text distribution be p = (p 1 , p 2 , . . . , p K ) > 0 (where we drop the time subscript t in p t for brevity). Suppose there exist constants C > 0 and 0 < ρ < 1 such that the image model diversity given by (2.10) satisfies\n\nE[Dt(xi)] = E tr Σ t (x i ) 1/2 ≤ Cρ t .\n\n(3.7) Then, the image model fidelity defined by (2.9), i.e., the expected deviation of the mean vectors satisfies\n\nE[Ft(xi)] = E[∥µ∞(xi) -µ 0 (x i )∥ 2 ] ≤ √ 2C (N + 1)p i • (1 -ρ) .\n\n(3.8) Theorem 3.4 provides an upper bound on the image model fidelity. This bound is inversely proportional to (N + 1)p i . Thus, as the total number of samples N increases or the probability p i of the text x i is higher, meaning the text x i is sampled more frequently, the fidelity measure becomes smaller. The term (1 -ρ) -1 indicates that if the covariance matrices decay rapidly (i.e., ρ is small), then the bound becomes tighter. Conversely, if ρ is close to 1 (slow decay), the fidelity bound is looser, implying a greater potential drift.",
+      "word_count": 581
+    },
+    {
+      "index": 16,
+      "title": "Image-Driven Acceleration in Text Model Collapse",
+      "kind": "body",
+      "text": "In this section, we investigate the dynamics of text model collapse as mediated by the behavior of the image model. Recall that in section 3.1 we analyzed a simplified setting where the image model is frozen. Under that scenario, the loss of diversity in the text model is governed solely by the inherent variability of the image generation process. As shown in section 4.1, a carefully constructed frozen image model can yield an arbitrarily slow collapse of the text model diversity. In contrast, in section 4.2 we consider the scenario where the image model is allowed to update sufficiently (N t ≫ 1 in algorithm 1). In this latter case, the image model rapidly contracts its covariance, thereby sharpening the feedback provided to the text model. Consequently, the text model collapse is accelerated and its dynamics more closely approach the theoretical bound derived earlier. This comparison demonstrates that while a frozen image model leads to a gradual loss of diversity in the text model, an actively updating (and collapsing) image model amplifies this effect, driving the text model to collapse more quickly.",
+      "word_count": 182
+    },
+    {
+      "index": 17,
+      "title": "Slow Convergence Due to Large Covariance Image Model",
+      "kind": "body",
+      "text": "According to theorem 3.1, the update of the text model diversity is governed by\n\n1 - K i=1 E y∼rt [Z i (y) 2 ], where Z i (y) = p t (x i )q(y|x i ) K k=1 p t (x k )q(y|x k ) . (4.1)\n\nIntuitively, if the posterior distribution is not highly concentrated, then the per-update reduction in diversity will be very small. In theorem 4.1, we formalize this intuition by considering the case where the conditional distributions of the image model are Gaussians with large covariance matrices.\n\nTheorem 4.1 (Arbitrarily slow convergence under large covariances) For any ε > 0 and any t with H t (p t ) > 0, there exists a family of conditional distributions q(y|x i ) (for example, with covariance matrices equal to σ 2 I and with σ chosen sufficiently large) such that the recursion in theorem 3.1 satisfies\n\n∆ t := H t (p t ) -E[Ht+1(pt+1)|pt] < εH t (p t ). (4.2)\n\nIn other words, by choosing the image model to be sufficiently diffuse, the per-update reduction in diversity can be made arbitrarily small relative to the current diversity. Hence, the overall convergence can be made arbitrarily slow.\n\nTheorem 4.1 shows that the convergence rate of the text model can be made arbitrarily slow by appropriately selecting the image model. We remark that, due to the scaling properties of the Gaussian distribution, a scenario with large covariances is equivalent to one where the covariances are fixed while the mean vectors are clustered very closely together. In either case, the differences between the image outputs corresponding to different texts become negligible, leading to nearly uniform posterior probabilities and, consequently, to a slower decay in text model diversity. The experimental findings validating theorem 4.1 are presented in section 8.1.1.",
+      "word_count": 301
+    },
+    {
+      "index": 18,
+      "title": "Exponential Convergence Due to Image Model Collapse",
+      "kind": "body",
+      "text": "In the previous section 4.1, we examined how the text model collapse can be arbitrarily slow when the image model is frozen. In theorem 4.2, we demonstrate that when the image model is trainable and its covariance matrices shrink (i.e., when the image model collapses), the posterior probabilities become highly concentrated. As a consequence, the rate at which the text model loses diversity approaches the theoretical lower bound established in corollary 3.2. In terms of algorithm 1, this scenario corresponds to setting M t = 1 and N t ≫ 1 in each macro time step t.\n\nE tr Σ t,s (x i ) 1/2 p t (x i ), Σ t,0 (x i ) ≤ tr Σ t,0 (x i ) 1/2 • ρ s . (4.3)\n\nSuppose further that there exists a constant Γ > 0 such that at every inner image-model update step s and for any two distinct texts x i and x j with p t (x i ) > 0 and p t (x j ) > 0,\n\n∥µ t,s (x i ) -µ t,s (x j )∥ 2 ≥ Γ. (4.4)\n\nThen, for any ε > 0, if the number N t of image-model (inner) updates in macro time step t is sufficiently large, the text-model update satisfies\n\n∆ t := H t (p t ) -E H t+1 (p t+1 ) {p t (x k ), Σ t,0 (x k ) : 1 ≤ k ≤ K} > 1 -ε N • H t (p t ).\n\n(4.5)\n\nThe proof of theorem 4.2 is provided in appendix B. We now discuss the assumptions and implications of it. First, the mean separation condition is modest: by combining the result of theorem 3.4 with the requirement that the initial means, µ 0 (x i )'s, are sufficiently separated, we ensure that distinct texts induce adequately different image outputs. This separation is both theoretically sound and practically achievable, as many applications are designed with welldifferentiated initial embeddings. Second, the assumption that N t ≫ 1 means that the co-evolving system leverages extensive image training to generate more accurate and confident responses, which in turn accelerates the collapse of the text model. Overall, this image-driven acceleration in text model collapse effectively pushes the text model towards its theoretical bound to exponential convergence of rate close to (1 -N -1 ), as characterized in corollary 3.2. Empirical results supporting theorem 4.2 are presented in section 8.2.",
+      "word_count": 409
+    },
+    {
+      "index": 19,
+      "title": "Text-Driven Matthew Effect in Image Model Collapse",
+      "kind": "body",
+      "text": "In this section, we explore how the dynamics of the text model induce a Matthew effect in the collapse of the image model. We begin by providing a fine-grained analysis in section 5.1, which demonstrates that the diversity of image models converges at different rates across texts. Specifically, image models associated with high-probability (dominant) texts exhibit a slower decay in diversity compared to those linked to low-probability (rare) texts. Then, in section 5.2, we show that this differential convergence leads to a self-reinforcing feedback loop: as the text model collapses and concentrates probability mass on a few dominant texts, the image models corresponding to these texts retain more diversity, while those linked to rare texts degrade more rapidly. This process exemplifies the Matthew effect, a phenomenon where initial advantages compound over time, which is commonly phrased as \"the rich get richer and the poor get poorer.\" In our setting, dominant texts not only become more probable but also sustain higher-diversity image generations, whereas rare texts vanish from both the text and image distributions. Together, we demonstrate that the text model actively shapes the long-term stability of the image model, reinforcing the prominence of popular texts within the co-evolving system.",
+      "word_count": 199
+    },
+    {
+      "index": 20,
+      "title": "Differential Convergence Rate of the Image Model",
+      "kind": "body",
+      "text": "In this subsection, we quantitatively characterize the convergence behavior of the image model and, importantly, show that its collapse rate is not uniform but varies across different texts. Building on theorem 3.3, by deriving an explicit approximation for the convergence rate ρ using a Taylor expansion of the matrix square-root function and properties of the Wishart distribution in theorem 5.1, we demonstrate that more frequently sampled texts tends to collapse at a slower speed compared to those for less frequent texts.\n\nTheorem 5.1 (Differential convergence rate of the image model) Assume that N ≫ d. For a fixed macro time step t, let the probabilities of the text distribution be p = (p 1 , p 2 , . . . , p K ) > 0. Then the convergence rate ρ derived in theorem 3.3 is approximately\n\n1 - d + 1 8(N + 1)p i .\n\n(5.1) See section 8.1.2 for the empirical results corresponding to theorem 5.1. We remark that theorem 5.1 has several important implications. First, the term (d + 1) in the numerator indicates that higher-dimensional image representations (i.e., larger d) lead to a faster collapse of diversity. Second, the presence of (N + 1) in the denominator shows that increasing the number of samples per update (i.e., larger N ) slows down the collapse, suggesting that larger batch sizes can help preserve image diversity. Finally, the dependence on p i reveals that image models corresponding to more frequently sampled texts (i.e., higher p i ) collapse more slowly, whereas those associated with rarer texts lose diversity more rapidly, potentially reinforcing the dominance of popular content. We remark that Theorem 5.1 extends existing results: (i) in contrast to [29, Theorem 3] , which derived the convergence rate for a single one-dimensional Gaussian, our result generalizes the analysis to higher dimensions and to systems with multiple Gaussians; and (ii) compared with [2, Proposition 1], we provide an explicit convergence rate that is dependent on d, N , and p i .",
+      "word_count": 335
+    },
+    {
+      "index": 21,
+      "title": "Matthew Effect Due to Text Model Collapse",
+      "kind": "body",
+      "text": "In this section, we examine how the text model collapse not only suppresses diversity in the text domain but also accelerates the collapse of the image models corresponding to less frequent texts, which is a clear instance of the Matthew effect. We formalize this effect in theorem 5.2, which quantifies how differential convergence rates in the image models are magnified as the text model diversity diminishes.\n\nTheorem 5.2 (Matthew effect of image model diversity under text model collapse) Assume that the text model diversity given by (2.8) satisfies H t (p t ) = ε, and that the image model convergence rates {ρ(x i ) : 1 ≤ i ≤ K} are given by theorem 5.1. Without loss of generality, denote the dominant and the rarest texts by x 1 = arg max 1≤i≤K p t (x i ), and x K = arg min 1≤i≤K p t (x i ). (5.2) Then, one has ρ(x 1 ) ρ(x K ) ≥ max (d + 1)(K -1) 8(N + 1) • ε -1 , 1 . (5.3)\n\nThe proof of theorem 5.2 is provided in appendix B. It demonstrates that as the text model collapses (i.e., exhibits a small diversity ε), the disparity between the convergence rates of the image models for dominant versus rare texts is magnified proportional to ε -1 . In this scenario, the image model corresponding to the dominant text maintains its diversity for a significantly longer period, while those associated with infrequent texts collapse rapidly.",
+      "word_count": 250
+    },
+    {
+      "index": 22,
+      "title": "Stabilization of the Co-Evolving System",
+      "kind": "body",
+      "text": "In previous sections, we analyzed a close co-evolving system in which a text model and an image model iteratively reinforce each other (see Algorithm 1). We showed that this training procedure drives the text model to concentrate its probability mass on a single text, which in turn induces a Matthew effect leading to the collapse of the image model. However, real-world systems are continuously influenced by external factors, such as the influx of new topics and user-generated content. In this section, we investigate how these external influences can mitigate collapse. In section 6.1, we examine stabilization via corpus injection, where new texts are randomly added to the corpus to redistribute probability mass and prevent the text model's collapse. We then explore stabilization via user-content injection in section 6.2, in which images drawn from a fixed distribution are incorporated into the training of the image model. We demonstrate that these external injections not only prevent the image model diversity from collapsing, but also ensure that the fidelity remains bounded over time.",
+      "word_count": 170
+    },
+    {
+      "index": 23,
+      "title": "Stabilization of the Text Model via Corpus Injection",
+      "kind": "body",
+      "text": "In social media, an influx of new trends and topics continuously emerges, ensuring that the co-evolving system is never truly closed. To mimic this real-world phenomenon, we extend algorithm 1 by randomly injecting new texts into the corpus. The revised training procedure is summarized in algorithm 2. At the beginning of each macro time step t, suppose the current text model is represented by the probability vector p t = (p t (x 1 ), . . . , p t (x K )). With probability α, a new text x new is injected into the corpus. The injection is performed by reallocating a small fraction ε > 0 of the total probability mass from the existing texts to the new text. Formally, we update the text model as follows:\n\np t (x i ) ← (1 -ε) • p t (x i ), 1 ≤ i ≤ K, p t (x new ) ← ε. (6.1)\n\nIn parallel, we initialize the image model for x new with a Gaussian distribution:\n\nq t (y|x new ) ← N y; µ(x new ), Σ(x new ) , (6.2)\n\nwhere µ(x new ) and Σ(x new ) are the initialized parameters. After any injection event (or if no injection occurs), the algorithm proceeds with the standard training procedure as described in algorithm 1.\n\nA natural question is: Does this random injection of new texts mitigate the text model collapse? We provide an assertive answer in theorem 6.1, which shows that with a fixed injection probability and fraction, the external influx of new texts ensures that the text model's diversity retains a strictly positive lower bound, preventing collapse into a degenerate distribution. This confirms that random injections effectively counterbalance the self-reinforcing dynamics of a closed system, sustaining diversity in real-world settings.\n\nTheorem 6.1 (Stabilization of text model diversity under text injection) Under the co-evolving training procedure with text injection as described in algorithm 2, the text model diversity H t defined by (2.8) is prevented from collapsing. More precisely,\n\nlim inf t→∞ E[Ht] ≥ 2α(1 -N -1 )(ε -ε 2 ) 1 -(1 -α)(1 -N -1 ) . (\n\n6.5) Theorem 6.1 provides two key insights. First, by ensuring that new texts are injected with probability α, algorithm 2 prevents model collapse by interrupting the self-reinforcing feedback that would otherwise drive the text model towards a degenerate distribution. Second, the theorem's quantitative lower bound highlights the influence of the key parameters: Algorithm 2 Co-Evolving Generative Model Training Procedure with Text Injection Require: A corpus X with K texts. A text model with initial probability vector p 0 , an image model with initial conditional distributions {q 0 (•|x i ) : 1 ≤ i ≤ K}, the number of macro time steps T , text injection probability α > 0, text injection fraction ε > 0 1: for macro time step t = 1 to T do 2: if a random event occurs with probability α then ▷ Inject a new text with probability α 3: for each x i ∈ X do 4: Update: p t-1 (x i ) ← (1 -ε) • p t-1 (x i ) 5: end for 6: Inject a new text x new to the corpus X with p t (x new ) ← ε (6.3) 7:\n\nInitialize its image model:\n\nq t (y|x new ) ← N y; µ(x new ), Σ(x new ) (6.4) 8:\n\nend if 9:\n\nRun the standard training procedure as in algorithm 1 for macro time step t 10: end for the injection probability α determines how often new texts are introduced, with a higher α leading to more frequent injections that bolster diversity; the injection fraction ε controls the proportion of probability mass reallocated to a new text, where ε being closer to 1/2 introduces greater diversity; and the sample size N governs the contraction rate during standard text updates with larger values of N resulting in larger diversity. For empirical validation of theorem 6.1, see section 8.3.1.",
+      "word_count": 668
+    },
+    {
+      "index": 24,
+      "title": "Stabilization of the Image Model via User-Content Injection",
+      "kind": "body",
+      "text": "Aside from the influx of new trends and topics, user-generated content also plays a crucial role by acting as a regularizing force that prevents image model collapse. In this section, we demonstrate that by incorporating a fixed number N 0 > 0 of images drawn from an external (user-content) distribution during the image model update, the updated image model retains strictly positive diversity and is bounded in fidelity.\n\nTo formalize this idea, assume that for each text x i the user-content images are drawn i.i.d. from a Gaussian distribution q user (y|x i ) = N y; µ user (x i ), Σ user (x i ) , (6.6)\n\nwhere the covariance matrix Σ user (x i ) is non-degenerate. At each macro time step t, in addition to generating N i images from the current image model q t (y|x i ) (with mean vector µ t (x i ) and covariance matrix Σ t (x i )), we also inject N 0 user-content images u (1) , . . . , u (N0) drawn from q user (•|x i ). We then compute the combined sample mean and covariance, which are used to update the image model. The training procedure is summarized in algorithm 3.\n\nOne may ask: Does the injection of user-generated images mitigate the collapse of the image model diversity, in a manner analogous to how external text injections preserve text model diversity? The answer is yes. As we demonstrated for the text model, external injections can prevent complete collapse by continuously reintroducing variability into the system. In theorem 6.2, we show that when a fixed number N 0 > 0 of user-content images drawn from a reference distribution with fixed mean and covariance is injected at each macro time step, the diversity of the image model remains bounded from below by a positive constant.",
+      "word_count": 309
+    },
+    {
+      "index": 25,
+      "title": "Theorem 6.2 (Stabilization of image model diversity under image injection)",
+      "kind": "body",
+      "text": "Following the co-evolving training procedure with image injection as described in algorithm 3, the image model diversity D t (x i ) given by (2.10) is prevented from collapsing. More precisely, for all t ≥ 1,\n\nE[Dt(xi)] ≥ α • 1 (N 0 -1)(N + N 0 -1) • E tr Σ user (x i ) 1/2 , (6. 11\n\n)\n\nwhere α is the unique scalar such that E[W 1/2 ] = αI d with W ∼ Wishart d (I, N 0 -1) being a d-dimensional Wishart matrix with (N 0 -1) degrees of freedom and identity scale matrix.\n\nThe implications of theorem 6.2 are twofold. First, the coefficient 1 Generate corresponding images y (j) ∼ q t-1 (y|x (j) ) 5:\n\n(N 0 -1)(N + N 0 -1) (\n\nfor each x i ∈ X do 6:\n\nLet N i ← #{j : x (j) = x i } 7: Bring in user-content images ▷ Inject user-content images u (n) ∼ q user (•|x i ) = N µ user (x i ), Σ user (x i ) , n = 1, . . . , N 0 (6.7) 8:\n\nCompute sample mean:\n\nµ t (x i ) = 1 N i + N 0 j:x (j) =xi y (j) + N0 n=1 u (n) (6.8) 9:\n\nCompute sample covariance:\n\nΣ t (x i ) = 1 N i + N 0 -1 j:x (j) =xi y (j) -µ t (x i ) y (j) -µ t (x i ) ⊤ + N0 n=1 u (n) -µ t (x i ) u (n) -µ t (x i ) ⊤ (6.9) 10:\n\nUpdate the image model for x i :\n\nq t (•|x i ) ← N •; µ t (x i ), Σ t (x i )\n\n(6.10) 11:\n\nend for 12: end for shows that increasing the number N 0 of injected images improves the lower bound on the image model diversity, whereas a larger number N of generated images without a corresponding increase in N 0 reduces the regularizing effect. Second, although the theorem is stated for a fixed N 0 , the analysis generalizes to settings where the number of injected images is random (e.g., Poisson distributed) as long as there is a positive probability of injecting more than one image. In such cases, the effective injection parameter becomes the conditional expectation of the number of injected images given that at least two are injected.\n\nOne may inquire whether the injection of user-generated images can not only prevent the collapse of the image model diversity but also ensure that the fidelity remains bounded over time. In other words, does the injection of external images drawn from a fixed reference distribution with µ user (x i ) = µ 0 (x i ) and Σ user (x i ) = Σ 0 (x i ) act as an effective regularizer that keeps the image model's output close to the reference distribution? Theorem 6.3 answers this question affirmatively by establishing an explicit bound on the long-term expected fidelity. In our analysis, we assume that exactly N p i generated images are drawn from the current image model at each update, thereby removing the randomness associated with the number of images drawn for each text. This assumption also effectively corresponds to a potentially frozen text model. While the former assumption is not strictly essential, a more general analysis allowing a random number of images would yield analogous results at the cost of increased technical complexity. Theorem 6.3 (Boundedness of image model fidelity under image injection) Suppose that image injection procedure described in algorithm 3 is employed in the co-evolving training process. Assume that at each macro time step t, exactly N p i generated images are drawn from q t-1 (•|x i ) (instead of N i samples, where N i is a random variable), and that the user-content images satisfy\n\nµ user (x i ) = µ 0 (x i ), Σ user (x i ) = Σ 0 (x i ) (6.13)\n\nfor all 1 ≤ i ≤ K. Suppose further that N 0 > 0. Then, as t → ∞, the expected image model fidelity F t (x i ) defined by (2.9) converges and is bounded by\n\nlim sup t→∞ E[Ft(xi)] ≤ 1 -(N p i ) -1 λ N p i λ -1 -1 -N p i λ • tr Σ 0 (x i ) 1/2 , (6.14)\n\nwhere λ = N p i /(N p i + N 0 ) < 1.\n\nThe explicit bound given in theorem 6.3 demonstrates that the long-term expected fidelity is directly governed by the injection parameters. In particular, as the number N 0 of injected images increases relative to the number N p i of generated images, the bound on the fidelity becomes tighter. This implies that a larger injection batch not only helps to preserve the diversity of the image model but also keeps its output more closely aligned with the reference distribution.\n\nIt is important to note that both this result and the boundedness result in theorem 3.4 assume that the text model remains frozen. However, in theorem 3.4 the boundedness of image model fidelity is achieved as a consequence of image model collapse; specifically, the exponential decay of the image model diversity plays a crucial role in ensuring that the fidelity converges to a small value. In contrast, the boundedness established in theorem 6.3 does not rely on any such exponential decay property. Instead, it is derived solely through the injection of user-generated images drawn from a fixed reference distribution. This external injection acts as a continuous regularizer, ensuring that the image model's output remains close to the reference distribution regardless of the behavior of its diversity. See section 8.3.2 for a discussion of the experimental findings that corroborate theorems 6.2 and 6.3.",
+      "word_count": 980
+    },
+    {
+      "index": 26,
+      "title": "Related Work",
+      "kind": "related_work",
+      "text": "In this section, we review research on self-consuming loops, organizing the discussion into empirical studies and theoretical studies. We then compare our co-evolving generative model training procedure (see algorithm 1) with the classical Expectation-Maximization (EM) algorithm [23] .",
+      "word_count": 38
+    },
+    {
+      "index": 27,
+      "title": "Empirical studies",
+      "kind": "body",
+      "text": "Several empirical investigations have documented the adverse effects of training on synthetic data. The literature on this topic generally distinguishes between three data types: (i) image data; (ii) text data; and (iii) multimodal data. Most prior studies have focused on the first two categories. For image data, prominent generative models such as variational autoencoders (VAEs) [28] , generative adversarial networks (GANs) [1, 4] , diffusion models (DMs) [3, 21, 22] have been investigated, all of which suggested that repeatedly feeding generative models with AI-generated data over time leads to degeneration such as unrealism [3, 4] , blurriness [21, 22] , homogenization [21, 22, 28] , or magnification of artifacts [1, 3] . For text data, self-consuming loop has known to cause decline in language diversity [14, 25] or amplifies biases [24, 31] . In contrast to these studies, which largely focus on isolated modalities, [5] investigates a multimodal scenario where recursive modality changes such as repeatedly converting images to text and back result in a gradual degradation of the original content. Their findings show that generated images and descriptions drift away from the original input, eventually losing key semantic elements. While their work is based on data-driven observations and focuses on the inference loop, our work complements theirs by providing theoretical insights into the training loop. We explicitly model the mutual feedback between text and image models, thereby exploring how inter-modal reinforcement can accelerate collapse or, alternatively, be stabilized through external interventions.",
+      "word_count": 242
+    },
+    {
+      "index": 28,
+      "title": "Theoretical studies",
+      "kind": "body",
+      "text": "On the theoretical side, several studies have developed analytical frameworks to understand the underlying mechanisms driving collapse [7, 8, 20, 29] or mitigate it through incorporating fresh data [2, 11] or leveraging reinforcement learning techniques [9, 10, 12] . In addition, several case studies have examined collapse phenomena across a range of settings, including discrete distributions [29] , Gaussian distributions (both 1-dimensional [29] and higher-dimensional cases [2] ), 1-dimensional Gaussian mixture [29] , and regression problems [7, 8, 30] . However, existing studies typically examine settings in which a model is trained solely on its own generated data. In contrast, given the growing prevalence of multimodal systems, our work investigates a co-evolving system in which two generative models are trained recursively on data produced by each other. In terms of theoretical contributions, our work extends and complements existing theory in the following ways: (i) for the isolated case, we prove that the image model converges exponentially. This result not only confirms findings reported in [2, 29] but also extends them to higher-dimensional settings, beyond the 1-dimensional case analyzed in [29] , and provides an explicit convergence rate, which improves upon the results in [2] ;\n\n(ii) regarding stabilization techniques, we demonstrate that incorporating fresh data into the training process prevents the co-evolving system from collapsing. This insight generalizes conclusions drawn for single-model settings [2, 11] to the more complex scenario of interdependent, multimodal system.",
+      "word_count": 234
+    },
+    {
+      "index": 29,
+      "title": "Comparison with the EM algorithm",
+      "kind": "body",
+      "text": "The Expectation-Maximization (EM) algorithm 4 is a classic iterative method used for maximum likelihood estimation in models with latent variables [23] . In each iteration, it alternates between computing the expected value of the latent variables given the observed data (the E-step) and updating the model parameters by maximizing the expected complete-data log-likelihood (the M-step). This structure of alternating between soft assignments of hidden variables and parameter updates is echoed in our co-evolving text-image system. Here, the text model update where the posterior probabilities of texts given the generated images are computed and averaged parallels the E-step, while the subsequent image model update where parameters such as the mean and covariance of the conditional Gaussian distributions are recalculated based on the new samples mirrors the M-step. Despite these similarities, significant differences distinguish our approach from EM. Unlike EM, which is designed to maximize a well-defined likelihood function over a fixed dataset, our co-evolving system continuously generates data through its own models, creating a dynamic feedback loop between the texts and images. This means that while EM relies on deterministic, closed-form computations to update responsibilities and parameters, our procedure uses Monte Carlo sampling to approximate these updates, introducing an element of stochasticity. Moreover, the bidirectional adaptation in our system, where both models influence each other iteratively, deviates from the unidirectional latent variable estimation framework of EM, resulting in a training procedure that prioritizes reinforcing engaging text-image pairs over strict likelihood maximization and its associated convergence guarantees.",
+      "word_count": 245
+    },
+    {
+      "index": 30,
+      "title": "Experiments",
+      "kind": "results",
+      "text": "In this section, we present the experimental results from three perspectives: (i) isolating the dynamics by freezing one model to understand its individual contribution (see section 8",
+      "word_count": 27
+    },
+    {
+      "index": 31,
+      "title": "Isolating the Dynamics by Freezing One Model",
+      "kind": "body",
+      "text": "In this section, we conduct two controlled experiments in which one of the models is held frozen, and we measure the evolution of the diversity measures defined in (2.8) and (2.10).",
+      "word_count": 31
+    },
+    {
+      "index": 32,
+      "title": "Text Model Diversity under the Frozen Image Model",
+      "kind": "body",
+      "text": "To isolate the effect of text updates, we hold the image model fixed (i.e., M t = 1 and N t = 0 in algorithm 1). The image model is initialized with d = 2 by uniformly placing its mean vectors on the unit circle and setting all its covariance matrices to σ 2 I with σ 2 ∈ {0.01, 0.1, 0.5, 1, 10}. The text model is initialized uniformly over K = 5 texts and updated at each macro time step using N = 1000 samples, with results averaged over 100 independent runs. We plot text model diversity against the macro time step in fig. 2 , using a logarithmic scale for the y-axis. As shown in fig. 2 , text model diversity gradually decreases over time. Moreover, larger values of σ 2 slow this decline, aligning with the predictions of theorems 3.1 and 4.1. 0 1000 2000 3000 4000 5000 Macro time step t 10 2 10 1 10 0 Text model diversity cov = 0.01 cov = 0.1 cov = 0.5 cov = 1 cov = 10 Theoretical lower bound",
+      "word_count": 183
+    },
+    {
+      "index": 33,
+      "title": "Image Model Diversity under the Frozen Text Model",
+      "kind": "body",
+      "text": "Next, we freeze the text model and update only the image model (i.e., M t = 0 and N t = 1 in algorithm 1). In this experiment, the text model is initialized with p = (0.06, 0.13, 0.2, 0.27, 0.34) for K = 5 texts, and the image model is initialized as described in section 8.1.1 with s = 1. The image model is updated at each macro time step using a batch of N = 1000 samples, and the diversity values are averaged over 100 independent runs and plotted for T = 2000 macro times steps. Figure 3 shows that the image model diversity decays exponentially over time, with a decay rate that approximates the theoretical prediction ρ(x i ) ≈ 1 -(d + 1)/(8(N + 1)p i ) given in theorem 5.1.",
+      "word_count": 135
+    },
+    {
+      "index": 34,
+      "title": "Image-Driven Acceleration in Text Model Collapse",
+      "kind": "body",
+      "text": "In this experiment, we explore how the image model influences the speed at which the text model collapses, as predicted by theorem 4.2. To this end, we vary the number of image updates N t = 0, 1, 2, 5, 10 performed between successive text model updates in algorithm 1, where N t = 0 corresponds to a frozen image model. The results are averaged over 100 independent runs and plotted over T = 1000 macro time steps. Our findings, as illustrated in fig. 4 , reveal that more frequent image updates result in a more rapid decrease in text model diversity, thereby validating the theoretical predictions.",
+      "word_count": 107
+    },
+    {
+      "index": 35,
+      "title": "Stabilization Strategies",
+      "kind": "body",
+      "text": "In this section, we investigate two stabilization mechanisms designed to counteract the collapse observed in co-evolving generative models. The observed exponential decay in diversity is consistent with the theoretical prediction, especially when t is relatively small and less affected by numerical round-off errors; however, deviations tend to emerge at later times likely due to the accumulation of numerical inaccuracies.\n\n0 200 400 600 800 1000 Macro time step t 0.3 0.4 0.5 0.6 0.7 0.8 Text model diversity Nt = 10 Nt = 5 Nt = 2 Nt = 1 Frozen image model of the image model via user-content injection. Our experiments demonstrate that, by introducing external data into the training loops, both text diversity and image diversity can be preserved over time.",
+      "word_count": 123
+    },
+    {
+      "index": 36,
+      "title": "Stabilization of the Text Model via Corpus Injection",
+      "kind": "body",
+      "text": "To counteract the collapse of the text model observed in closed systems, we introduced a stabilization mechanism via corpus injection in section 6.1. In this experiment, we keep the injection probability α = 0.05, and vary the fraction of probability reallocated during corpus injection, i.e., ε = 0.0, 0.01, 0.02, 0.05, 0.1. At each macro time step, with probability α a fraction ε of the existing text model probability is reallocated to a newly injected text. The simulation results over T = 10000 macro time steps in fig. 5 , averaged over 100 runs, confirm that corpus injection prevents the text model diversity from collapsing entirely, thereby ensuring a strictly positive diversity level over time. These empirical findings are consistent with the theoretical guarantees provided in theorem 6.1. Each curve corresponds to a different value of ε, with colors becoming lighter as ε increases. The results illustrating that compared with the closed system (i.e., ε = 0), even a small fraction of injected probability prevents the text model diversity from collapsing entirely, which are in line with the theoretical guarantees provided in theorem 6.1.",
+      "word_count": 184
+    },
+    {
+      "index": 37,
+      "title": "Stabilization of the Image Model via User-Content Injection",
+      "kind": "body",
+      "text": "To counteract the collapse of the image model observed in closed systems, we introduced a stabilization mechanism via user-content injection in section 6.2. In this experiment, the image model is updated by drawing N = 1000 samples from the current model and, in addition, by injecting N 0 images from an external distribution identical to the initial image model. The text model is fixed at K = 1. We vary N 0 (e.g., N 0 ∈ {0, 1, 10, 100, 1000}) and simulate the image model evolution over T = 10000 macro time steps, averaging results over 100 independent runs. Our results demonstrate that user-content injection prevents the collapse of image model diversity and maintains bounded fidelity, and fidelity decreases as N 0 increases, in accordance with the theoretical guarantees provided in theorems 6.2 and 6.3. These results demonstrate that injecting user content, even with an extremely small value (i.e., N 0 = 1) prevents the collapse of image model diversity and maintains bounded fidelity, in agreement with the theoretical guarantees provided in theorems 6.2 and 6.3.",
+      "word_count": 177
+    },
+    {
+      "index": 38,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this paper, we analyzed a co-evolving text-image system and provided insights into their mutual influence. Our analysis shows that (i) when one model is frozen, the other collapses (with text diversity decaying monotonically and image covariance contracting exponentially); (ii) mutual feedback accelerates collapse via both a general acceleration effect and a Matthew effect that reinforces dominant texts; and (iii) external interventions such as corpus injections for text and user-content injections for images can stabilize the system, preserving both diversity and fidelity. These theoretical findings highlight the importance of continual exposure to fresh data to maintain long-term model robustness.\n\nOur analysis naturally extends to additional modalities and more complex multi-model ecosystems. For instance, one can envision incorporating audio, video, or multimodal sensor data into a comprehensive generative ecosystem, where each model's outputs inform others in a network of training loops. While the general structure is preserved, differences in data representations and cross-modal feedback signals require refinements of our techniques. In particular, the latent spaces for modalities like audio or video differ from those for text and images, and the quantification of cross-modal dependencies become more intricate. Moreover, integrating multiple generative models simultaneously may require novel stabilization strategies to prevent any single modality from collapsing. Addressing these challenges will pave the way for more robust and adaptive multimodal AI systems.",
+      "word_count": 219
+    },
+    {
+      "index": 39,
+      "title": "A.4 Expectation-Maximization Algorithm Applied to Gaussian Mixture Models",
+      "kind": "body",
+      "text": "The Expectation-Maximization (EM) algorithm is an iterative method for finding maximum likelihood estimates in the presence of latent variables [23] . Consider a Gaussian Mixture Model (GMM) with K components, where the probability density function of an observation x ∈ R d is given by\n\np(x) = K k=1 π k N (x; µ k , Σ k ), (A.21)\n\nwith mixing coefficients π k , means µ k , and covariance matrices Σ k . The EM algorithm proceeds by alternating between:\n\n• E-step: Compute the posterior probabilities (responsibilities)\n\nγ ik = π k N (x i ; µ k , Σ k ) K j=1 π j N (x i ; µ j , Σ j ) , (A.22)\n\nwhich represent the probability that observation x i originates from component k.\n\n• M-step: Update the parameters using these responsibilities:\n\nπ new k = 1 n n i=1 γ ik , (A.23) µ new k = n i=1 γ ik x i n i=1 γ ik , (A.24) Σ new k = n i=1 γ ik (x i -µ new k )(x i -µ new k ) ⊤ n i=1 γ ik . (A.25)\n\nOur co-evolving system employs a similar alternating update scheme. The text model update computes soft assignments (analogous to the E-step) by estimating posterior probabilities based on generated images. Subsequently, the image model update re-estimates the parameters (reminiscent of the M-step) using these assignments. Although our updates are performed in a continuously evolving, stochastic setting, the conceptual similarity to the EM algorithm in Gaussian mixtures provides valuable intuition for understanding the iterative dynamics of our models.",
+      "word_count": 270
+    },
+    {
+      "index": 40,
+      "title": "B Proofs of Theorems",
+      "kind": "body",
+      "text": "In this section, we provide detailed proofs of the theorems.",
+      "word_count": 10
+    },
+    {
+      "index": 41,
+      "title": "B.1 Proofs of Theorems in Section 3",
+      "kind": "body",
+      "text": "Theorem 3.1 (Recursion of text model diversity under frozen image model) In algorithm 1, assume that the image model is frozen, meaning its conditional distributions q(y|x i ) remain fixed (hence, we omit the time subscript t in q t (y|x i )), and that the text model is updated. Then, in expectation, the diversity measure H t given by (2.8) satisfies the recursion\n\nE[Ht+1(pt+1)|pt] = 1 - 1 N • H t (p t ) + 1 N • 1 - K i=1 E y∼rt [Z i (y) 2 ] , (3.1)\n\nwhere\n\nZ i (y) = p t (x i )q(y|x i ) K k=1 p t (x k )q(y|x k ) (3.2)\n\nis the posterior probability, N is the number of generated images in each update, and r t (y) = K k=1 p t (x k )q(y|x k ). As a consequence, the diversity measure is non-increasing in expectation, i.e.,\n\nE[Ht+1(pt+1)] ≤ E[Ht(pt)]. (3.3)\n\nMoreover, as t → ∞, the diversity measure stabilizes at a limiting value, which is either (i) 0, which corresponds to p ∞ being a one-hot vector; or (ii) H 0 (p 0 ), which corresponds to q(y|x i ) being identical for all 1 ≤ i ≤ K.\n\nProof. The text model is updated according to the empirical posterior estimate\n\np t+1 (x i ) = 1 N N j=1 p t (x i |y (j) ), (B.1)\n\nwhere each y (j) is sampled from the mixture distribution\n\nr t (y) = K k=1 p t (x k )q(y|x k ). (B.2)\n\nUsing the definition of the posterior,\n\np t (x i |y (j) ) = Z i (y (j) ) := p t (x i )q(y (j) |x i ) K k=1 p t (x k )q(y (j) |x k ) . (B.3)\n\nTaking expectations over the randomness in y, we obtain\n\nE y∼rt [Z i (y)|p t ] = p t (x i ), (B.4)\n\nand for the second moment,\n\nE y∼rt [Z i (y) 2 |p t ] = p t (x i ) 2 + Var y∼rt (Z i (y)|p t ), (B.5)\n\nwith Var y∼rt (Z i (y)|p t ) ≥ 0. Since the updates are computed from N independent samples, the expectation of the squared probabilities follows from the independence property:\n\nE[pt+1(xi) 2 |p t ] = 1 N • E y∼rt [Z i (y) 2 |p t ] + N -1 N • p t (x i ) 2 . (B.6)\n\nSumming over all i, we obtain\n\nE K i=1 p t+1 (x i ) 2 p t = K i=1 p t (x i ) 2 + 1 N K i=1 E y∼rt [Z i (y) 2 |p t ] -p t (x i ) 2 . (B.7)\n\nBy substituting this into the definition of H t+1 (p t+1 ) = 1 -\n\nK i=1 p t+1 (x i ) 2 , we obtain E[Ht+1(pt+1)|pt] = 1 - 1 N • H t (p t ) + 1 N • 1 - K i=1 E y∼rt [Z i (y) 2 |p t ] . (B.8) Since for each i we have E[Zi(y) 2 |p t ] ≥ p t (x i ) 2 , it follows that E[Ht+1(pt+1)|pt] ≤ H t (p t ). (B.9)\n\nThis proves that the diversity measure is non-increasing in expectation. Moreover, as t tends to infinity, the system converges to an equilibrium distribution p ∞ for which\n\nK i=1 E y∼rt [Z i (y) 2 |p ∞ ] = K i=1 p ∞ (x i ) 2 . (B.10)\n\nTo analyze the equality condition, note that for each i we have\n\nE y∼rt [Z i (y) 2 |p ∞ ] = p ∞ (x i ) 2 q(y|x i ) 2 K k=1 p ∞ (x k )q(y|x k ) dy. (B.11)\n\nApplying the Cauchy-Schwarz inequality, we obtain\n\np ∞ (x i ) 2 q(y|x i ) 2 K k=1 p ∞ (x k )q(y|x k ) dy • K k=1 p ∞ (x k )q(y|x k )dy ≥ p ∞ (x i )q(y|x i )dy 2 . (B.12) Since K k=1 p ∞ (x k )q(y|x k )dy = 1 and p ∞ (x i )q(y|x i )dy = p ∞ (x i ), it follows that p ∞ (x i ) 2 q(y|x i ) 2 K k=1 p ∞ (x k )q(y|x k ) dy ≥ p ∞ (x i ) 2 . (B.13) Summing over i yields K i=1 E y∼rt [Z i (y) 2 |y ∞ ] ≥ K i=1 p ∞ (x i ) 2 . (B.14)\n\nEquality holds if and only if equality holds in the Cauchy-Schwarz inequality for each i, which requires that there exists a constant c i (depending on i) such that\n\np ∞ (x i )q(y|x i ) = c i K k=1 p ∞ (x k )q(y|x k ) (B.15)\n\nfor almost every y. Integrating both sides over y gives\n\np ∞ (x i ) = c i , (B.16)\n\nso that the equality condition becomes\n\np ∞ (x i )q(y|x i ) = p ∞ (x i ) K k=1 p ∞ (x k )q(y|x k ) . (B.17) For any i with p ∞ (x i ) > 0 this implies q(y|x i ) = K k=1 p ∞ (x k )q(y|x k ). (B.18)\n\nIn other words, equality is attained if and only if the conditional distributions q(y|x i ) are identical for all i with p ∞ (x i ) > 0. This yields the two equilibrium cases: either the text model collapses to a one-hot vector (in which H ∞ (p ∞ ) = 0) or the image model assigns identical distributions q(y|x i ) to all texts. □ Theorem 3.3 (Image model diversity decays under frozen text model) Let the fixed probabilities of the text distribution be p = (p 1 , p 2 , . . . , p K ) > 0 (where we drop the time subscript t in p t for brevity). Then, there exist constants C > 0 and 0 < ρ < 1 such that the image model diversity D t (x i ) given by (2.10) satisfies\n\nE[Dt(xi)] = E tr Σ t (x i ) 1/2 ≤ Cρ t , ( 3",
+      "word_count": 1060
+    },
+    {
+      "index": 42,
+      "title": ".6)",
+      "kind": "body",
+      "text": "i.e., it converges to zero at an exponential rate.\n\nProof. For a fixed text x i and iteration t at which N i ≥ 2, note that if\n\ny (1) , . . . , y (Ni) ∼ N µ t (x i ), Σ t (x i ) , (B. 19\n\n)\n\nthen it is well known (see, e.g., properties of the Wishart distribution [19] ) that the sample covariance 20) where y = (y (1)\n\nΣ t+1 (x i ) = 1 N i -1 Ni j=1 y (j) -y y (j) -y ⊤ (B.\n\n+ • • • + y (Ni) )/N i satisfies Σ t+1 (x i ) = Σ t (x i ) 1/2 • W N i -1 • Σ t (x i )\n\n1/2 . (B.21) Here, W ∼ Wishart d (I, N i -1) is a d-dimensional Wishart random matrix with (N i -1) degrees of freedom and identity scale matrix 6 . It is a standard fact that E W N i -1 = I. (B.22) Note that the function X → X 1/2 is operator concave on the set of positive definite matrices 7 By Jensen's operator inequality we have that the strict inequality holds, i.e., E W N i -1 1/2 ≺ I. (B.23) Therefore, the largest eigenvalue of E[(W /(N i -1)) 1/2 ], say ρ(N i ) (depending on N i ), is smaller than 1. Consequently, we have\n\nE tr Σ 1/2 t+1 (x i ) Σ t (x i ), N i = E tr Σ t (x i ) 1/2 • W N i -1 • Σ t (x i ) 1/2 1/2 Σ t (x i ), N i = E d j=1 σ j W N i -1 1/2 • Σ t (x i ) 1/2 Σ t (x i ), N i ≤ E N j=1 σ 1 W N i -1 1/2 • σ j Σ t (x i ) 1/2 Σ t (x i ), N i ≤ ρ(N i ) • E tr Σ t (x i ) 1/2 Σ t (x i ), N i , (B. 24\n\n)\n\nwhere σ j (•) represents the jth largest singular value of a matrix. Since the probability of N i ≥ 2 is positive, the expectation of ρ(N i ) is strictly less than 1. Applying the total expectation formula and iterating the inequality, we obtain\n\nE[Dt(xi)] = E tr Σ t (x i ) 1/2 ≤ Cρ t , (B. 25\n\n)\n\nwhere C = E tr Σ 0 (x i ) 1/2 and ρ = EN i∼Binomial(N,pi) [ρ(N i )] < 1. □ Theorem 3.4 (Boundedness of image model fidelity under the frozen text model) Let the fixed probabilities of the text distribution be p = (p 1 , p 2 , . . . , p K ) > 0 (where we drop the time subscript t in p t for brevity). Suppose there exist constants C > 0 and 0 < ρ < 1 such that the image model diversity given by (2.10) satisfies\n\nE[Dt(xi)] = E tr Σ t (x i ) 1/2 ≤ Cρ t . (3.7)\n\nThen, the image model fidelity defined by (2.9), i.e., the expected deviation of the mean vectors satisfies\n\nE[Ft(xi)] = E[∥µ∞(xi) -µ 0 (x i )∥ 2 ] ≤ √ 2C (N + 1)p i • (1 -ρ) . (3.8)\n\nProof. For a fixed text x i , and iteration t at which N i ≥ 1, note that if y (1) , . . . , y (Ni) ∼ N µ t (x i ), Σ t (x i ) , (B.26)\n\nthen the sample mean satisfies\n\nµ t+1 (x i ) ∼ N µ t (x i ), 1 N i • Σ t (x i ) . (B.27)\n\nThus, conditioning on µ t (x i ) and N i , the difference between consecutive mean vectors follows\n\nµ t+1 (x i ) -µ t (x i ) ∼ N 0, 1 N i • Σ t (x i ) . (B.28)\n\nFrom the properties of the Gaussian distribution, we obtain\n\nE[∥µt+1(xi) -µ t (x i )∥ 2 2 |µ t (x i ), Σ t (x i ), N i ] = 1 N i • E tr Σ t (x i ) N i , (B.29)\n\nTake expectation over N i ∼ Binomial(N, p i ), we derive\n\nE[∥µt+1(xi) -µ t (x i )∥ 2 2 |µ t (x i ), Σ t (x i )] ≤ N Ni=1 1 N i N N i p Ni i (1 -p i ) N -Ni • C 2 ρ 2t ≤ N Ni=1 2 N i + 1 N N i p Ni i (1 -p i ) N -Ni • C 2 ρ 2t ≤ 2C 2 ρ 2t (N + 1)p i , (\n\nB.30) where the first inequality follows from Cauchy-Schwarz inequality. By the total expectation formula, it follows that E[∥µt+1(xi) -µ t (x i )∥ 2 2 ] ≤ 2C 2 ρ 2t (N + 1)p i . (B.31) Applying the Cauchy-Schwarz inequality gives E[∥µt+1(xi) -µ t (x i )∥ 2 ] ≤ √ 2Cρ t (N + 1)p i . (B.32) Summing over t = 0 to ∞, we conclude that the expected fidelity E[Ft(xi)] = E[∥µ∞(xi) -µ 0 (x i )∥ 2 ] ≤ √ 2C (N + 1)p i • (1 -ρ) , (B.33) which completes the proof. □ B.2 Proofs of Theorems in Section 4 Theorem 4.1 (Arbitrarily slow convergence under large covariances) For any ε > 0 and any t with H t (p t ) > 0, there exists a family of conditional distributions q(y|x i ) (for example, with covariance matrices equal to σ 2 I and with σ chosen sufficiently large) such that the recursion in theorem 3.1 satisfies ∆ t := H t (p t ) -E[Ht+1(pt+1)|pt] < εH t (p t ). (4.2)\n\nIn other words, by choosing the image model to be sufficiently diffuse, the per-update reduction in diversity can be made arbitrarily small relative to the current diversity. Hence, the overall convergence can be made arbitrarily slow.\n\nProof. Recall that in theorem 3.1 the recursion is given by\n\nE[Ht+1(pt+1)|pt] = 1 - 1 N • H t (p t ) + 1 N • 1 - K i=1 E y∼rt [Z i (y) 2 ] , (B.34)\n\nwhere\n\nZ i (y) = p t (x i )q(y|x i ) K k=1 p t (x k )q(y|x k ) . (B.35) Defining ∆ t := H t (p t ) -E[Ht+1(pt+1)|pt] = 1 N • H t (p t ) -1 - K i=1 E y∼rt [Z i (y) 2 ] , (B.36)\n\nwe show that for any ε > 0 there exists a family of conditional distributions q(y|x i ) such that ∆ t < εH t (p t ). (B.37)\n\nIn the limiting scenario where the q(y|x i )'s are independent of i, we would have Ey∼r t [Z i (y) 2 ] = p t (x i ) 2 , so that\n\n1 - K i=1 E y∼rt [Z i (y) 2 ] = 1 - K i=1 p t (x i ) 2 = H t (p t ). (B.38)\n\nIn that case, ∆ t = 0. Now, consider choosing q(y|x i ) = N (y; µ i , σ 2 I), (B.39) and then taking σ arbitrarily large. In the limit as σ → ∞ the densities q(y|x i ) become almost flat (up to normalization) over y. Consequently, the ratio defining Z i (y) becomes nearly independent of y and approaches\n\nZ i (y) σ→∞ ----→ p t (x i ) K k=1 p t (x k ) = p t (x i ). (\n\nB.40) By changing the variable y → σy and applying the dominated convergence theorem, we obtain lim σ→∞ E y∼rt [Z i (y) 2 ] = p t (x i ) 2 . (B.41) Hence, lim σ→∞ 1 -K i=1 E y∼rt [Z i (y) 2 ] = H t (p t ). (B.42) Thus, for any δ > 0 (in particular, choose δ = N εH t (p t )) there exists σ 0 > 0 such that for all σ > σ 0 we have 1 -K i=1 E y∼rt [Z i (y) 2 ] -H t (p t ) < N εH t (p t ). (B.43) It then follows that ∆ t = 1 N • H t (p t ) -1 -K i=1 E y∼rt [Z i (y) 2 ] < εH t (p t ). (B.44) This completes the proof. □ Theorem 4.2 (Exponential convergence under the trainable image model) For any macro time step t, suppose that for every text x i and for every inner image-model update step s (with s = 0 corresponding to the start of macro time step t), there exists a constant 0 < ρ < 1 such that E tr Σ t,s (x i ) 1/2 p t (x i ), Σ t,0 (x i ) ≤ tr Σ t,0 (x i ) 1/2 • ρ s . (4.3) Suppose further that there exists a constant Γ > 0 such that at every inner image-model update step s and for any two distinct texts x i and x j with p t (x i ) > 0 and p t (x j ) > 0, ∥µ t,s (x i ) -µ t,s (x j )∥ 2 ≥ Γ. (4.4) Then, for any ε > 0, if the number N t of image-model (inner) updates in macro time step t is sufficiently large, the text-model update satisfies\n\n∆ t := H t (p t ) -E H t+1 (p t+1 ) {p t (x k ), Σ t,0 (x k ) : 1 ≤ k ≤ K} > 1 -ε N • H t (p t ).\n\n(4.5)\n\nProof. We assume, without loss of generality, that p t > 0, or equivalently, we restrict our analysis to texts with nonzero probabilities. By theorem 3.1, the diversity reduction in the text model from macro time step t to (t + 1) is given by\n\n∆ t = H t (p t ) -E H t+1 (p t+1 ) {p t (x k ), Σ t,0 (x k ) : 1 ≤ k ≤ K} = 1 N K i=1 E y∼rt Z i (y) 2 - K i=1 p t (x i ) 2 , (\n\nB.45) where the expectation Ey∼r t [•] is with respect to the mixture density r t (y) = K k=1 p t (x k )q t,Nt (y|x k ), (B.46) with q t,Nt (y|x i ) = N (y; µ t,Nt (x i ), Σ t,Nt (x i )) (B.47) denoting the image model after N t inner updates. For brevity, hereafter we write q t (y|x i ) in place of q t,Nt (y|x i ). For each text x i , we lower-bound Ey∼r t [Z i (y) 2 ] by restricting the integration to a high-probability region of q t (y|x i ).",
+      "word_count": 1875
+    },
+    {
+      "index": 43,
+      "title": "Define the Mahalanobis ball",
+      "kind": "body",
+      "text": "B M (µ t (x i ), r 0 ) := y ∈ R d : (y -µ t (x i )) ⊤ Σ t (x i ) -1 (y -µ t (x i )) ≤ r 2 0 . (B.48)\n\nThen for any prescribed ε ′ ∈ (0, 1) there exists r 0 > 0 (which can be independent of ε\n\n′ ) such that B M (µt(xi),r0) q t (y|x i )dy ≥ 1 -ε ′ . (B.49)\n\nNow, for y ∈ B M (µ t (x i ), r 0 ), by definition of the Mahalanobis ball we have\n\n∥y -µ t (x i )∥ 2 ≤ r 0 • λ max Σ t (x i )\n\n1/2 . (B.50) By the assumption on the exponential decay of the covariance, if N t is large enough then E tr Σ t (x i ) 1/2 {p t (x k ), Σ t,0 (x k )} ≤ tr(Σ t,0 (x i ) 1/2 ) • ρ Nt . (B.51) Thus, for sufficiently large N t , we may ensure that ∥y -µ t (x i )∥ 2 ≤ Γ 2 (B.52) with probability approaching 1 as N t increases. We may absorb such a high probability event into the choice of ε ′ for brevity. Because of the mean separation assumption, for any x j with j ̸ = i we have ∥µ t (x j ) -µ t (x i )∥ 2 ≥ Γ. (B.53) Thus, for all y ∈ B M (µ t (x i ), r 0 ) it follows by the triangle inequality that ∥y -µ t (x j )∥ 2 ≥ ∥µ t (x j ) -µ t (x i )∥ 2 -∥y -µ t (x i )∥ 2 ≥ Γ -Γ 2 = Γ 2 . (B.54) From standard Gaussian density properties, one can show that for all large enough N t , q t (y|x j ) ≤ ε ′ • q t (y|x i ), for all j ̸ = i and for all y ∈ B M (µ t (x i ), r 0 ). (B.55) Now, recall the definition of the posterior probability\n\nZ i (y) = p t (x i )q t (y|x i ) K k=1 p t (x k )q t (y|x k ) . (B.56)\n\nUsing the above bound for j ̸ = i, for any y ∈ B M (µ t (x i ), r 0 ) we have\n\nk̸ =i p t (x k )q t (y|x k ) ≤ ε ′ k̸ =i p t (x k )q t (y|x i ) = ε ′ (1 -p t (x i ))q t (y|x i ). (B.57) Thus, Z i (y) ≥ p t (x i )q t (y|x i ) p t (x i )q t (y|x i ) + ε ′ (1 -p t (x i ))q t (y|x i ) = p t (x i ) p t (x i ) + ε ′ (1 -p t (x i )) . (B.58) Define L p t (x i ) := p t (x i ) p t (x i ) + ε ′ (1 -p t (x i ))\n\n. (B.59)\n\nNote that for each i and for y ∈ B M (µ t (x i ), r 0 ) we have\n\nZ i (y) 2 ≥ L p t (x i ) 2 . (B.60) Now, since the mixture density is defined by r t (y) = K k=1 p t (x k )q t (y|x k ). (B.61) Taking the expectation of Z i (y) 2 with respect to y ∼ r t gives E y∼rt [Z i (y) 2 ] = K k=1 p t (x k ) • E qt(y|x k ) [Z i (y) 2 ]. (B.62) Since the bound Z i (y) 2 ≥ L p t (x i ) 2 holds only when y ∈ B M (µ t (x i ), r 0 ), we restrict to this region. By construction, the Mahalanobis ball B M (µ t (x i ), r 0 ) has probability at least 1 -ε ′ under q t (y|x i ). Hence, E qt(y|xi) [Z i (y) 2 ] ≥ (1 -ε ′ )L p t (x i ) 2 . (B.63) Since the mixture density r t (y) assigns weight p t (x i ) to the component q t (y|x i ), we deduce that E y∼rt [Z i (y) 2 ] ≥ p t (x i ) • (1 -ε ′ ) • L p t (x i ) 2 . (B.64) Finally, summing this bound over all i yields K i=1 E y∼rt Z i (y) 2 ≥ K i=1 p t (x i ) • (1 -ε ′ ) • L p t (x i ) 2 . (B.65) One may verify that there exists a constant β > 0 (which depends on ε ′ and the range of p t (x i ) values) such that p t (x i ) • (1 -ε ′ ) • L p t (x i ) 2 ≥ p t (x i ) 2 + βp t (x i ) 1 -p t (x i ) . (B.66) Summing over i and using the identity K i=1 p t (x i ) • 1 -p t (x i ) = 1 -K i=1 p t (x i ) 2 = H t (p t ), (B.67) we obtain K i=1 E y∼rt [Z i (y) 2 ] ≥ K i=1 p t (x i ) 2 + βH t (p t ). (B.68) Substituting this back into the expression for ∆ t , ∆ t ≥ β N H t (p t ). (B.69) In our argument, the constant β depends on ε ′ and on the behavior of the function L(p) = p/(p + ε ′ (1 -p)) for p ∈ (0, 1]. In particular, if the minimum of p t (x i ) is bounded away from 0, then β can be taken as a positive constant independent of i. For large N t (i.e. when the covariances are sufficiently small), one can make β arbitrarily close to 1. This leads to the desired conclusion that ∆ t > 1 -ε N • H t (p t ) (B.70) for any prescribed ε > 0. □ B.3 Proofs of Theorems in Section 5 Theorem 5.1 (Differential convergence rate of the image model) Assume that N ≫ d. For a fixed macro time step t, let the probabilities of the text distribution be p = (p 1 , p 2 , . . . , p K ) > 0. Then the convergence rate ρ derived in theorem 3.3 is approximately 1 -d + 1 8(N + 1)p i . (5.1) Proof. For a fixed text x i , from the proof of theorem 3.3, we know that ρ = E Ni∼Binomial(N,pi) [ρ(N i )], (B.71) where ρ(N i ) is the largest eigenvalue of E (W /(N i -1)) 1/2 . Here W ∼ Wishart d (I, N i -1) is a d-dimensional Wishart random matrix with (N i -1) degrees of freedom and identity scale matrix. For N i ≤ 1, ρ(N i ) is set to 1. We now compute ρ(N i ) for N i ≥ 2. The Wishart distribution with scale matrix I d is invariant under orthogonal conjugation, implying that any function f (W ) that commutes with orthogonal transformations yields an expected value proportional to the identity matrix. Specifically, since the matrix square root satisfies (QW Q ⊤ ) 1/2 = QW 1/2 Q ⊤ for any orthogonal matrix Q, it follows that E[W 1/2 ] = αI d for some scalar α > 0. Since the square-root function is Fréchet differentiable on the cone of positive definite matrices, we can expand f (W ) = W 1/2 (B.72) around its mean (N i -1)I d . Writing W = (N i -1)I d + E, (B.73) with E = W -(N i -1)I d ( and E [E] = 0), the Taylor expansion up to second order is\n\nW 1/2 = (N i -1)I d + E 1/2 = N i -1I d + 1 2 √ N i -1 E - 1 8(N i -1) 3/2 E 2 + R, (\n\nB.74) where R is the remainder term that involves the third Fréchet derivative. Taking expectations and noting that E[E] = 0 we obtain E[W 1/2 ] = N i -1I d -1 8(N i -1) 3/2 E[E 2 ] + E[R]. (B.75) Because the Wishart distribution is invariant under orthogonal conjugation, the second moment E[E 2 ] is proportional to the identity. In fact, one can show that [15] E[E 2 ] = (d + 1)(N i -1)I d . (B.76) Substituting this into the expansion gives E[W 1/2 ] = N i -1I d -d + 1 8 √ N i -1 I d + E[R]. (B.77) Dividing by √ N i -1 we obtain E W N i -1 1/2 = I d -d + 1 8(N i -1) I d + E[R] √ N i -1 . (B.78) Since the matrix on the left is a scalar multiple of the identity, its largest eigenvalue is exactly the scalar factor in front of I d . That is, ρ(N i ) = 1 -d + 1 8(N i -1) + ε, (B.79) where the error ε arises from the remainder term. We then derive the bound of ε. The third derivative of f (x) = √ x is f ′′′ (x) = 3 8 x -5/2 . (B.80) In the matrix case, the third Fréchet derivative D 3 √ A has norm of order O (N i -1) -5/2 , while ∥E∥ is of magnitude O (N i -1) 1/2 . An integral form for the remainder is given by R = 1 0 (1 -t) 2 2 D 3 (N i -1)I d + tE[E, E, E]dt. (B.81) Taking norms, we obtain ∥R∥ 2 ≤ 1 6 sup t∈[0,1] D 3 (N i -1)I d + tE] op • ∥E∥ 3 2 . (B.82) Since D 3 (N i -1)I d + tE] op is O (N i -1) -5/2 and ∥E∥ 3 2 is O (N i -1) 3/2 , we deduce that ∥R∥ √ N i -1 = O 1 (N i -1) 3/2 . (B.83) Thus, there exists a constant K > 0 (depending on d) such that ρ(N i ) -1 -d + 1 8(N i -1) ≤ K (N i -1) 3/2 . (B.84) In summary, for N i ≥ 2, we have shown via the Taylor expansion that ρ(N i ) = 1 -d + 1 8(N i -1) + O 1 (N i -1) 3/2 . (B.85) Finally, we have that\n\nρ = E Ni∼Binomial(N,pi) [ρ(N i )] = N Ni=0 ρ(N i ) N N i p Ni i (1 -p i ) N -Ni = N Ni=0 1 - d + 1 8(N i -1) N N i p Ni i (1 -p i ) N -Ni + O 1 (N -1) 3/2 ≈ 1 - d\n\n+ 1 8(N + 1)p i , (B.86) which completes the proof. □ Theorem 5.2 (Matthew effect of image model diversity under text model collapse) Assume that the text model diversity given by (2.8) satisfies H t (p t ) = ε, and that the image model convergence rates {ρ(x i ) : 1 ≤ i ≤ K} are given by theorem 5.1. Without loss of generality, denote the dominant and the rarest texts by x 1 = arg max 1≤i≤K p t (x i ), and x K = arg min 1≤i≤K p t (x i ). (5.2) Then, one has ρ(x 1 ) ρ(x K ) ≥ max (d + 1)(K -1) 8(N + 1) • ε -1 , 1 . (5.3) Proof. By the assumed convergence rate in theorem 5.1, we have for each x i , ρ(x i ) ≈ 1 -c • p t (x i ) -1 , (B.87)\n\nwhere we set c := (d + 1)/(8(N + 1)). Hence, the ratio of convergence for the dominant text x 1 and the rarest text\n\nx K is ρ(x 1 ) ρ(x K ) = 1 -c • p t (x 1 ) -1 1 -c • p t (x K ) -1 ≥ 1 + c • p t (x K ) -1 -p t (x 1 ) -1 , (B.88)\n\nwhich can be shown via a first-order Taylor expansion. We now recast and relax the optimization problem as\n\nmin p t (x K ) -1 -p t (x 1 ) -1 , s.t. p t (x 1 ) 2 + • • • + p t (x K ) 2 ≤ 1 -ε, p t (x 1 ) + • • • + p t (x K ) = 1, p t (x 1 ) ≥ • • • ≥ p t (x K ) > 0. (B.89)\n\nBy convexity of the square function, for fixed p t (x 1 ) the sum K i=2 p t (x i ) 2 is minimized (and hence the gap between the reciprocal of the smallest and the largest probabilities is maximized) when the remaining (K -1) probabilities are equal. Thus, set\n\np t (x 1 ) = 1 -δ, p t (x 2 ) = • • • = p t (x K ) = δ K -1 , (B.90)\n\nwith δ ∈ (0, 1) given by the solution to\n\n(1 -δ) 2 + (K -1) • δ K -1 2 = (1 -δ) 2 + δ 2 K -1 = 1 -ε. (B.91)\n\nThis quadratic equation in δ has solution\n\nδ = K -1 K • 1 -1 - Kε K -1 , (B.92)\n\nwhere we take the minus sign in the quadratic formula so that δ ∈ (0, 1). With this choice we have\n\np t (x 1 ) -1 = 1 1 -δ , p t (x K ) -1 = K -1 δ . (B.93) Thus, p t (x K ) -1 -p t (x 1 ) -1 = K -1 δ - 1 1 -δ ≥ K -1 δ -1 = K 1 -1 -Kε/(K -1) -1 ≥ K -1 ε -1. (B.94)\n\nConsidering that c is positive and typically small compared to 1, the additive \"-1\" term is negligible when ε is small. In any event, one then obtains the desired inequality\n\nρ(x 1 ) ρ(x K ) ≥ 1 + c • K -1 ε -1 ≥ max (d + 1)(K -1) 8(N + 1) • ε -1 , 1 . (B.95)\n\nThis completes the proof. □ Proof. For a fixed text x i , condition on mean vector µ t (x i ), covariance matrix Σ t (x i ), and the number N i of training samples. Denote by S t (x i ) (resp. S user (x i )) the sample covariance computed from the training samples (resp. user-content images), and by m t (x i ) (resp. m user (x i )) the sample mean computed from the training samples (resp. user-content images). Then the combined sample covariance after image injection is given by\n\nΣ t+1 (x i ) = N i -1 N i + N 0 -1 S t (x i ) + N 0 -1 N i + N 0 -1 S user (x i ) + N i N 0 (N i + N 0 )(N i + N 0 -1) m t (x i ) -m user (x i ) m t (x i ) -m user (x i ) ⊤ . (B.106)\n\nSince the matrices S t (x i ) and m t (x i ) -m user (x i ) m t (x i ) -m user (x i ) ⊤ (B.107) are positive semidefinite, we have\n\nΣ t+1 (x i ) ⪰ N 0 -1 N i + N 0 -1 S user (x i ). (B.108)\n\nMoreover, since N i ≤ N , it follows that N 0 -1\n\nN i + N 0 -2 ≥ N 0 -1 N + N 0 -1 , (B.109) so that Σ t+1 (x i ) ⪰ N 0 -1 N + N 0 -1 S user (x i ).\n\n(B.110)\n\nBecause the matrix square root is operator monotone, applying it to both sides yields\n\nΣ t+1 (x i ) 1/2 ⪰ N 0 -1 N + N 0 -1 S user (x i ) 1/2 . (B.111)\n\nTaking the expectation (using the law of total expectation) gives\n\nE[Σt+1(xi) 1/2 ] ⪰ N 0 -1 N + N 0 -1 E[Suser(xi) 1/2 ]. (B.112)\n\nBy definition of the user sample covariance, we can write\n\nS user (x i ) 1/2 = 1 N 0 -1 • Σ user (x i ) 1/2 • W 1/2 • Σ user (x i )\n\n1/2 , (B.113) where W ∼ Wishart d (I, N 0 -1) is a d-dimensional Wishart matrix with (N 0 -1) degrees of freedom and identity scale matrix. Taking expectations and using the orthogonal conjugation invariance of the Wishart distribution, we have E[W 1/2 ] = αI d , (B.114) which implies E[Suser(xi) 1/2 ] = α N 0 -1 Σ user (x i ) 1/2 . (B.115) Thus,\n\nE[Σt+1(xi) 1/2 ] ⪰ N 0 -1 N + N 0 -1 • α N 0 -1 Σ user (x i ) 1/2 . (B.116)\n\nTaking the trace on both sides (and using the linearity of both the trace and the expectation), we obtain\n\nE tr Σ t+1 (x i ) 1/2 ≥ α • 1 (N 0 -1)(N + N 0 -1) • E tr Σ user (x i ) 1/2 , (B.117)\n\nwhich completes the proof. □ Theorem 6.3 (Boundedness of image model fidelity under image injection) Suppose that image injection procedure described in algorithm 3 is employed in the co-evolving training process. Assume that at each macro time step t, exactly N p i generated images are drawn from q t-1 (•|x i ) (instead of N i samples, where N i is a random variable), and that the user-content images satisfy µ user (x i ) = µ 0 (x i ), Σ user (x i ) = Σ 0 (x i ) (6.13) for all 1 ≤ i ≤ K. Suppose further that N 0 > 0. Then, as t → ∞, the expected image model fidelity F t (x i ) defined by (2.9) converges and is bounded by\n\nlim sup t→∞ E[Ft(xi)] ≤ 1 -(N p i ) -1 λ N p i λ -1 -1 -N p i λ • tr Σ 0 (x i ) 1/2 , (6.14)\n\nwhere λ = N p i /(N p i + N 0 ) < 1.\n\nProof. For a fixed text x i , recall that at macro time step t the following holds. First, N p i generated images are drawn from the distribution N µ t (x i ), Σ t (x i ) .\n\nTheir sample mean is m t (x i ) = µ t (x i ) + ε 1,t , (B.118) where, conditioned on the current parameters µ t (x i ) and Σ t (x i ), we have E[ε1,t|µt(xi), Σ t (x i )] = 0, Cov(ε 1,t |µ t (x i ), Σ t (x i )) = Σ t N p i . (B.119) Second, N 0 injected images are drawn from N µ 0 (x i ), Σ 0 (x i ) with sample mean µ t (x i ) = µ 0 (x i ) + ε 2,t , (B.120) where E[ε2,t] = 0, Cov(ε 2,t ) = Σ 0 (x i ) N 0 . (B.121) The updated mean is defined by µ t+1 = N p i m t (x i ) + N 0 µ t (x i ) N p i + N 0 . (B.122) Define the error vector by δ t (x i ) := µ t (x i ) -µ 0 (x i ), (B.123) and introduce the constants λ := N p i N p i + N 0 , 1 -λ = N 0 N p i + N 0 . (B.124) Then we can write µ t+1 (x i ) = λ(µ t (x i ) + ε 1,t ) + (1 -λ)(µ 0 (x i ) + ε 2,t ), δ t+1 (x i ) = µ t+1 (x i ) -µ 0 (x i ) = λ(µ t (x i ) -µ 0 (x i )) + λε 1,t + (1 -λ)ε 2,t = λδ t (x i ) + λε 1,t + (1 -λ)ε 2,t . (B.125) Taking the squared ℓ 2 norm and then the conditional expectation (with conditioning on µ t (x i ) and Σ t (x i )), we have E ∥δ t+1 (x i )∥ 2 2 µ t (x i ), Σ t (x i ) = λ 2 ∥δ t (x i )∥ 2 2 + λ 2 E ∥ε 1,t ∥ 2 2 µ t , Σ t + (1 -λ) 2 E[∥ε2,t∥ 2 2 ] = λ 2 ∥δ t (x i )∥ 2 2 + λ 2 N p i tr Σ t (x i ) + (1 -λ) 2 N 0 tr Σ 0 (x i ) . (B.126) Defining the expected covariance trace as S t (x i ) := E tr Σ t (x i ) , (B.127) the law of total expectation implies E[Ft+1(xi) 2 ] = λ 2 E[Ft(xi) 2 ] + λ 2 N p i S t (x i ) + (1 -λ) 2 N 0 S 0 (x i ). (B.128) Next, we analyze the covariance dynamics. Under formula (B.106), we have (again, conditioning on µ t (x i ) and Σ t (x i )):\n\nE tr(Σ t+1 ) µ t (x i ), Σ t (x i ) = λ tr(Σ t (x i )) + (1 -λ) tr(Σ 0 (x i )) + N p i N 0 (N p i + N 0 )(N p i + N 0 -1) ∥δ t (x i )∥ 2 2 .\n\nTaking total expectation yields\n\nS t+1 (x i ) = λS t (x i ) + (1 -λ) tr(Σ 0 (x i )) + N p i N 0 (N p i + N 0 )(N p i + N 0 -1) E[Ft(xi) 2 ].\n\nThus, the coupled recurrences for the expected fidelity and the expected covariance trace are\n\n       E[Ft+1(xi) 2 ] = λ 2 E[Ft(xi) 2 ] + λ 2 N p i S t (x i ) + (1 -λ) 2 N 0 S 0 (x i ), S t+1 (x i ) = λS t (x i ) + (1 -λ)S 0 (x i ) + N p i N 0 (N p i + N 0 )(N p i + N 0 -1) E[Ft(xi) 2 ].",
+      "word_count": 3898
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Self-consuming generative models go MAD",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard G Baraniuk"
+      ],
+      "raw_text": "Self-consuming generative models go MAD Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard G Baraniuk International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 2,
+      "title": "On the stability of iterative retraining of generative models on their own data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Quentin Bertrand",
+        "Joey Avishek",
+        "Alexandre Bose",
+        "Marco Duplessis",
+        "Gauthier Jiralerspong",
+        "Gidel"
+      ],
+      "raw_text": "On the stability of iterative retraining of generative models on their own data Quentin Bertrand Joey Avishek Alexandre Bose Marco Duplessis Gauthier Jiralerspong Gidel International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 3,
+      "title": "Nepotistically trained generative-AI models collapse",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Matyas Bohacek",
+        "Hany Farid"
+      ],
+      "raw_text": "Nepotistically trained generative-AI models collapse Matyas Bohacek Hany Farid arXiv:2311.12202 2023 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "Toward understanding the impact of generative ai on future generative ai",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Sina Alemohammad",
+        "Shashank Sonkar",
+        "Ahmed Imtiaz Humayun",
+        "Ali Siahkoohi",
+        "Richard Baraniuk"
+      ],
+      "raw_text": "Toward understanding the impact of generative ai on future generative ai Josue Casco-Rodriguez Lorenzo Luzi Sina Alemohammad Shashank Sonkar Ahmed Imtiaz Humayun Ali Siahkoohi Richard Baraniuk 2023 18 Interface Rice. Rice University Neuroengineering Initiative"
+    },
+    {
+      "index": 5,
+      "title": "Analyzing recursiveness in multimodal generative artificial intelligence: Stability or divergence? arXiv preprint",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Javier Conde",
+        "Tobias Cheung",
+        "Gonzalo Martínez",
+        "Pedro Reviriego",
+        "Rik Sarkar"
+      ],
+      "raw_text": "Javier Conde Tobias Cheung Gonzalo Martínez Pedro Reviriego Rik Sarkar arXiv:2409.16297 Analyzing recursiveness in multimodal generative artificial intelligence: Stability or divergence? arXiv preprint 2024"
+    },
+    {
+      "index": 6,
+      "title": "Flow matching in latent space",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Quan Dao",
+        "Hao Phung",
+        "Binh Nguyen",
+        "Anh Tran"
+      ],
+      "raw_text": "Quan Dao Hao Phung Binh Nguyen Anh Tran arXiv:2307.08698 Flow matching in latent space 2023 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "Model collapse demystified: The case of regression",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Julia Kempe"
+      ],
+      "raw_text": "Model collapse demystified: The case of regression Elvis Dohmatob Yunzhen Feng Julia Kempe arXiv:2402.07712 2024 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "A tale of tails: Model collapse as a change of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "A tale of tails: Model collapse as a change of scaling laws Elvis Dohmatob Yunzhen Feng Pu Yang Francois Charton Julia Kempe International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 9,
+      "title": "Beyond model collapse: Scaling up with synthesized data requires reinforcement",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yunzhen Feng",
+        "Elvis Dohmatob",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "Beyond model collapse: Scaling up with synthesized data requires reinforcement Yunzhen Feng Elvis Dohmatob Pu Yang Francois Charton Julia Kempe ICML 2024 Workshop on Theoretical Foundations of Foundation Models 2024"
+    },
+    {
+      "index": 10,
+      "title": "Self-consuming generative models with curated data provably optimize human preferences",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Damien Ferbach",
+        "Quentin Bertrand",
+        "Avishek",
+        "Joey Bose",
+        "Gauthier Gidel"
+      ],
+      "raw_text": "Self-consuming generative models with curated data provably optimize human preferences Damien Ferbach Quentin Bertrand Avishek Joey Bose Gauthier Gidel Advances in Neural Information Processing Systems 2024"
+    },
+    {
+      "index": 11,
+      "title": "Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Matthias Gerstgrasser",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Rafael Rafailov",
+        "Henry Sleight",
+        "John Hughes",
+        "Tomasz Korbak",
+        "Rajashree Agrawal"
+      ],
+      "raw_text": "Matthias Gerstgrasser Rylan Schaeffer Apratim Dey Rafael Rafailov Henry Sleight John Hughes Tomasz Korbak Rajashree Agrawal Dhruv Pai Andrey Gromov arXiv:2404.01413 Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data 2024 arXiv preprint"
+    },
+    {
+      "index": 12,
+      "title": "Self-correcting self-consuming loops for generative model training",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Nate Gillman",
+        "Michael Freeman",
+        "Daksh Aggarwal",
+        "Chia-Hong Hsu",
+        "Calvin Luo",
+        "Yonglong Tian",
+        "Chen Sun"
+      ],
+      "raw_text": "Self-correcting self-consuming loops for generative model training Nate Gillman Michael Freeman Daksh Aggarwal Chia-Hong Hsu Calvin Luo Yonglong Tian Chen Sun International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 13,
+      "title": "ChatGPT 'contamination': Estimating the prevalence of LLMs in the scholarly literature",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Andrew Gray"
+      ],
+      "raw_text": "ChatGPT 'contamination': Estimating the prevalence of LLMs in the scholarly literature Andrew Gray arXiv:2403.16887 2024 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "The curious decline of linguistic diversity: Training language models on synthetic text",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yanzhu Guo",
+        "Guokan Shang",
+        "Michalis Vazirgiannis",
+        "Chloé Clavel"
+      ],
+      "raw_text": "The curious decline of linguistic diversity: Training language models on synthetic text Yanzhu Guo Guokan Shang Michalis Vazirgiannis Chloé Clavel Findings of the Association for Computational Linguistics 2023"
+    },
+    {
+      "index": 15,
+      "title": "Matrix Variate Distributions",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "K Arjun",
+        "Gupta",
+        "Daya K Nagar"
+      ],
+      "raw_text": "Matrix Variate Distributions K Arjun Gupta Daya K Nagar 2018 Chapman and Hall/CRC New York"
+    },
+    {
+      "index": 16,
+      "title": "Martingale Limit Theory and Its Application",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "Peter Hall",
+        "Christopher C Heyde"
+      ],
+      "raw_text": "Peter Hall Christopher C Heyde Martingale Limit Theory and Its Application New York Academic Press 2014"
+    },
+    {
+      "index": 17,
+      "title": "Quantum Information",
+      "doi": "",
+      "year": "2007",
+      "authors": [
+        "Gregg Jaeger"
+      ],
+      "raw_text": "Quantum Information Gregg Jaeger 2007 Springer New York"
+    },
+    {
+      "index": 18,
+      "title": "Auto-encoding variational Bayes",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "P Diederik",
+        "Max Kingma",
+        "Welling"
+      ],
+      "raw_text": "Auto-encoding variational Bayes P Diederik Max Kingma Welling International Conference on Learning Representations 2014"
+    },
+    {
+      "index": 19,
+      "title": "Introduction to random matrices: Theory and practice",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Giacomo Livan",
+        "Marcel Novaes",
+        "Pierpaolo Vivo"
+      ],
+      "raw_text": "Introduction to random matrices: Theory and practice Giacomo Livan Marcel Novaes Pierpaolo Vivo Monograph Award 63 2018"
+    },
+    {
+      "index": 20,
+      "title": "Heat death of generative models in closed-loop learning",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Matteo Marchi",
+        "Stefano Soatto",
+        "Pratik Chaudhari",
+        "Paulo Tabuada"
+      ],
+      "raw_text": "Heat death of generative models in closed-loop learning Matteo Marchi Stefano Soatto Pratik Chaudhari Paulo Tabuada arXiv:2404.02325 2024 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Combining generative artificial intelligence (AI) and the internet: Heading towards evolution or degradation? arXiv preprint",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar arXiv:2303.01255 Combining generative artificial intelligence (AI) and the internet: Heading towards evolution or degradation? arXiv preprint 2023"
+    },
+    {
+      "index": 22,
+      "title": "Towards understanding the interplay of generative Artificial Intelligence and the Internet",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Gonzalo Martínez",
+        "Lauren Watson",
+        "Pedro Reviriego",
+        "Alberto José",
+        "Marc Hernández",
+        "Rik Juarez",
+        "Sarkar"
+      ],
+      "raw_text": "Towards understanding the interplay of generative Artificial Intelligence and the Internet Gonzalo Martínez Lauren Watson Pedro Reviriego Alberto José Marc Hernández Rik Juarez Sarkar International Workshop on Epistemic Uncertainty in Artificial Intelligence 2023"
+    },
+    {
+      "index": 23,
+      "title": "The EM Algorithm and Extensions",
+      "doi": "",
+      "year": "2008",
+      "authors": [
+        "J Geoffrey",
+        "Thriyambakam Mclachlan",
+        "Krishnan"
+      ],
+      "raw_text": "The EM Algorithm and Extensions J Geoffrey Thriyambakam Mclachlan Krishnan 2008 John Wiley & Sons New York"
+    },
+    {
+      "index": 24,
+      "title": "Feedback loops with language models drive in-context reward hacking",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Pan",
+        "Erik Jones",
+        "Meena Jagadeesan",
+        "Jacob Steinhardt"
+      ],
+      "raw_text": "Feedback loops with language models drive in-context reward hacking Alexander Pan Erik Jones Meena Jagadeesan Jacob Steinhardt International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 25,
+      "title": "AI and the problem of knowledge collapse",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "J Andrew",
+        "Peterson"
+      ],
+      "raw_text": "AI and the problem of knowledge collapse J Andrew Peterson 2025 AI & Society"
+    },
+    {
+      "index": 26,
+      "title": "Natural language instructions induce compositional generalization in networks of neurons",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Reidar Riveland",
+        "Alexandre Pouget"
+      ],
+      "raw_text": "Natural language instructions induce compositional generalization in networks of neurons Reidar Riveland Alexandre Pouget Nature Neuroscience 27 5 2024"
+    },
+    {
+      "index": 27,
+      "title": "High-resolution image synthesis with latent diffusion models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Robin Rombach",
+        "Andreas Blattmann",
+        "Dominik Lorenz",
+        "Patrick Esser",
+        "Björn Ommer"
+      ],
+      "raw_text": "High-resolution image synthesis with latent diffusion models Robin Rombach Andreas Blattmann Dominik Lorenz Patrick Esser Björn Ommer Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition the IEEE/CVF Conference on Computer Vision and Pattern Recognition 2022"
+    },
+    {
+      "index": 28,
+      "title": "AI models collapse when trained on recursively generated data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Nicolas Papernot",
+        "Ross Anderson",
+        "Yarin Gal"
+      ],
+      "raw_text": "AI models collapse when trained on recursively generated data Ilia Shumailov Zakhar Shumaylov Yiren Zhao Nicolas Papernot Ross Anderson Yarin Gal Nature 631 8022 2024"
+    },
+    {
+      "index": 29,
+      "title": "Rate of model collapse in recursive training",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ananda Theertha Suresh",
+        "Andrew Thangaraj",
+        "Aditya Nanda",
+        "Kishore Khandavally"
+      ],
+      "raw_text": "Ananda Theertha Suresh Andrew Thangaraj Aditya Nanda Kishore Khandavally arXiv:2412.17646 Rate of model collapse in recursive training 2024 arXiv preprint"
+    },
+    {
+      "index": 30,
+      "title": "Data feedback loops: Model-driven amplification of dataset biases",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Rohan Taori",
+        "Tatsunori Hashimoto"
+      ],
+      "raw_text": "Data feedback loops: Model-driven amplification of dataset biases Rohan Taori Tatsunori Hashimoto International Conference on Machine Learning 2023"
+    },
+    {
+      "index": 31,
+      "title": "Fairness feedback loops: Training on synthetic data amplifies bias",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sierra Wyllie",
+        "Ilia Shumailov",
+        "Nicolas Papernot"
+      ],
+      "raw_text": "Fairness feedback loops: Training on synthetic data amplifies bias Sierra Wyllie Ilia Shumailov Nicolas Papernot ACM Conference on Fairness, Accountability, and Transparency 2024"
+    }
+  ],
+  "section_count": 43,
+  "reference_count": 31,
+  "error": "",
+  "updated_at": "2026-04-12T03:11:33.374074+00:00"
+}

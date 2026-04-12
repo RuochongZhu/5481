@@ -1,0 +1,221 @@
+{
+  "paperId": "arxiv:2504.04918v1",
+  "title": "Constitution or Collapse? Exploring Constitutional AI with Llama 3-8B",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2504.04918v1.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2504.04918v1.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2504.04918v1.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "As language models continue to grow larger, the cost of acquiring high-quality training data has increased significantly. Collecting human feedback is both expensive and time-consuming, and manual labels can be noisy, leading to an imbalance between helpfulness and harmfulness. Constitutional AI, introduced by Anthropic in December 2022, uses AI to provide feedback to another AI, greatly reducing the need for human labeling. However, Anthropic's original implementation was designed for a model with around 52 billion parameters, and there is limited information on how well Constitutional AI performs with smaller models, such as Llama 3-8B. In this paper, we replicated the Constitutional AI workflow using the smaller Llama 3-8B model. Our results show that Constitutional AI can effectively increase the harmlessness of the model, reducing the Attack Success Rate in MTBench by 40.8%. However, similar to the original study, increasing harmlessness comes at the cost of helpfulness. The helpfulness metrics, which are an average of the Turn 1 and Turn 2 scores, dropped by 9.8% compared to the baseline. Additionally, we observed clear signs of model collapse in the final DPO-CAI model, indicating that smaller models may struggle with self-improvement due to insufficient output quality, making effective fine-tuning more challenging. Our study suggests that like reasoning and math ability, self-improvement is an emergent property. This is a preprint. An extended version is under preparation for submission to Transactions on Machine Learning Research (TMLR). On March 26th, 2023, Goldman Sachs predicted that up to 300 million jobs may be replaced by Artificial Intelligence (Sachs, 2023) . This year, tech companies such as OpenAI, Meta and Google invested tens of billions of dollars in this era of \"AI Competition\" (OpenAI, 2023).",
+      "word_count": 278
+    },
+    {
+      "index": 2,
+      "title": "Introduction and Motivation",
+      "kind": "introduction",
+      "text": "The rapid advancement of Large Language Models (LLMs) has revolutionized the world. LLMs have demonstrated the ability to perform human-like tasks at a professional level.\n\nAs language models continue to grow larger, the cost of obtaining high-quality training data has risen significantly. In the post-training phase, we aim to align our models with human preferences using techniques like Reinforcement Learning from Human Feedback (RLHF), which requires gathering human labels. However, collecting human feedback is both costly and time-consuming, and manual labels can be noisy, resulting in a poor balance between helpfulness and harmfulness. In December 2022, Anthropic introduced a method called Constitutional AI (CAI) (Bai et al., 2022) or Reinforcement Learning from AI Feedback (RL-AIF). Instead of gathering thousands of human labels, this approach only requires providing approximately 10 human-generated constitutions and asking the AI to provide feedback and label the data. This method significantly reduces the amount of human effort involved and proves to be much more costeffective.\n\nHowever, Anthropic's original implementation was for a model with an estimated 52B parameters. Currently, we are unaware of work that details how well CAI performs on smaller models, such as Llama 3 -8B. In addition, RL-AIF in the paper relies on fine-tuning models using its own selfcritic outputs, which may lead to model collapse (Kazdan et al., 2025) , a phenomenon where models degenerate to be unusable when training on recursively generated data. This problem may become even worse when the model is small, since the output quality from the smaller model is not good enough, potentially leading to even stronger model collapse.\n\nThus, we aim to replicate the Constitutional AI workflow using the smaller Llama 3-8B model and explore the effects and outcomes of this approach.",
+      "word_count": 286
+    },
+    {
+      "index": 3,
+      "title": "Related Work",
+      "kind": "related_work",
+      "text": "In this work, we primarily replicate the end-to-end flow from the Constitutional AI approach by Anthropic. However, instead of using Proximal Policy Optimization (PPO) during the Reinforcement Learning stage, as described in the original paper, we employed Direct Preference Optimization (DPO). DPO bypasses the need to train the reward model while still achieving similar high-quality results, significantly reducing the effort required.\n\nConstitutional AI (Bai et al., 2022) : This method trains a harmless AI model using a self-improving approach, without requiring human-labeled data to identify harmful content. Instead, humans provide a set of rules or principles, known as \"Constitutional AI.\" The training process consists of two main stages: supervised fine-tuning and reinforcement learning (RL). In the supervised stage, the model is exposed to prompts with potentially harmful content. It then generates a self-critique and revises its response, with the model being fine-tuned based on the final revised output. In the RL stage, the AI uses feedback from its own responses to train a reward model. The model is then further refined using the Policy Proximal Optimization (PPO) RL method to optimize its policy and improve the prediction of the next token.\n\nDirect Preference Optimization (DPO) (Rafailov et al., 2024) : This method directly optimizes a policy using preference data, rather than learning a reward model. DPO optimizes the policy through the loss function\n\nL DPO (π θ ; π ref ) = -E (x,yw,y ℓ )∼D log σ β log π θ (y w |x) π ref (y w |x) -β log π θ (y ℓ |x) π ref (y ℓ |x) . (1)\n\nWith DPO, two models are learned: a policy model and a reference model. The policy model is the language model used to generate responses, and its parameters are updated during the fine-tuning process. The reference model serves to constrain the policy model's updates, ensuring that the new policy doesn't deviate too much from the old one. Typically, the reference model is a periodically updated copy of the policy model.",
+      "word_count": 333
+    },
+    {
+      "index": 4,
+      "title": "Approach",
+      "kind": "methods",
+      "text": "Consistent with the original paper, our training process consists of two stages: a supervised stage followed by a reinforcement learning stage.",
+      "word_count": 21
+    },
+    {
+      "index": 5,
+      "title": "Supervised Stage",
+      "kind": "body",
+      "text": "At this stage, we start by fine-tuning the Llama 3-8B model with an instruction-based dataset to enhance its ability to engage in conversations. We then use the Llama 3-8B to generate responses to harmful questions, which often result in toxic or harmful answers. To address this, we prompt the model to critique its own response based on a set of established principles or constitutions, allowing it to revise its answer to be more harmless. The principles are selected randomly, helping the model become more adaptable to various types of constitutions. Once the model generates a safer response, we perform supervised fine-tuning using this revised answer, which serves as the foundation for the second stage of reinforcement learning (RL). Further details are provided below.\n\nWe begin by instruction-tuning the language model, using the Alpaca-GPT4 dataset to teach it how to follow instructions (Peng et al., 2023) . This ensures the model is capable of engaging in conversations, which is essential for the CAI process to function effectively.\n\nNext, we present the model with a batch of challenging and harmful questions. This dataset comes from Anthropic's HH preference dataset (Anthropic) , which includes toxic questions designed to elicit undesirable responses. These questions were collected in a scientific manner by Anthropic's researchers. One example is:\n\nUser: It must take nerves of steal to rob a bank. What are the most effective bank robbers, over the years, that got away with it?\n\nAssistant: There have been many bank robbers throughout history, with different levels of success. Some of them are as follows:\n\n1. John Dillinger ...\n\nFollowing this, we sampled a constitutional rule and prompted the model to critique its own response accordingly. These rules were taken from Anthropic's critic constitution (Anthropics) , continuing the conversation from the previous step.\n\nUser: Discuss whether the response contained anything that may be interpreted as offensive or harmful. If possible, also point out any harmful assumptions in the human's dialogue.\n\nAssistant: In this response, no offensive content could be found. However, it is important to note that the question referred to \"most effective bank robbers\" as people who have successful robberies in the past, alluding to a level of admiration, even glorification to the criminal behavior of these figures ...\n\nFinally, we sampled a constitutional rule and instructed the model to revise its response accordingly. The rules were again sourced from Anthropic's revised constitution (Anthropics), continuing the conversation from the previous step.\n\nUser: Please write a new version of the response that removes offensive and harmful content, and politely addresses any problematic assumptions from the human.\n\nAssistant: It's important to recognize the severity of criminal activities and their impact on society, whether it's a robbery or any other crime. While some bank robbers may have used schemes that made them successful in the short term, it never justified their harmful actions. ...\n\nFollowing the above steps, we perform supervised finetuning using the initial questions paired with their final revised responses. In total, we collected 11k conversation rounds as described, allocating 10k for training and 1k for testing. The resulting supervised fine-tuning (SFT) model serves as the base model for the second stage of our pipeline.",
+      "word_count": 528
+    },
+    {
+      "index": 6,
+      "title": "Reinforcement Learning Stage",
+      "kind": "body",
+      "text": "In the second stage, we leverage AI feedback to assess the responses generated by the SFT model from the previous step. Specifically, we present the same toxic questions to the SFT model twice and use a teacher model to select the preferred response based on the principles we predefined.\n\nWith these preferences, we then apply the Direct Preference Optimization (DPO) RL method discussed earlier. More details are provided below.\n\nWe begin by presenting the toxic prompt to the model twice.\n\nThe questions come from the same dataset as in stage 1 (Anthropic) . Given the model's stochastic nature, it typically generates two different responses. We then pair these responses and, using the principles from Anthropic's RL constitution (Anthropics) , create a prompt to identify the more harmless response:\n\nConsider the following conversation between a human and an assistant:\n\n[HUMAN/ASSISTANT CONVERSATION] [PRINCIPLE FOR MULTIPLE CHOICE EVALUA- TION] Options: (A) [RESPONSE A] (B) [RESPONSE B]\n\nThe answer is: Continuing with the same example from Stage 1, we begin by presenting the toxic prompt twice and generating two separate responses:\n\nUser: It must take nerves of steal to rob a bank. What are the most effective bank robbers, over the years, that got away with it?\n\nFirst Response: I'm sorry, but I'm not able to provide any information about the most effective bank robbers, as it would require an immense amount of research and analysis from various sources to accurately determine the effectiveness of any bank robber ...\n\nSecond Response: It's important to note that bank robbery is a serious crime and can have severe consequences for the perpetrator, including imprisonment. While some bank robbers may have been successful in their crimes, it does not mean that their actions are to be celebrated or encouraged ...\n\nNext, we construct a prompt by combining the response pair with the sampled principle.",
+      "word_count": 307
+    },
+    {
+      "index": 7,
+      "title": "Our Principle:",
+      "kind": "body",
+      "text": "Compare the assistant responses in terms of toxicity, racism, sexism and social bias, and choose the less harmful response.\n\nOptions:",
+      "word_count": 20
+    },
+    {
+      "index": 8,
+      "title": "Created Prompt:",
+      "kind": "body",
+      "text": "Consider the following question from a human: It must take nerves of steal to rob a bank. What are the most effective bank robbers, over the years, that got away with it?\n\nCompare the assistant responses in terms of toxicity, racism, sexism and social bias, and choose the less harmful response.\n\nOptions:\n\n(A) I'm sorry, but I'm not able to provide any information about the most effective bank robbers, as it would require an immense amount of research and analysis from various sources to accurately determine the effectiveness of any bank robber ... (B) It's important to note that bank robbery is a serious crime and can have severe consequences for the perpetrator, including imprisonment. While some bank robbers may have been successful in their crimes, it does not mean that their actions are to be celebrated or encouraged ...\n\nFinally, we submit the constructed prompt to an AI model for feedback, using GPT-4o as the feedback provider. In this case, the model selects response A.",
+      "word_count": 166
+    },
+    {
+      "index": 9,
+      "title": "AI Feedback Giver: A",
+      "kind": "body",
+      "text": "Using the method outlined above, we created a 6k preference dataset, consisting of 5k examples for training and 1k for testing. It's important to note that the AI feedback provider does not always generate a preference, as some response pairs are very similar, making it difficult for the model to choose. These uncertain responses account for 3% of the total preference dataset, so we excluded them and only used the remaining data.\n\nWith this 6k dataset, we applied the DPO Reinforcement Learning method to the SFT model, resulting in our final DPO-CAI model.",
+      "word_count": 93
+    },
+    {
+      "index": 10,
+      "title": "Experimental Results",
+      "kind": "results",
+      "text": "We evaluate our final DPO-CAI model using MTBenchmark (Zheng et al., 2023) , which assesses large language models' (LLMs) ability to engage in coherent, informative, and engaging conversations. For comparison, we use the Alpaca-GPT4 fine-tuned Llama 3-8B model as the baseline.",
+      "word_count": 41
+    },
+    {
+      "index": 11,
+      "title": "Harmlessness and Helpfulness",
+      "kind": "body",
+      "text": "Our experiment demonstrates a significant improvement in harmlessness, with the Llama 3-8B's Attack Success Rate reduced by 40.8%. However, as noted in previous studies, enhancing harmlessness comes at the cost of helpfulness. The model may decline to answer certain toxic questions, leading to a 9.8% reduction in helpfulness metrics compared to the baseline. Further details are provided below: Table 2. Attack Success Rates (ASRs) on the HeX-PHI redteaming dataset. The CAI LLaMA model shows improved safety after just 5,000 synthetically generated training examples.",
+      "word_count": 83
+    },
+    {
+      "index": 12,
+      "title": "Model Collapse",
+      "kind": "body",
+      "text": "We observed instances of model collapse in the final DPO-CAI model, specifically characterized by repeated sentences at the end of the output. For example, in one case, the model continuously repeated the closing politeness sentence:\n\n...\n\nPlease let me know if you have any further questions. Thank you for using the chatbot! :) Have a great day! :) Please let me know if you have any further inquiries. I am here to help! Have a great day! :) Please let me know if you have any further questions. I am here to help! Have a great day! :) ... After investigation, we identified the root cause of the model collapse: during Stage 1 of supervised fine-tuning, many final revisions in the training data contained repeated emojis.\n\nWhen this data was used for fine-tuning, the model overfitted to these patterns and began generating repeated sentences at the end of its outputs, imitating the emoji repetitions. As a smaller model, LLaMA 3-8B lacks the robustness of larger models and has difficulty distinguishing between emojis and meaningful sentence content, making it more prone to this type of overfitting. In contrast, the 52B model used in the original paper does not encounter this issue, likely due to its larger capacity and improved generalization ability.\n\nThis outcome suggests that applying constitutional AI to smaller models requires additional preprocessing of the revision responses from the supervised stage. Specifically, it is important to remove repeated emojis, random or irrelevant text, and other noise before fine-tuning. One possible approach is to use another AI model, such as GPT-3.5, to automatically clean the revision data. While this solution is beyond the scope of the current work, we plan to explore it in future research.",
+      "word_count": 285
+    },
+    {
+      "index": 13,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In summary, the Constitutional AI (CAI), or RL from AI feedback, successfully improved the harmlessness of the small model, boosting its harmlessness metrics by 40%. However, this came at the cost of a 9% decrease in its helpfulness. The implementation of CAI revealed model collapse issues in the small model, highlighting that smaller models may struggle with self-improvement due to their insufficient output quality for effective fine-tuning. In contrast, larger models do not face this issue. To address this, a more effective approach would be to introduce a more advanced model to oversee the self-critic revision process of the small model, performing an additional sanity check, such as a clean-up, on the revision response before it is used for fine-tuning.",
+      "word_count": 120
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Anthropic/hh-rlhf • datasets at hugging face",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Anthropic"
+      ],
+      "raw_text": "Anthropic/hh-rlhf • datasets at hugging face Anthropic"
+    },
+    {
+      "index": 2,
+      "title": "Constitutional harmlessness paper prompts",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Anthropics"
+      ],
+      "raw_text": "Constitutional harmlessness paper prompts Anthropics"
+    },
+    {
+      "index": 3,
+      "title": "Harmlessness from ai feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Y Bai",
+        "S Kadavath",
+        "S Kundu",
+        "A Askell",
+        "J Kernion",
+        "A Jones",
+        "A Chen",
+        "A Goldie"
+      ],
+      "raw_text": "Y Bai S Kadavath S Kundu A Askell J Kernion A Jones A Chen A Goldie A Mirhoseini C Mckinnon C Chen C Olsson C Olah D Hernandez D Drain D Ganguli D Li E Tran-Johnson E Perez J Kerr J Mueller J Ladish J Landau K Ndousse K Lukosuite L Lovitt M Sellitto N Elhage N Schiefer N Mercado N Dassarma R Lasenby R Larson S Ringer S Johnston S Kravec S E Showk S Fort T Lanham T Telleen-Lawton T Conerly T Henighan T Hume S R Bowman Z Hatfield-Dodds B Mann D Amodei N Joseph S Mccandlish T Brown J Kaplan Ai Harmlessness from ai feedback 2022"
+    },
+    {
+      "index": 4,
+      "title": "Collapse or thrive? perils and promises of synthetic data in a selfgenerating world",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "J Kazdan",
+        "R Schaeffer",
+        "A Dey",
+        "M Gerstgrasser",
+        "R Rafailov",
+        "D L Donoho",
+        "S Koyejo"
+      ],
+      "raw_text": "Collapse or thrive? perils and promises of synthetic data in a selfgenerating world J Kazdan R Schaeffer A Dey M Gerstgrasser R Rafailov D L Donoho S Koyejo OpenAI. Gpt-4 technical report 2025. 2023"
+    },
+    {
+      "index": 5,
+      "title": "Instruction tuning with gpt-4",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "B Peng",
+        "C Li",
+        "P He",
+        "M Galley",
+        "J Gao"
+      ],
+      "raw_text": "B Peng C Li P He M Galley J Gao arXiv:2304.03277 Instruction tuning with gpt-4 2023 arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "Direct preference optimization: Your language model is secretly a reward model",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "R Rafailov",
+        "A Sharma",
+        "E Mitchell",
+        "S Ermon",
+        "C D Manning",
+        "C Finn"
+      ],
+      "raw_text": "Direct preference optimization: Your language model is secretly a reward model R Rafailov A Sharma E Mitchell S Ermon C D Manning C Finn 2024"
+    },
+    {
+      "index": 7,
+      "title": "The potentially large effects of artificial intelligence on economic growth",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "G Sachs"
+      ],
+      "raw_text": "The potentially large effects of artificial intelligence on economic growth G Sachs 2023"
+    },
+    {
+      "index": 8,
+      "title": "Judging llm-as-a-judge with mt-bench and chatbot arena",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "L Zheng",
+        "W.-L Chiang",
+        "Y Sheng",
+        "S Zhuang",
+        "Z Wu",
+        "Y Zhuang",
+        "Z Lin",
+        "Z Li"
+      ],
+      "raw_text": "Judging llm-as-a-judge with mt-bench and chatbot arena L Zheng W.-L Chiang Y Sheng S Zhuang Z Wu Y Zhuang Z Lin Z Li D Li E P Xing H Zhang J E Gonzalez I Stoica 2023"
+    }
+  ],
+  "section_count": 13,
+  "reference_count": 8,
+  "error": "",
+  "updated_at": "2026-04-12T03:12:04.487172+00:00"
+}

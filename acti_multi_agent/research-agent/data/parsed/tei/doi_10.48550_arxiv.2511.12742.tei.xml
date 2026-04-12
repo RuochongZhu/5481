@@ -1,0 +1,1188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Stabilizing Self-Consuming Diffusion Models with Latent Space Filtering</title>
+				<funder ref="#_hQ4vdmv #_CMDzmtx #_wJrChUh">
+					<orgName type="full">National Science Foundation</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-11-16">16 Nov 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Zhongteng</forename><surname>Cai</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">The Ohio State University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yaxuan</forename><surname>Wang</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="institution">University of California</orgName>
+								<address>
+									<settlement>Santa Cruz</settlement>
+								</address>
+							</affiliation>
+						</author>
+						<author role="corresp">
+							<persName><forename type="first">Yang</forename><surname>Liu</surname></persName>
+							<email>yangliu@ucsc.edu</email>
+							<affiliation key="aff1">
+								<orgName type="institution">University of California</orgName>
+								<address>
+									<settlement>Santa Cruz</settlement>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Xueru</forename><surname>Zhang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">The Ohio State University</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Stabilizing Self-Consuming Diffusion Models with Latent Space Filtering</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-11-16">16 Nov 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">3E8207AEE0F7241A722BD742A2E376A3</idno>
+					<idno type="arXiv">arXiv:2511.12742v1[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:11+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>As synthetic data proliferates across the Internet, it is often reused to train successive generations of generative models. This creates a "self-consuming loop" that can lead to training instability or model collapse. Common strategies to address the issue-such as accumulating historical training data or injecting fresh real data-either increase computational cost or require expensive human annotation. In this paper, we empirically analyze the latent space dynamics of self-consuming diffusion models and observe that the low-dimensional structure of latent representations extracted from synthetic data degrade over generations. Based on this insight, we propose Latent Space Filtering (LSF), a novel approach that mitigates model collapse by filtering out less realistic synthetic data from mixed datasets. Theoretically, we present a framework that connects latent space degradation to empirical observations. Experimentally, we show that LSF consistently outperforms existing baselines across multiple real-world datasets, effectively mitigating model collapse without increasing training cost or relying on human annotation.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Diffusion models have emerged as a leading class of generative models in computer vision, achieving state-of-the-art performance in image generation tasks <ref type="bibr" target="#b6">(Dhariwal and Nichol 2021)</ref>. By learning to reverse a noise-injection process, these models can synthesize high-quality samples <ref type="bibr" target="#b14">(Ho, Jain, and Abbeel 2020;</ref><ref type="bibr" target="#b29">Song and Ermon 2019)</ref>. Compared to earlier approaches such as variational autoencoders (VAEs) <ref type="bibr" target="#b4">(Chen et al. 2024)</ref> and generative adversarial networks (GANs) <ref type="bibr" target="#b12">(Goodfellow et al. 2020)</ref>, diffusion models offer greater training stability, improved sample fidelity <ref type="bibr" target="#b6">(Dhariwal and Nichol 2021)</ref>, and broader applicability across diverse domains.</p><p>Modern diffusion models are typically trained on largescale datasets scraped from the Internet. However, as synthetic data proliferates online, it inevitably becomes part of the training data for future generations of models, creating a "self-consuming training loop." Recent studies have shown that such self-consuming loops may lead to model collapse <ref type="bibr" target="#b26">(Shumailov et al. 2023;</ref><ref type="bibr" target="#b11">Gerstgrasser et al. 2024;</ref><ref type="bibr">Alemohammad et al. 2024a;</ref><ref type="bibr" target="#b27">Shumailov et al. 2024;</ref><ref type="bibr" target="#b33">Wei and Zhang 2025)</ref>, training instability <ref type="bibr" target="#b3">(Bertrand et al. 2024)</ref>, and potential bias amplification <ref type="bibr" target="#b30">(Taori and Hashimoto 2023;</ref><ref type="bibr" target="#b35">Wyllie, Shumailov, and Papernot 2024;</ref><ref type="bibr" target="#b36">Xie and Zhang 2024)</ref>. To mitigate these issues, several strategies have been proposed, including: (i) accumulating all historical (real and synthetic) samples into the training dataset <ref type="bibr" target="#b11">(Gerstgrasser et al. 2024;</ref><ref type="bibr">Wang et al. 2024b</ref>); (ii) injecting sufficient fresh real data during each generation cycle <ref type="bibr">(Alemohammad et al. 2024a;</ref><ref type="bibr" target="#b16">Kazdan et al. 2024;</ref><ref type="bibr" target="#b9">Fu et al. 2025</ref>); (iii) modifying the training process in each round-for example, by utilizing prior knowledge of the real distribution <ref type="bibr" target="#b12">(Gillman et al. 2024)</ref>, merging sequentially trained models <ref type="bibr">(Alemohammad et al. 2024b;</ref><ref type="bibr" target="#b38">Yuan et al. 2025)</ref>, or leveraging feedback on synthetic data <ref type="bibr" target="#b8">(Feng et al. 2025)</ref>. However, these approaches often incur substantial storage and computational costs, require expensive and reliable human annotations, or are limited to single-step retraining rather than the full multi-step self-consuming process.</p><p>In this work, we address the above limitations and propose an alternative strategy to mitigate model collapse without introducing additional storage overhead, training cost, or reliance on human annotations. Unlike existing works that study self-consuming generative models in input space, we shift the focus to latent space, aiming to understand the causes of model collapse through the lens of latent representations. The idea is to first investigate how the representations of model-generated data evolve in latent space across successive self-consuming training loops. Based on this insight, we develop a filtering mechanism that mitigates model collapse by identifying and removing less realistic data from the mixed training set at each round of the self-consuming process.</p><p>Specifically, we use diffusion models to extract latent representations for real and synthetic images sampled at each round of the self-consuming training loop <ref type="bibr" target="#b22">(Li et al. 2025)</ref>. For each generation, we compute Orthogonal Low-rank Embedding (OLE) scores <ref type="bibr" target="#b21">(Lezama et al. 2018</ref>) of the latent representations, which quantify the orthogonality of class-specific subspaces and reflect the underlying low-dimensional structure. Our key observation is that the low-dimensional structure of latent representations from synthetic images gradually degenerates as self-consuming training progresses, whereas real images tend to exhibit more orthogonal subspaces. Motivated by this observation, we introduce Latent Space Filtering (LSF), a method that identifies and filters synthetic images with degraded latent representations before they are used in further training. Specifically, we train a representation prob-ing classifier for real images based on their latent embeddings. The confidence score from this classifier serves as a proxy for how well a data sample aligns with the low-dimensional manifold of real data. Samples with low alignment are discarded, preventing them from introducing additional noise into the model's learned latent subspaces. In addition to the algorithmic development, we establish a theoretical foundation for the proposed method, which explains how the degeneration of low-dimensional structures correlates with changes in both the OLE scores and the probing classifier's confidence scores.</p><p>Our main contributions are summarized below. More related work is discussed in Appendix D. Conclusions and limitations are provided in Appendix E.</p><p>• In Section 2, we formalize the problem of studying selfconsuming diffusion models in latent space. To the best of our knowledge, this is the first work to investigate how the low-dimensional structure of latent representations evolves across the self-consuming training loop.</p><p>• In Section 3, we analyze how the low-dimensional structure of latent representations-measured by Orthogonal Low-rank Embedding (OLE) scores-evolves across successive generations of self-consuming diffusion models.</p><p>• Motivated by empirical observations, Section 4 proposes Latent Space Filtering (LSF), a practical approach that mitigates model collapse by filtering low-quality synthetic data based on subspace alignment, without requiring additional real data collection or increased training cost.</p><p>• We establish a theoretical framework to justify both empirical observations and the proposed method. This framework explains how the degeneration of low-dimensional structures correlates with changes in OLE scores (Theorem 1) and in the confidence scores of the probing classifier used to assess subspace alignment (Theorem 2).</p><p>• In Section 5, we extensively evaluate the proposed method across multiple real-world datasets 1 . The results demonstrate that LSF effectively mitigates model collapse and outperforms existing baselines, without the need for a growing training set or additional curated data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Problem formulation</head><p>Consider a platform that iteratively trains diffusion models using a sequence of training datasets. Let f (k) denote the diffusion model trained on dataset D (k) during the k-th round of the iterative retraining loop, and let D (k+1) be the synthetic dataset generated by f (k) . Without loss of generality, we assume the initial dataset D (0) used to train the first model f (0) consists of real data. We consider two variants of the self-consuming training loop <ref type="bibr">(Alemohammad et al. 2024a</ref>): 1. Pure synthetic loop: Only the synthetic data generated by the most recent model is used to train the next model, i.e., D (k) = D (k) , ∀k. 2. Accumulation loop: All previously used training data, including the initial real dataset D (0) and synthetic samples from earlier generations, are accumulated to train the 1 Source code available at <ref type="url" target="https://github.com/osu-srml/Latent-">https://github.com/osu-srml/Latent-</ref>Space-Filtering next model, i.e., D (k) := D</p><formula xml:id="formula_0">(k-1) ∪ D (k) = D (0) ∪ D (1) ∪ • • • ∪ D (k) , ∀k.</formula><p>In practice and the experiments presented in Section 5, we may apply additional processing steps to D (k) , such as resampling or filtering, before training f (k) . Background: Diffusion Model. We use Denoising Diffusion Probabilistic Models (DDPM) <ref type="bibr" target="#b14">(Ho, Jain, and Abbeel 2020)</ref> as an example to illustrate the training of f (k) in each round of the retraining loop, though our analysis and method are broadly applicable beyond this specific architecture.</p><p>Training a DDPM consists of two stages: a forward process that gradually adds noise to the data, and a reverse process that learns to remove the noise. In the forward process, Gaussian noise is iteratively added to a clean image x 0 ∼ q(x 0 ) over T steps, producing a sequence of increasingly noisy images {x 1 , . . . , x T }. The conditional distribution at each timestep is defined as: q(x t |x t-1 ) = N (x t ; 1 -β t x t-1 , β t I), where β t is a variance schedule. As T → ∞, the image x T approaches pure Gaussian noise. The reverse process learns to denoise ϵ 0 ∼ N (0, I) back to x 0 using a model ϵ θ trained to predict the noise at each step. Specifically, the model is optimized by minimizing the simplified Evidence Lower Bound (ELBO) objective: ∇ θ ∥ ϵ θ (x t , t) -ϵ 0 ∥ 2 . At generation time, denoising proceeds from x T ∼ N (0, I) to x 0 using the learned ϵ θ according to the following:</p><formula xml:id="formula_1">x t-1 = 1 √ α t x t - 1 -α t √ 1 -ᾱt ϵ θ (x t , t) + σ q (t)z, where α t = 1 -β t , ᾱt = t i=1 α i , z ∼ N (0, I), and σ q (t) = (1-αt)(1-ᾱt-1) 1-ᾱt</formula><p>. <ref type="bibr" target="#b29">Song and Ermon (2019)</ref> propose a related framework based on score matching, where a neural network is trained to approximate the score function s θ (x) ≈ ∇ x log q(x). Using Langevin dynamics <ref type="bibr" target="#b34">(Welling and Teh 2011)</ref>, one can then generate samples that follow the target distribution via the learned score function. This framework connects to DDPM through the following approximation: s θ (x t , t) ≈ -ϵ θ (xt,t) √ 1-ᾱt . In practice, diffusion models typically employ U-Net architectures (Ronneberger, Fischer, and Brox 2015), which encode features through a series of downsampling layers and reconstructs the image via upsampling. We extract latent representations from U-Net's bottleneck layer, which has proven effective for various downstream tasks such as controllable image editing <ref type="bibr" target="#b19">(Kwon, Jeong, and Uh 2023;</ref><ref type="bibr" target="#b22">Li et al. 2025)</ref>. Low-dimensional structure of latent representations under self-consuming loop. Existing research on selfconsuming generative models has primarily focused on the input space, while the impact on latent representations remains largely unexplored. Understanding how latent representations and their underlying low-dimensional structure evolve during self-consuming training may offer valuable insights for developing strategies to mitigate model collapse.</p><p>Specifically, for the k-th round of iterative retraining loop, let the denoising model of the diffusion model f (k) be denoted as ϵ</p><formula xml:id="formula_2">(k) θ (•) = d (k) • e (k) (•)</formula><p>, which is formed by an encoder e (k) and a decoder d (k) . Since e (0) is the encoder of the initial model f (0) trained solely on real data D (0) , we consider the output of e (0) as the latent representation of a data sample in this work. For a sample x (k) generated by f (k) at k-th round of self-consuming training loop, we denote the latent representation at denoising timestep t as h (k) t = e (0) (x (k) , t), following prior works on representation extraction via diffusion models <ref type="bibr" target="#b22">(Li et al. 2025)</ref>.</p><p>Objectives. In this work, we focus on self-consuming diffusion models and aim to leverage the low-dimensional structure of latent representations to better understand the causes of model collapse and develop effective mitigation strategies. Our goals are to: 1) examine how the low-dimensional structure of latent representations h (k) t evolves throughout the self-consuming training loop; and 2) based on these insights, develop a novel mechanism to mitigate model collapse by filtering out less realistic samples, which compared to prior methods, without incurring additional training costs or relying on human annotations.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Evolution of low-dimensional structure of latent representations</head><p>Empirical observations. For a batch of N images B (k) = {(x</p><formula xml:id="formula_3">(k) 1 , y (k) 1 ), . . . , (x (k) N , y<label>(k)</label></formula><p>N )} sampled from dataset D (k) at k-th round of self-consuming loop,<ref type="foot" target="#foot_0">foot_0</ref> the latent representations extracted using e (0) in matrix form are given by:</p><formula xml:id="formula_4">M (k) t = h (k) 1,t h (k) 2,t • • • h (k) N,t , where h (k) i,t = e (0) (x (k) i , t)<label>(1)</label></formula><p>Similarly, we define the class-specific latent representations M (k) c,t for all samples B (k) c = {(x, y) ∈ B (k) | y = c} belonging to class c ∈ C. Given (class-specific) latent representations M (k) t and {M (k) c,t } c∈C , we measure the lowdimensional structure and class separability using the Orthogonal Low-rank Embedding (OLE) criterion <ref type="bibr" target="#b21">(Lezama et al. 2018)</ref>, which captures the degree of orthogonality between class-specific subspaces and is defined as:</p><formula xml:id="formula_5">OLE (k) t := c∈C ∥M (k) c,t ∥ * -∥M (k) t ∥ * ,</formula><p>where ∥•∥ * is the nuclear norm (sum of the singular values). A lower OLE value indicates that the latent representations exhibit stronger intra-class low-rank structure and greater interclass orthogonality, thereby reflecting a more structured and separable latent space. The OLE criterion has been widely used in prior work to enhance feature discriminability in classification tasks <ref type="bibr" target="#b21">(Lezama et al. 2018;</ref><ref type="bibr" target="#b15">Huang, Qiu, and Sapiro 2025)</ref>. In our setting, increasing OLE values suggest a trend toward a degenerate latent space, where class-specific subspaces lose structure and become less distinguishable. We first consider a pure synthetic self-consuming loop and train diffusion models for 6 generations, with models fine-tuned on 1,000 images for 3 epochs in each generation. For each image, we assign a label using sparse subspace clustering by orthogonal matching pursuit (SSC-OMP) algorithm <ref type="bibr" target="#b37">(You, Robinson, and Vidal 2016)</ref>. We compute OLE values for 10 batches of real and synthetic data. The results for MNIST (LeCun, Cortes, and Burges 2010) and CelebA <ref type="bibr" target="#b23">(Liu et al. 2015)</ref> are shown in Figure <ref type="figure" target="#fig_0">1</ref>. Conditioned on generation, we observe that OLE initially decreases and then increases with the denoising timestep; this trend is consistent with recent findings that representation quality exhibits a unimodal trajectory <ref type="bibr" target="#b22">(Li et al. 2025)</ref>. Lower OLE values are associated with greater feature separability, higher representation quality, and improved performance on downstream tasks. More importantly, when conditioned on the same timestep, OLE values increase as the self-consuming generation progresses. This suggests that the latent representations become less structured and increasingly entangled over time.</p><p>The above observations are expected. Intuitively, latent features extracted by the diffusion model act as intermediaries that guide the generation of high-quality images. However, in self-consuming loops, synthetic data gradually deviates from the real data distribution. As a result, the learned lowdimensional structure diverges from the true data manifold, becoming less informative over time and ultimately leading to a decline in the quality of generated samples. Theoretical analysis. The formulation of OLE is motivated by geometric intuition, aiming to quantify how well classspecific feature subspaces are aligned or separated. Prior work has shown that OLE is always non-negative and equals zero when the subspaces are perfectly orthogonal <ref type="bibr" target="#b21">(Lezama et al. 2018)</ref>. However, the quantitative relationship between OLE and the degree of subspace orthogonality remains unexplored. In what follows, we address this gap by developing a theoretical framework that characterizes the connection between latent space degeneration and the dynamics of OLE. For clarity of presentation, we omit the diffusion timestep t and generation index k in the notations.</p><p>Given latent representation h i of data sample (x i , y i ) generated by encoder e (0) (Eqn. (1)), we assume data are from two classes C = {0, 1} and latent representations h i ∈ R d×1 for each class c ∈ {0, 1} are drawn from noisy low-rank Gaussian distributions. Mathematically, we model conditional distribution of h i | y i = c as zero-mean Gaussian N (0, Σ c ) with covariance Σ c = U c U ⊤ c + σ 2 I d . Here, U c ∈ R d×r is an orthonormal basis matrix representing the low-dimensional subspace of class c with rank r &lt; d, and σ 2 I d represents isotropic noise.</p><p>Let matrix M c ∈ R d×n be the class-specific latent representations for n samples from class c, with each column the representation of one sample. Let M = [M 0 M 1 ] ∈ R d×2n denote the concatenated matrix of a batch of samples from two classes. The OLE for this sample matrix becomes:</p><formula xml:id="formula_6">OLE(M 0 , M 1 ) = ∥M 0 ∥ * + ∥M 1 ∥ * -∥M ∥ * ,</formula><p>where ∥ • ∥ * denotes the nuclear norm. For any column unit vectors u i of U 0 and v j in U 1 , denote their angle as θ ij , i.e.,</p><formula xml:id="formula_7">u ⊤ i v j = cos θ ij , i, j ∈ [r]</formula><p>. Suppose that the cosine similarity of each pair of unit basis can be bounded by:</p><formula xml:id="formula_8">cos θ ≤ cos θ ij ≤ ℓ cos θ,</formula><p>where ℓ measures the range of pairwise cosine similarities, θ ∈ [0, π 2 ] is the largest pairwise angle. Theorem 1 below provides a lower bound on the expected value of OLE, characterized by the degree of orthogonality between subspaces. Theorem 1 (Lower bound of OLE). For all θ ∈ [0, π 2 ], when r &gt; 2n, the expected OLE satisfies the following:</p><formula xml:id="formula_9">E[OLE(M 0 , M 1 )] ≥ C 1 -C 2 • ϕ( θ), where ϕ( θ) := √ 2n • ℓ cos θ + 2n(2n -1) • 1 -cos θ , C 1 := 2γ(rn) -2 √ nγ(dn) - √ 2n • γ(2dn), C 2 := 2γ(rn), and γ(n) := √ 2 • Γ( n+1 2 ) Γ( n 2 )</formula><p>, with Γ(•) being Gamma function.</p><p>The proof of Theorem 1 is provided in Appendix A. This result offers a theoretical explanation for the empirical trend observed in Figure <ref type="figure" target="#fig_0">1</ref>, where OLE values increase across successive generations. More specifically, assuming that as the self-consuming process progresses, the quality of the generated data decreases and the learned latent subspaces become less orthogonal (i.e., θ between subspaces span(U 0 ) and span(U 1 ) decreases), Theorem 1 shows that as θ decreases, the lower bound on the expected OLE increases. Remark 1. Since ϕ(θ) in Theorem 1 is decreasing as θ decreases over [0, arccos 1 2n ], the lower bound of OLE increases as the subspaces U 0 , U 1 become less orthogonal. When n → ∞, we have arccos 1 2n → π 2 , indicating that the conclusion in Theorem 1 holds for most θ ∈ [0, π 2 ]. Mitigate model collapse through filtering. Previous studies have suggested that removing low-quality synthetic samples  from the training data can be more effective in stabilizing retraining than adding high-quality data <ref type="bibr" target="#b16">(Kazdan et al. 2024</ref>). However, identifying synthetic images directly within a mixture of real and synthetic data is challenging <ref type="bibr" target="#b5">(Corvi et al. 2023;</ref><ref type="bibr" target="#b8">Feng et al. 2025)</ref>. The observations in Figure <ref type="figure" target="#fig_0">1</ref> suggest a potential direction: Can synthetic images be identified and filtered based on the quality of their latent representations?</p><p>A straightforward idea is to compute the OLE score for each batch B (k) and discard those whose scores exceed a certain threshold. While this approach is intuitive, it becomes less effective in realistic scenarios where real and synthetic images are mixed within each batch. Unlike in our controlled experiments where each batch contained either only real or only synthetic data (as shown in Figure <ref type="figure" target="#fig_0">1</ref>), mixed batches dilute the signal that OLE captures.</p><p>To assess the feasibility of OLE-based filtering in such mixed scenarios, we combine the accumulated datasets D (0) , . . . , D (5) from the Accumulation Loop and compute the OLE score for each batch. Each image is tagged with the generation index from which it was sampled, allowing us to calculate the average generation number per batch. A lower average generation number indicates that the batch contains more samples from earlier stages of self-consuming training, which are less affected by model collapse and therefore more likely to be of higher quality. As shown in Figure <ref type="figure">2</ref>, there is a positive correlation between batch OLE scores and the average generation number. Since earlier generations contain more realistic samples, this correlation supports the hypothesis that lower OLE scores reflect higher-quality latent representations. However, the correlation is relatively weak, and filtering data batches based on OLE scores is not a reliable strategy-particularly when each batch contains a mix of real and synthetic images. Indeed, as shown in Figure <ref type="figure" target="#fig_3">4</ref>, OLE-based filtering does not yield significant improvement over random sampling in stabilizing self-consuming training. We thus introduce an alternative proxy of OLE scores with a better filtering algorithm, as detailed in Section 4.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Proposed method: latent space filtering</head><p>Section 3 shows that OLE scores computed over data batches cannot serve as a reliable criterion for filtering synthetic data, particularly when each batch contains a mix of real and synthetic samples. We therefore introduce an alternative representation-based filtering mechanism, which is related to OLE but more effective, as detailed below. Motivation. As shown in Figure <ref type="figure" target="#fig_0">1</ref>, OLE exhibits a U-shaped trend over diffusion timestep t when conditioned on generation number k, and increases with generation k when conditioned on timestep t. Interestingly, a similar U-shaped pattern was observed in <ref type="bibr" target="#b22">(Li et al. 2025)</ref>, which demonstrates that the representation quality of diffusion models during the denoising process follows a unimodal trajectory. We thus hypothesize that representation quality-measured by the accuracy of a probing classifier (a simple, often linear classifier applied to latent representations to assess their informativeness)-also reflects the underlying low-dimensional structure, similar to what is captured by OLE scores.</p><p>Following this idea, we propose a representation-based filtering approach. Assuming that a probing classifier trained on the latent representations of real images captures the underlying low-dimensional structure, we can then use the classifier's confidence scores to measure the degree of misalignment between a sample's representation and those of real data. Specifically, we first extract latent representations of real images using a well-trained diffusion model, then train a softmax regression model based on these representations. Let the output logit for class c be defined as o c (x) := w ⊤ c x + b c . Then, for an image x with label y, we compute its confidence score regarding the correct class by softmax function:</p><formula xml:id="formula_10">ξ(x, y) := exp{o y (x)} c∈C exp{o c (x)} .<label>(2)</label></formula><p>We hypothesize that images with higher confidence scores are more likely to resemble real data and can therefore serve as a reliable filtering criterion. To verify this hypothesis, we conduct experiments on the MNIST dataset, with results shown in Figure <ref type="figure" target="#fig_3">4</ref>. Figure <ref type="figure" target="#fig_3">4a</ref> presents box-and-whisker plots of confidence scores across different generations<ref type="foot" target="#foot_1">foot_1</ref> . The results reveal a clear correlation: images from later generations tend to have lower confidence scores. This suggests that confidence scores can serve as a more fine-grained filtering criterion compared to batch-level OLE scores. Furthermore, Figure <ref type="figure">3</ref> shows a positive correlation between low OLE scores and high average confidence scores across batches, suggesting that confidence scores can serve as a viable proxy for Algorithm 1: Latent Space Filtering Input: Pre-trained diffusion model f (0) , training budget N , self-consuming loop K.</p><p>1: Train a probing classifier with f (0) and real images D (0) 2: for k = 1 to K do 3:</p><p>Sample a new dataset D (k) from model f (k-1) .</p><p>4:</p><p>Construct a dataset D (k) according to the type of the self-consuming loop.</p><p>5:</p><p>Compute the confidence score ξ(x i , y i ) for each image (x i , y i ) ∈ D (k) by Eqn.</p><p>(2).</p><p>6:</p><p>Select top-N images with highest scores to construct a new set D (k) with training budget N .</p><p>7:</p><p>Train a new diffusion model f (k) using dataset D (k) . 8: end for 9: Output: f (K) OLE scores. Unlike OLE, which operates at the batch level, confidence scores are computed per image, allowing us to circumvent the previously mentioned issue of mixed real and synthetic samples within the same batch.</p><p>To evaluate the effectiveness of confidence-based filtering, we compare it with random sampling in Figures <ref type="figure" target="#fig_3">4b</ref> and <ref type="figure" target="#fig_3">4c</ref>. For each generation number k, we construct an accumulated dataset by concatenating the real dataset with a series of synthetic datasets D (1) , . . . , D (k) , where the size of these datasets increases from 1,000 to 5,000 images, as indicated in the figures. Using a pre-trained probing classifier, we score all images and select the top 1,000 with the highest confidence. Figure <ref type="figure" target="#fig_3">4b</ref> reports the average generation number of the filtered images: lower values indicate samples that are closer to the real distribution. Since real images play a more critical role in mitigating model collapse in self-consuming loops <ref type="bibr">(Alemohammad et al. 2024a;</ref><ref type="bibr" target="#b9">Fu et al. 2025</ref><ref type="bibr" target="#b10">Fu et al. , 2024))</ref>, Figure <ref type="figure" target="#fig_3">4c</ref> further reports the proportion of real images in the filtered set. The results demonstrate that filtering using the probing classifier yields both a lower average generation number and a higher fraction of real images compared to random sampling. Furthermore, as the size of the accumulated dataset increases, the filtering becomes more effective because the larger pool of real images results in the filtered fixed-size dataset containing more real images.</p><p>In Algorithm 1, we summarize the complete procedure for applying the proposed filtering method to self-consuming accumulation training loop. It is worth noting that access to real images is only required at the start of the self-consuming loops. Afterward, there is no need to distinguish real images from the synthetic dataset in the accumulated dataset. Additionally, even when images are unlabeled, labeling or captioning each image can be easier than detecting synthetic images or acquiring new data <ref type="bibr" target="#b25">(Sharifzadeh et al. 2024;</ref><ref type="bibr" target="#b24">Lu et al. 2023)</ref>. By retaining as many real and realistic synthetic images as possible in the filtered dataset, we aim to prevent model collapse while adhering to a fixed training budget. Theoretical analysis. Following the same setting as in Theorem 1, we next theoretically characterize the relation between confidence scores and lower-dimensional structure of latent <ref type="table">0 1 2 3 4 5</ref>  representations. For samples from two classes C = {0, 1}, let the log-likelihood ratio for a sample representation h be defined as g(h) = log Pr[h|y=1]  Pr <ref type="bibr">[h|y=0]</ref> . Then, the posterior probability Pr[y = 1 | h] assigned by the Bayes optimal classifier is given by ς(g(h)), where ς(•) denotes the Sigmoid function. We define the expected confidence score for class 1, under the distribution of class-1 samples, as:</p><formula xml:id="formula_11">ξ(θ) := E h|y=1∼N (0,Σ1) [ς(g(h))],</formula><p>where θ ∈ [0, π 2 ] is the angle between subspaces spanned by U 0 and U 1 . Similar to Theorem 1, the following theorem characterizes the relationship between the confidence score and the degree of orthogonality between subspaces. Theorem 2 (Upper bound of confidence score). The expected confidence score satisfies the following:</p><formula xml:id="formula_12">ξ(θ) ≤ 1 2σ 2 (σ 2 + 1) ς(r sin 2 θ),</formula><p>where r is the rank of U 0 and U 1 . The proof is provided in Appendix B. Note that the upper bound is monotonically increasing in θ. As θ → 0, the subspaces span(U 0 ) and span(U 1 ) become more aligned, making the two classes less distinguishable. Consequently, the upper bound of the expected confidence score decreases, reflecting the reduced separability between classes.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Experiments</head><p>Datasets. We evaluate our approach by training DDPM diffusion models (Ho, Jain, and Abbeel 2020) for conditional image synthesis <ref type="bibr">(Dhariwal and</ref>  <ref type="table">Nichol</ref>  Baselines. For each dataset, we first train a baseline model on the full dataset. We then iteratively fine-tune the model for five self-consuming generations. Our method, ACU-LSF, is compared with the following five baselines:</p><p>1. SYN: Each generation is trained purely on synthetic data generated by the previous model. 2. SYN-ADD (Alemohammad et al. 2024a): A hybrid setting where each generation's training data consists of 70% synthetic images and 30% newly added real images. The 30% proportion is chosen to approximate the average percentage of real images present in the accumulated datasets over five generations. 3. ACU (Gerstgrasser et al. 2024): Historical real and synthetic data are accumulated across generations, resulting in a linearly growing training set. A subset of real data is sampled for accumulation in each generation, matching the size of newly generated synthetic data. 4. ACUR (Kazdan et al. 2024): A fixed-size subset is randomly sampled from the accumulated dataset used in ACU. This setting evaluates the impact of maintaining a fixed training budget. 5. ACUR-SIMS (Alemohammad et al. 2024b): This method extrapolates the score function to enhance fidelity. At generation k, the score function used for sampling is:</p><formula xml:id="formula_13">s (k) θ (x t , t) = (1 + ω)s (k-1) θ (x t , t) -ω s (k) θ (x t , t),</formula><p>where s 1,000 images per generation). Training is conducted for three epochs per generation. After each generation, 10,000 images are sampled to evaluate three standard metrics: (i) Fréchet Inception Distance (FID) (Heusel et al. 2017) which quantifies the distance between real and synthetic image distributions. (ii) Precision (Kynkäänniemi et al. 2019) which measures how many synthetic samples fall on the real data manifold (fidelity). (iii) Recall (Kynkäänniemi et al. 2019) which measures how many real samples fall on the synthetic manifold (diversity). Note that lower FID and higher precision and recall values indicate better generative performance. Samples of synthetic images generated by self-consuming models are provided in Fig. 7 (Appendix C) to show the model quality.</p><p>Results. We primarily present results for MNIST and CelebA in Figure <ref type="figure" target="#fig_5">5</ref>, while additional results for CIFAR-10 are provided in Appendix C. As expected, performance under SYN deteriorates over generations due to model collapse. SYN-ADD partially mitigates collapse by introducing fresh real data. Prior work has shown that increasing the real-tosynthetic ratio improves performance <ref type="bibr" target="#b16">(Kazdan et al. 2024</ref>), but collecting fresh real data may not always be feasible.</p><p>Our goal is to demonstrate that effective filtering without requiring additional real data can offer comparable benefits. ACU maintains stable performance across generations, in line with previous observations <ref type="bibr" target="#b11">(Gerstgrasser et al. 2024)</ref>. By randomly sampling from the accumulated dataset, ACUR approximates the performance of ACU while adhering to a fixed training budget. As demonstrated in Figure <ref type="figure" target="#fig_3">4</ref>, our method ACU-LSF successfully removes recent synthetic images and retains more real images, resulting in a distribution that more closely aligns with the original real data. Consequently, ACU-LSF achieves comparable precision and recall, and a lower FID than other fixed-budget baselines. Besides, ACU retrains a diffusion model with 32 M parameters on 582 MB of CelebA data (5 K images at generation 5), and the cost increases with training budget and generations. In contrast, ACU-LSF trains a 65 K-parameter probing classifier on 109 MB of features once at the start, greatly reducing storage and computation.</p><p>In contrast, ACUR-SIMS and ACUR-SC perform less favorably, even when combined with accumulation. SIMS (Alemohammad et al. 2024b) was designed to improve fidelity within a single generation via extrapolation. However, over multiple generations, its score functions become unstable due to repeated extrapolation, potentially drifting further from the real data distribution. As a result, metrics fluctuate and performance deteriorates. ACUR-SC employs a self-correction mechanism by aligning synthetic samples with cluster centers of real images. While this exploits structural information from real data, it reduces sample diversity, leading to lower recall and higher FID despite moderate precision.</p><p>Overall, our results demonstrate that LSF based on latent representation quality is an effective alternative to adding real data or accumulation, offering a scalable and practical solution to mitigate model collapse in self-consuming training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Proof of Theorem 1</head><p>We first propose the following lemmas that will be used later.</p><formula xml:id="formula_14">Lemma 1. For matrix V ∈ R d×N which contains N d- dimensional unit vectors {v i }, d &gt; N , the nuclear norm of V is bounded by: ∥V ∥ * ≤ √ N • cos θ + N (N -1) • 1 -cos θ,<label>where</label></formula><formula xml:id="formula_15">cos θ = 1 N 2 N i=1 N j=1 cos θ ij = 1 N 2 N i=1 N j=1 v ⊤ i v j</formula><p>is the average cosine similarity between unit vectors.</p><p>Lemma 1 is proposed in <ref type="bibr" target="#b15">(Huang, Qiu, and Sapiro 2025)</ref> </p><formula xml:id="formula_16">as Theorem 4.1. Lemma 2. (Triangle inequality of nuclear norm) ∥A + B∥ * ≤ ∥A∥ * + ∥B∥ * . Lemma 3. ∥X∥ F ≤ ∥X∥ * ≤ √ r∥X∥ F , where r is the rank of X. Lemma 4. ∥AB∥ F ≤ ∥A∥ op ∥B∥ * , or symmetrically, ∥AB∥ F ≤ ∥A∥ * ∥B∥ op , where ∥ • ∥ op is the operator norm, i.e, the largest singular value.</formula><p>Lemma 4 is an instance of the Hölder's inequality for Schatten norms. Lemma 5. ∥X∥ op ≤ ∥X∥ F .</p><p>Lemma 6. For a matrix X ∈ R m×n , with each entry</p><formula xml:id="formula_17">X ij i.i.d. ∼ N (0, 1), then E(∥X∥ F ) = √ 2 • Γ( mn+1 2 ) Γ( mn 2 )</formula><p>, where Γ(•) is the Gamma function.</p><p>Proof. The Frobenius norm of the specified matrix follows Chi distribution with mn degrees of freedom, i.e.,</p><formula xml:id="formula_18">∥X∥ F = m i=1 n j=1 X 2 ij ∼ χ mn . Hence E(∥X∥ F ) = √ 2 • Γ( mn+1 2 ) Γ( mn</formula><p>2 ) We now describe the notations used in our theorem. We assume latent representations h i ∈ R d×1 for each class c ∈ {0, 1} are drawn from the union of two noisy lowrank Gaussian distributions. We model conditional distribution of</p><formula xml:id="formula_19">h i | y i = c as N (0, Σ c ) with covariance Σ c = U c U ⊤ c + σ 2 I d .</formula><p>Here, U c ∈ R d×r is an orthonormal basis matrix representing the low-dimensional subspace of class c with rank r &lt; d, and σ 2 I d represents isotropic noise. Hence we can denote h i = U c z + ε, with z ∼ N (0, I r ) and noise ε ∼ N (0, σ 2 I d ). Let matrix M c ∈ R d×n be the class-specific latent representations for n samples from class c, with each column the representation of one sample. Let M = [M 0 M 1 ] ∈ R d×2n denote the concatenated matrix of samples from both classes. The OLE for this sample matrix becomes:</p><formula xml:id="formula_20">OLE(M 0 , M 1 ) = ∥M 0 ∥ * + ∥M 1 ∥ * -∥M ∥ * ,</formula><p>where ∥ • ∥ * denotes the nuclear norm. For any column unit vectors u i of U 0 and v j in U 1 , denote their angle as θ ij , i.e.,</p><formula xml:id="formula_21">u ⊤ i v j = cos θ ij , i, j ∈ [r]</formula><p>. Suppose that the cosine similarity of each pair of unit basis can be bounded by: cos θ ≤ cos θ ij ≤ ℓ cos θ, where ℓ measures the range of pairwise cosine similarities, θ ∈ [0, π 2 ] is the largest pairwise angle. Now we can prove Theorem 1.</p><p>Proof. Denote M c = U c Z c + E c , where Z c ∈ R r×n is the matrix of coordinate terms, E c ∈ R d×n is the matrix of noises terms. We first lower bound class-specific matrix ∥M c ∥ * by:</p><formula xml:id="formula_22">∥M c ∥ * ≥ ∥U c Z c ∥ * -∥ -E c ∥ * (Lemma 2) ≥ ∥U c Z c ∥ F - √ n∥E c ∥ F (Lemma 3) = ∥Z c ∥ F - √ n∥E c ∥ F</formula><p>Then we upper bound M by the following:</p><formula xml:id="formula_23">∥M ∥ * = ∥[U 0 Z 0 + E 0 U 1 Z 1 + E 1 ]∥ * ≤ ∥ [U 0 U 1 ] U Z 0 Z 1 Z ∥ * + ∥ [E 0 E 1 ] E ∥ * (Lemma 2) ≤ ∥ Z∥ op • ∥ U ∥ * + √ 2n∥ E∥ F (Lemma 4, Lemma 3) ≤ ∥ Z∥ F • ∥ U ∥ * + √ 2n∥ E∥ F (Lemma 5) ≤ ∥ Z∥ F • √ 2n cos θ + 2n(2n -1) • 1 -cos θ + √ 2n∥ E∥ F (Lemma 1) ≤ ∥ Z∥ F • √ 2n ℓcos θ + 2n(2n -1) • 1 -cos θ + √ 2n∥ E∥ F Putting everything together, we derive: OLE(M 0 , M 1 ) ≥ c∈{0,1} ∥Z c ∥ F - √ n∥E c ∥ F -(∥ Z∥ F • ( √ 2n ℓcos θ + 2n(2n -1) • 1 -cos θ) + √ 2n∥ E∥ F ) Denote γ(n) = √ 2 • Γ( n+1 2 ) Γ( n 2 )</formula><p>, where Γ(•) is the Gamma function. According to Lemma 6, we have:</p><formula xml:id="formula_24">E(OLE(M 0 , M 1 )) ≥ 2γ(rn) -2 √ nγ(dn) -2γ(rn) • √ 2n ℓcos θ + 2n(2n -1) • 1 -cos θ - √ 2n • γ(2dn) = 2γ(rn) -2 √ nγ(dn) - √ 2nγ(2dn) C1 -2γ(rn) C2 •     √ 2n ℓcos θ + 2n(2n -1) • 1 -cos θ ϕ( θ)    </formula><p>Over the interval [0, arccos 1 2n ], when θ decreases, which indicates that subspaces of each class are less orthogonal, the function ϕ( θ) is strictly decreasing. Therefore, the right-hand side lower bound is increasing. When n → ∞, arccos 1 2n → π 2 , hence this conclusion holds for most θ.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Proof of Theorem 2</head><p>We first propose the following lemmas:</p><formula xml:id="formula_25">Lemma 7. (Sherman-Morrison-Woodbury Formula) (A + U V ⊤ ) -1 = A -1 -A -1 U (I + V ⊤ A -1 U ) -1 V ⊤ A -1 Lemma 8. (The Matrix Determinant Lemma) det(A + U V ⊤ ) = det(I + V ⊤ A -1 U ) det(A)</formula><p>Following notations used in Theorem 1, we further assume the principal angles between subspaces span(U 0 ) and span(U 1 ) are all equal to some angle θ ∈ [0, π 2 ]. We first derive the Bayes optimal classifier for these two distributions. Denote the log-likelihood ratio by:</p><formula xml:id="formula_26">g(h) = log p(h | y = 1) p(h | y = 0) = 1 2 h ⊤ (Σ -1 0 -Σ -1 1 )h+ 1 2 log det Σ 0 det Σ 1</formula><p>According to Lemma 7:</p><formula xml:id="formula_27">Σ -1 c = (σ 2 I d + U c U ⊤ c ) -1 = 1 σ 2 I - 1 σ 2 (σ 2 + 1) U c U ⊤ c</formula><p>Hence we have:</p><formula xml:id="formula_28">Σ -1 0 -Σ -1 1 = 1 σ 2 (σ 2 + 1) (U 1 U ⊤ 1 -U 0 U ⊤ 0 )</formula><p>According to Lemma 8, det(Σ 0 ) = det(Σ 1 ), hence we have:</p><formula xml:id="formula_29">g(h) = 1 2σ 2 (σ 2 + 1) h ⊤ (U 1 U ⊤ 1 -U 0 U ⊤ 0 )h = C 3 ∥P 1 h∥ 2 -∥P 0 h∥ 2 ,</formula><p>where C 3 := 1 2σ 2 (σ 2 +1) , P c := U c U ⊤ c . U c for each class can be estimated through Principal Component Analysis (PCA).</p><p>The posterior probability on class 1 assigned by the classifier is:</p><formula xml:id="formula_30">Pr[y = 1 | h] := 1 1 + e -g(h) = ς(g(h)),</formula><p>where ς(•) is the Sigmoid function. We define the confidence score as the expected confidence score conditioned on y = 1:</p><formula xml:id="formula_31">ξ(θ) := E h|y=1∼N (0,Σ1 )[ς(g(h))].</formula><p>Since h ∼ N (0, Σ 1 ), we can write: h = U 1 z + σϵ, with z ∼ N (0, I r ), ϵ ∼ N (0, I d )</p><p>The angles of column vectors between U 0 and U 1 are all θ, hence we can have</p><formula xml:id="formula_32">U ⊤ 0 U 1 = cos θ • I r . Since P 0 h = U 0 U ⊤ 0 U 1 z + σP 0 ϵ, we have: ∥P 0 h∥ 2 = cos 2 θ • ∥z∥ 2 + 2σ cos θ • z ⊤ U ⊤ 0 ϵ + σ 2 ∥U ⊤ 0 ϵ∥ 2 Since P 1 h = U 1 z + σP 1 ϵ, we have: ∥P 1 h∥ 2 = ∥z∥ 2 + 2σz ⊤ U ⊤ 1 ϵ + σ 2 ∥U ⊤ 1 ϵ∥ 2</formula><p>Putting this together:</p><formula xml:id="formula_33">g(h) = C 3 (∥z∥ 2 -cos 2 θ • ∥z∥ 2 + 2σz ⊤ U ⊤ 1 ϵ -2σ cos θ • z ⊤ U ⊤ 0 ϵ η1 + σ 2 ∥U ⊤ 1 ϵ∥ 2 -σ 2 ∥U ⊤ 0 ϵ∥ 2 η2 ) = C 3 sin 2 θ • ∥z∥ 2 + η 1 + η 2</formula><p>The expectation of g(h) is:</p><formula xml:id="formula_34">E[g(h)] = C 3 sin 2 θ • E[∥z∥ 2 ] + E[η 1 ] + E[η 2 ]</formula><p>∥z∥ 2 follows Chi-squared distribution, i.e., ∥z∥ 2 ∼ χ 2 r , hence E[∥z∥ 2 ] = r, where r is the length of vector z. Term η 1 involves summation of products of independent zero-mean Gaussian variables, hence has zero mean. ∥U ⊤ c ϵ∥ 2 ∼ χ 2 r , hence η 2 also has zero mean.</p><p>Since Sigmoid function ς is concave on R + , Jensen's inequality <ref type="bibr" target="#b17">(Kraaikamp and Meester 2005)</ref> implies:</p><formula xml:id="formula_35">E[ς(g(h))] ≤ ς(E[g(h)]) = C 3 • ς(E[g(h)]) = 1 2σ 2 (σ 2 + 1) ς(r sin 2 θ)</formula><p>This upper bound is monotonically increasing. As θ → 0, the subspaces span(U 0 ) and span(U 1 ) become more aligned, and the upper bound decreases. Therefore, the expected confidence score of the Bayes optimal classifier decreases since the class subspaces become less distinguishable.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Experimental details</head><p>The MNIST dataset is distributed under the Creative Commons Attribution-Share Alike 3.0 license. CIFAR-10 also follows the MIT license. The CelebA dataset is available strictly for non-commercial research purposes.</p><p>We use the AdamW optimizer with a learning rate of 10 -4 . The number of denoising timesteps for both training and sampling is set to 1,000. For ACU-SIMS, we select ω ∈ {0.7, 1.4, 2.1} based on the configuration that yields the lowest FID for each dataset after the first generation. Specifically, we choose ω = 0.7 for MNIST, and ω = 1.4 for both CIFAR-10 and CelebA. To evaluate precision and recall, we extract feature vectors from synthetic images using a pre-trained VGG-16 (Simonyan and Zisserman 2014) classifier, following the same setup as in <ref type="bibr" target="#b19">(Kynkäänniemi et al. 2019)</ref>. Regarding the neighborhood size k, we set k = 20 for MNIST and k = 10 for CIFAR-10 and CelebA.</p><p>The training, sampling, and evaluation steps for each selfconsuming loop are conducted on a NVIDIA RTX A5000 GPU with 24 GB memory. The total execution time per generation varies by dataset: approximately 2 hours for MNIST and 6 hours for CelebA.</p><p>Experimental results on the CIFAR-10 dataset are shown in Fig. <ref type="figure">6</ref>. We plot the mean and standard error across three runs for each baseline. The trends are consistent with those reported in Section 5. SYN suffers from model collapse, while ACU and SYN-ADD help mitigate it. ACUR-SIMS is less stable due to iterative extrapolation of score functions. ACUR-SC yields high precision but suffers from low recall. Although ACUR achieves higher recall than our method, our approach achieves comparable FID and better precision. Samples generated by the representative self-consuming models are shown in Figure <ref type="figure">7</ref>. SYN exhibits signs of model collapse, i.e., decreasing fidelity and diversity as generation progresses. In contrast, ACU maintains stable image quality across generations. ACU-LSF achieves image quality comparable to ACU. While ACU-SC attempts to mitigate model collapse by relying on image clustering centers, this leads to homogenized image content, compromising overall diversity.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Related works</head><p>Recent studies have shown that training generative models on their own synthetic outputs can lead to model collapse, characterized by the forgetting of rare samples, degraded fidelity, and reduced diversity <ref type="bibr" target="#b26">(Shumailov et al. 2023;</ref><ref type="bibr">Alemohammad et al. 2024a)</ref>. <ref type="bibr" target="#b26">Shumailov et al. (2023)</ref> observe that retraining on synthetic data progressively removes the tails of the real data distribution, a pattern observed across various generative models. Self-consuming training can also amplify pre-existing biases <ref type="bibr">(Wang et al. 2024b)</ref> or parity gaps in downstream tasks <ref type="bibr" target="#b35">(Wyllie, Shumailov, and Papernot 2024)</ref>, posing risks to fairness. <ref type="bibr">Alemohammad et al. (2024a)</ref> term this collapse Model Autophagy Disorder (MAD), where artifacts and biases are amplified, and diversity in generated data diminishes. They categorize self-consuming training into three settings: the fully synthetic loop, the synthetic augmentation loop, and the fresh-data loop. Only the latter one can consistently mitigate MAD. They further highlight that sampling bias toward highquality generations plays a key role in the quality-diversity trade-off. <ref type="bibr" target="#b3">Bertrand et al. (2024)</ref> provide a theoretical guarantee that retraining remains stable if a sufficient portion of real data is maintained in each generation. <ref type="bibr" target="#b9">Fu et al. (2025)</ref> offer generalization error bounds, showing that both model architecture and the real/synthetic data ratio impact retraining outcomes. <ref type="bibr" target="#b16">Kazdan et al. (2024)</ref> analyze real-synthetic interactions and find that discarding synthetic data can be more beneficial than merely adding additional real samples.</p><p>Beyond maintaining fresh real data, several alternative mitigations have been proposed. <ref type="bibr" target="#b11">Gerstgrasser et al. (2024)</ref> accumulate all historical data during training, supported by theoretical analysis under a linear regression setting. Other methods rely on external guidance signals. <ref type="bibr">Alemohammad et al. (2024b)</ref> propose Self-IMproving diffusion models with Synthetic data (SIMS), where the drift of the retrained model negatively guided the score function closer to the real data distribution. <ref type="bibr" target="#b8">Feng et al. (2025)</ref> suggest that high-quality synthetic data alone can be sufficient for retraining if verified and selected appropriately. <ref type="bibr" target="#b7">Drayson, Yilmaz, and Lampos (2025)</ref> train a machine-generated text detector and apply importance sampling to reduce model collapse. In contrast, our work leverages latent representations in diffusion models as a simpler detector. <ref type="bibr" target="#b12">Gillman et al. (2024)</ref> introduce a self-correction mechanism to map synthetic samples to more plausible realdistribution counterparts. For instance, in motion synthesis, integrating physical laws yields greater stability compared to purely retraining with synthetic data.</p><p>Recent studies have also offered valuable insights into the training dynamics and latent representations of diffusion models. <ref type="bibr" target="#b10">Fu et al. (2024)</ref> model the impact of real data proportion in retraining diffusion models with a one-hidden-layer network as the score function. <ref type="bibr">Wang et al. (2024a)</ref> demonstrate that training diffusion models under specific assumptions about training data distribution and model parameterization is equivalent to subspace clustering. <ref type="bibr" target="#b19">Kwon, Jeong, and Uh (2023)</ref> show that latent features of frozen diffusion models exhibit desirable properties like linearity, enabling semantic image editing. <ref type="bibr" target="#b22">Li et al. (2025)</ref> investigate how latent representations evolve during denoising, revealing a trade-off between representation quality and generation quality. <ref type="bibr" target="#b0">Aithal et al. (2024)</ref> observe that hallucinations in generated samples can be identified by high variance in the sampling trajectory, and that removing such hallucinations helps stabilize recursive training. However, variance-based filtering requires access to the sampling trajectory of each image, which is often unavailable in practical settings.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Conclusions and limitations</head><p>As generative models increasingly rely on mixtures of humanand model-generated data, concerns arise regarding potential degradation in model quality and diversity. In this work, we address the phenomenon of model collapse caused by selfconsuming training loops and propose a filtering algorithm to remove unrealistic synthetic images, thereby stabilizing the retraining process.</p><p>Our key insight is that the low-dimensional structure of latent representations extracted by diffusion models deteriorates over successive generations. We leverage this observation to assess the misalignment between collected training samples and the underlying real data distribution. By filtering out samples with poor alignment, we are able to improve stability during retraining. We introduce a unified theoretical framework to support our observations and approach. We validate the effectiveness of our approach through empirical results on real-world datasets. Under a fixed training budget, our method outperforms competitive baselines in image quality and stability.</p><p>Limitations. One limitation of our work is the assumption that image classes remain fixed throughout the selfconsuming process. However, in real-world scenarios such as continual learning or unlearning, models may be retrained to acquire new classes or deliberately forget existing ones. These dynamic changes can induce distribution shifts in the latent representations, potentially affecting the stability and generalization of filtering with probing classifier. Extending our analysis to settings where the number of classes evolves over time presents a valuable direction for future research.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: OLE values of latent representations extracted by a fixed diffusion model across generations and denoising timesteps. Each curve corresponds to a generation within a pure synthetic self-consuming loop. When conditioned on timestep, OLE values increase with generation, indicating progressive structural degradation of the latent space. When conditioned on generation, OLE exhibits a U-shaped trend over denoising timesteps.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><figDesc>Figure2: Correlation between the average generation number of each batch and its corresponding OLE score, computed on the accumulated CelebA dataset. Batches with lower average generation numbers (i.e., containing more realistic images) tend to have lower OLE values. However, the correlation is not strong enough to enable reliable filtering based solely on batch-level OLE.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>Figure 3: Correlation between the OLE and average confidence scores of each batch, computed on the real and synthetic MNIST datasets produced at different generations. Batches with lower OLE (i.e., greater feature separability) tend to have higher confidence scores, indicating that we can use confidence score as an individual-level proxy of batch-level OLE score.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4 :</head><label>4</label><figDesc>Figure4: The effect of using confidence scores for filtering on MNIST dataset. (a) shows the generation number vs. distribution of confidence scores of images sampled at this generation. Higher generation is correlated with lower confidence score, indicating that they are less aligned with real images, hence providing a strong signal for filtering out unrealistic synthetic images. (b) shows the average generation number within the dataset filtered by the confidence score. (c) Our method can also preserve more real images in the training set. Using larger accumulated dataset for filtering can increase the ratio of selected real images. Compared with randomly sampling from the accumulated dataset, our filtering method can preserve a distribution closer to real images.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><figDesc>2021) on three realworld datasets: (i) MNIST (LeCun, Cortes, and Burges 2010): A dataset of 60,000 grayscale handwritten digits across 10 classes, with image size 28 × 28. (ii) CIFAR-10 (Krizhevsky, Hinton et al. 2009): A collection of 60,000 32 × 32 RGB images spanning 10 object categories. (iii) CelebA (Liu et al. 2015): A dataset of 200,000 celebrity face images, each annotated with 40 binary attributes 4 .</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Performance comparison on MNIST and CelebA across three metrics: FID, precision, and recall. FID measures distributional distance between real and synthetic images (lower is better), while precision and recall assess fidelity and diversity of generated samples, respectively (higher is better). SYN suffers from model collapse. SYN-ADD partially alleviates it via fresh real data. ACU, ACUR, and ACU-LSF maintain stable metrics across generations. ACU-LSF achieves lower FID and higher fidelity than ACUR. ACUR-SIMS exhibits instability, while ACUR-SC suffers from reduced recall and elevated FID.</figDesc></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_0"><p>The class label can either be the ground-truth annotation or a group label assigned by an unsupervised clustering algorithm. Unsupervised clustering enables us to explore low-dimensional structures beyond predefined classes, as diffusion models can capture factorized features that may not align with standard semantic categories.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_1"><p>Each box spans from the first quartile (Q1) to the third quartile (Q3) of the data, with whiskers extending to 1.5 times the interquartile range (IQR). Data points beyond the whiskers are shown as fliers, indicating outliers.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_2"><p>We downsample each image to 64 × 64 and define 4 classes based on the intersection of two attributes: "Male" and "Smile."</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgements</head><p>This work was funded in part by the <rs type="funder">National Science Foundation</rs> under award number <rs type="grantNumber">IIS-2202699</rs>, <rs type="grantNumber">IIS-2416895</rs>, and <rs type="grantNumber">IIS-2416896</rs>.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_hQ4vdmv">
+					<idno type="grant-number">IIS-2202699</idno>
+				</org>
+				<org type="funding" xml:id="_CMDzmtx">
+					<idno type="grant-number">IIS-2416895</idno>
+				</org>
+				<org type="funding" xml:id="_wJrChUh">
+					<idno type="grant-number">IIS-2416896</idno>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0" /><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 6 :Figure 7 :</head><label>67</label><figDesc>Performance comparison on CIFAR-10 dataset. SYN suffers from model collapse. SYN-ADD partially alleviates it via fresh real data. ACU, ACUR, and ACU-LSF maintain stable metrics across generations. ACU-LSF achieves higher fidelity than ACUR. ACUR-SIMS exhibits instability, while ACUR-SC suffers from reduced recall.Samples generated by the self-consuming loops of SYN, ACU, ACU-LSF, and ACU-SC across different generations, with the initial model trained on the CIFAR-10 dataset. SYN exhibits model collapse, reflected in declining fidelity and diversity as generation progresses. ACU maintains stable image quality. ACU-LSF achieves image quality comparable to ACU. ACU-SC generates some uniform image content with reduced diversity.</figDesc></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Understanding Hallucinations in Diffusion Models through Mode Interpolation</title>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">K</forename><surname>Aithal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Maini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><forename type="middle">C</forename><surname>Lipton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">Z</forename><surname>Kolter</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirty-eighth Annual Conference on Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">2024a. Self-Consuming Generative Models Go MAD</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">I</forename><surname>Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Baraniuk</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">I</forename><surname>Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Collomosse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Baraniuk</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2408.16333</idno>
+		<title level="m">Self-improving diffusion models with synthetic data</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">On the Stability of Iterative Retraining of Generative Models on their own Data</title>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Duplessis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Jiralerspong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Gidel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Auto-encoding variational Bayes</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Cambridge Explorations in Arts and Sciences</title>
+		<imprint>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Intriguing properties of synthetic images: from generative adversarial networks to diffusion models</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Corvi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Cozzolino</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Poggi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Nagano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Verdoliva</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF conference on computer vision and pattern recognition</title>
+		<meeting>the IEEE/CVF conference on computer vision and pattern recognition</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="973" to="982" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Diffusion models beat gans on image synthesis</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Nichol</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">34</biblScope>
+			<biblScope unit="page" from="8780" to="8794" />
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">G</forename><surname>Drayson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Yilmaz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Lampos</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.15654</idno>
+		<title level="m">Machinegenerated text detection prevents language model collapse</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Beyond Model Collapse: Scaling Up with Synthesized Data Requires Verification</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Charton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kempe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training Loops</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Tao</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Towards Theoretical Understandings of Self-Consuming Generative Models</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Tao</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="14228" to="14255" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Sleight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Pai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gromov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.01413</idno>
+		<title level="m">Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Self-Correcting Self-Consuming Loops for Generative Model Training</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Gillman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Freeman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Aggarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C.-H</forename><surname>Hsu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Goodfellow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Pouget-Abadie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mirza</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Warde-Farley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ozair</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Courville</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bengio</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">ICML</title>
+		<imprint>
+			<date type="published" when="2020">2024. 2020</date>
+			<biblScope unit="volume">63</biblScope>
+			<biblScope unit="page" from="139" to="144" />
+		</imprint>
+	</monogr>
+	<note>Generative adversarial networks</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Gans trained by a two time-scale update rule converge to a local nash equilibrium</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Heusel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ramsauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Unterthiner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Nessler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hochreiter</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page">30</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">Denoising diffusion probabilistic models. Advances in neural information processing systems</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Ho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Abbeel</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="6840" to="6851" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">SSOLE: Rethinking Orthogonal Low-rank Embedding for Self-Supervised Learning</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Sapiro</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Kazdan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Koyejo</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.16713</idno>
+		<title level="m">Collapse or Thrive? Perils and Promises of Synthetic Data in a Self-Generating World</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<title level="m" type="main">A modern introduction to probability and statistics</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Kraaikamp</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Meester</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2005">2005</date>
+			<publisher>Berlin/Heidelberg</publisher>
+			<pubPlace>Germany</pubPlace>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">Learning multiple layers of features from tiny images</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Krizhevsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Hinton</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Improved precision and recall metric for assessing generative models</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Kwon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Jeong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Uh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Kynkäänniemi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Karras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Laine</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Lehtinen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Aila</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Eleventh International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2019">2023. 2019</date>
+			<biblScope unit="page">32</biblScope>
+		</imprint>
+	</monogr>
+	<note>Diffusion Models Already Have A Semantic Latent Space</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">MNIST handwritten digit database</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Lecun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Cortes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Burges</surname></persName>
+		</author>
+		<ptr target="http://yann.lecun.com/exdb/mnist,2" />
+		<imprint>
+			<date type="published" when="2010">2010</date>
+		</imprint>
+		<respStmt>
+			<orgName>ATT Labs</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Ole: Orthogonal low-rank embedding-a plug and play geometric loss for deep learning</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Lezama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Musé</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Sapiro</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="8109" to="8118" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<author>
+			<persName><forename type="first">X</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Qu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.05743</idno>
+		<title level="m">Understanding Representation Dynamics of Diffusion Models via Low-Dimensional Modeling</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Deep Learning Face Attributes in the Wild</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Tang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of International Conference on Computer Vision (ICCV)</title>
+		<meeting>International Conference on Computer Vision (ICCV)</meeting>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">Seeing is not always believing: Benchmarking Human and Model Perception of AI-Generated Images</title>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Qu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Ronneberger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Fischer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Brox</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Medical image computing and computer-assisted intervention-MICCAI 2015: 18th international conference</title>
+		<meeting><address><addrLine>Munich, Germany</addrLine></address></meeting>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2015-09">2023. 2015. October 5-9, 2015</date>
+			<biblScope unit="volume">18</biblScope>
+			<biblScope unit="page" from="234" to="241" />
+		</imprint>
+	</monogr>
+	<note>U-net: Convolutional networks for biomedical image segmentation Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Sharifzadeh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Kaplanis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Pathak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Kumaran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ilic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Mitrovic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Blundell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Banino</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.07750</idno>
+		<title level="m">Synth 2 : Boosting Visual-Language Models with Synthetic Captions and Image Embeddings</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title level="m" type="main">The curse of recursion: Training on generated data makes models forget</title>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.17493</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">AI models collapse when trained on recursively generated data</title>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">631</biblScope>
+			<biblScope unit="issue">8022</biblScope>
+			<biblScope unit="page" from="755" to="759" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title level="m" type="main">Very deep convolutional networks for large-scale image recognition</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zisserman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1409.1556</idno>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Generative modeling by estimating gradients of the data distribution</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page">32</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Data Feedback Loops: Model-Driven Amplification of Dataset Biases</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Taori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 40th International Conference on Machine Learning</title>
+		<meeting>the 40th International Conference on Machine Learning</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note>ICML&apos;23. JMLR.org</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Qu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.02426</idno>
+		<title level="m">Diffusion models learn low-dimensional distributions via subspace clustering</title>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Guan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Koshiyama</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.15234</idno>
+		<title level="m">Bias Amplification: Language Models as Increasingly Biased Media</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Self-Consuming Generative Models with Adversarially Curated Data</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-second International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Bayesian learning via stochastic gradient Langevin dynamics</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Welling</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><forename type="middle">W</forename><surname>Teh</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 28th international conference on machine learning (ICML-11)</title>
+		<meeting>the 28th international conference on machine learning (ICML-11)</meeting>
+		<imprint>
+			<publisher>Citeseer</publisher>
+			<date type="published" when="2011">2011</date>
+			<biblScope unit="page" from="681" to="688" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">Fairness Feedback Loops: Training on Synthetic Data Amplifies Bias</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wyllie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Papernot</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 ACM Conference on Fairness, Accountability, and Transparency, FAccT &apos;24</title>
+		<meeting>the 2024 ACM Conference on Fairness, Accountability, and Transparency, FAccT &apos;24</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="2113" to="2147" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">Automating Data Annotation under Strategic Human Agents: Risks and Potential Solutions</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirty-eighth Annual Conference on Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">Scalable sparse subspace clustering by orthogonal matching pursuit</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>You</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Robinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Vidal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE conference on computer vision and pattern recognition</title>
+		<meeting>the IEEE conference on computer vision and pattern recognition</meeting>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+			<biblScope unit="page" from="3918" to="3927" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<author>
+			<persName><forename type="first">X</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Vosoughi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Lee</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.02103</idno>
+		<title level="m">Superficial Self-Improved Reasoners Benefit from Model Merging</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

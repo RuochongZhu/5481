@@ -1,0 +1,520 @@
+{
+  "paperId": "doi:10.21437/interspeech.2020-2909",
+  "title": "INTERSPEECH - Efficient MDI Adaptation for n-Gram Language Models.",
+  "year": 2020,
+  "source": "lens",
+  "source_pdf_url": "http://arxiv.org/pdf/2008.02385",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.21437_interspeech.2020-2909.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.21437_interspeech.2020-2909.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.21437_interspeech.2020-2909.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "This paper presents an efficient algorithm for n-gram language model adaptation under the minimum discrimination information (MDI) principle, where an out-of-domain language model is adapted to satisfy the constraints of marginal probabilities of the in-domain data. The challenge for MDI language model adaptation is its computational complexity. By taking advantage of the backoff structure of n-gram model and the idea of hierarchical training method, originally proposed for maximum entropy (ME) language models [1], we show that MDI adaptation can be computed in linear-time complexity to the inputs in each iteration. The complexity remains the same as ME models, although MDI is more general than ME. This makes MDI adaptation practical for large corpus and vocabulary. Experimental results confirm the scalability of our algorithm on very large datasets, while MDI adaptation gets slightly worse perplexity but better word error rate results compared to simple linear interpolation.",
+      "word_count": 145
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "The n-gram language model (LM) still plays an important role in today's automatic speech recognition (ASR) pipeline. There are several reasons: (i) n-gram LMs can be represented by weighted finite-state transducers (WFST) and integrated into first-pass decoding [2] , (ii) training and querying n-gram LMs are cheaper than neural LMs, (iii) in practice, the best performance is achieved by interpolating n-gram and neural LMs [3] .\n\nConsider a common scenario when one hopes to develop an ASR system for a new application, while little training data is available and collecting sufficient domain-specific (in-domain) data requires a considerable amount of time and efforts. The limited data is too small to estimate a robust LM. Fortunately, we can do better by capitalizing on some large, general-domain background (out-of-domain) corpus assuming the out-of-domain data may contain much information common with the application domain. This motivates LM adaptation [4, 5] , which is to estimate a robust LM based on both in-and out-of-domain data.\n\nThe question is how to combine information from the two sources in a suitable manner? The commonly used approaches for n-gram LMs fall under two categories: model interpolation and constraint-based methods. The model interpolation methods can be either linear (simple linear [6] , history-dependent [7] , Bayesian [8] interpolation) or non-linear (log-linear [9] interpolation, fill-up technique [10] ). Note that simple linear interpolation is very effective and probably the most popular adaptation method. Recently, [8] found that count-merging, as a special case of maximum a posterior (MAP) adaptation, is theoretically similar to Bayesian interpolation. On the other hand, the constraintbased methods [11] , such as ME or MDI models, attempt to choose the adapted LM such that it satisfies some constraints in the adaptation domain, while staying as close as possible to some prior distribution, measured by, e.g., Kullback-Leibler distance. This paper investigates the MDI adaptation.\n\nThere has been previous work on MDI adaptation for n-gram LMs [12, 13, 14, 15, 16, 17, 18, 19, 20, 21] , with several variants of task definition, e.g., adaptation for cache model, withinor cross-corpus adaptation. Although MDI has appealing theoretical properties, the computation is non-trivial and expensive, which grows almost exponentially (detailed in section 3) with the size of the vocabulary [5] in a naive implementation. To reduce the complexity, [18, 16] proposed approximation algorithms and [22, 23] devised parallelization to speed up the computation. [17] proposed a linear-time algorithm for unigram constraints. On the other hand, there has been work on ME model that utilizes the back-off structure of the LMs to reduce computational complexity to linear time per iteration [1] , but it is not clear whether the same trick can carry over to MDI which is more general than ME. Besides, regarding model performance, most previous work has found that MDI adaptation performs slightly worse than simple linear interpolation [20] , but we are interested to see if there can be any difference when operating on very large corpus once we have an efficient MDI algorithm for arbitrary marginal distribution constraints. Moreover, in the experiment, we will propose a novel approach of applying MDI adaptation to improve the firstpass LM while keeping the model size unchanged.\n\nWe will review MDI adaptation in section 2. In section 3, we describe our efficient algorithm and describe some implementation concerns. In section 4, we show experiments to demonstrate the scalability of the algorithm and compare the perplexities and word error rates with linear interpolation, the baseline. We will conclude with future work in section 5.",
+      "word_count": 582
+    },
+    {
+      "index": 3,
+      "title": "n-gram Language Model",
+      "kind": "body",
+      "text": "A language model (LM) is a probability distribution over word sequences W = w1w2 . . . wL, usually reduced to a word-byword probability via the chain rule p(W ) = L i=1 p(wi|w i 1 ), where w j i ≡ wi, wi+1, . . . , wj. An n-gram LM assumes that this distribution depends only on the previous n -1 words, i.e., p(wi|w i 1 ) ≈ p(wi|w i-1 i-n+1 ), where w i-1 i-n+1 is the history hi of word wi. We omit the index i when the context is clear.\n\nGiven the vocabulary V , n-gram LM defines a set of conditional probabilities p(w|h) for any hw ∈ V n . However, the space V n is very large that not every n-gram hw is seen in the training data, known as the data sparsity problem. Thus, smoothing techniques have been used to estimate the probability p(w|h) for the unseen n-grams. The most popular techniques is backing-off. The idea is to recursively estimate p(w|h) of unseen n-grams based on the lower order (n-1)-gram probabilities p(w|h ), where h = w i-1 i-n+2 , which may have been seen in the corpus. More specifically,\n\np(w|h) = p * (w|h) hw is seen in corpus bow(h) • p(w|h ) otherwise, (1)\n\nwhere the discounted probability p * (w|h) and the back-off weight bow(h) are together to ensure the conditional probability sums to one: w∈V p(w|h) = 1. We will consider n-gram LMs having back-off structure in the rest of the paper. In practice, such LMs are stored in ARPA format [24] . Note that LMs smoothed by interpolation [24] can also be stored as ARPA. We measure the size of an n-gram LM as the total number of entries of order 1, . . . , n when the LM is represented as ARPA.",
+      "word_count": 307
+    },
+    {
+      "index": 4,
+      "title": "MDI Adaptation",
+      "kind": "body",
+      "text": "The idea of LM adaptation under the minimum discrimination information (MDI) principle is to compute the adapted distribution such that it satisfies the constraints characterizing in-domain distribution, and also stays closest to the out-of-domain distribution. The constraints are usually expressed as marginal distributions. Formally, given (i) the vocabulary V , (ii) the out-domain LM pout(w|h), (iii) the empirical history distribution p(h) which is commonly approximated by either the in-domain probabilities pin(h) or out-of-domain pout(h), and (iv) K marginal distributions p(Si) where Si ⊂ V n , i = 1, . . . , K derived from the indomain data, the adapted LM p ad (w|h) is defined by minimizing the following conditional Kullback-Liebler (KL) divergence:\n\np ad (w|h) = arg min p D(p||pout|p) (2)\n\n= arg min\n\np h∈V n-1 p(h) w∈V p(w|h) log p(w|h) pout(w|h) , (3)\n\nwhile satisfying the constraints:\n\nh∈V n-1 p(h) w∈V p(w|h)fi(h, w) = p(Si), i = 1, . . . , K. ( 4\n\n)\n\nwhere fi are indicator functions of (h, w) ∈ Si. Note that Eq. 3 can also be viewed as the KL divergence between the joint distribution p(h, w) and pout(h, w) assuming they have the same history distribution p(h). Also notice in the case that pout is the uniform distribution, p ad is indeed a maximum entropy model. If the constraints in Equation 4 are consistent, the solution of the above optimization problem exists and is unique [25] . It has the following form, with parameters {λi}.\n\np ad (w|h) = pout(w|h) * α(h, w) Z(h, λ1, . . . , λK ) , (5)\n\nwhere the scaling factor α(h, w) = exp ( K i=1 λifi(h, w)), and Z(h, λ1, . . . , λK ) is the normalization term summing up the numerators. This solution can be obtained by generalized iterative scaling (GIS) algorithm [25] , sketched in Algorithm 1, or some of its modern fast counterparts [23] . The iterations can be terminated when the results converge or nearly converge.",
+      "word_count": 334
+    },
+    {
+      "index": 5,
+      "title": "Efficient Algorithm: The Hierarchical Training Method",
+      "kind": "methods",
+      "text": "The challenge for implementing the above GIS algorithm is its computational complexity resulting from Line 4 (normalization) and 8 (marginalization). A naive implementation may take O(K * # of seen histories * |V |) time per iteration [5] . An improvement can be made to O(# of seen histories * |V |+K) if we store the constraints in Line 7 in a hash table and accumulate the summation in Line 8, but this complexity is still astronomical when the corpus and vocabulary V is large. Thus, we need to re-organize the summation happening in Line 4 and 8.",
+      "word_count": 98
+    },
+    {
+      "index": 6,
+      "title": "The Hierarchical Training Method: MDI v.s. ME",
+      "kind": "methods",
+      "text": "To overcome this challenge, the hierarchical training method [1] has been proposed for ME models. The algorithm only requires linear time to its inputs per iteration, i.e., the number of seen entries in pout plus K. The trick is based on the back-off structure of probability p (n) (w|h). In this paper, we show that similar algorithmic trick can be applied to MDI with additional cares. This",
+      "word_count": 67
+    },
+    {
+      "index": 7,
+      "title": "Algorithm 1 Generalized Iterative Scaling (GIS) Algorithm",
+      "kind": "body",
+      "text": "Require: V , pout(w|h), p(h) and p(Si)\n\n1: Set λ (0) 1 = λ (0) 2 = . . . = λ (0)\n\nK = 0, n = 0 2: while stopping criterion not met do 3: Compute α (n) (h, w) = exp K i=1 λ (n) i fi(h, w) 4:\n\nfor each seen history h in training data do 5:\n\nCompute normalization term: Z(h, λ\n\n(n) 1 , . . . , λ (n) K ) := w pout(w|h)α (n) (h, w) 6:\n\nend for 7:\n\nUpdate each entry of back-off LM:\n\np (n) (w|h) := p out (w|h) * α (n) (h,w) Z(h,λ (n) 1 ,...,λ (n) K ) 8:\n\nfor j = 1, • • • , K do 9:\n\nMarginalize:\n\np (n) (Sj) := h p(h) w p (n) (w|h)fj(h, w) 10: Update params: λ (n+1) j := λ (n) j + log p(S j ) p (n) (S j )\n\n11:\n\nend for 12:\n\nn := n + 1 13: end while 14: return p (n) (w|h) as p ad means MDI adaptation incurs no extra computation complexity although it is more general than ME. The key is to handle the non-uniform pout appropriately.\n\nTo illustrate the idea, we take trigram LM as an example. Consider a general LM p(w3|w 2 1 ) that has the back-off structure as in Equation 1. We also define a set of real-valued scaling factors c(w 3 1 ), w 3 1 ∈ V 3 to be some default constant value except for K of them having non-default values. Now, we hope to compute the left-aligned and right-aligned summation of the product of p(w3|w 2 1 ) and the general scaling factor c(w 3 1 ):\n\nΣL(w 2 1 ) = w 3 ∈V p(w3|w 2 1 ) • c(w 3 1 ) ( 6\n\n)\n\nΣR(w 3 2 ) = w 1 ∈V p(w3|w 2 1 ) • c(w 3 1 ) ( 7\n\n)\n\nThe right-hand-sides only differ in the subscript of summation.\n\nIn fact, ΣL corresponds to computing the normalization term (Line 4), and ΣR is related to marginalization (Line 8). Notice that in ME, p(w3|w 2 1 ) is just a uniform distribution. 3.2. Computing ΣL(w 2 1 ) as normalization for history w 2 1 In Equation 6, we compute ΣL(w 2 1 ) by summing over w3 ∈ V given history w 2 1 , which costs |V | addition operations. However, this cost can be reduced to the number of seen n-grams given w 2 1 by dynamic programming, much less than |V |.\n\nAs p(w3|w 2 1 ) is a back-off model, we can rewrite Eq. 6 as:\n\nΣL(w 2 1 ) = w 3 ∈V p(w3|w 2\n\n1 ) • c(w 3 1 ) = w 3 ∈V ∧seen(w 3 1 ) p * (w3|w 2 1 ) -bow(w 2 1 ) • p(w3|w2) • c(w 3 1 ) + bow(w 2 1 ) w 3 ∈V p(w3|w2) • c(w 3 2 ) + bow(w 2 1 ) w 3 ∈V ∧c(w 3 1 ) =c(w 3 2 )\n\np(w3|w2) • c(w 3 1 ) -c(w 3 2 ) .\n\nWe can define ΣL(w2) = w 3 ∈V p(w3|w2) • c(w 3 2 ) for the second term in the summation above. So, this appears to be a dynamic programming problem [17, 9] with the base case ΣL(∅) = w 3 ∈V p(w3) • c(w3), needed to compute only once. Thus, ΣL(w 2 1 ) can be computed hierarchically and bottom-up from ΣL(∅) along the back-off structure of p(w3|w 2 1 ).\n\nAs of complexity, computing ΣL(∅) requires O(|V |) time. ΣL(w 2 1 ) and ΣL(w2) can be computed from the ΣL of the lowerorder n-grams with the complexity of the number of seen ngrams along the way, plus the number of distinct scaling factors K (at most), as each non-default c(•) term is accessed only once. Thus, overall, the total time is proportional to the number of seen entries in pout(w3|w 2 1 ) plus K. Recall in the ME case, p(•) and bow(•) can be seen as 1, and the above equation can be simplified to contain only the scaling factor c(•)'s [1] .",
+      "word_count": 708
+    },
+    {
+      "index": 8,
+      "title": "Computing ΣR",
+      "kind": "body",
+      "text": "Consider Eq. 8, where we compute the right-aligned ΣR(w 3 2 ) by summing over w1 ∈ V . Similarly, we define the lower or higher order right-aligned summation ΣR(w3) as follows:\n\nΣR(w3) = w 2 1 ∈V 2 p(w3|w 2 1 ) • c(w 3 1 ) (8)\n\nΣR(w 3 1 ) = p(w3|w 2 1 ) • c(w 3 1 ) (9)\n\nObviously, ΣR(w3) requires more computation than ΣR(w 3 2 ) and ΣR(w 3 1 ). Unfortunately, dynamic programming does not work here anymore to compute ΣR(w3) from ΣR(w 3 2 ). Instead, we will make use of the idea of shared computation, which means we go over the data for only one pass, but we accumulate the values correspondingly to all related constraints.\n\nFirst, let us compute ΣR(w 3 2 ) as follows:\n\nΣR(w 3 2 ) = w 1 ∈V p(w3|w 2\n\n1 ) • c(w 3 1 ) = w 1 ∈V ∧seen(w 3 1 ) p * (w3|w 2 1 ) -bow(w 2 1 ) • p(w3|w2) • c(w 3 1 ) + p(w3|w2) • c(w 3 2 ) w 1 ∈V bow(w 2 1 ) + w 1 ∈V ∧c(w 3 1 ) =c(w 3 2 ) p(w3|w2) • bow(w 2 1 ) • c(w 3 1 ) -c(w 3 2 ) For simplicity, we denote the auxiliary function g(w2) = w 1 ∈V bow(w 2 1 ) in the second term above, and we will address the computation of g(•) later. Notice that the decomposition of ΣR looks quite different from section 3.2, as ΣR(w 3 2 ) is not decomposed to the sub-problem ΣR(w3) or vice versa. Besides, if we let p(•) and bow(•) be 1, it becomes the case for ME model. At the same time, let us see how to compute ΣR(w3): ΣR(w3) = w 2 1 ∈V 2 ∧seen(w 3 1 ) p * (w3|w 2 1 ) -bow(w 2 1 ) • p(w3|w2) • c(w 3 1 ) + w 2 ∈V ∧seen(w 3 2 ) (p * (w3|w2) -bow(w2) • p(w3)) • c(w 3 2 ) • g(w2) + p(w3) • c(w3) w 2 ∈V bow(w2) • g(w2) + w 2 ∈V ∧c(w 3 2 ) =c(w 3 ) p(w3) • bow(w2) • c(w 3 2 ) -c(w3) + w 2 1 ∈V 2 ∧c(w 3 1 ) =c(w 3 2 ) p(w3|w2) • bow(w 2 1 ) • c(w 3 1 ) -c(w 3 2 )\n\nWe denote g(∅) = w 2 ∈V bow(w2) • g(w2). Assuming that the values of g(•) are known, now we can come up with an algorithm to compute ΣR by observing the equations of ΣR(w3), ΣR(w 3 2 ) and ΣR(w 3 1 ) together. The algorithm enumerates the seen ngrams in LM p(w3|w 2 1 ) and all non-default scaling factor c(•)'s, and adds the value as specified in the equations to the ΣR with arguments matching the suffix of the n-gram. The complexity is O(n * # of entries in p(w|h)), with n being a small constant. Now, the remaining problem is how to compute the auxiliary function g(•) as defined previously. It turns out that this is a right-aligned summation in the ME case. More specifically, their scaling factors are c(w 2 1 ) = bow(w 2 1 ) or c(w 2 1 ) = bow(w 2 1 ) * bow(w2). Thus, computing g(•) can be shown to be also in linear time. In fact, computing the auxiliary function g(•) is what makes the algorithm for MDI different from that of ME.",
+      "word_count": 597
+    },
+    {
+      "index": 9,
+      "title": "The back-off structure of p ad (w|h)",
+      "kind": "body",
+      "text": "Before computing the marginals in Line 8 of Algorithm 1, we still need to show that the probability p (n) (w|h) or p ad (w|h) in Equation 5 has the back-off structure. This is important not only for the computational purpose -that the tricks for ΣL and ΣR can be applied here -but also for being able to represent the final adapted LM in ARPA format.\n\nWe claim that, if pout is a back-off model as in Equation 1, then so is the exponential models p (n) and p ad . We prove this by giving the back-off expression of p ad :\n\np ad (w3|w 2 1 ) =    p * ad (w3|w 2\n\n1 ) if w 3 1 seen in pout or w 3 1 is a constraint bow ad (w 2 1 ) • p ad (w3|w2) otherwise where: p * ad (w3|w 2 1 ) = pout(w3|w 2 1 ) • c(w 3 1 ) Z(w 2 1 ) bow * ad (w 2 1 ) = Z(w2) Z(w 2 1 ) bowout(w 2 1 )\n\nThe lower order n-grams of p ad are defined analogously. There will be at most (# entries in pout + # entries in pin) entries in p ad , same as in linear interpolation.",
+      "word_count": 218
+    },
+    {
+      "index": 10,
+      "title": "Computing marginalization as ΣR",
+      "kind": "body",
+      "text": "Finally, we come to compute the marginals in Line 8 of Algo. 1:\n\np (n) (Si) := h p(h) w p (n) (w|h)fi(h, w). (10)\n\nSince it has been proved that p (n) is a back-off LM, we can view w p (n) (w|h)fi(h, w) as a right-aligned sum. However, we need to further consider the multiplication term p(h). Fortunately, the same trick computing ΣR can be applied here, with some modification of the auxiliary function g. For example, let g(w2) = w 1 ∈V p(w 2 1 )bow(w 2 1 ), and then it can be treated in two ways efficiently, either (i) if p(w 2 1 ) is an unsmoothed maximum likelihood estimation, there will be a lot of zeros for p(w 2 1 ), or (ii) if p(w 2 1 ) = p(w2|w1) * p(w1) has a smoothed distribution, and p(w2|w1) has the back-off structure, then this amounts to compute some right-aligned sum. It can be shown that the computational complexity of marginalization is linear in both ways. We omit the details here due to space limit. Interested readers can refer to Appendix A at the end of the paper. In all, we have shown how Algorithm 1 can be implemented efficiently.",
+      "word_count": 205
+    },
+    {
+      "index": 11,
+      "title": "Implementation Issues",
+      "kind": "body",
+      "text": "Special care should be taken when dealing with n-grams w 3 1 which containing <s> or <\\s>, or whose suffix w 3 2 is not seen. To further speed up the computation, the algorithm can be implemented in a vectorized manner with group-by operation for summing up probabilities of n-grams of the same suffix.",
+      "word_count": 54
+    },
+    {
+      "index": 12,
+      "title": "Experimental Results",
+      "kind": "results",
+      "text": "We will show the scalability of our algorithm and the effectiveness of MDI adaptation with two different ways of application. We simulate the LM adaptation scenario by taking three speech corpora, Wall Street Journal (WSJ), Switchboard (SWBD) and AMI-IHM (AMI) as in-domain data, and Google One Billion Words [26] and Librispeech [27] as out-of-domain data. We normalize the Google dataset with the similar scripts generating normalized Librispeech LM training texts, resulting 702 million and 803 million words respectively. We compute trigram LMs using the SRILM tool [28] with Kneser-Ney smoothing and default settings, or use default Kaldi's LMs. We find the normalized Google dataset always out-perform Librispeech as the out-of-domain corpus, so we only report the results for Google dataset. We are interested whether the rich LM information in the very large corpus can help the LM and ASR task in the application domains. We use count thresholds to select the in-domain constraints, i.e., the marginals are considered reliable when the counts of the n-grams is above the threshold.",
+      "word_count": 169
+    },
+    {
+      "index": 13,
+      "title": "Scalability",
+      "kind": "body",
+      "text": "We implemented the proposed efficient version of Algorithm 1 in Python with Numpy and Pandas. In Figure 1 , we compare the run-time per iteration in seconds with various size of out-ofdomain LM (blue) and various number of constraints (blue). The in-and out-of-domain data are taken to be SWBD and Google. We sample the out-of-domain data at different sizes measured by the total number of seen entries in the ARPA file, and record the run-time per iteration. We control the number of constraints by using different constraint count thresholds. We can see that both lines shows linear scalability, and the run-time is denominated by the size of out-of-domain data. Besides, it usually takes 60 ∼ 80 iterations for the algorithm to converge to a near optimal solution, which may be improved by more advanced optimization algorithms.",
+      "word_count": 136
+    },
+    {
+      "index": 14,
+      "title": "Effectiveness of Adaptation",
+      "kind": "body",
+      "text": "We compare the LMs with and without adaptation, and with different adaptation methods, i.e., simple linear interpolation and MDI. We evaluate the LMs in perplexity (PPL) and word error rate (WER) when used in an hybrid ASR system. We use the latest recipes in the open-source speech recognition toolkit Kaldi [29] to run the ASR experiments. The acoustic model uses factorized TDNN architecture [30] and is trained with LF-MMI criteria [31] . The features are 40-dimensional MFCC features with 100-dimensional i-vectors appended to the MFCC. The training data is augmented with speed and volume perturbation.",
+      "word_count": 95
+    },
+    {
+      "index": 15,
+      "title": "Performance in the Rescoring",
+      "kind": "body",
+      "text": "As in a common adaptation scenario, we adapt the large, out-ofdomain LM to satisfy the marginal distribution constraints derived from the in-domain data. As the Google corpus is large, the resulting LM can have 61 ∼ 76 million entries depending on the vocabulary (which is AMI 50k, SWBD 30k, WSJ 20k). So the LMs are used for rescoring. From the right half of Table 1 , we can see that LM adaptation is effective for both interpolation and MDI. The interpolated LMs have better perplexity most of the time, which is consistent with previous work [14, 20] , but we also find that MDI adapted LMs have better WER. Also note the constraints we use for MDI, where 5-3-2 means count thresholds of 5, 3, 2 are used for selecting unigrams, bigrams and trigrams as constraints. Thus, in fact, MDI sees less information of the indomain data than interpolation, e.g., the MDI(6-4-3) above sees the least in-domain data. However, MDI requires additional information about the history distribution p(h), for which we take the maximum-likelihood in-domain pin(h) as an approximation.",
+      "word_count": 179
+    },
+    {
+      "index": 16,
+      "title": "Performance in the First-Pass Decoding",
+      "kind": "body",
+      "text": "We propose a novel approach of applying MDI adaptation: instead of adapting the out-of-domain LM, we adapt the small, indomain LM, which is used in the first pass decoding of ASR, so that it preserves the marginals of the larger and better interpolated LM. The constraints are selected to be all seen entries in the in-domain LM, such that the model size remains unchanged after adaptation. The results are a bit surprising. As we can see in the left half of Table 1 , the perplexity of the first-pass LM gets improved significantly and lies between the default and interpolated LMs. The first-pass WER also gets improved, not so much though. It seems this is the advantage of MDI over interpolation: we have better control of the resulting model size. We are going to investigate into this interesting observation as the future work.",
+      "word_count": 143
+    },
+    {
+      "index": 17,
+      "title": "Conclusion and Future Work",
+      "kind": "conclusion",
+      "text": "In this paper, we propose an efficient MDI adaptation algorithm for n-gram LMs. The algorithm relies on the back-off structure of the LMs, and takes linear time per iteration. We show empirically our algorithm is truly scalable to very large corpus. We also find that MDI adaptation gets close perplexity to linear interpolation, but better WER. The methods for computing marginals and normalization terms are general and may benefit some more advanced optimization algorithms. Regarding MDI models, it may be important to study whether the better feature selection and history distribution estimation methods can affect the performance. Lastly, as we have observed in the experiments, we will study using MDI adaptation to improve small LMs for the first-pass decoding of ASR.",
+      "word_count": 121
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Efficient training methods for maximum entropy language modeling",
+      "doi": "",
+      "year": "2000",
+      "authors": [
+        "J Wu",
+        "S Khudanpur"
+      ],
+      "raw_text": "Efficient training methods for maximum entropy language modeling J Wu S Khudanpur Sixth International Conference on Spoken Language Processing 2000"
+    },
+    {
+      "index": 2,
+      "title": "Weighted finite-state transducers in speech recognition",
+      "doi": "",
+      "year": "2002",
+      "authors": [
+        "M Mohri",
+        "F Pereira",
+        "M Riley"
+      ],
+      "raw_text": "Weighted finite-state transducers in speech recognition M Mohri F Pereira M Riley Computer Speech & Language 16 1 2002"
+    },
+    {
+      "index": 3,
+      "title": "Show some love to your n-grams: A bit of progress and stronger n-gram language modeling baselines",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "E Shareghi",
+        "D Gerz",
+        "I Vulić",
+        "A Korhonen"
+      ],
+      "raw_text": "Show some love to your n-grams: A bit of progress and stronger n-gram language modeling baselines E Shareghi D Gerz I Vulić A Korhonen Proceedings of NAACL-HLT NAACL-HLT 2019"
+    },
+    {
+      "index": 4,
+      "title": "Statistical language model adaptation: review and perspectives",
+      "doi": "",
+      "year": "2004",
+      "authors": [
+        "J R Bellegarda"
+      ],
+      "raw_text": "Statistical language model adaptation: review and perspectives J R Bellegarda Speech communication 42 1 2004"
+    },
+    {
+      "index": 5,
+      "title": "Language model adaptation,\" in Computational models of speech pattern processing",
+      "doi": "",
+      "year": "1999",
+      "authors": [
+        "R Demori",
+        "M Federico"
+      ],
+      "raw_text": "Language model adaptation,\" in Computational models of speech pattern processing R Demori M Federico 1999 Springer"
+    },
+    {
+      "index": 6,
+      "title": "Interpolated estimation of Markov source parameters from sparse data",
+      "doi": "",
+      "year": "1980",
+      "authors": [
+        "F Jelinek",
+        "R L Mercer"
+      ],
+      "raw_text": "Interpolated estimation of Markov source parameters from sparse data F Jelinek R L Mercer Proceedings, Workshop on Pattern Recognition in Practice Workshop on Pattern Recognition in Practice 1980"
+    },
+    {
+      "index": 7,
+      "title": "Use of contexts in language model interpolation and adaptation",
+      "doi": "",
+      "year": "2013",
+      "authors": [
+        "X Liu",
+        "M J F Gales",
+        "P C Woodland"
+      ],
+      "raw_text": "Use of contexts in language model interpolation and adaptation X Liu M J F Gales P C Woodland Computer Speech & Language 27 1 2013"
+    },
+    {
+      "index": 8,
+      "title": "Connecting and comparing language model interpolation techniques",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "E Pusateri",
+        "C Van Gysel",
+        "R Botros",
+        "S Badaskar",
+        "M Hannemann",
+        "Y Oualil",
+        "I Oparin"
+      ],
+      "raw_text": "Connecting and comparing language model interpolation techniques E Pusateri C Van Gysel R Botros S Badaskar M Hannemann Y Oualil I Oparin Proceedings of INTERSPEECH INTERSPEECH 2019"
+    },
+    {
+      "index": 9,
+      "title": "Normalized log-linear interpolation of backoff language models is efficient",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "K Heafield",
+        "C Geigle",
+        "S Massung",
+        "L Schwartz"
+      ],
+      "raw_text": "Normalized log-linear interpolation of backoff language models is efficient K Heafield C Geigle S Massung L Schwartz Proceedings of ACL ACL Long Papers 2016 1"
+    },
+    {
+      "index": 10,
+      "title": "Language model speaker adaptation",
+      "doi": "",
+      "year": "1995",
+      "authors": [
+        "S Besling",
+        "H.-G Meier"
+      ],
+      "raw_text": "Language model speaker adaptation S Besling H.-G Meier Proceedings of EUROSPEECH EUROSPEECH 1995"
+    },
+    {
+      "index": 11,
+      "title": "A maximum entropy approach to adaptive statistical language modelling",
+      "doi": "",
+      "year": "1996",
+      "authors": [
+        "R Rosenfeld"
+      ],
+      "raw_text": "A maximum entropy approach to adaptive statistical language modelling R Rosenfeld Computer Speech and Language 10 1996"
+    },
+    {
+      "index": 12,
+      "title": "Adaptive language modeling using minimum discriminant estimation",
+      "doi": "",
+      "year": "1992",
+      "authors": [
+        "S Della Pietra",
+        "V Della Pietra",
+        "R L Mercer",
+        "S Roukos"
+      ],
+      "raw_text": "Adaptive language modeling using minimum discriminant estimation S Della Pietra V Della Pietra R L Mercer S Roukos Proceedings of ICASSP ICASSP 1992"
+    },
+    {
+      "index": 13,
+      "title": "Language model adaptation via minimum discrimination information",
+      "doi": "",
+      "year": "1995",
+      "authors": [
+        "P S Rao",
+        "M D Monkowski",
+        "S Roukos"
+      ],
+      "raw_text": "Language model adaptation via minimum discrimination information P S Rao M D Monkowski S Roukos Proceedings of ICASSP ICASSP 1995"
+    },
+    {
+      "index": 14,
+      "title": "MDI adaptation of language models across corpora",
+      "doi": "",
+      "year": "1997",
+      "authors": [
+        "P S Rao",
+        "S Dharanipragada",
+        "S Roukos"
+      ],
+      "raw_text": "MDI adaptation of language models across corpora P S Rao S Dharanipragada S Roukos Proceedings of EU-ROSPEECH EU-ROSPEECH 1997"
+    },
+    {
+      "index": 15,
+      "title": "LM95 project report: Fast training and portability",
+      "doi": "",
+      "year": "1996",
+      "authors": [
+        "M Weintraub",
+        "Y Aksu",
+        "S Dharanipragada",
+        "S Khudanpur",
+        "H Ney",
+        "J Prange",
+        "A Stolcke",
+        "F Jelinek"
+      ],
+      "raw_text": "M Weintraub Y Aksu S Dharanipragada S Khudanpur H Ney J Prange A Stolcke F Jelinek E Shriberg LM95 project report: Fast training and portability 1996"
+    },
+    {
+      "index": 16,
+      "title": "Language model adaptation using minimum discrimination information",
+      "doi": "",
+      "year": "1999",
+      "authors": [
+        "W Reichl"
+      ],
+      "raw_text": "Language model adaptation using minimum discrimination information W Reichl Proceedings of EUROSPEECH EUROSPEECH 1999"
+    },
+    {
+      "index": 17,
+      "title": "Efficient language model adaptation through mdi estimation",
+      "doi": "",
+      "year": "1999",
+      "authors": [
+        "M Federico"
+      ],
+      "raw_text": "Efficient language model adaptation through mdi estimation M Federico Proceedings of EUROSPEECH EUROSPEECH 1999"
+    },
+    {
+      "index": 18,
+      "title": "Language model adaptation using dynamic marginals",
+      "doi": "",
+      "year": "1997",
+      "authors": [
+        "R Kneser",
+        "J Peters",
+        "D Klakow"
+      ],
+      "raw_text": "Language model adaptation using dynamic marginals R Kneser J Peters D Klakow Proceedings of EUROSPEECH EUROSPEECH 1997"
+    },
+    {
+      "index": 19,
+      "title": "Reliable feature selection for language model adaptation",
+      "doi": "",
+      "year": "2008",
+      "authors": [
+        "C.-H Chueh",
+        "J.-T Chien"
+      ],
+      "raw_text": "Reliable feature selection for language model adaptation C.-H Chueh J.-T Chien Proceedings of ICASSP ICASSP 2008"
+    },
+    {
+      "index": 20,
+      "title": "Shrinking exponential language models",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "S F Chen"
+      ],
+      "raw_text": "Shrinking exponential language models S F Chen Proceedings of HLT-NAACL HLT-NAACL 2009"
+    },
+    {
+      "index": 21,
+      "title": "Mdi adaptation for the lazy: Avoiding normalization in lm adaptation for lecture translation",
+      "doi": "",
+      "year": "2012",
+      "authors": [
+        "N Ruiz",
+        "M Federico"
+      ],
+      "raw_text": "Mdi adaptation for the lazy: Avoiding normalization in lm adaptation for lecture translation N Ruiz M Federico Proceedings of International Workshop on Spoken Language Translation (IWSLT) International Workshop on Spoken Language Translation (IWSLT) 2012"
+    },
+    {
+      "index": 22,
+      "title": "Adaptive statistical language modeling; a maximum entropy approach",
+      "doi": "",
+      "year": "1994",
+      "authors": [
+        "R Rosenfeld"
+      ],
+      "raw_text": "Adaptive statistical language modeling; a maximum entropy approach R Rosenfeld 1994 Pittsburgh, PA Carnegie Mellon University Tech. Rep"
+    },
+    {
+      "index": 23,
+      "title": "Efficient estimation of maximum entropy language models with n-gram features: an SRILM extension",
+      "doi": "",
+      "year": "2010",
+      "authors": [
+        "T Alumäe",
+        "M Kurimo"
+      ],
+      "raw_text": "Efficient estimation of maximum entropy language models with n-gram features: an SRILM extension T Alumäe M Kurimo 2010 INTERSPEECH"
+    },
+    {
+      "index": 24,
+      "title": "Speech and Language Processing",
+      "doi": "",
+      "year": "2009",
+      "authors": [
+        "D Jurafsky",
+        "J H Martin"
+      ],
+      "raw_text": "D Jurafsky J H Martin Speech and Language Processing USA Prentice-Hall, Inc 2009 nd Edition"
+    },
+    {
+      "index": 25,
+      "title": "Generalized iterative scaling for loglinear models",
+      "doi": "",
+      "year": "1972",
+      "authors": [
+        "J N Darroch",
+        "D Ratcliff"
+      ],
+      "raw_text": "Generalized iterative scaling for loglinear models J N Darroch D Ratcliff The annals of mathematical statistics 1972"
+    },
+    {
+      "index": 26,
+      "title": "One billion word benchmark for measuring progress in statistical language modeling",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "C Chelba",
+        "T Mikolov",
+        "M Schuster",
+        "Q Ge",
+        "T Brants",
+        "P Koehn",
+        "T Robinson"
+      ],
+      "raw_text": "One billion word benchmark for measuring progress in statistical language modeling C Chelba T Mikolov M Schuster Q Ge T Brants P Koehn T Robinson Proceedings of INTERSPEECH 2014"
+    },
+    {
+      "index": 27,
+      "title": "Librispeech: an asr corpus based on public domain audio books",
+      "doi": "",
+      "year": "2015",
+      "authors": [
+        "V Panayotov",
+        "G Chen",
+        "D Povey",
+        "S Khudanpur"
+      ],
+      "raw_text": "Librispeech: an asr corpus based on public domain audio books V Panayotov G Chen D Povey S Khudanpur Proceedings of ICASSP ICASSP IEEE 2015"
+    },
+    {
+      "index": 28,
+      "title": "SRILM -an extensible language modeling toolkit",
+      "doi": "",
+      "year": "2002",
+      "authors": [
+        "A Stolcke"
+      ],
+      "raw_text": "SRILM -an extensible language modeling toolkit A Stolcke 2002 INTERSPEECH"
+    },
+    {
+      "index": 29,
+      "title": "The kaldi speech recognition toolkit",
+      "doi": "",
+      "year": "2011",
+      "authors": [
+        "D Povey",
+        "A Ghoshal",
+        "G Boulianne",
+        "L Burget",
+        "O Glembek",
+        "N Goel",
+        "M Hannemann",
+        "P Motlicek"
+      ],
+      "raw_text": "The kaldi speech recognition toolkit D Povey A Ghoshal G Boulianne L Burget O Glembek N Goel M Hannemann P Motlicek Y Qian P Schwarz IEEE 2011 workshop on automatic speech recognition and understanding CONF. IEEE Signal Processing Society 2011"
+    },
+    {
+      "index": 30,
+      "title": "Semi-orthogonal low-rank matrix factorization for deep neural networks",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "D Povey",
+        "G Cheng",
+        "Y Wang",
+        "K Li",
+        "H Xu",
+        "M Yarmohammadi",
+        "S Khudanpur"
+      ],
+      "raw_text": "Semi-orthogonal low-rank matrix factorization for deep neural networks D Povey G Cheng Y Wang K Li H Xu M Yarmohammadi S Khudanpur 2018 INTERSPEECH"
+    },
+    {
+      "index": 31,
+      "title": "Purely sequence-trained neural networks for ASR based on lattice-free MMI",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "D Povey",
+        "V Peddinti",
+        "D Galvez",
+        "P Ghahremani",
+        "V Manohar",
+        "X Na",
+        "Y Wang",
+        "S Khudanpur"
+      ],
+      "raw_text": "Purely sequence-trained neural networks for ASR based on lattice-free MMI D Povey V Peddinti D Galvez P Ghahremani V Manohar X Na Y Wang S Khudanpur INTER-SPEECH 2016"
+    }
+  ],
+  "section_count": 17,
+  "reference_count": 31,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:05.946515+00:00"
+}

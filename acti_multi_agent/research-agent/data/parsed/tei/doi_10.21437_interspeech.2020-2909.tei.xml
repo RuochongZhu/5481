@@ -1,0 +1,863 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Efficient MDI Adaptation for n-gram Language Models</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Ruizhe</forename><surname>Huang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Center for Language and Speech Processing</orgName>
+								<orgName type="institution">The Johns Hopkins University</orgName>
+								<address>
+									<settlement>Baltimore</settlement>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Ke</forename><surname>Li</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Center for Language and Speech Processing</orgName>
+								<orgName type="institution">The Johns Hopkins University</orgName>
+								<address>
+									<settlement>Baltimore</settlement>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Ashish</forename><surname>Arora</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Center for Language and Speech Processing</orgName>
+								<orgName type="institution">The Johns Hopkins University</orgName>
+								<address>
+									<settlement>Baltimore</settlement>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Daniel</forename><surname>Povey</surname></persName>
+							<email>dpovey@gmail.com</email>
+							<affiliation key="aff1">
+								<orgName type="institution">Xiaomi Inc</orgName>
+								<address>
+									<settlement>Beijing</settlement>
+									<country key="CN">China</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Sanjeev</forename><surname>Khudanpur</surname></persName>
+							<email>khudanpur@jhu.edu</email>
+							<affiliation key="aff0">
+								<orgName type="department">Center for Language and Speech Processing</orgName>
+								<orgName type="institution">The Johns Hopkins University</orgName>
+								<address>
+									<settlement>Baltimore</settlement>
+									<country key="US">USA</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Efficient MDI Adaptation for n-gram Language Models</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">0791CF1E6F8A3347253921F1C86AB906</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:13+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<textClass>
+				<keywords>
+					<term>speech recognition</term>
+					<term>language model adaptation</term>
+					<term>n-gram</term>
+					<term>maximum entropy model</term>
+					<term>MDI</term>
+				</keywords>
+			</textClass>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>This paper presents an efficient algorithm for n-gram language model adaptation under the minimum discrimination information (MDI) principle, where an out-of-domain language model is adapted to satisfy the constraints of marginal probabilities of the in-domain data. The challenge for MDI language model adaptation is its computational complexity. By taking advantage of the backoff structure of n-gram model and the idea of hierarchical training method, originally proposed for maximum entropy (ME) language models [1], we show that MDI adaptation can be computed in linear-time complexity to the inputs in each iteration. The complexity remains the same as ME models, although MDI is more general than ME. This makes MDI adaptation practical for large corpus and vocabulary. Experimental results confirm the scalability of our algorithm on very large datasets, while MDI adaptation gets slightly worse perplexity but better word error rate results compared to simple linear interpolation.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>The n-gram language model (LM) still plays an important role in today's automatic speech recognition (ASR) pipeline. There are several reasons: (i) n-gram LMs can be represented by weighted finite-state transducers (WFST) and integrated into first-pass decoding <ref type="bibr" target="#b1">[2]</ref>, (ii) training and querying n-gram LMs are cheaper than neural LMs, (iii) in practice, the best performance is achieved by interpolating n-gram and neural LMs <ref type="bibr" target="#b2">[3]</ref>.</p><p>Consider a common scenario when one hopes to develop an ASR system for a new application, while little training data is available and collecting sufficient domain-specific (in-domain) data requires a considerable amount of time and efforts. The limited data is too small to estimate a robust LM. Fortunately, we can do better by capitalizing on some large, general-domain background (out-of-domain) corpus assuming the out-of-domain data may contain much information common with the application domain. This motivates LM adaptation <ref type="bibr" target="#b3">[4,</ref><ref type="bibr" target="#b4">5]</ref>, which is to estimate a robust LM based on both in-and out-of-domain data.</p><p>The question is how to combine information from the two sources in a suitable manner? The commonly used approaches for n-gram LMs fall under two categories: model interpolation and constraint-based methods. The model interpolation methods can be either linear (simple linear <ref type="bibr" target="#b5">[6]</ref>, history-dependent <ref type="bibr" target="#b6">[7]</ref>, Bayesian <ref type="bibr" target="#b7">[8]</ref> interpolation) or non-linear (log-linear <ref type="bibr" target="#b8">[9]</ref> interpolation, fill-up technique <ref type="bibr" target="#b9">[10]</ref>). Note that simple linear interpolation is very effective and probably the most popular adaptation method. Recently, <ref type="bibr" target="#b7">[8]</ref> found that count-merging, as a special case of maximum a posterior (MAP) adaptation, is theoretically similar to Bayesian interpolation. On the other hand, the constraintbased methods <ref type="bibr" target="#b10">[11]</ref>, such as ME or MDI models, attempt to choose the adapted LM such that it satisfies some constraints in the adaptation domain, while staying as close as possible to some prior distribution, measured by, e.g., Kullback-Leibler distance. This paper investigates the MDI adaptation.</p><p>There has been previous work on MDI adaptation for n-gram LMs <ref type="bibr" target="#b11">[12,</ref><ref type="bibr" target="#b12">13,</ref><ref type="bibr" target="#b13">14,</ref><ref type="bibr" target="#b14">15,</ref><ref type="bibr" target="#b15">16,</ref><ref type="bibr" target="#b16">17,</ref><ref type="bibr" target="#b17">18,</ref><ref type="bibr" target="#b18">19,</ref><ref type="bibr" target="#b19">20,</ref><ref type="bibr" target="#b20">21]</ref>, with several variants of task definition, e.g., adaptation for cache model, withinor cross-corpus adaptation. Although MDI has appealing theoretical properties, the computation is non-trivial and expensive, which grows almost exponentially (detailed in section 3) with the size of the vocabulary <ref type="bibr" target="#b4">[5]</ref> in a naive implementation. To reduce the complexity, <ref type="bibr" target="#b17">[18,</ref><ref type="bibr" target="#b15">16]</ref> proposed approximation algorithms and <ref type="bibr" target="#b21">[22,</ref><ref type="bibr" target="#b22">23]</ref> devised parallelization to speed up the computation. <ref type="bibr" target="#b16">[17]</ref> proposed a linear-time algorithm for unigram constraints. On the other hand, there has been work on ME model that utilizes the back-off structure of the LMs to reduce computational complexity to linear time per iteration <ref type="bibr" target="#b0">[1]</ref>, but it is not clear whether the same trick can carry over to MDI which is more general than ME. Besides, regarding model performance, most previous work has found that MDI adaptation performs slightly worse than simple linear interpolation <ref type="bibr" target="#b19">[20]</ref>, but we are interested to see if there can be any difference when operating on very large corpus once we have an efficient MDI algorithm for arbitrary marginal distribution constraints. Moreover, in the experiment, we will propose a novel approach of applying MDI adaptation to improve the firstpass LM while keeping the model size unchanged.</p><p>We will review MDI adaptation in section 2. In section 3, we describe our efficient algorithm and describe some implementation concerns. In section 4, we show experiments to demonstrate the scalability of the algorithm and compare the perplexities and word error rates with linear interpolation, the baseline. We will conclude with future work in section 5.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Background</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.">n-gram Language Model</head><p>A language model (LM) is a probability distribution over word sequences W = w1w2 . . . wL, usually reduced to a word-byword probability via the chain rule p(W ) = L i=1 p(wi|w i 1 ), where w j i ≡ wi, wi+1, . . . , wj. An n-gram LM assumes that this distribution depends only on the previous n -1 words, i.e., p(wi|w i 1 ) ≈ p(wi|w i-1 i-n+1 ), where w i-1 i-n+1 is the history hi of word wi. We omit the index i when the context is clear.</p><p>Given the vocabulary V , n-gram LM defines a set of conditional probabilities p(w|h) for any hw ∈ V n . However, the space V n is very large that not every n-gram hw is seen in the training data, known as the data sparsity problem. Thus, smoothing techniques have been used to estimate the probability p(w|h) for the unseen n-grams. The most popular techniques is backing-off. The idea is to recursively estimate p(w|h) of unseen n-grams based on the lower order (n-1)-gram probabilities p(w|h ), where h = w i-1 i-n+2 , which may have been seen in the corpus. More specifically,</p><formula xml:id="formula_0">p(w|h) = p * (w|h) hw is seen in corpus bow(h) • p(w|h ) otherwise,<label>(1)</label></formula><p>where the discounted probability p * (w|h) and the back-off weight bow(h) are together to ensure the conditional probability sums to one: w∈V p(w|h) = 1. We will consider n-gram LMs having back-off structure in the rest of the paper. In practice, such LMs are stored in ARPA format <ref type="bibr" target="#b23">[24]</ref>. Note that LMs smoothed by interpolation <ref type="bibr" target="#b23">[24]</ref> can also be stored as ARPA. We measure the size of an n-gram LM as the total number of entries of order 1, . . . , n when the LM is represented as ARPA.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.">MDI Adaptation</head><p>The idea of LM adaptation under the minimum discrimination information (MDI) principle is to compute the adapted distribution such that it satisfies the constraints characterizing in-domain distribution, and also stays closest to the out-of-domain distribution. The constraints are usually expressed as marginal distributions. Formally, given (i) the vocabulary V , (ii) the out-domain LM pout(w|h), (iii) the empirical history distribution p(h) which is commonly approximated by either the in-domain probabilities pin(h) or out-of-domain pout(h), and (iv) K marginal distributions p(Si) where Si ⊂ V n , i = 1, . . . , K derived from the indomain data, the adapted LM p ad (w|h) is defined by minimizing the following conditional Kullback-Liebler (KL) divergence:</p><formula xml:id="formula_1">p ad (w|h) = arg min p D(p||pout|p)<label>(2)</label></formula><p>= arg min</p><formula xml:id="formula_2">p h∈V n-1 p(h) w∈V p(w|h) log p(w|h) pout(w|h) ,<label>(3)</label></formula><p>while satisfying the constraints:</p><formula xml:id="formula_3">h∈V n-1 p(h) w∈V p(w|h)fi(h, w) = p(Si), i = 1, . . . , K. (<label>4</label></formula><formula xml:id="formula_4">)</formula><p>where fi are indicator functions of (h, w) ∈ Si. Note that Eq. 3 can also be viewed as the KL divergence between the joint distribution p(h, w) and pout(h, w) assuming they have the same history distribution p(h). Also notice in the case that pout is the uniform distribution, p ad is indeed a maximum entropy model. If the constraints in Equation 4 are consistent, the solution of the above optimization problem exists and is unique <ref type="bibr" target="#b24">[25]</ref>. It has the following form, with parameters {λi}.</p><formula xml:id="formula_5">p ad (w|h) = pout(w|h) * α(h, w) Z(h, λ1, . . . , λK ) ,<label>(5)</label></formula><p>where the scaling factor α(h, w) = exp ( K i=1 λifi(h, w)), and Z(h, λ1, . . . , λK ) is the normalization term summing up the numerators. This solution can be obtained by generalized iterative scaling (GIS) algorithm <ref type="bibr" target="#b24">[25]</ref>, sketched in Algorithm 1, or some of its modern fast counterparts <ref type="bibr" target="#b22">[23]</ref>. The iterations can be terminated when the results converge or nearly converge.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Efficient Algorithm: The Hierarchical Training Method</head><p>The challenge for implementing the above GIS algorithm is its computational complexity resulting from Line 4 (normalization) and 8 (marginalization). A naive implementation may take O(K * # of seen histories * |V |) time per iteration <ref type="bibr" target="#b4">[5]</ref>. An improvement can be made to O(# of seen histories * |V |+K) if we store the constraints in Line 7 in a hash table and accumulate the summation in Line 8, but this complexity is still astronomical when the corpus and vocabulary V is large. Thus, we need to re-organize the summation happening in Line 4 and 8.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">The Hierarchical Training Method: MDI v.s. ME</head><p>To overcome this challenge, the hierarchical training method <ref type="bibr" target="#b0">[1]</ref> has been proposed for ME models. The algorithm only requires linear time to its inputs per iteration, i.e., the number of seen entries in pout plus K. The trick is based on the back-off structure of probability p (n) (w|h). In this paper, we show that similar algorithmic trick can be applied to MDI with additional cares. This</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 1 Generalized Iterative Scaling (GIS) Algorithm</head><p>Require: V , pout(w|h), p(h) and p(Si)</p><formula xml:id="formula_6">1: Set λ (0) 1 = λ (0) 2 = . . . = λ<label>(0)</label></formula><formula xml:id="formula_7">K = 0, n = 0 2: while stopping criterion not met do 3: Compute α (n) (h, w) = exp K i=1 λ (n) i fi(h, w) 4:</formula><p>for each seen history h in training data do 5:</p><p>Compute normalization term: Z(h, λ</p><formula xml:id="formula_8">(n) 1 , . . . , λ (n) K ) := w pout(w|h)α (n) (h, w) 6:</formula><p>end for 7:</p><p>Update each entry of back-off LM:</p><formula xml:id="formula_9">p (n) (w|h) := p out (w|h) * α (n) (h,w) Z(h,λ (n) 1 ,...,λ<label>(n) K ) 8:</label></formula><p>for j = 1, • • • , K do 9:</p><p>Marginalize:</p><formula xml:id="formula_10">p (n) (Sj) := h p(h) w p (n) (w|h)fj(h, w) 10: Update params: λ (n+1) j := λ (n) j + log p(S j ) p (n) (S j )</formula><p>11:</p><p>end for 12:</p><p>n := n + 1 13: end while 14: return p (n) (w|h) as p ad means MDI adaptation incurs no extra computation complexity although it is more general than ME. The key is to handle the non-uniform pout appropriately.</p><p>To illustrate the idea, we take trigram LM as an example. Consider a general LM p(w3|w 2  1 ) that has the back-off structure as in Equation 1. We also define a set of real-valued scaling factors c(w 3  1 ), w 3 1 ∈ V 3 to be some default constant value except for K of them having non-default values. Now, we hope to compute the left-aligned and right-aligned summation of the product of p(w3|w 2  1 ) and the general scaling factor c(w 3 1 ):</p><formula xml:id="formula_11">ΣL(w 2 1 ) = w 3 ∈V p(w3|w 2 1 ) • c(w 3 1 ) (<label>6</label></formula><formula xml:id="formula_12">)</formula><formula xml:id="formula_13">ΣR(w 3 2 ) = w 1 ∈V p(w3|w 2 1 ) • c(w 3 1 ) (<label>7</label></formula><formula xml:id="formula_14">)</formula><p>The right-hand-sides only differ in the subscript of summation.</p><p>In fact, ΣL corresponds to computing the normalization term (Line 4), and ΣR is related to marginalization (Line 8). Notice that in ME, p(w3|w 2 1 ) is just a uniform distribution. 3.2. Computing ΣL(w 2 1 ) as normalization for history w 2   1   In Equation 6, we compute ΣL(w 2 1 ) by summing over w3 ∈ V given history w 2  1 , which costs |V | addition operations. However, this cost can be reduced to the number of seen n-grams given w 2 1 by dynamic programming, much less than |V |.</p><p>As p(w3|w 2 1 ) is a back-off model, we can rewrite Eq. 6 as:</p><formula xml:id="formula_15">ΣL(w 2 1 ) = w 3 ∈V p(w3|w<label>2</label></formula><p>1 ) • c(w 3 1 ) = w 3 ∈V ∧seen(w 3 1 ) p * (w3|w 2 1 ) -bow(w 2 1 ) • p(w3|w2) • c(w 3 1 ) + bow(w 2 1 ) w 3 ∈V p(w3|w2) • c(w 3 2 ) + bow(w 2 1 ) w 3 ∈V ∧c(w 3 1 ) =c(w 3 2 )</p><p>p(w3|w2) • c(w 3 1 ) -c(w 3 2 ) .</p><p>We can define ΣL(w2) = w 3 ∈V p(w3|w2) • c(w 3 2 ) for the second term in the summation above. So, this appears to be a dynamic programming problem <ref type="bibr" target="#b16">[17,</ref><ref type="bibr" target="#b8">9]</ref> with the base case ΣL(∅) = w 3 ∈V p(w3) • c(w3), needed to compute only once. Thus, ΣL(w 2 1 ) can be computed hierarchically and bottom-up from ΣL(∅) along the back-off structure of p(w3|w 2  1 ).</p><p>As of complexity, computing ΣL(∅) requires O(|V |) time. ΣL(w 2 1 ) and ΣL(w2) can be computed from the ΣL of the lowerorder n-grams with the complexity of the number of seen ngrams along the way, plus the number of distinct scaling factors K (at most), as each non-default c(•) term is accessed only once. Thus, overall, the total time is proportional to the number of seen entries in pout(w3|w 2  1 ) plus K. Recall in the ME case, p(•) and bow(•) can be seen as 1, and the above equation can be simplified to contain only the scaling factor c(•)'s <ref type="bibr" target="#b0">[1]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3.">Computing ΣR</head><p>Consider Eq. 8, where we compute the right-aligned ΣR(w 3  2 ) by summing over w1 ∈ V . Similarly, we define the lower or higher order right-aligned summation ΣR(w3) as follows:</p><formula xml:id="formula_16">ΣR(w3) = w 2 1 ∈V 2 p(w3|w 2 1 ) • c(w 3 1 )<label>(8)</label></formula><formula xml:id="formula_17">ΣR(w 3 1 ) = p(w3|w 2 1 ) • c(w 3 1 )<label>(9)</label></formula><p>Obviously, ΣR(w3) requires more computation than ΣR(w 3 2 ) and ΣR(w 3 1 ). Unfortunately, dynamic programming does not work here anymore to compute ΣR(w3) from ΣR(w 3  2 ). Instead, we will make use of the idea of shared computation, which means we go over the data for only one pass, but we accumulate the values correspondingly to all related constraints.</p><p>First, let us compute ΣR(w 3 2 ) as follows:</p><formula xml:id="formula_18">ΣR(w 3 2 ) = w 1 ∈V p(w3|w<label>2</label></formula><p>1 ) • c(w 3 1 ) = w 1 ∈V ∧seen(w 3 1 ) p * (w3|w 2 1 ) -bow(w 2 1 ) • p(w3|w2) • c(w 3 1 ) + p(w3|w2) • c(w 3 2 ) w 1 ∈V bow(w 2 1 ) + w 1 ∈V ∧c(w 3 1 ) =c(w 3 2 ) p(w3|w2) • bow(w 2 1 ) • c(w 3 1 ) -c(w 3 2 ) For simplicity, we denote the auxiliary function g(w2) = w 1 ∈V bow(w 2 1 ) in the second term above, and we will address the computation of g(•) later. Notice that the decomposition of ΣR looks quite different from section 3.2, as ΣR(w 3 2 ) is not decomposed to the sub-problem ΣR(w3) or vice versa. Besides, if we let p(•) and bow(•) be 1, it becomes the case for ME model. At the same time, let us see how to compute ΣR(w3): ΣR(w3) = w 2 1 ∈V 2 ∧seen(w 3 1 ) p * (w3|w 2 1 ) -bow(w 2 1 ) • p(w3|w2) • c(w 3 1 ) + w 2 ∈V ∧seen(w 3 2 ) (p * (w3|w2) -bow(w2) • p(w3)) • c(w 3 2 ) • g(w2) + p(w3) • c(w3) w 2 ∈V bow(w2) • g(w2) + w 2 ∈V ∧c(w 3 2 ) =c(w 3 ) p(w3) • bow(w2) • c(w 3 2 ) -c(w3) + w 2 1 ∈V 2 ∧c(w 3 1 ) =c(w 3 2 ) p(w3|w2) • bow(w 2 1 ) • c(w 3 1 ) -c(w 3 2 )</p><p>We denote g(∅) = w 2 ∈V bow(w2) • g(w2). Assuming that the values of g(•) are known, now we can come up with an algorithm to compute ΣR by observing the equations of ΣR(w3), ΣR(w 3 2 ) and ΣR(w 3 1 ) together. The algorithm enumerates the seen ngrams in LM p(w3|w 2  1 ) and all non-default scaling factor c(•)'s, and adds the value as specified in the equations to the ΣR with arguments matching the suffix of the n-gram. The complexity is O(n * # of entries in p(w|h)), with n being a small constant. Now, the remaining problem is how to compute the auxiliary function g(•) as defined previously. It turns out that this is a right-aligned summation in the ME case. More specifically, their scaling factors are c(w 2 1 ) = bow(w 2 1 ) or c(w 2 1 ) = bow(w 2 1 ) * bow(w2). Thus, computing g(•) can be shown to be also in linear time. In fact, computing the auxiliary function g(•) is what makes the algorithm for MDI different from that of ME.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4.">The back-off structure of p ad (w|h)</head><p>Before computing the marginals in Line 8 of Algorithm 1, we still need to show that the probability p (n) (w|h) or p ad (w|h) in Equation <ref type="formula" target="#formula_5">5</ref>has the back-off structure. This is important not only for the computational purpose -that the tricks for ΣL and ΣR can be applied here -but also for being able to represent the final adapted LM in ARPA format.</p><p>We claim that, if pout is a back-off model as in Equation 1, then so is the exponential models p (n) and p ad . We prove this by giving the back-off expression of p ad :</p><formula xml:id="formula_19">p ad (w3|w 2 1 ) =    p * ad (w3|w<label>2</label></formula><p>1 ) if w 3 1 seen in pout or w 3 1 is a constraint bow ad (w 2 1 ) • p ad (w3|w2) otherwise where: p * ad (w3|w 2 1 ) = pout(w3|w 2 1 ) • c(w 3 1 ) Z(w 2 1 ) bow * ad (w 2 1 ) = Z(w2) Z(w 2 1 ) bowout(w 2 1 )</p><p>The lower order n-grams of p ad are defined analogously. There will be at most (# entries in pout + # entries in pin) entries in p ad , same as in linear interpolation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.5.">Computing marginalization as ΣR</head><p>Finally, we come to compute the marginals in Line 8 of Algo. 1:</p><formula xml:id="formula_20">p (n) (Si) := h p(h) w p (n) (w|h)fi(h, w).<label>(10)</label></formula><p>Since it has been proved that p (n) is a back-off LM, we can view w p (n) (w|h)fi(h, w) as a right-aligned sum. However, we need to further consider the multiplication term p(h). Fortunately, the same trick computing ΣR can be applied here, with some modification of the auxiliary function g. For example, let g(w2) = w 1 ∈V p(w 2 1 )bow(w 2 1 ), and then it can be treated in two ways efficiently, either (i) if p(w 2 1 ) is an unsmoothed maximum likelihood estimation, there will be a lot of zeros for p(w 2 1 ), or (ii) if p(w 2 1 ) = p(w2|w1) * p(w1) has a smoothed distribution, and p(w2|w1) has the back-off structure, then this amounts to compute some right-aligned sum. It can be shown that the computational complexity of marginalization is linear in both ways. We omit the details here due to space limit. Interested readers can refer to Appendix A at the end of the paper. In all, we have shown how Algorithm 1 can be implemented efficiently.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.6.">Implementation Issues</head><p>Special care should be taken when dealing with n-grams w 3 1 which containing &lt;s&gt; or &lt;\s&gt;, or whose suffix w 3  2 is not seen. To further speed up the computation, the algorithm can be implemented in a vectorized manner with group-by operation for summing up probabilities of n-grams of the same suffix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Experimental Results</head><p>We will show the scalability of our algorithm and the effectiveness of MDI adaptation with two different ways of application.  We simulate the LM adaptation scenario by taking three speech corpora, Wall Street Journal (WSJ), Switchboard (SWBD) and AMI-IHM (AMI) as in-domain data, and Google One Billion Words <ref type="bibr" target="#b25">[26]</ref> and Librispeech <ref type="bibr" target="#b26">[27]</ref> as out-of-domain data. We normalize the Google dataset with the similar scripts generating normalized Librispeech LM training texts, resulting 702 million and 803 million words respectively. We compute trigram LMs using the SRILM tool <ref type="bibr" target="#b27">[28]</ref> with Kneser-Ney smoothing and default settings, or use default Kaldi's LMs. We find the normalized Google dataset always out-perform Librispeech as the out-of-domain corpus, so we only report the results for Google dataset. We are interested whether the rich LM information in the very large corpus can help the LM and ASR task in the application domains. We use count thresholds to select the in-domain constraints, i.e., the marginals are considered reliable when the counts of the n-grams is above the threshold.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.">Scalability</head><p>We implemented the proposed efficient version of Algorithm 1 in Python with Numpy and Pandas. In Figure <ref type="figure" target="#fig_0">1</ref>, we compare the run-time per iteration in seconds with various size of out-ofdomain LM (blue) and various number of constraints (blue). The in-and out-of-domain data are taken to be SWBD and Google. We sample the out-of-domain data at different sizes measured by the total number of seen entries in the ARPA file, and record the run-time per iteration. We control the number of constraints by using different constraint count thresholds. We can see that both lines shows linear scalability, and the run-time is denominated by the size of out-of-domain data. Besides, it usually takes 60 ∼ 80 iterations for the algorithm to converge to a near optimal solution, which may be improved by more advanced optimization algorithms.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.">Effectiveness of Adaptation</head><p>We compare the LMs with and without adaptation, and with different adaptation methods, i.e., simple linear interpolation and MDI. We evaluate the LMs in perplexity (PPL) and word error rate (WER) when used in an hybrid ASR system. We use the latest recipes in the open-source speech recognition toolkit Kaldi <ref type="bibr" target="#b28">[29]</ref> to run the ASR experiments. The acoustic model uses factorized TDNN architecture <ref type="bibr" target="#b29">[30]</ref> and is trained with LF-MMI criteria <ref type="bibr" target="#b30">[31]</ref>. The features are 40-dimensional MFCC features with 100-dimensional i-vectors appended to the MFCC. The training data is augmented with speed and volume perturbation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.1.">Performance in the Rescoring</head><p>As in a common adaptation scenario, we adapt the large, out-ofdomain LM to satisfy the marginal distribution constraints derived from the in-domain data. As the Google corpus is large, the resulting LM can have 61 ∼ 76 million entries depending on the vocabulary (which is AMI 50k, SWBD 30k, WSJ 20k). So the LMs are used for rescoring. From the right half of Table <ref type="table" target="#tab_0">1</ref>, we can see that LM adaptation is effective for both interpolation and MDI. The interpolated LMs have better perplexity most of the time, which is consistent with previous work <ref type="bibr" target="#b13">[14,</ref><ref type="bibr" target="#b19">20]</ref>, but we also find that MDI adapted LMs have better WER. Also note the constraints we use for MDI, where 5-3-2 means count thresholds of 5, 3, 2 are used for selecting unigrams, bigrams and trigrams as constraints. Thus, in fact, MDI sees less information of the indomain data than interpolation, e.g., the MDI(6-4-3) above sees the least in-domain data. However, MDI requires additional information about the history distribution p(h), for which we take the maximum-likelihood in-domain pin(h) as an approximation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.2.">Performance in the First-Pass Decoding</head><p>We propose a novel approach of applying MDI adaptation: instead of adapting the out-of-domain LM, we adapt the small, indomain LM, which is used in the first pass decoding of ASR, so that it preserves the marginals of the larger and better interpolated LM. The constraints are selected to be all seen entries in the in-domain LM, such that the model size remains unchanged after adaptation. The results are a bit surprising. As we can see in the left half of Table <ref type="table" target="#tab_0">1</ref>, the perplexity of the first-pass LM gets improved significantly and lies between the default and interpolated LMs. The first-pass WER also gets improved, not so much though. It seems this is the advantage of MDI over interpolation: we have better control of the resulting model size. We are going to investigate into this interesting observation as the future work.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Conclusion and Future Work</head><p>In this paper, we propose an efficient MDI adaptation algorithm for n-gram LMs. The algorithm relies on the back-off structure of the LMs, and takes linear time per iteration. We show empirically our algorithm is truly scalable to very large corpus. We also find that MDI adaptation gets close perplexity to linear interpolation, but better WER. The methods for computing marginals and normalization terms are general and may benefit some more advanced optimization algorithms. Regarding MDI models, it may be important to study whether the better feature selection and history distribution estimation methods can affect the performance. Lastly, as we have observed in the experiments, we will study using MDI adaptation to improve small LMs for the first-pass decoding of ASR.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Run-time of Algorithm 1 with various input sizes.</figDesc><graphic coords="4,52.84,196.55,230.62,144.14" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Comparing the perplexity (PPL) and word error rate (WER, in %) of LMs with no adaptation, interpolation and MDI adaptation.</figDesc><table><row><cell></cell><cell></cell><cell></cell><cell cols="2">First-pass LM</cell><cell></cell><cell></cell><cell></cell><cell cols="5">Rescoring with large n-gram LM</cell><cell></cell><cell></cell></row><row><cell cols="2">Corpus Test set</cell><cell cols="2">default</cell><cell cols="2">MDI</cell><cell cols="3">No adapt. Interpolation</cell><cell cols="2">MDI (2-2-2)</cell><cell cols="2">MDI (5-3-2)</cell><cell cols="2">MDI (6-4-3)</cell></row><row><cell></cell><cell></cell><cell cols="4">PPL WER PPL WER</cell><cell>PPL</cell><cell cols="8">PPL WER PPL WER PPL WER PPL WER</cell></row><row><cell>AMI</cell><cell>dev eval</cell><cell>84.6 79.7</cell><cell>20.0 20.2</cell><cell>84.3 79.9</cell><cell>20.0 20.2</cell><cell>384.1 408.8</cell><cell>80.5 77.5</cell><cell>19.6 20.0</cell><cell>86.6 81.8</cell><cell>19.4 19.6</cell><cell>87.1 82.8</cell><cell>19.4 19.6</cell><cell>87.9 83.9</cell><cell>19.4 19.6</cell></row><row><cell></cell><cell>dev</cell><cell>98.6</cell><cell>12.5</cell><cell>96.9</cell><cell>12.0</cell><cell>411.0</cell><cell>92.7</cell><cell>11.4</cell><cell>94.5</cell><cell>11.7</cell><cell>95.1</cell><cell>11.7</cell><cell>95.8</cell><cell>11.6</cell></row><row><cell>SWBD</cell><cell cols="5">eval2000 179.2 14.2 117.5 14.0</cell><cell>161.6</cell><cell>85.6</cell><cell>13.4</cell><cell>88.9</cell><cell>13.2</cell><cell>89.4</cell><cell>13.2</cell><cell>89.4</cell><cell>13.2</cell></row><row><cell></cell><cell>rt03</cell><cell cols="2">167.8 17.3</cell><cell>109</cell><cell>17.2</cell><cell>149.4</cell><cell>78.6</cell><cell>16.3</cell><cell>82.2</cell><cell>16.2</cell><cell>82.7</cell><cell>16.1</cell><cell>82.7</cell><cell>16.1</cell></row><row><cell>WSJ</cell><cell>dev93 eval92</cell><cell>186.6 164.8</cell><cell>7.0 4.7</cell><cell>161.3 142.7</cell><cell>6.8 4.7</cell><cell>223.3 222.2</cell><cell>134.2 118.7</cell><cell>6.3 4.0</cell><cell>134.8 117.4</cell><cell>6.2 3.9</cell><cell>135.1 118.0</cell><cell>6.3 3.9</cell><cell>136.8 120.0</cell><cell>6.3 3.9</cell></row></table></figure>
+		</body>
+		<back>
+
+			
+			<div type="acknowledgement">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>6. Appendix A 7. References</p></div>
+			</div>
+
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Efficient training methods for maximum entropy language modeling</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Khudanpur</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Sixth International Conference on Spoken Language Processing</title>
+		<imprint>
+			<date type="published" when="2000">2000</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Weighted finite-state transducers in speech recognition</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mohri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Pereira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Riley</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Computer Speech &amp; Language</title>
+		<imprint>
+			<biblScope unit="volume">16</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="69" to="88" />
+			<date type="published" when="2002">2002</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Show some love to your n-grams: A bit of progress and stronger n-gram language modeling baselines</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Shareghi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Gerz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Vulić</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Korhonen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of NAACL-HLT</title>
+		<meeting>NAACL-HLT</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="4113" to="4118" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Statistical language model adaptation: review and perspectives</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">R</forename><surname>Bellegarda</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Speech communication</title>
+		<imprint>
+			<biblScope unit="volume">42</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="93" to="108" />
+			<date type="published" when="2004">2004</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Language model adaptation,&quot; in Computational models of speech pattern processing</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Demori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Federico</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1999">1999</date>
+			<publisher>Springer</publisher>
+			<biblScope unit="page" from="280" to="303" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Interpolated estimation of Markov source parameters from sparse data</title>
+		<author>
+			<persName><forename type="first">F</forename><surname>Jelinek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">L</forename><surname>Mercer</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings, Workshop on Pattern Recognition in Practice</title>
+		<meeting>Workshop on Pattern Recognition in Practice</meeting>
+		<imprint>
+			<date type="published" when="1980">1980</date>
+			<biblScope unit="page" from="381" to="397" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Use of contexts in language model interpolation and adaptation</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">J F</forename><surname>Gales</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">C</forename><surname>Woodland</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Computer Speech &amp; Language</title>
+		<imprint>
+			<biblScope unit="volume">27</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="301" to="321" />
+			<date type="published" when="2013">2013</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Connecting and comparing language model interpolation techniques</title>
+		<author>
+			<persName><forename type="first">E</forename><surname>Pusateri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Van Gysel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Botros</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Badaskar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Hannemann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Oualil</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Oparin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of INTERSPEECH</title>
+		<meeting>INTERSPEECH</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="3500" to="3504" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Normalized log-linear interpolation of backoff language models is efficient</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Heafield</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Geigle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Massung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Schwartz</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ACL</title>
+		<meeting>ACL</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2016">2016</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="876" to="886" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Language model speaker adaptation</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Besling</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H.-G</forename><surname>Meier</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EUROSPEECH</title>
+		<meeting>EUROSPEECH</meeting>
+		<imprint>
+			<date type="published" when="1995">1995</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">A maximum entropy approach to adaptive statistical language modelling</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rosenfeld</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Computer Speech and Language</title>
+		<imprint>
+			<biblScope unit="volume">10</biblScope>
+			<biblScope unit="page" from="187" to="228" />
+			<date type="published" when="1996">1996</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Adaptive language modeling using minimum discriminant estimation</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Della Pietra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Della Pietra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">L</forename><surname>Mercer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Roukos</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ICASSP</title>
+		<meeting>ICASSP</meeting>
+		<imprint>
+			<date type="published" when="1992">1992</date>
+			<biblScope unit="page" from="633" to="636" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Language model adaptation via minimum discrimination information</title>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">S</forename><surname>Rao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">D</forename><surname>Monkowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Roukos</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ICASSP</title>
+		<meeting>ICASSP</meeting>
+		<imprint>
+			<date type="published" when="1995">1995</date>
+			<biblScope unit="page" from="161" to="164" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">MDI adaptation of language models across corpora</title>
+		<author>
+			<persName><forename type="first">P</forename><forename type="middle">S</forename><surname>Rao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Dharanipragada</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Roukos</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EU-ROSPEECH</title>
+		<meeting>EU-ROSPEECH</meeting>
+		<imprint>
+			<date type="published" when="1997">1997</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Weintraub</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Aksu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Dharanipragada</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Khudanpur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Prange</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Stolcke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Jelinek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Shriberg</surname></persName>
+		</author>
+		<title level="m">LM95 project report: Fast training and portability</title>
+		<imprint>
+			<date type="published" when="1996">1996</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Language model adaptation using minimum discrimination information</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Reichl</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EUROSPEECH</title>
+		<meeting>EUROSPEECH</meeting>
+		<imprint>
+			<date type="published" when="1999">1999</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Efficient language model adaptation through mdi estimation</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Federico</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EUROSPEECH</title>
+		<meeting>EUROSPEECH</meeting>
+		<imprint>
+			<date type="published" when="1999">1999</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Language model adaptation using dynamic marginals</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Kneser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Peters</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Klakow</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of EUROSPEECH</title>
+		<meeting>EUROSPEECH</meeting>
+		<imprint>
+			<date type="published" when="1997">1997</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Reliable feature selection for language model adaptation</title>
+		<author>
+			<persName><forename type="first">C.-H</forename><surname>Chueh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J.-T</forename><surname>Chien</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ICASSP</title>
+		<meeting>ICASSP</meeting>
+		<imprint>
+			<date type="published" when="2008">2008</date>
+			<biblScope unit="page" from="5089" to="5092" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Shrinking exponential language models</title>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">F</forename><surname>Chen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of HLT-NAACL</title>
+		<meeting>HLT-NAACL</meeting>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<biblScope unit="page" from="468" to="476" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title level="a" type="main">Mdi adaptation for the lazy: Avoiding normalization in lm adaptation for lecture translation</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Ruiz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Federico</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of International Workshop on Spoken Language Translation (IWSLT)</title>
+		<meeting>International Workshop on Spoken Language Translation (IWSLT)</meeting>
+		<imprint>
+			<date type="published" when="2012">2012</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Adaptive statistical language modeling; a maximum entropy approach</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rosenfeld</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1994">1994</date>
+			<pubPlace>Pittsburgh, PA</pubPlace>
+		</imprint>
+		<respStmt>
+			<orgName>Carnegie Mellon University</orgName>
+		</respStmt>
+	</monogr>
+	<note type="report_type">Tech. Rep</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Efficient estimation of maximum entropy language models with n-gram features: an SRILM extension</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Alumäe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Kurimo</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2010">2010</date>
+			<publisher>INTERSPEECH</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><surname>Jurafsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">H</forename><surname>Martin</surname></persName>
+		</author>
+		<title level="m">Speech and Language Processing</title>
+		<meeting><address><addrLine>USA</addrLine></address></meeting>
+		<imprint>
+			<publisher>Prentice-Hall, Inc</publisher>
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+	<note>nd Edition</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">Generalized iterative scaling for loglinear models</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">N</forename><surname>Darroch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Ratcliff</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The annals of mathematical statistics</title>
+		<imprint>
+			<date type="published" when="1972">1972</date>
+			<biblScope unit="page" from="1470" to="1480" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">One billion word benchmark for measuring progress in statistical language modeling</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Chelba</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Mikolov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Schuster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Brants</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Koehn</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Robinson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Proceedings of INTERSPEECH</title>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Librispeech: an asr corpus based on public domain audio books</title>
+		<author>
+			<persName><forename type="first">V</forename><surname>Panayotov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Povey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Khudanpur</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of ICASSP</title>
+		<meeting>ICASSP</meeting>
+		<imprint>
+			<publisher>IEEE</publisher>
+			<date type="published" when="2015">2015</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<title level="m" type="main">SRILM -an extensible language modeling toolkit</title>
+		<author>
+			<persName><forename type="first">A</forename><surname>Stolcke</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2002">2002</date>
+			<publisher>INTERSPEECH</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">The kaldi speech recognition toolkit</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Povey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ghoshal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Boulianne</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Burget</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Glembek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Hannemann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Motlicek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Qian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Schwarz</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">IEEE 2011 workshop on automatic speech recognition and understanding</title>
+		<imprint>
+			<publisher>CONF. IEEE Signal Processing Society</publisher>
+			<date type="published" when="2011">2011</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">Semi-orthogonal low-rank matrix factorization for deep neural networks</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Povey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Yarmohammadi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Khudanpur</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<publisher>INTERSPEECH</publisher>
+			<biblScope unit="page" from="3743" to="3747" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Purely sequence-trained neural networks for ASR based on lattice-free MMI</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Povey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Peddinti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Galvez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Ghahremani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Manohar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Na</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Khudanpur</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">INTER-SPEECH</title>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+			<biblScope unit="page" from="2751" to="2755" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

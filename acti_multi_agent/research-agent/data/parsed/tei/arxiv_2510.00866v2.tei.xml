@@ -1,0 +1,1410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">The Data-Quality Illusion: Rethinking Classifier-Based Quality Filtering for LLM Pretraining</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-10-03">October 3, 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Thiziri</forename><surname>Nait Saada</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Louis</forename><surname>Bethune</surname></persName>
+							<email>l_bethune@apple.com</email>
+						</author>
+						<author>
+							<persName><forename type="first">Michal</forename><surname>Klein</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">David</forename><surname>Grangier</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Marco</forename><surname>Cuturi</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Pierre</forename><surname>Ablin</surname></persName>
+							<email>p_ablin@apple.com</email>
+						</author>
+						<author>
+							<persName><forename type="first">‡</forename><surname>Work</surname></persName>
+						</author>
+						<title level="a" type="main">The Data-Quality Illusion: Rethinking Classifier-Based Quality Filtering for LLM Pretraining</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-10-03">October 3, 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">B1C1FE6613D92FAEA4447C7B292CC4F2</idno>
+					<idno type="arXiv">arXiv:2510.00866v2[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:13+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>done as an intern at Apple, § Oxford university, † Apple Large-scale models are pretrained on massive web-crawled datasets containing documents of mixed quality, making data filtering essential. A popular method is Classifier-based Quality Filtering (CQF), which trains a binary classifier to distinguish between pretraining data and a small, high-quality set. It assigns each pretraining document a quality score defined as the classifier's score and retains only the top-scoring ones. We provide an in-depth analysis of CQF. We show that while CQF improves downstream task performance, it does not necessarily enhance language modeling on the highquality dataset. We explain this paradox by the fact that CQF implicitly filters the high-quality dataset as well. We further compare the behavior of models trained with CQF to those trained on synthetic data of increasing quality, obtained via random token permutations, and find starkly different trends. Our results challenge the view that CQF captures a meaningful notion of data quality.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Large-scale models are pretrained on large amounts of data, and the quality of these data is a critical factor in achieving state-of-the-art performance. Among various heuristics for leveraging data quality to improve on downstream tasks, Classifier-based Quality Filtering (CQF) is recognized as a cornerstone of data processing. CQF has now become widely adopted and is, for instance, part of established pretraining pipelines like those of GPT3 <ref type="bibr" target="#b3">(Brown et al., 2020)</ref>, LLama <ref type="bibr" target="#b28">(Touvron et al., 2023)</ref>, and PALM <ref type="bibr" target="#b4">(Chowdhery et al., 2023)</ref>. It is also a key component of several widely used public datasets, such as DCLM <ref type="bibr" target="#b17">(Li et al., 2024)</ref> or the SmolLM corpus <ref type="bibr" target="#b1">(Ben Allal et al., 2024)</ref>. CQF, as illustrated in Figure <ref type="figure">1</ref>, trains a binary classifier to distinguish documents from a large, low-quality pretraining set (LQ set) from those of a small, high-quality dataset (HQ set). It then assigns a scalar quality score to each document within the LQ set, defined by the classifier's score. The filtered dataset is formed by selecting the top k fraction of documents in the pretraining set, ranked by their quality score.</p><p>The goal of this paper is to understand the mechanics behind CQF, its impact on downstream performance, and to challenge the underlying notion of quality it defines. Concretely, does CQF truly select data that resemble the HQ set, as it is commonly believed? Does the quality score it incurs match the general intuition about data quality?</p><p>We start by highlighting a paradox in how CQF works: although CQF consistently improves performance on downstream tasks, it does not necessarily improve language modeling on the HQ set. This finding challenges the widely held belief that CQF improves models by selecting training data that are similar to the HQ data. t I E T J U O 4 W f d j d m a c Q V M k m N a X l u g v 6 I a h R M 8 n G + n R q e U D a g P d 6 y V N G I G 3 8 0 T T o m p 1 b p k j D W 9 i k k U / X v x o h G x g y j w E 5 G F P t m 0 Z u I / 3 m t F M N r f y R U k i J X b H Y o T C X B m E y + T b p C c 4 Z y a A l l W t i s h P W p p g x t O X N X U N j A 4 7 z t x V t s Y Z n U z 8 r e Z f n i / r x Y u c k a y s E x n E A J P L i C C t x B F W r A I I Q X e I U 3 5 9 l 5 d z 6 c z 9 n o i p P t H M E c n K 9 f r L a V P g = = &lt; / l a t e x i t &gt; s( &lt; l a t e x i t s h a 1 _ b a s e 6 4 = " M V 7 T M x 2 o 1 t 0 1 R T c k b / 5 + b y p D u 0 Y = " &gt; A A A B + 3 i c b V D J S g N B F O y J W 4 x b 1 K O X x i D o J c y I 2 z H o x W M C Z o F k C D 2 d N 0 m T n o X u N 0 I Y 5 g u 8 6 h d 4 E 6 9 + j B / g f 9 h J 5 m A S C x q K q v d 4 1 e X F U m i 0 7 W + r s L a + s b l V 3 C 7 t 7 O 7 t H 5 Q P j 1 o 6 S h S H J o 9 k p D o e 0 y B F C E 0 U K K E T K 2 C B J 6 H t j R + m f v s Z l B Z R + I S T G N y A D U P h C 8 7 Q S I 2 L f r l i V + 0 Z 6 C p x c l I h O e r 9 8 k 9 v E P E k g B C 5 Z F p 3 H T t G N 2 U K B Z e Q l X q J h p j x M R t C 1 9 C Q B a D d d B Y 0 o 2 d G G V A / U u a F S G f q 3 4 2 U B V p P A s 9 M B g x H e t m b i v 9 5 3 Q T 9 O z c V Y Z w g h H x + y E 8 k x Y h O f 0 0 H Q g F H O T G E c S V M V s p H T D G O p p u F K y h M 4 K x k e n G W W 1 g l r c u q c 1 O 9 b l x V a v d 5 Q 0 V y Q k 7 J O X H I L a m R R 1 I n T c I J k B f y S t 6 s z H q 3 P q z P + W j B y n e O y Q K s r 1 / R / 5 T C &lt; / l a t e x i t &gt;</p><p>)</p><p>Figure <ref type="figure">1</ref> Classifier-based Quality Filtering (CQF) pipeline. A document embedding model (e.g. sBert, Artic-Embed or FastText) embeds documents from a high-quality dataset and the pretraining set. A binary classifier is trained on those embeddings to distinguish the HQ set from the pretraining set. Scores assigned by the classifier are used to rank documents from the pretraining set. The top k fraction of those documents constitutes the new filtered CQF dataset.</p><p>We explain this paradox by the fact that CQF is akin to an implicit quality filtering of the HQ set itself, which upweights data in the HQ set that are far from the LQ set. This means that models trained with CQF are not necessarily good at language modeling on the whole HQ set, but rather on a higher-quality subset of it. Moreover, we show that this filtering of the HQ set aligns with downstream tasks for most choices of HQ sets, which explains the paradox. We then compare CQF to importance sampling methods <ref type="bibr" target="#b34">(Xie et al., 2023;</ref><ref type="bibr" target="#b10">Grangier et al., 2024)</ref>, which explicitly attempt to resample the LQ set to follow a distribution close to the HQ set. We highlight a stark difference between the two methods: importance sampling yields better language modeling on the HQ set, but it does not benefit from the aforementioned implicit filtering of the HQ set.</p><p>Beyond these paradoxes, we introduce a new lens to probe whether CQF induces a meaningful notion of quality. Specifically, we formalize the notion of data conditioning: along a true quality axis, training on "clean" data should give better performance on "dirty" test distributions than training directly on the dirty distribution. This behavior fundamentally depends on the optimization algorithm used to approximately minimize the training loss. Indeed, if the training algorithm were perfect, training on the dirty data itself would always yield the best possible loss on that very data. Therefore, this phenomenon can only arise because optimization on the clean dataset is easier, hence the term data conditioning. We demonstrate that this desirable property is clearly observed when constructing datasets with ground-truth mixtures of clean and dirty documents, as inspired by <ref type="bibr" target="#b15">Kallini et al. (2024)</ref>. In contrast, subsets selected by CQF fail to exhibit any such data-conditioning ordering, suggesting that the notion of quality CQF captures is more limited and closely related to stylistic or domain similarity-contexts in which "training cleaner" does not universally help.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.1">Related Work</head><p>Recent surveys <ref type="bibr" target="#b0">(Albalak et al., 2024;</ref><ref type="bibr" target="#b19">Longpre et al., 2024)</ref> provide comprehensive overviews of data selection pipelines and identify classifier-and perplexity-based filtering as the most widely used techniques, with classifier-based methods being the most effective in practice <ref type="bibr" target="#b17">(Li et al., 2024)</ref>. A common underlying assumption across these approaches is that pretraining on data resembling a small, trusted high-quality (HQ) set (e.g., Wikipedia, books, curated instructions) improves downstream performance. This belief has motivated two main strategies that operate at the document level: directly mimicking the HQ distribution via importance sampling or indirectly approximating it through classifier-based filtering. In the importance sampling paradigm, <ref type="bibr" target="#b34">Xie et al. (2023)</ref> approximate the likelihood ratio between HQ and LQ data to guide resampling of the LQ set, while CRISP <ref type="bibr" target="#b10">(Grangier et al., 2024)</ref> uses clustering of the pretraining data to best match the HQ set.</p><p>CQF, on the other hand, uses a classifier to score LQ documents by learning boundaries between HQ and LQ samples. CQF is widely adopted in state-of-the-art pipelines: GPT-3 <ref type="bibr" target="#b3">(Brown et al., 2020</ref>) employs a classifier with Pareto-biased sampling; LLaMA <ref type="bibr" target="#b28">(Touvron et al., 2023)</ref> filters Common Crawl using Wikipedia as HQ;</p><p>Dataset Number of Documents Source OpenOrca <ref type="bibr" target="#b18">(Lian et al., 2023)</ref> 3M GPT-4/GPT-3.5 ELI5 <ref type="bibr" target="#b8">(Fan et al., 2019)</ref> 325k Reddit OpenHermes <ref type="bibr" target="#b27">(Teknium, 2023)</ref> 240k GPT-4 KnowledgePile <ref type="bibr" target="#b9">(Fei et al., 2024)</ref> 1M Scientific blog &amp; papers openwebmath <ref type="bibr" target="#b22">(Paster et al., 2023)</ref> 6.3M Mathematical webtext ARC Easy <ref type="bibr" target="#b5">(Clark et al., 2018)</ref> 2.25k grade-school level MCQA</p><p>Table 1 Overview of the "high-quality" datasets used for CQF in our study.</p><p>GLaM <ref type="bibr" target="#b7">(Du et al., 2022)</ref>, PaLM <ref type="bibr" target="#b4">(Chowdhery et al., 2023)</ref>, and RedPajama <ref type="bibr" target="#b31">(Weber et al., 2024)</ref> similarly rely on Wikipedia and books. More recently, <ref type="bibr" target="#b17">Li et al. (2024)</ref> introduced DCLM, a large-scale filtered dataset centered on CQF, using ELI5 <ref type="bibr" target="#b8">(Fan et al., 2019)</ref> and OpenHermes <ref type="bibr" target="#b18">(Lian et al., 2023)</ref> as HQ sources. Wang et al. (2025) study methods to build HQ sets, and Soldaini et al. (2024) propose the Dolma Toolkit, featuring CQF that is applied to the Dolma dataset iteself. RefinedWeb (Penedo et al., 2023) and FineWeb (Penedo et al., 2024) use classifiers to extract English documents. Artic-Embed (Merrick et al., 2024) is a popular document embedder for training quality classifiers, underlying Python-edu and FineWebEdu (Ben Allal et al., 2024) datasets. Recently, Mizrahi et al. (2025) analyzed how aggressive filtering should be as function of model and data scales.</p><p>Finally, classifiers can also be used to filter toxic content <ref type="bibr" target="#b32">(Welbl et al., 2021)</ref>.</p><p>Beyond CQF and importance sampling, recent works learn proxy scores directly linked to downstream performance rather than assuming and imposing any fixed notion of quality. For example, <ref type="bibr" target="#b21">Mizrahi et al. (2025)</ref> train regressors to predict closeness to evaluation tasks, <ref type="bibr" target="#b36">Zhuang et al. (2025)</ref> combine multiple quality dimensions into learned mixtures, and older methods rely on LLM perplexity <ref type="bibr" target="#b33">(Wenzek et al., 2020)</ref>. These methods suggest that the best data may not necessarily resemble a specific HQ corpus, but rather satisfy task-relevant criteria that can be discovered during training.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Classifier-Based Quality-filtering</head><p>We describe the Classifier-based Quality-Filtering (CQF) method as it is used in the literature and in this paper. CQF takes as inputs a high-quality (HQ) dataset, D HQ , a pretraining dataset that is generally of low quality, D LQ , and a selection fraction k between 0 and 100%.</p><p>Low-quality (LQ) dataset. This is a standard pretraining set, which, in the context of LLM pretraining, contains curated documents gathered from a large web crawl spanning diverse data sources. While the dataset is huge-containing enough tokens to train large models without repetitions-it also includes many low-quality, badly formatted, or uninformative documents. The overall goal of data selection is to select a subset of this LQ set that leads to better model performance. In this paper, we take RedPajama-V2 as our LQ set, which contains 32T tokens.</p><p>High-quality (HQ) dataset. This is a high-quality dataset made of documents from a highly curated source. These documents are well formatted, have relevant content and are sometimes manually annotated. They can be data coming from proofread websites such as Wikipedia, or sentences generated by a sufficiently good language model. However, the HQ dataset is typically quite small and insufficient on its own to train a model. Instead, it serves two key purposes to guide the data selection process: 1) as a target for selection, where data in the LQ set that resemble the HQ set are considered high quality, and 2) as a benchmark to evaluate the effectiveness of data selection, with models achieving low loss on this dataset considered to be performing well. Table <ref type="table">1</ref> gives an overview of HQ sets used in this work.</p><p>CQF is a widely used method for data selection that filters data from the LQ set, guided by the HQ set. We now describe its practical implementation, which is illustrated in Figure <ref type="figure">1</ref>.</p><p>Embedding. Each document in the HQ and LQ datasets is embedded in a vector space R p . Since the whole LQ set has to be embedded, the embedding method needs to be scalable. In practice, we use sBert, with p = 384. Another popular choice is FastText <ref type="bibr" target="#b14">(Joulin et al., 2016)</ref>.</p><p>50.0 60.0 Downstream Acc. HQ set: OpenOrca 50.0 60.0 HQ set: KnowledgePile 50.0 60.0 HQ set: OH+ELI5 50.0 60.0 HQ set: openwebmath 50.0 60.0 HQ set: ARC Easy 1% 5% 20% 100% 2.75 2.80 2.85 HQ set loss 1% 5% 20% 100% 2.90 2.95 1% 5% 20% 100% 2.5 2.6 2.7 1% 5% 20% 100% 2.6 2.8 1% 5% 20% 100% 3.0 3.5</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>CQF Selection Fraction k</head><p>Figure <ref type="figure">2</ref> Top row: Models trained on increasingly selective data show improved performance on downstream tasks. Bottom row: When evaluated on the HQ dataset itself, these models do not necessarily improve as there is a nonincreasing relationship between downstream performance and loss on the HQ set.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Classifier training.</head><p>A training set made of n embeddings from the HQ set and n others from the LQ set is used to train an L2-regularized logistic regression. The regularization coefficient is taken as the one maximizing accuracy on a held-out set. Once this classifier is trained, it defines the CQF score function s(x) ∈ [0, 1], that, for any document x, defines a scalar that measures how likely the classifier is to identify this document as a member of the HQ set. This score s(x) is often called quality signal <ref type="bibr" target="#b31">(Weber et al., 2024)</ref>, which is why, in the context of CQF, we will refer to it as quality of document x. A goal of this paper is to understand whether this definition of quality is appropriate.</p><p>"Quality" filtering. In order to estimate the distribution of the scores on the LQ dataset, a subset of the LQ dataset is scored, which allows us to estimate the cumulative density C(s) = P(s(x) ≤ s|x ∈ D LQ ) for all s ∈ [0, 1]. Then, for a given selection fraction k, only the top k fraction of documents in the LQ set is kept, resulting in a filtered dataset</p><formula xml:id="formula_0">D CQF = {x ∈ D LQ | C(s(x)) ≥ 1 -k}.</formula><p>This selects the documents in the LQ set that are most likely to belong to the HQ set, based on the score defined by the classifier, and are therefore "higher-quality" documents. This dataset is then used to train models in place of the low-quality dataset. One clear limitation of CQF is that the number of training tokens available in the dataset is k × D where D is the total number of tokens in the LQ set. Too small values of k lead to scarce datasets on which models cannot be trained without repeating data or even overfitting. In this paper, we step away from this limitation and always use values of k such that there are enough data in D CQF to train a model without repeating data. This allows us to focus solely on the impact of data quality rather than on the effects of repeated training examples.</p><p>Evaluations. After pretraining, models are evaluated by scoring them on evaluation benchmarks, such as general knowledge question answering. Performance on these datasets is indicative of the usefulness of models after post-training. In this work, we consider evaluations on ARC-Easy, ARC-Challenge, MMLU, and rewardbench. The bulk of our experiments is done on ARC-Easy, which has better-than-random performance at small scales. Implementation details can be found in Appendix F.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">CQF improves model evaluations</head><p>We begin with the observation that motivates the wide adoption of CQF. We train 350M models on CQF datasets with different HQ datasets and values of k. We then evaluate those models by computing their accuracy on ARC-Easy. We also use ARC-Easy itself as the HQ set. We display the results in Figure <ref type="figure">2</ref>, top row. Among all HQ sets, using ARC-Easy leads to the best downstream performance. We observe that the performance on the downstream task generally improves as we select datasets of higher quality, with smaller values of k. This occurs for OpenOrca, KnowledgePile, OH+ELI5, and ARC-Easy, but for openwebmath, we observe a performance dip if we select a value of k that is too small. A simple explanation is that CQF with</p><p>top 100% top 80% top 60% top 40% top 20% top 1% CQF scores Dataset CQF Target Benchmark RedPajamaV2 HQ set ARC-Challenge ARC-Easy mmlu reward-bench KnowledgePile OH+ELI5 OpenOrca openwebmath   openwebmath selects too specialized documents. We confirm this alignment between data selected by CQF and common benchmarks in Figure <ref type="figure" target="#fig_1">3</ref> by examining a 2D PCA of their latent space.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">CQF does not select data that resemble the high-quality set</head><p>CQF ranks data based on likelihood ratios. Assuming that the binary classifier trained in CQF is Bayes-optimal, the CQF quality score of a document x is s(x) = pHQ(x) pHQ(x)+pLQ(x) <ref type="bibr" target="#b11">(Hastie et al., 2009)</ref>. As such, scores are an increasing function of the density ratio:</p><formula xml:id="formula_1">s(x) = ϕ pHQ(x) pLQ(x)</formula><p>with ϕ(t) = t t+1 . The ordering of documents implicitly defined by CQF is therefore that of the likelihood ratio: a document x is of "higher quality" than a document y if pHQ(x) pLQ(x) ≥ pHQ(y) pLQ(y) . This contrasts with the "importance sampling" ranking, which would rank x higher than y solely based on their likelihood under the HQ distribution, i. e., if p HQ (x) ≥ p HQ (y). A simple conclusion is that, since in general the LQ set is not uniformly distributed, CQF does not select samples that are most likely to come from the HQ set only. Instead, it prefers documents that are both likely under the HQ distribution (high p HQ (x)) and unlikely under the LQ distribution (low p LQ (x)). In other words, with CQF, data are filtered based on a trade-off between being close to the HQ set and far from the LQ set. This phenomenon is clear when plotting the score densities of data filtered by CQF in Figure <ref type="figure" target="#fig_3">4</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Kullback-Leibler divergence between datasets</head><p>For each model trained in section 3, we also compute its next-token prediction loss on the HQ set (Figure <ref type="figure">2</ref>, bottom row). We observe U-shaped curves for all HQ datasets except ARC-Easy. For these HQ sets, the optimal k that yields the smallest loss is often large. Remarkably, small values of k can result in models that perform even worse on the HQ set than a model trained on the full LQ set, as seen with OpenOrca</p><p>1% 2% 5% 20% 100% CQF selection fraction k 2.8 2.9 3.0 3.1 3.2 Loss Full HQ set HQ score deciles Lowest← quality →Highest 1% 20% 40% 60% 80% 100% HQ score deciles 1.5 2.0 Distance to ARC Easy the top bucket is closest to ARC Easy Lowest← quality →Highest Left. For each model trained with CQF at a given fraction k, we report the loss of the model on each of these 10 deciles. The reddest curve corresponds to the loss on the HQ elements with the bottom 10% scores, while the greenest curve corresponds to the top 10%. Our findings indicate that only the high-quality deciles of the HQ set exhibit a decreasing loss. This suggests that the classifier effectively identifies and learns the features within these deciles, enabling the models to make better predictions. However, on average over all the deciles (dotted line), the loss is a U-curve, recovering the loss in Figure <ref type="figure">2</ref> (second row and column). Right. In sBert latent space, we compute the distance between the barycenter of ARC-Easy to the barycenter of each HQ decile. This distance correlates well with performance on the ARC-Easy benchmark itself.</p><p>or KnowledgePile. This behavior contrasts with using ARC-Easy as HQ set, where reducing k consistently improves both model performance and language modeling.</p><p>As a result, there is a clear discrepancy between the loss on the HQ set-which reflects how closely the pretraining data resemble the HQ distribution-from the achieved downstream performance (ARC-Easy). This challenges the standard belief that CQF filters data to get closer to the HQ set.</p><p>Loss on the HQ set as a proxy for the distance between CQF and HQ set. The loss measured on the HQ set can be interpreted as a measure of how different the filtered data are from the HQ set in terms of Kullback-Leibler (KL) divergence, under the assumption that the model has infinite capacity <ref type="bibr" target="#b6">(Cover, 1999)</ref>. Indeed, in this case, the model's parameters θ are such that the model trained on the filtered set by CQF would perfectly represent its data distribution, i.e., p θ (x) ≈ p CQF (x).</p><p>Evaluating this model on the HQ set yields a next-token prediction loss equal to E x∼DHQ [-log p CQF (x)]. This quantity can be decomposed as,</p><formula xml:id="formula_2">H(D HQ ) + KL(D HQ ∥D CQF ),</formula><p>where H(D HQ ) is the entropy of the HQ distribution (a constant when changing k), and KL(D HQ ∥D CQF ) is the KL divergence from the HQ distribution and the distribution of data filtered by CQF. Hence, under the hypothesis that the models trained in these experiments accurately represent p CQF , the observed increase in HQ loss for small k means that the corresponding pretraining sets diverge further away from the HQ distribution. To our knowledge, this phenomenon has not been previously identified. In the next section, we investigate the reasons behind it.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">CQF implicitly filters the high-quality dataset as well</head><p>One way to interpret the CQF selection rule is that it is a reweighting of the distribution of the HQ set, with non-uniform weights: it puts a larger weight on documents that are far from the LQ set.</p><p>As a result, CQF can be understood as 1) selecting data in the HQ set that are far from the LQ set and then 2) selecting data in the LQ set that are close to that portion of the HQ set. To validate this interpretation, we further partition the HQ set itself into 10 "quality" buckets according to their CQF scores. We then measure the next-token prediction loss on these 10 domains achieved by models trained with CQF by varying k in M M LU , ba se: 25 %  . Interestingly, the loss on the top-scoring documents from the HQ set behaves very differently than the loss on the bottom-scoring data from the same set. More precisely, the loss on the top-scoring HQ data is monotonic with k, while the loss on the bottom-scoring HQ data rises sharply as k decreases. This analysis decomposes the overall U-shaped loss reported in the previous section into the average loss across different quality levels within the HQ set. Notably, this implicit filtering of the HQ set itself is beneficial. In fact, data in the HQ set that resemble data from the LQ set are likely to be of lower quality, since the LQ set contains a significant amount of noisy data. This resolves the earlier paradox: top-scoring data within the HQ set are more aligned with the evaluation task than those from the HQ set with lowest scores; see Figure <ref type="figure" target="#fig_4">5</ref>.</p><p>We further validate that these top deciles of HQ sets are aligned with downstream evaluations by finetuning a 1.3B model on them, as well as on the full HQ set. We report the corresponding gains in accuracy in Figure <ref type="figure" target="#fig_5">6</ref>. This again shows that the top decile of KnowledgePile is aligned with ARC-Easy, while the full set is not. We now formalize this implicit filtering intuition.</p><p>CQF as a reweighting of the HQ set. Letting r(x) = pHQ(x) pLQ(x) be the likelihood ratio, CQF selects data in the LQ set such that r(x) ≥ τ , where τ is calibrated so that only a fraction k of the LQ set is selected. The CQF dataset's density can be rewritten as</p><formula xml:id="formula_3">p CQF (x) = 1 Z 1 r(x)≥τ p LQ (x) = w(x)p HQ (x), where w(x) ∝ 1 r(x)≥τ r(x) , (4.1)</formula><p>which means that it is a reweighted version of the HQ set density, with weights w(x), and where Z is a normalization constant. The most upsampled points in the HQ set, which have a high value w(x), are therefore those such that r(x) is above τ while being small. This is akin to a filtering of the HQ set based on the likelihood ratio value r(x). This explains the results in Figure <ref type="figure" target="#fig_4">5</ref>: as the fraction k reduces, p CQF gets close to a filtered version of p HQ where only top-scoring samples are kept.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">CQF is not importance sampling</head><p>A common belief behind the use of CQF is: "Ideally, we would train on the HQ set, but we don't have enough data. So we use CQF to mimic data from the HQ set."</p><p>As we have seen in the previous section, assuming that the classifier is Bayes-optimal, CQF draws samples from the LQ set following the density w(x)p HQ (x), where w(x) is not uniformly equal to 1. On the other hand, importance sampling methods try to sample elements from the LQ set that directly follow the density p HQ . We use the CRISP method <ref type="bibr" target="#b10">(Grangier et al., 2024)</ref> in order to implement importance sampling, with the same models as in section 3, with OpenOrca and ARC-Easy as HQ sets. We report the loss on the HQ set and the downstream accuracy in Figure <ref type="figure" target="#fig_7">7</ref>, as well as those of the models trained with CQF. OpenOrca being diverse and multi-topic, we found that C = 4096 clusters are sufficient to capture that distribution 2.7 2.8 50% 60% Downstream Acc. well, whereas ARC-Easy requires C = 260k clusters. We observe that importance sampling indeed leads to good language modeling on the HQ set, which translates to better downstream performance when the HQ set is the downstream task itself (right), but not when the HQ set is a curated dataset (left). In that case, CQF leads to better downstream performance than importance sampling.</p><p>6 Discussion: Does CQF define a sound notion of quality?</p><p>The goal of this section is to offer a different perspective on the concept of quality by introducing a formal definition based upon optimization considerations. Within this framework, we (i) explore a semi-synthetic setting where quality can be clearly defined and controlled, and (ii) move beyond the limitations of earlier experiments, such as fixed model size and finite training horizon, which only offer snapshots of the following analysis.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.1">Data conditioning: Data-quality as an optimization catalyst</head><p>Central to our analysis is the concept of data conditioning, which we define as a desirable property of data quality. Informally, a dataset D clean is better data conditioned than another dataset D dirty if a model trained on D clean outperforms a model trained on D dirty when evaluated on D dirty .</p><p>We describe it formally as follows. Given an objective function ℓ and a dataset D, we define the loss function as L(θ, D) := E x∼D [ℓ(x; θ)]. This loss is typically approximately minimized by running a stochastic optimization algorithm A on the samples x i :</p><formula xml:id="formula_4">θ n D dirty ← A(x i ), with (x i ) n i=1 ∼ D dirty ,<label>(6.1</label></formula><p>) where x i 's are n i.i.d. samples from D dirty . Instead of training on D dirty , one can also train on D clean and obtain parameters θ n D clean . We propose an axiomatic definition of quality: Data-conditioning. We write D clean ≻ D dirty and say that a dataset D clean is better data-conditioned than D dirty , relative to the learning rule A and the horizon n ∈ N if L(θ n D clean , D dirty ) ≤ L(θ n D dirty , D dirty ). (6.2) We coin this phenomenon "data conditioning", drawing from the optimization literature, where conditioning typically describes how easily a loss function can be minimized. In our context, data conditioning captures how the structure of a dataset accelerates optimization. Indeed, in standard large-scale settings, data are seldom repeated, and models generalize well, which means that the training loss closely approximates the validation loss. Therefore, if we had a perfect minimization oracle, A(x i ) = arg min θ∈Θ 1 n n i=1 ℓ(x i , θ), we 50% 22% 12% 4% 1% Test on top k' 50% 22% 12% 4% 1% Train on top k Perm 100% 30% 15% 5% 1% Test on top k' 100% 30% 15% 5% 1% CQF 70% 37% 17% 6% 1% Test on top k' 70% 37% 17% 6% 1% Exclusive CQF 0.10 0.05 0.00 0.05 0.10 Loss vs Train on k' Figure 8</p><p>Data conditioning experiment. We use three different ways to define an axis of "quality", which are datasets indexed by a scalar k ∈ [0, 1], where k = 0 means higher quality. Perm defines it as (1 -k) where k is the probability of randomly permuting a document. CQF defines it as the fraction of documents kept in the pretraining set, where the HQ set is OpenOrca. Exclusive CQF defines it as documents that have scores between two thresholds. Each of these datasets is parameterized by a quality knob, k. We train models for a grid of values k, and compute their test loss on the dataset k ′ , L(k, k ′ ). The figure displays the matrices with entries L(k, k ′ ) -L(k ′ , k ′ ). A negative value for the coefficient k, k ′ means k ≻ k ′ , as defined in Equation <ref type="formula" target="#formula_4">6</ref>.2.</p><p>would have by definition of the minimizer L(</p><formula xml:id="formula_5">θ n D dirty , D dirty ) ≃ 1 n n i=1 ℓ(x i , θ n D dirty ) ≤ 1 n n i=1 ℓ(x i , θ n D clean ) ≃ L(θ n D clean , D dirty ).</formula><p>This would forbid the existence of better data-conditioned datasets. However, the existence of better-conditioned datasets has been reported many times in the literature, and is at the root of curriculum learning <ref type="bibr" target="#b2">(Bengio et al., 2009)</ref>, dataset distillation <ref type="bibr" target="#b29">(Wang et al., 2018)</ref>, or mixture optimization <ref type="bibr" target="#b35">(Zhang et al., 2025;</ref><ref type="bibr" target="#b25">Shukor et al., 2025)</ref>. Thus, our definition of quality arises from imperfect optimization.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.2">CQF through the lens of data-conditioning</head><p>To illustrate this notion of data conditioning, we explore different ways of creating a spectrum of "quality", using families of datasets indexed by one variable k ∈ [0, 1], where, intuitively, lower values of k correspond to higher-quality datasets, and higher values indicate lower-quality ones.</p><p>First, we create semi-synthetic text datasets with varying levels of quality, inspired by <ref type="bibr" target="#b15">Kallini et al. (2024)</ref>. Using RedPajama-V2 as our base dataset representing the highest quality, we simulate different quality levels by constructing a family of datasets Perm(k) for k ∈ [0, 1]. Each Perm(k) is created by sampling documents whose tokens are randomly permuted with probability k, or kept unchanged with probability 1k. Similarly, we define another family of datasets CQF(k), where k denotes the selection fraction, using CQF with OpenOrca as the HQ set. We define Exclusive CQF by taking documents whose score lies in a given interval. We compare the scaling behaviors of models trained on each of these datasets, by varying the number of parameters N , training tokens D, and the "quality" level k. We report the next-token prediction loss of these models on each "quality" level k ′ .</p><p>Static analysis. We begin by training models of a fixed size for a fixed number of iterations on each quality bucket k in Figure <ref type="figure">8</ref>. Each index (k, k ′ ) shows the value L(k, k ′ ) -L(k ′ , k ′ ), where L(k, k ′ ) is the loss on quality bucket k ′ for a model trained on quality bucket k. For the synthetic case, we observe a mostly uppertriangular structure, which means that training on better quality domains also improves models on lower quality domains, apart from the edge case of training on non-permuted tokens. In other words, organizing data by quality deciles leads to structured performance gains in this controlled setting, where higher-quality data results in greater improvements, aligning with our intuition of quality as a concept. In Appendix E we extend our investigation of this binary relation.</p><p>How does data conditioning depend on scale? For the Perm quality axis, we repeat the previous experiment at different model scales and training horizons, with model scales ranging from 125M to 1.3B parameters. Then, for each train/validation pair k, k ′ , we fit a scaling law that predicts the loss L(k, k ′ ) as a function of N , the model size, and D, the number of seen tokens. We fit the Chinchilla scaling law</p><p>(Hoffmann 50% 22% 12% 4% 1% Test on top k' 50% 22% 12% 4% 1% Train on top k N=1B, D=20N 50% 22% 12% 4% 1% Test on top k' 50% 22% 12% 4% 1% N=1B, D=1000N 50% 22% 12% 4% 1% Test on top k' 50% 22% 12% 4% 1% N=D=+ 0.02 0.00 0.02 Loss vs Train on k' Figure 9</p><p>Data conditioning scaling. We fit scaling laws in order to have a dynamic view of Figure <ref type="figure">8</ref>. We then report the predicted loss of models of size N trained with D tokens. When N = D = +∞, we use the irreducible error term E predicted by the scaling law as a proxy for the loss. We observe that the regions of better data-conditioning (orange) are mostly kept the same as we scale models. When scaling in the large D direction, we observe that the effect gets narrower.</p><p>et al., 2022):</p><formula xml:id="formula_6">L(k, k ′ ) N,D = E + A N α + B D β</formula><p>where the parameters E, A, B, α, β depend on the train/validation pairs k, k ′ . This enables us to obtain a dynamic version of Figure <ref type="figure">8</ref> in 9, where the model sizes and number of tokens are variable. These findings validate that data-conditioning is only mildly dependent on the model and data scale.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Conclusion</head><p>Classifier-based Quality Filtering is a tool used to train most state-of-the-art models, yet our analysis shows that its inner workings are more subtle than previously believed. While CQF reliably improves downstream evaluations, these gains are not attributable to the fact that filtered data are closer to the high-quality set. Instead, we uncover an implicit filtering phenomenon, where CQF emphasizes HQ examples that are far from the bulk of the LQ set, and are therefore most likely to be of higher quality. Quality filtering is about removing the "bad", not imitating the "good".</p><p>Finally, we challenge the notion of quality defined by CQF, demonstrating that it does not satisfy the desirable property of data conditioning: training on "better quality" data, according to CQF, does not accelerate learning on lower quality subsets. CQF should not be taken as a universal quality measure, but instead as a way to better align with downstream evaluations.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Contents</head><formula xml:id="formula_7">1 Introduction 1 1.1 Related Work . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2<label>2</label></formula><p>Classifier-Based Quality-filtering 3 3 CQF improves model evaluations 4 4 CQF does not select data that resemble the high-quality set 5 4.1 Kullback-Leibler divergence between datasets . . . . . . . . . . . . . . . . . . . . . . . . . . . 5 4.2 CQF implicitly filters the high-quality dataset as well . . . . . . . . . . . . . . . . . . . . . . 6 5 CQF is not importance sampling 7 6 Discussion: Does CQF define a sound notion of quality? 8 6.1 Data conditioning: Data-quality as an optimization catalyst . . . . . . . . . . . . . . . . . . . 8 6.2 CQF through the lens of data-conditioning . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9 7 Acknowledgements 10 A Appendix organization 15 B Optimal thresholds vary with compute 15 C Do classifiers used in CQF exhibit undesired biases? 15 D No HQ set is superior to all others across all tasks 18 E Data conditioning 19 F Implementation details 19</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Appendix organization</head><p>The appendix is organized as follows:</p><p>• In Appendix B, we study how the optimal fraction k of selected data in CQF varies with model size and training compute, the HQ set and the downstream task.</p><p>• In Appendix C, we highlight that CQF classifiers are prone to learning spurious features, such as context length, and we evaluate the effectiveness of a simple mitigation strategy. This illustrates a broader phenomenon: CQF can induce undesired biases that cause the selected pretraining data to diverge significantly from the HQ set.</p><p>• In Appendix D, we reveal that no single HQ set leads to universally better downstream performance, and that different classifiers implicitly align with different benchmarks, revealing task-specific inductive biases.</p><p>• In Appendix E, we visualize the binary relation induced quality filtering as a graph, highlighting how its structure evolves from the semi-synthetic setting to CQF used in practice.</p><p>• In Appendix F, we provide the reader with further implementation details.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Optimal thresholds vary with compute</head><p>How to chose the optimal k when picking the top k% documents from CQF? To answer this, we conducted a series of ablations over k, training models on the top k% of the pretraining data, as ranked by CQF, using various HQ sets. These experiments span multiple model sizes N and training horizons D (i.e., number of seen tokens), such that the total training compute in FLOPs is measured as 6N D. The results are summarized in Figure <ref type="figure">10</ref>, where we report downstream accuracy as a function of training FLOPs and highlight the optimal k in each setting.</p><p>Although our setup directly illustrates CQF, making it more representative of real-world data filtering pipelines, <ref type="bibr" target="#b21">Mizrahi et al. (2025)</ref> concurrently explore a related direction. Their approach differs in that they select LQ data based on direct proximity to target benchmarks, bypassing the need for a proxy HQ dataset. Despite this, our findings do not align: we observe no clear trend once the noise level is accounted for, leading to relatively inconclusive results. We also note that <ref type="bibr" target="#b21">Mizrahi et al. (2025)</ref>'s conclusions rely on extrapolation, which probably explains the divergence.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Do classifiers used in CQF exhibit undesired biases?</head><p>Even when downstream performance improves, the selected data can drift from the intended target distribution-revealing not only a failure to capture genuine quality, but also an undesirable inductive bias, where the classifier overemphasizes unrelated features.</p><p>Whilst it is not trivial to exhibit such unwanted features among the learned ones by the classifier, we managed to identify one of these for OpenOrca as HQ set: the classifier seems to associate quality with the sequence length, and shorter sentences have higher chances to be classified as high quality ones, see Figure <ref type="figure">11</ref>.</p><p>When sampling from the positive class (OpenOrca dataset) prior to training the corresponding classifier, we subsample documents with an imposed sequence length of at least 500 or 700. We then use this classifier to produce a partition of RedPajama with an updated notion of quality, that we hope to be seemingly better or at least not mistakenly taking sequence as a proxy for quality; see columns 3 and 4 of Figure <ref type="figure">11</ref>. We train 350M models on the resulting partitions of RedPajama and evaluate them on ARC <ref type="bibr" target="#b5">(Clark et al., 2018)</ref>, MMLU <ref type="bibr" target="#b12">(Hendrycks et al., 2021)</ref>, and Reward Bench <ref type="bibr" target="#b16">(Lambert et al., 2025)</ref>. We show in Figure <ref type="figure">12</ref> the result of such experiments, averaged across 3 runs.</p><p>Beyond this specific case of sequence length bias, we investigate whether CQF classifiers exhibit similar issues, when trained on HQ sets drawn directly from target benchmarks. To assess this, we compute sBert embeddings for RedPajama documents grouped by CQF quality scores and compare them to embeddings</p><p>0.24 0.26 OpenOrca MMLU 0.24 0.26 0.28 MMLC 0.56 0.58 reward-bench 0.20 0.25 ARC-Challenge 0.3 0.4 0.5 0.6 ARC-Easy 0.24 0.26 OH+ELI5 0.24 0.26 0.28 0.30 0.56 0.58 0.20 0.25 0.30 0.4 0.5 0.6 10 19 10 20 FLOPs 0.23 0.24 0.25 0.26 KnowledgePile 10 19 10 20 FLOPs 0.24 0.26 0.28 10 19 10 20 FLOPs 0.56 0.58 10 19 10 20 FLOPs 0.15 0.20 0.25 0.30 10 19 10 20 FLOPs 0.3 0.4 0.5 0.6 100% 50% 10% 5% 2% 1% Train on top Model size 125M 350M 700M 1.3B</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Figure 10</head><p>The optimal top k% of pretraining data depends on available compute. For each setting, we highlight the value of k that yields the best performance under a fixed compute budget. Rows: different HQ sets used for CQF. Columns: various downstream performance metrics.</p><p>1% 2% 5% 10% 25% 50% 100% 500 600 700 800 900 Effective sequence length KnowledgePile 1% 2% 5% 10% 25% 50% 100% 200 400 600 800 OpenOrca 1% 2% 5% 10% 25% 50% 100% 200 400 600 800 OpenOrca debiased -Long positives 1% 2% 5% 10% 25% 50% 100% 200 400 600 OpenOrca debiased -Short negatives 0 1 2 3 4 5 6 7 8 9</p><p>Classifier quality estimates for the Positives 1% 5% 25% 100% Train on top 0.23 0.24 0.25 MMLU 1% 5% 25% 100% Train on top 0.255 0.260 MMLC 1% 5% 25% 100% Train on top 0.55 0.56 0.57 reward-bench 1% 5% 25% 100% Train on top 0.46 0.48 0.50 0.52 ARC-Easy 1% 5% 25% 100% Train on top 0.20 0.22 0.24 ARC-Challenge OpenOrca OpenOrca debiased -Long positives OpenOrca debiased -Short negatives Figure 12 Performance after debiasing the classifier from CQF with OpenOrca as a HQ set. The classifier was retrained with a subsampled HQ set (OpenOrca) using minimum sequence lengths, in an effort to remove lengthbased bias in quality scores.  of the benchmark data. As shown in Figure <ref type="figure" target="#fig_9">13</ref>, we visualize the centroids of each quality bucket using a two-dimensional UMAP projection. Ideally, higher-quality buckets as ranked by CQF (darker colors) would be closer to the benchmark embeddings. We provide the same visualization in Figure <ref type="figure" target="#fig_10">14</ref> using a PCA. Surprisingly, this is often not the case, suggesting that classifiers may still rely on spurious correlations or unrepresentative features of the entire HQ set.</p><p>Finally, we provide a 2D visualization of the sBert latent space using a tSNE from which similar conclusions can be drawn in that only a subset of the HQ set is matched by the data retained from CQF.</p><p>Joint TSNE of CQF and HQ set Domain HQ set: OpenOrca CQF in top 100% CQF in top 25% CQF in top 2% CQF in top 1% </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D No HQ set is superior to all others across all tasks</head><p>While various HQ sets are used in the literature for CQF, no single HQ consistently outperforms others across all downstream tasks. Figure <ref type="figure" target="#fig_5">16</ref> shows that varying HQ sets yield various performance across tasks, with no universal dominance. Downstream evaluations are noisy, but we observe the consistent trend that OH+ELI5 is a good baseline across tasks, confirming the findings of <ref type="bibr" target="#b17">Li et al. (2024)</ref>. We also notice that KnowledgePile, despite poor diversity in the style, induce a bias toward data is are more heavily leaning toward knowledge benchmarks like ARC. This suggests that each HQ set imparts its own inductive biases, influencing which aspects of the data are emphasized during filtering. To further understand these biases, we visualize the embedding space of the data selected by each classifier in Figure <ref type="figure">18</ref>. We observe that quality buckets across classifiers tend to align with specific benchmark datasets, indicating that classifiers-implicitly or explicitly-favor data that resembles their respective supervision targets. This aligns with recent concurrent work from <ref type="bibr" target="#b21">Mizrahi et al. (2025)</ref>, who show that direct supervision using explicitly target benchmark data can boost performance on that benchmark, though at the cost of generality. Taken together, these results highlight a central challenge in CQF: quality is not a universal property, and each HQ set carries task-specific preferences that limit its transferability.</p><p>1% 2% 5% 10% 25% 50% 100% Train on top 0.24 0.26 MMLU 1% 2% 5% 10% 25% 50% 100% Train on top 0.25 0.26 0.27 MMLC 1% 2% 5% 10% 25% 50% 100% Train on top 0.54 0.56 0.58 reward-bench 1% 2% 5% 10% 25% 50% 100% Train on top 0.45 0.50 0.55 ARC-Easy 1% 2% 5% 10% 25% 50% 100% Train on top 0.20 0.25 ARC-Challenge OpenOrca KnowledgePile OH+ELI5 openwebmath All targets Figure 16 Benchmark performance results from 350M models trained on documents ranked by quality according to various CQF using various HQ sets.</p><p>All the manifold visualizations in Figure <ref type="figure" target="#fig_7">17</ref> and Figure <ref type="figure">18</ref> demonstrate the same trend: CQF selects data closer to benchmarks as quality filtering goes. -5 0 5 10 15 20 -15 -10 -5 0 5 10 Benchmarks mmlu reward-bench ARC-Easy ARC-Challenge Classifiers OpenOrca KnowledgePile OH+ELI5 openwebmath Classifiers OpenOrca KnowledgePile OH+ELI5 openwebmath Figure 18 Each HQ set used in CQF appears to favor task-specific data. Two-dimensional UMAP of sBert centroids for each (exclusive) quality bucket as defined by each classifier. Darker color indicates increasing selection ratio k.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Data conditioning</head><p>We revisit the experiments of Figure <ref type="figure">8</ref> by materializing the graph induced by the binary relation ≻. For an arbitrary algorithm A it is hard to characterize the datasets D clean and D dirty . Therefore, we rely on empirical measurements draw edges when the loss improvement is significant (e.g. bigger than the standard deviation). The results are given in figures 19 and 20.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F Implementation details</head><p>Hyper-parameters relative to our training setup are detailed in Table <ref type="table" target="#tab_0">2</ref>. 0.00 0.02 0.04 0.06 0.08 0.10 Loss improvement 0 20 40 60 80 100 CQF (%) Figure 20 Data conditioning ≻ on OpenOrca CQF. On these exclusive buckets, there is no global ordering. The bottom 30% (red) and the top 5% (green) are dominated by bucket of "average" quality (possibly with more diversity). The node size is proportional to the number of examples in the bucket. On this graph, the relation is transitive, which induces an ordering, but this ordering is not total. </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><figDesc>t e x i t s h a 1 _ b a s e 6 4 = " W C u l P o + P Y V d Q F N 7 d q f E O K s Y x l B 8 = " &gt; A A A B / H i c b V D L T g I x F L 3 j E / G F u n T T S E x Y k R n j a 0 l 0 4 x K N P B K Y k E 7 p Q E O n M 2 n v m B C C X + B W v 8 C d c e u / + A H + h w V m I e B J m p y c c 2 / u 6 Q k S K Q y 6 7 r e z s r q 2 v r G Z 2 8 p v 7 + z u 7 R c O D u s m T j X j N R b L W D c D a r g U i t d Q o O T N R H M a B Z I 3 g s H t x G 8 8 c W 1 E r B 5 x m H A / o j 0 l Q s E o W u n B l D q F o l t 2 p y D L x M</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 3</head><label>3</label><figDesc>Figure 3 Two-dimensional PCA projections of sBert embeddings from quality buckets defined by classifiers, each using a different HQ set.. Quality buckets across classifiers (CQF) used in the literature exhibit alignment towards benchmark datasets. When considering the top 100%, we fall back to the original pretraining dataset (RedPajama-V2) regardless of the HQ set used.</figDesc><graphic coords="5,313.67,238.23,143.74,103.35" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>CQF and HQ set Domain HQ set: OpenOrca CQF in top 100% CQF in top 25% CQF in top 2% CQF in top 1%</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4</head><label>4</label><figDesc>Figure 4 CQF works by filtering out the low-quality data (red), not because the retained data (green) resemble the HQ set (orange). This is clear both from the raw log-scores of the classifier (left), and in 2D PCA of the sBert latent space (right). TSNE show similar patterns in Appendix C.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 5</head><label>5</label><figDesc>Figure5CQF implicitly filters the HQ set. We split the HQ set (KnowledgePile) into 10 deciles of CQF scores. Left. For each model trained with CQF at a given fraction k, we report the loss of the model on each of these 10 deciles. The reddest curve corresponds to the loss on the HQ elements with the bottom 10% scores, while the greenest curve corresponds to the top 10%. Our findings indicate that only the high-quality deciles of the HQ set exhibit a decreasing loss. This suggests that the classifier effectively identifies and learns the features within these deciles, enabling the models to make better predictions. However, on average over all the deciles (dotted line), the loss is a U-curve, recovering the loss in Figure2(second row and column). Right. In sBert latent space, we compute the distance between the barycenter of ARC-Easy to the barycenter of each HQ decile. This distance correlates well with performance on the ARC-Easy benchmark itself.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 6</head><label>6</label><figDesc>Figure 6Finetuning a 1.3B model on HQ sets and on their top decile. We report the best performances during fine-tuning; no bar means that fine-tuning on that set does not improve the performance on that benchmark. Darker colors indicate finetuning on the top 10% of the HQ set according to the CQF classifier, while light colors indicate finetuning on the whole HQ set. The same number of tokens is used in both scenarios. OpenOrca aligns most closely with MMLU, whereas KnowledgePile shows stronger alignment with ARC-Easy, supporting the trend observed in Figure3.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 5</head><label>5</label><figDesc>Figure5. Interestingly, the loss on the top-scoring documents from the HQ set behaves very differently than the loss on the bottom-scoring data from the same set. More precisely, the loss on the top-scoring HQ data is monotonic with k, while the loss on the bottom-scoring HQ data rises sharply as k decreases. This analysis decomposes the overall U-shaped loss reported in the previous section into the average loss across different quality levels within the HQ set. Notably, this implicit filtering of the HQ set itself is beneficial. In fact, data in the HQ set that resemble data from the LQ set are likely to be of lower quality, since the LQ set contains a significant amount of noisy data. This resolves the earlier paradox: top-scoring data within the HQ set are more aligned with the evaluation task than those from the HQ set with lowest scores; see Figure5.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 7</head><label>7</label><figDesc>Figure 7 Performance comparison between CQF and importance sampling-based approach (CRISP). CQF induces a data selection that is substantially different from the HQ set. Colors indicate more (green) or less (red) filtering.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 11 Figure 12</head><label>1112</label><figDesc>Figure11CQF classifiers suffer from inductive biases. Because the OpenOrca dataset (HQ set) contains shorter sequences than RedPajama (LQ set), the classifier in CQF learns to use sequence length as proxy for quality scores (second column). This bias persists even after filtering out long documents from OpenOrca (third column), and only disappears when we subsample the negative class to match shorter sequence lengths (fourth column). In contrast, the classifier from CQF using KnowledgePile as a HQ set (first column) does not exhibit this behavior. The red dotted line indicate the effective sequence length in the HQ set, while the blue line shows the sequence length of data filtered by CQF at different selection ratios along the x-axis. The HQ set is divided into 10 quality deciles, and the sequence lengths for each decile are shown as solid horizontal lines, with color indicating quality level.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 13</head><label>13</label><figDesc>Figure13UMAP of sBert centroids for each (exclusive) quality bucket. Even when quality classifiers are trained directly on the target data, they may still capture undesirable features. Consequently, the top-rated RedPajama quality buckets (darker colors) are not always the closest to the target benchmark embeddings.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><head>Figure 14</head><label>14</label><figDesc>Figure14PCA of sBert embeddings of (exclusive) quality buckets induced by different classifiers. Even when quality classifiers are trained directly on the target downstream tasks, they may still capture undesirable features. Consequently, the top-rated RedPajama quality buckets (darker colors) are not always the closest to the target benchmark embeddings.</figDesc><graphic coords="17,80.27,427.08,451.45,206.55" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><head>Figure 15</head><label>15</label><figDesc>Figure 15 2D TSNE of sBert embeddings of OpenOrca and CQF samples. The TSNE reveals the same insights as the 2D PCA in Figure 4. This method also shades lights on the difficulty of properly projecting and representing in 2D a 384-dim geometry.</figDesc><graphic coords="18,210.04,181.96,145.89,97.81" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head>Figure 17 Figure 18</head><label>1718</label><figDesc>Figure17PCA embedding of (exclusive) buckets. This figure differs from Figure3by considering exclusive buckets. Here, we see that the bottom 10% are quite different from each other, and the buckets of average quality (i.e in the 70-30 range) tend to be similar across quality classifiers.</figDesc><graphic coords="19,188.43,63.78,235.13,109.23" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>Figure 19 Figure 20</head><label>1920</label><figDesc>Figure19  Data conditioning ≻ on the Perm task. This graph exhibits the properties of a total ordering, closer to an intuitive notion of quality. The only "backward" edge is linking the the two worse splits, and the loss difference is within standard deviation.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2</head><label>2</label><figDesc>Hyperparameters used for training models</figDesc><table><row><cell></cell><cell>125M</cell><cell>350M</cell><cell>1.3B</cell></row><row><cell>Architecture</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Vocab Size Embedding dim. Latent dim. Num. heads Depth Context lenght</cell><cell>32K 768 3072 16 12 1,024</cell><cell>32K 1,024 4,096 16 24 1,024</cell><cell>32k 2,048 8,192 16 24 1,024</cell></row><row><cell>Optimization</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="4">Batch size (tokens) Learning rate scheduler lin. decay lin. decay lin. decay 115K 32K 115K 1e -4 1e -4 1e -4 Learning rate peak Grad clipping 5.0 5.0 5.0 Steps 64K 256K 1M Num. train tokens 8B 8B 120B</cell></row></table></figure>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head n="7">Acknowledgements</head><p>The authors heavily relied on a codebase that <rs type="person">Awni Hannun</rs> kickstarted.</p></div>
+			</div>			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title level="m" type="main">A survey on data selection for language models</title>
+		<author>
+			<persName><forename type="first">Alon</forename><surname>Albalak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Elazar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sang</forename><surname>Michael Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shayne</forename><surname>Longpre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nathan</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinyi</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bairu</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangming</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haewon</forename><surname>Jeong</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.16827</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">Loubna</forename><surname>Ben Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Werra</forename></persName>
+		</author>
+		<ptr target="https://huggingface.co/datasets/HuggingFaceTB/smollm-corpus" />
+		<title level="m">Smollm-corpus</title>
+		<imprint>
+			<date type="published" when="2024-07">July 2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">Curriculum learning</title>
+		<author>
+			<persName><forename type="first">Yoshua</forename><surname>Bengio</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jérôme</forename><surname>Louradour</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ronan</forename><surname>Collobert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 26th annual international conference on machine learning</title>
+		<meeting>the 26th annual international conference on machine learning</meeting>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<biblScope unit="page" from="41" to="48" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Language models are few-shot learners</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melanie</forename><surname>Subbiah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><forename type="middle">D</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arvind</forename><surname>Neelakantan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Shyam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="1877" to="1901" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Palm: Scaling language modeling with pathways</title>
+		<author>
+			<persName><forename type="first">Aakanksha</forename><surname>Chowdhery</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaurav</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Barham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hyung</forename><forename type="middle">Won</forename><surname>Chung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Sutton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Gehrmann</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Machine Learning Research</title>
+		<imprint>
+			<biblScope unit="volume">24</biblScope>
+			<biblScope unit="issue">240</biblScope>
+			<biblScope unit="page" from="1" to="113" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Think you have solved question answering? try arc, the ai2 reasoning challenge</title>
+		<author>
+			<persName><forename type="first">Peter</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Isaac</forename><surname>Cowhey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oren</forename><surname>Etzioni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tushar</forename><surname>Khot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Sabharwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carissa</forename><surname>Schoenick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oyvind</forename><surname>Tafjord</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1803.05457v1</idno>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Thomas</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Cover</surname></persName>
+		</author>
+		<title level="m">Elements of information theory</title>
+		<imprint>
+			<publisher>John Wiley &amp; Sons</publisher>
+			<date type="published" when="1999">1999</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Glam: Efficient scaling of language models with mixture-of-experts</title>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanping</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><forename type="middle">M</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dmitry</forename><surname>Lepikhin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhong</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxim</forename><surname>Krikun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanqi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adams</forename><forename type="middle">Wei</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Orhan</forename><surname>Firat</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International conference on machine learning</title>
+		<imprint>
+			<publisher>PMLR</publisher>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="5547" to="5569" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">ELI5: long form question answering</title>
+		<author>
+			<persName><forename type="first">Angela</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yacine</forename><surname>Jernite</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Perez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Grangier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Auli</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/p19-1346</idno>
+		<ptr target="https://doi.org/10.18653/v1/p19-1346" />
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019</title>
+		<title level="s">Long Papers</title>
+		<editor>
+			<persName><forename type="first">Anna</forename><surname>Korhonen</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">David</forename><forename type="middle">R</forename><surname>Traum</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">Lluís</forename><surname>Màrquez</surname></persName>
+		</editor>
+		<meeting>the 57th Conference of the Association for Computational Linguistics, ACL 2019<address><addrLine>Florence, Italy</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019-08-02">July 28-August 2, 2019. 2019</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="3558" to="3567" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Query of cc: Unearthing large scale domain-specific knowledge from public corpora</title>
+		<author>
+			<persName><forename type="first">Zhaoye</forename><surname>Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunfan</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Linyang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhiyuan</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hang</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xipeng</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dahua</forename><surname>Lin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2401.14624</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Task-adaptive pretrained language models via clusteredimportance sampling</title>
+		<author>
+			<persName><forename type="first">David</forename><surname>Grangier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simin</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Skyler</forename><surname>Seto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Ablin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.03735</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">The elements of statistical learning</title>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Hastie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>Tibshirani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jerome</forename><surname>Friedman</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Measuring massive multitask language understanding</title>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Hendrycks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Collin</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Steven</forename><surname>Basart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Zou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mantas</forename><surname>Mazeika</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Steinhardt</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Training compute-optimal large language models</title>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Clark</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.15556</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Bojanowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthijs</forename><surname>Douze</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hérve</forename><surname>Jégou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomas</forename><surname>Mikolov</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Fasttext</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1612.03651</idno>
+		<title level="m">zip: Compressing text classification models</title>
+		<imprint>
+			<date type="published" when="2016">2016</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<author>
+			<persName><forename type="first">Julie</forename><surname>Kallini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Isabel</forename><surname>Papadimitriou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Futrell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Mahowald</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Potts</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2401.06416</idno>
+		<title level="m">Mission: Impossible language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">RewardBench: Evaluating reward models for language modeling</title>
+		<author>
+			<persName><forename type="first">Nathan</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Valentina</forename><surname>Pyatkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Morrison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">J</forename><surname>Miranda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bill</forename><surname>Yuchen Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Khyathi</forename><surname>Chandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nouha</forename><surname>Dziri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sachin</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Zick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2025.findings-naacl.96</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: NAACL 2025</title>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2025-04">April 2025</date>
+			<biblScope unit="page" from="1755" to="1797" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Datacomp-lm: In search of the next generation of training sets for language models</title>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Georgios</forename><surname>Smyrnis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maor</forename><surname>Ivgi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matt</forename><surname>Jordan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Samir</forename><surname>Yitzhak Gadre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hritik</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Etash</forename><surname>Guha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sedrick</forename><surname>Scott Keh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kushal</forename><surname>Arora</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="14200" to="14282" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<author>
+			<persName><forename type="first">Wing</forename><surname>Lian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bleys</forename><surname>Goodson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eugene</forename><surname>Pentland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Austin</forename><surname>Cook</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chanvichet</forename><surname>Vong</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Teknium</surname></persName>
+		</author>
+		<ptr target="https://https://huggingface.co/Open-Orca/OpenOrca" />
+		<title level="m">Openorca: An open dataset of gpt augmented flan reasoning traces</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">A pretrainer&apos;s guide to training data: Measuring the effects of data age, domain coverage, quality, &amp; toxicity</title>
+		<author>
+			<persName><forename type="first">Shayne</forename><surname>Longpre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gregory</forename><surname>Yauney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emily</forename><surname>Reif</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Barret</forename><surname>Zoph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Denny</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Robinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Mimno</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference of the North American Chapter</title>
+		<meeting>the 2024 Conference of the North American Chapter</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="3245" to="3276" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<title level="m" type="main">Arctic-embed: Scalable, efficient, and accurate text embedding models</title>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Merrick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danmei</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaurav</forename><surname>Nuti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Campos</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.05374</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Language models improve when pretraining data matches target tasks</title>
+		<author>
+			<persName><forename type="first">David</forename><surname>Mizrahi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anders</forename><surname>Boesen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lindbo</forename><surname>Larsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Allardice</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suzie</forename><surname>Petryk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuri</forename><surname>Gorokhov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josh</forename><surname>Gardner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Gunter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Afshin</forename><surname>Dehghan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2507.12466</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Openwebmath: An open dataset of high-quality mathematical web text</title>
+		<author>
+			<persName><forename type="first">Keiran</forename><surname>Paster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marco</forename><forename type="middle">Dos</forename><surname>Santos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhangir</forename><surname>Azerbayev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jimmy</forename><surname>Ba</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">The refinedweb dataset for falcon llm: Outperforming curated corpora with web data only</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Malartic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Hesslow</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruxandra</forename><surname>Cojocaru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamza</forename><surname>Alobeidli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Cappelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Pannier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ebtesam</forename><surname>Almazrouei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Launay</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="79155" to="79172" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">The fineweb datasets: Decanting the web for the finest text data at scale</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hynek</forename><surname>Kydlíček</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><forename type="middle">A</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="30811" to="30849" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">Mustafa</forename><surname>Shukor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louis</forename><surname>Bethune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Busbridge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Grangier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Enrico</forename><surname>Fini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alaaeldin</forename><surname>El-Nouby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pierre</forename><surname>Ablin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2507.09404</idno>
+		<title level="m">Scaling laws for optimal data mixtures</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Dolma: an open corpus of three trillion tokens for language model pretraining research</title>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rodney</forename><surname>Kinney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akshita</forename><surname>Bhagia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dustin</forename><surname>Schwenk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Atkinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Russell</forename><surname>Authur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Bogin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Raghavi</forename><surname>Khyathi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jennifer</forename><surname>Chandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yanai</forename><surname>Dumas</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Elazar</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">ACL</title>
+		<imprint>
+			<biblScope unit="page">2024</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<title level="m" type="main">Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants</title>
+		<author>
+			<persName><surname>Teknium</surname></persName>
+		</author>
+		<ptr target="https://huggingface.co/datasets/teknium/OpenHermes-2.5" />
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibaut</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gautier</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hambro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Faisal</forename><surname>Azhar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.13971</idno>
+		<title level="m">Open and efficient foundation language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Tongzhou</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun-Yan</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antonio</forename><surname>Torralba</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexei</forename><forename type="middle">A</forename><surname>Efros</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1811.10959</idno>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Dataset distillation. arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Ultra-fineweb: Efficient data filtering and verification for high-quality llm training data</title>
+		<author>
+			<persName><forename type="first">Yudong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zixuan</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peijun</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongya</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yewei</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhi</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guoyang</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chaojun</forename><surname>Xiao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.05427</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<author>
+			<persName><forename type="first">Maurice</forename><surname>Weber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">Y</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Anthony</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Oren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Alexandrov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhong</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huu</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhe</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Virginia</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Athiwaratkun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rahul</forename><surname>Chalamala</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kezhen</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Ryabinin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tri</forename><surname>Dao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Ré</surname></persName>
+		</author>
+		<title level="m">Irina Rish, and Ce Zhang. Redpajama: an open dataset for training large language models. NeurIPS Datasets and Benchmarks Track</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Challenges in detoxifying language models</title>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amelia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumanth</forename><surname>Dathathri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Mellor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kirsty</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pushmeet</forename><surname>Kohli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Coppin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2021</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="2447" to="2469" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Ccnet: Extracting high quality monolingual datasets from web crawl data</title>
+		<author>
+			<persName><forename type="first">Guillaume</forename><surname>Wenzek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexis</forename><surname>Conneau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vishrav</forename><surname>Chaudhary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francisco</forename><surname>Guzmán</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Édouard</forename><surname>Grave</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the Twelfth Language Resources and Evaluation Conference</title>
+		<meeting>the Twelfth Language Resources and Evaluation Conference</meeting>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="4003" to="4012" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Data selection for language models via importance resampling</title>
+		<author>
+			<persName><forename type="first">Sang</forename><surname>Michael Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shibani</forename><surname>Santurkar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tengyu</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><forename type="middle">S</forename><surname>Liang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="34201" to="34227" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<analytic>
+		<title level="a" type="main">Domain2vec: Vectorizing datasets to find the optimal data mixture without training</title>
+		<author>
+			<persName><forename type="first">Mozhi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Howe</forename><surname>Tissue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xipeng</forename><surname>Qiu</surname></persName>
+		</author>
+		<ptr target="https://openreview.net/forum" />
+	</analytic>
+	<monogr>
+		<title level="m">Forty-second International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note>id=kJ5i29FejW</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<title level="m" type="main">Meta-rater: A multi-dimensional data selection method for pre-training language models</title>
+		<author>
+			<persName><forename type="first">Xinlin</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiahui</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ren</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yinfan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyi</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xingjian</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiantao</forename><surname>Qiu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ying</forename><surname>Qian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Conghui</forename><surname>He</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.14194</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

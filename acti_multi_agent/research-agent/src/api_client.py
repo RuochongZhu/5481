@@ -7,6 +7,7 @@ import os
 import time
 import logging
 from dataclasses import dataclass
+from copy import deepcopy
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -19,6 +20,7 @@ log = logging.getLogger("research_agent")
 MODEL_FAST = os.getenv("MODEL_FAST", "claude-sonnet-4-6")
 MODEL_DEEP = os.getenv("MODEL_DEEP", "claude-opus-4-6")
 OPENAI_REASONING_MODEL = os.getenv("OPENAI_REASONING_MODEL", "gpt-5.4")
+OPENAI_PROVIDER_FALLBACK_MODEL = os.getenv("OPENAI_PROVIDER_FALLBACK_MODEL", MODEL_DEEP)
 DEFAULT_MODEL = MODEL_FAST  # backward compat
 S2_BASE = "https://api.semanticscholar.org/graph/v1"
 S2_FIELDS = "paperId,title,year,abstract,citationCount,venue,authors,externalIds"
@@ -28,6 +30,8 @@ OA_BASE = "https://api.openalex.org/works"
 ARXIV_BASE = "http://export.arxiv.org/api/query"
 CROSSREF_BASE = "https://api.crossref.org"
 OPENCITATIONS_INDEX_BASE = "https://api.opencitations.net/index/v2"
+CONSENSUS_BASE = os.getenv("CONSENSUS_BASE_URL", "https://api.consensus.app")
+LENS_BASE = "https://api.lens.org"
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,10 @@ BRAIN_GPT_MEDIUM = ModelSpec(
     OPENAI_REASONING_MODEL,
     os.getenv("OPENAI_REASONING_MEDIUM", "medium"),
 )
+BRAIN_GPT_LOW = ModelSpec(
+    OPENAI_REASONING_MODEL,
+    os.getenv("OPENAI_REASONING_LOW", "low"),
+)
 BRAIN_GPT_HIGH = ModelSpec(
     OPENAI_REASONING_MODEL,
     os.getenv("OPENAI_REASONING_HIGH", "high"),
@@ -59,18 +67,18 @@ BRAIN_GPT_XHIGH = ModelSpec(
 # Task-level brains.
 BRAIN_PHASE2_CLASSIFIER = BRAIN_FAST
 BRAIN_PHASE2_DEEP_EXTRACTOR = BRAIN_DEEP
-BRAIN_PHASE3_RELATIONSHIP = BRAIN_GPT_MEDIUM
-BRAIN_PHASE3_GAP = BRAIN_GPT_HIGH
-BRAIN_PHASE3_NARRATIVE = BRAIN_GPT_HIGH
-BRAIN_PHASE3_CONTRADICTION = BRAIN_GPT_XHIGH
-BRAIN_PHASE4_EVIDENCE = BRAIN_GPT_HIGH
+BRAIN_PHASE3_RELATIONSHIP = BRAIN_GPT_LOW
+BRAIN_PHASE3_GAP = BRAIN_GPT_MEDIUM
+BRAIN_PHASE3_NARRATIVE = BRAIN_GPT_MEDIUM
+BRAIN_PHASE3_CONTRADICTION = BRAIN_GPT_MEDIUM
+BRAIN_PHASE4_EVIDENCE = BRAIN_GPT_MEDIUM
 
 REVIEWER_BRAINS = {
-    "narrative": BRAIN_GPT_HIGH,
-    "contradiction": BRAIN_GPT_XHIGH,
-    "gap": BRAIN_GPT_XHIGH,
-    "coverage": BRAIN_GPT_MEDIUM,
-    "honesty": BRAIN_GPT_XHIGH,
+    "narrative": BRAIN_GPT_MEDIUM,
+    "contradiction": BRAIN_GPT_MEDIUM,
+    "gap": BRAIN_GPT_MEDIUM,
+    "coverage": BRAIN_GPT_LOW,
+    "honesty": BRAIN_GPT_MEDIUM,
 }
 
 
@@ -86,6 +94,96 @@ class QuotaExhausted(RuntimeError):
 
 class ModelNotFound(RuntimeError):
     """Raised when the requested model ID doesn't exist or isn't accessible."""
+
+
+# ---------------------------------------------------------------------------
+# Runtime telemetry
+# ---------------------------------------------------------------------------
+
+_USAGE_PROVIDERS = (
+    "anthropic",
+    "openai",
+    "s2",
+    "openalex",
+    "lens",
+    "crossref",
+    "opencitations",
+    "arxiv",
+)
+
+
+def _empty_usage_payload() -> dict:
+    return {
+        "api_calls": {provider: 0 for provider in _USAGE_PROVIDERS},
+        "tokens": {"input": 0, "output": 0, "total": 0},
+        "estimated_cost_usd": 0.0,
+    }
+
+
+_USAGE_TOTALS = _empty_usage_payload()
+_USAGE_PENDING = _empty_usage_payload()
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw in (None, ""):
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def _cost_rates(provider: str, model_name: str | None = None) -> tuple[float, float]:
+    model = (model_name or "").lower()
+    if provider == "anthropic":
+        if "opus" in model:
+            return (
+                _env_float("ANTHROPIC_OPUS_INPUT_COST_PER_1M", 15.0),
+                _env_float("ANTHROPIC_OPUS_OUTPUT_COST_PER_1M", 75.0),
+            )
+        return (
+            _env_float("ANTHROPIC_SONNET_INPUT_COST_PER_1M", 3.0),
+            _env_float("ANTHROPIC_SONNET_OUTPUT_COST_PER_1M", 15.0),
+        )
+    if provider == "openai":
+        return (
+            _env_float("OPENAI_INPUT_COST_PER_1M", _env_float("GENERIC_LLM_INPUT_COST_PER_1M", 3.0)),
+            _env_float("OPENAI_OUTPUT_COST_PER_1M", _env_float("GENERIC_LLM_OUTPUT_COST_PER_1M", 15.0)),
+        )
+    return (0.0, 0.0)
+
+
+def _estimate_cost(provider: str, input_tokens: int, output_tokens: int, model_name: str | None = None) -> float:
+    input_rate, output_rate = _cost_rates(provider, model_name)
+    return (
+        (max(0, input_tokens) / 1_000_000.0) * input_rate
+        + (max(0, output_tokens) / 1_000_000.0) * output_rate
+    )
+
+
+def _record_usage(provider: str, api_calls: int = 0, input_tokens: int = 0,
+                  output_tokens: int = 0, model_name: str | None = None):
+    if provider not in _USAGE_PROVIDERS:
+        return
+
+    total_tokens = max(0, input_tokens) + max(0, output_tokens)
+    estimated_cost = _estimate_cost(provider, input_tokens, output_tokens, model_name)
+
+    for payload in (_USAGE_TOTALS, _USAGE_PENDING):
+        payload["api_calls"][provider] += max(0, api_calls)
+        payload["tokens"]["input"] += max(0, input_tokens)
+        payload["tokens"]["output"] += max(0, output_tokens)
+        payload["tokens"]["total"] += total_tokens
+        payload["estimated_cost_usd"] = round(payload["estimated_cost_usd"] + estimated_cost, 6)
+
+
+def drain_usage_delta() -> dict:
+    """Return usage recorded since the last drain and reset the pending buffer."""
+    global _USAGE_PENDING
+    delta = deepcopy(_USAGE_PENDING)
+    _USAGE_PENDING = _empty_usage_payload()
+    return delta
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +217,18 @@ def _downgrade_openai_reasoning(spec: ModelSpec) -> ModelSpec | None:
         return ModelSpec(spec.name, "high")
     if spec.reasoning_effort == "high":
         return ModelSpec(spec.name, "medium")
+    if spec.reasoning_effort == "medium":
+        return ModelSpec(spec.name, "low")
+    return None
+
+
+def _openai_provider_fallback_spec(client, spec: ModelSpec) -> ModelSpec | None:
+    """Use Anthropic when OpenAI quota is exhausted, if available."""
+    fallback_name = (OPENAI_PROVIDER_FALLBACK_MODEL or "").strip()
+    if not fallback_name or _is_openai_model(fallback_name):
+        return None
+    if client is not None or os.environ.get("ANTHROPIC_API_KEY"):
+        return ModelSpec(fallback_name)
     return None
 
 
@@ -167,10 +277,24 @@ def _agent_run_via_openai(spec: ModelSpec, role: str, task: str, max_tokens: int
 
     resp.raise_for_status()
     data = resp.json()
+    usage = data.get("usage") or {}
+    _record_usage(
+        "openai",
+        api_calls=1,
+        input_tokens=int(usage.get("input_tokens", 0) or 0),
+        output_tokens=int(usage.get("output_tokens", 0) or 0),
+        model_name=spec.name,
+    )
     text = _extract_openai_output_text(data)
     if text:
         return text
-    raise RuntimeError(f"OpenAI response missing output text. Status={data.get('status')}")
+    output_types = [item.get("type") for item in data.get("output", [])[:5]]
+    raise RuntimeError(
+        "OpenAI response missing output text. "
+        f"Status={data.get('status')} "
+        f"incomplete_details={data.get('incomplete_details')} "
+        f"output_types={output_types}"
+    )
 
 
 def _agent_run_via_rest(role: str, task: str, model: str, max_tokens: int) -> str:
@@ -178,6 +302,7 @@ def _agent_run_via_rest(role: str, task: str, model: str, max_tokens: int) -> st
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         raise APIKeyMissing("ANTHROPIC_API_KEY not set in .env")
+    timeout_sec = int(os.environ.get("ANTHROPIC_REST_TIMEOUT_SEC", "180"))
 
     headers = {
         "x-api-key": api_key,
@@ -190,7 +315,12 @@ def _agent_run_via_rest(role: str, task: str, model: str, max_tokens: int) -> st
         "system": role,
         "messages": [{"role": "user", "content": task}],
     }
-    resp = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=body, timeout=120)
+    resp = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers=headers,
+        json=body,
+        timeout=timeout_sec,
+    )
 
     if resp.status_code == 404:
         raise ModelNotFound(
@@ -210,6 +340,14 @@ def _agent_run_via_rest(role: str, task: str, model: str, max_tokens: int) -> st
 
     resp.raise_for_status()
     data = resp.json()
+    usage = data.get("usage") or {}
+    _record_usage(
+        "anthropic",
+        api_calls=1,
+        input_tokens=int(usage.get("input_tokens", 0) or 0),
+        output_tokens=int(usage.get("output_tokens", 0) or 0),
+        model_name=model,
+    )
     parts = data.get("content", [])
     text_parts = [p.get("text", "") for p in parts if p.get("type") == "text"]
     return "".join(text_parts).strip()
@@ -228,7 +366,25 @@ def agent_run(client, role: str, task: str, model: str | ModelSpec = DEFAULT_MOD
         for attempt in range(retries):
             try:
                 return _agent_run_via_openai(spec, role=role, task=task, max_tokens=max_tokens)
-            except (APIKeyMissing, ModelNotFound, QuotaExhausted):
+            except QuotaExhausted as e:
+                provider_fallback = _openai_provider_fallback_spec(client, spec)
+                if provider_fallback is not None:
+                    log.warning(
+                        "OpenAI quota exhausted for %s effort=%s; falling back to Anthropic model %s",
+                        spec.name,
+                        spec.reasoning_effort,
+                        provider_fallback.name,
+                    )
+                    return agent_run(
+                        client,
+                        role,
+                        task,
+                        model=provider_fallback,
+                        max_tokens=max_tokens,
+                        retries=retries,
+                    )
+                raise e
+            except (APIKeyMissing, ModelNotFound):
                 raise
             except Exception as e:
                 wait = 2 ** attempt
@@ -252,6 +408,8 @@ def agent_run(client, role: str, task: str, model: str | ModelSpec = DEFAULT_MOD
         )
 
     if client is None:
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            return _agent_run_via_rest(role=role, task=task, model=spec.name, max_tokens=max_tokens)
         raise APIKeyMissing(
             "Anthropic client is None — ANTHROPIC_API_KEY not set in .env. "
             "Phase 1 works without it: python main.py --phase 1"
@@ -264,6 +422,14 @@ def agent_run(client, role: str, task: str, model: str | ModelSpec = DEFAULT_MOD
                 max_tokens=max_tokens,
                 system=role,
                 messages=[{"role": "user", "content": task}],
+            )
+            usage = getattr(resp, "usage", None)
+            _record_usage(
+                "anthropic",
+                api_calls=1,
+                input_tokens=int(getattr(usage, "input_tokens", 0) or 0) if usage is not None else 0,
+                output_tokens=int(getattr(usage, "output_tokens", 0) or 0) if usage is not None else 0,
+                model_name=spec.name,
             )
             return resp.content[0].text
         except Exception as e:
@@ -335,24 +501,101 @@ def agent_run_json(client, role: str, task: str, model: str | ModelSpec = DEFAUL
             if c in ('[', '{'):
                 text = text[i:]
                 break
-    # Find matching end
-    if text.startswith('['):
-        depth = 0
-        for i, c in enumerate(text):
-            if c == '[': depth += 1
-            elif c == ']': depth -= 1
-            if depth == 0:
-                text = text[:i+1]
-                break
-    elif text.startswith('{'):
-        depth = 0
-        for i, c in enumerate(text):
-            if c == '{': depth += 1
-            elif c == '}': depth -= 1
-            if depth == 0:
-                text = text[:i+1]
-                break
-    return json.loads(text)
+    candidates = []
+    for candidate in (
+        text,
+        _extract_balanced_json_snippet(text),
+        _trim_to_last_json_closer(text),
+    ):
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    last_error = None
+    for candidate in candidates:
+        for repaired in (candidate, _close_unbalanced_json(candidate)):
+            if not repaired:
+                continue
+            try:
+                return json.loads(repaired)
+            except Exception as e:
+                last_error = e
+
+    raise last_error or ValueError("agent_run_json could not parse a valid JSON payload")
+
+
+def _extract_balanced_json_snippet(text: str) -> str:
+    """Return the first balanced JSON object/array substring if available."""
+    if not text:
+        return ""
+
+    start = next((i for i, ch in enumerate(text) if ch in "[{"), -1)
+    if start == -1:
+        return ""
+
+    stack = []
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start):
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            stack.append("]" if ch == "[" else "}")
+        elif ch in "]}":
+            if not stack or ch != stack[-1]:
+                return ""
+            stack.pop()
+            if not stack:
+                return text[start:i + 1]
+    return ""
+
+
+def _trim_to_last_json_closer(text: str) -> str:
+    """Trim trailing commentary after the last JSON closer."""
+    last = max(text.rfind("}"), text.rfind("]"))
+    return text[:last + 1] if last != -1 else ""
+
+
+def _close_unbalanced_json(text: str) -> str:
+    """Append missing closing tokens for mildly truncated JSON."""
+    if not text:
+        return ""
+
+    stack = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            stack.append("]" if ch == "[" else "}")
+        elif ch in "]}":
+            if stack and ch == stack[-1]:
+                stack.pop()
+
+    repaired = text
+    if in_string:
+        repaired += '"'
+    if stack:
+        repaired += "".join(reversed(stack))
+    return repaired
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +634,7 @@ class OpenAlexClient:
                 params["api_key"] = self.api_key
             try:
                 resp = self.session.get(OA_BASE, params=params, timeout=30)
+                _record_usage("openalex", api_calls=1)
                 if resp.status_code == 429:
                     wait = 2 ** (page + 1)
                     log.warning(f"OpenAlex rate limited, backing off {wait}s")
@@ -481,6 +725,7 @@ class CrossrefClient:
         if self.mailto:
             query.setdefault("mailto", self.mailto)
         resp = self.session.get(f"{CROSSREF_BASE}{path}", params=query, timeout=30)
+        _record_usage("crossref", api_calls=1)
         resp.raise_for_status()
         return resp.json()
 
@@ -522,6 +767,7 @@ class OpenCitationsClient:
             f"{OPENCITATIONS_INDEX_BASE}{path}",
             timeout=(5, self.timeout_sec),
         )
+        _record_usage("opencitations", api_calls=1)
         resp.raise_for_status()
         return resp.json()
 
@@ -536,6 +782,207 @@ class OpenCitationsClient:
         if not norm:
             return []
         return self._get(f"/citations/{urllib.parse.quote(f'doi:{norm}', safe=':')}")
+
+
+# ---------------------------------------------------------------------------
+# Consensus client (claim verification / honesty support)
+# ---------------------------------------------------------------------------
+
+class ConsensusClient:
+    """Consensus API client used as a claim verification layer."""
+
+    def __init__(self, api_key: str, base_url: str | None = None):
+        self.base_url = (base_url or CONSENSUS_BASE).rstrip("/")
+        self.session = requests.Session()
+        self.session.headers["x-api-key"] = api_key
+        self.timeout = (5, 30)
+
+    def quick_search(self, query: str, limit: int = 8) -> dict:
+        params_candidates = [
+            {"query": query, "limit": limit},
+            {"q": query, "limit": limit},
+        ]
+        last_error = None
+        for params in params_candidates:
+            try:
+                resp = self.session.get(
+                    f"{self.base_url}/v1/quick_search",
+                    params=params,
+                    timeout=self.timeout,
+                )
+                if resp.status_code == 401:
+                    raise APIKeyMissing("Consensus API authentication failed. Check CONSENSUS_API_KEY.")
+                if resp.status_code == 403:
+                    raise APIKeyMissing("Consensus API rejected this key or lacks access for quick_search.")
+                if resp.status_code == 404:
+                    last_error = RuntimeError("Consensus quick_search endpoint not found.")
+                    continue
+                if resp.status_code == 429:
+                    raise QuotaExhausted("Consensus API rate limited or quota exhausted.")
+                if resp.status_code >= 400:
+                    last_error = RuntimeError(
+                        f"Consensus quick_search failed (HTTP {resp.status_code}): {resp.text[:300]}"
+                    )
+                    continue
+                return resp.json()
+            except requests.RequestException as e:
+                last_error = e
+        raise RuntimeError(f"Consensus quick_search failed: {last_error}")
+
+    def summarize_quick_search(self, payload: dict) -> dict:
+        hits = self._extract_hits(payload)
+        top_hits = []
+        for item in hits[:5]:
+            top_hits.append({
+                "title": self._pick(item, "title", "paper_title", "name"),
+                "year": self._pick(item, "year", "publication_year"),
+                "journal": self._pick(item, "journal", "venue", "publication_name"),
+                "authors": self._normalize_authors(item.get("authors")),
+                "doi": self._pick(item, "doi", "DOI"),
+                "url": self._pick(item, "url", "paper_url", "link"),
+            })
+        return {
+            "result_count": len(hits),
+            "top_hits": top_hits,
+            "raw_keys": sorted(payload.keys()) if isinstance(payload, dict) else [],
+        }
+
+    def _extract_hits(self, payload: dict) -> list[dict]:
+        if not isinstance(payload, dict):
+            return []
+        for key in ("results", "papers", "data", "items"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        return []
+
+    @staticmethod
+    def _pick(item: dict, *keys):
+        for key in keys:
+            value = item.get(key)
+            if value not in (None, "", []):
+                return value
+        return ""
+
+    @staticmethod
+    def _normalize_authors(value):
+        if isinstance(value, list):
+            names = []
+            for author in value:
+                if isinstance(author, str):
+                    names.append(author)
+                elif isinstance(author, dict):
+                    names.append(author.get("name", ""))
+            return [name for name in names if name][:6]
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Lens client (targeted scholarly supplementation)
+# ---------------------------------------------------------------------------
+
+class LensClient:
+    """Lens Scholarly Works API used as a targeted coverage supplement."""
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = (api_key or "").strip()
+        self.session = requests.Session()
+        if self.api_key:
+            self.session.headers["Authorization"] = f"Bearer {self.api_key}"
+            self.session.headers["Accept"] = "application/json"
+        # Institutional user plan: 10 requests / minute
+        self._limiter = RateLimiter(max_calls=8, window_sec=60.0)
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, size: int = 50) -> list[dict]:
+        if not self.enabled:
+            return []
+        self._limiter.wait()
+        body = {"query": query, "size": max(1, min(size, 100))}
+        resp = self.session.post(f"{LENS_BASE}/scholarly/search", json=body, timeout=60)
+        _record_usage("lens", api_calls=1)
+        if resp.status_code == 401:
+            raise APIKeyMissing("Lens API authentication failed. Check LENS_API_KEY in .env.")
+        if resp.status_code == 403:
+            raise APIKeyMissing("Lens API key lacks access to scholarly search.")
+        if resp.status_code == 429:
+            raise QuotaExhausted("Lens API rate limited. Reduce query volume and retry later.")
+        resp.raise_for_status()
+        data = resp.json()
+        return [item for item in data.get("data", []) if isinstance(item, dict)]
+
+    def usage(self) -> list[dict]:
+        if not self.enabled:
+            return []
+        self._limiter.wait()
+        resp = self.session.get(f"{LENS_BASE}/subscriptions/scholarly_api/usage", timeout=30)
+        _record_usage("lens", api_calls=1)
+        if resp.status_code == 401:
+            raise APIKeyMissing("Lens scholarly usage endpoint rejected this key.")
+        resp.raise_for_status()
+        payload = resp.json()
+        return payload if isinstance(payload, list) else []
+
+    @staticmethod
+    def to_unified(work: dict) -> dict:
+        external_ids = {}
+        for item in work.get("external_ids", []) or []:
+            if not isinstance(item, dict):
+                continue
+            key = (item.get("type") or "").strip()
+            value = (item.get("value") or "").strip()
+            if key and value:
+                external_ids[key] = value
+
+        authors = []
+        for author in work.get("authors", [])[:10]:
+            if not isinstance(author, dict):
+                continue
+            parts = [
+                author.get("first_name", "").strip(),
+                author.get("last_name", "").strip(),
+            ]
+            name = " ".join(p for p in parts if p).strip()
+            if not name:
+                initials = author.get("initials", "").strip()
+                last_name = author.get("last_name", "").strip()
+                name = " ".join(p for p in (initials, last_name) if p).strip()
+            if name:
+                authors.append(name)
+
+        source = work.get("source") or {}
+        open_access = work.get("open_access") or {}
+        locations = open_access.get("locations") or {}
+        pdf_urls = locations.get("pdf_urls") or []
+        oa_pdf = pdf_urls[0] if pdf_urls else ""
+
+        doi = external_ids.get("doi") or None
+        openalex = external_ids.get("openalex") or None
+        arxiv = external_ids.get("arxiv") or external_ids.get("ArXiv") or None
+        lens_id = work.get("lens_id", "")
+
+        return {
+            "paperId": f"lens:{lens_id}" if lens_id else "",
+            "doi": doi,
+            "title": work.get("title", ""),
+            "authors": authors,
+            "year": work.get("year_published") or 0,
+            "venue": source.get("title", "") if isinstance(source, dict) else "",
+            "abstract": work.get("abstract", "") or "",
+            "citationCount": work.get("scholarly_citations_count") or work.get("referenced_by_count") or 0,
+            "source": "lens",
+            "externalIds": external_ids,
+            "source_ids": {
+                "lens": lens_id,
+                **({"doi": doi} if doi else {}),
+                **({"openalex": openalex} if openalex else {}),
+                **({"arxiv": arxiv} if arxiv else {}),
+            },
+            "openAccessPdf": oa_pdf,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -557,6 +1004,7 @@ class S2Client:
     def _get(self, url: str, params: dict | None = None, _depth: int = 0) -> dict:
         self._limiter.wait()
         resp = self.session.get(url, params=params, timeout=30)
+        _record_usage("s2", api_calls=1)
         if resp.status_code == 429:
             if _depth >= 5:
                 log.error("S2 max retries exceeded")
@@ -571,6 +1019,7 @@ class S2Client:
     def _post(self, url: str, json_body: dict, params: dict | None = None) -> dict:
         self._limiter.wait()
         resp = self.session.post(url, json=json_body, params=params, timeout=30)
+        _record_usage("s2", api_calls=1)
         if resp.status_code == 429:
             time.sleep(5)
             return self._post(url, json_body, params)
@@ -697,6 +1146,7 @@ class ArxivClient:
 
         try:
             response = urllib.request.urlopen(url, timeout=30)
+            _record_usage("arxiv", api_calls=1)
             root = ET.fromstring(response.read())
         except Exception as e:
             log.error(f"arXiv request failed: {e}")

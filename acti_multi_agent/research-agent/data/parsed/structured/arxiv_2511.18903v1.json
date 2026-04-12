@@ -1,0 +1,1015 @@
+{
+  "paperId": "arxiv:2511.18903v1",
+  "title": "How Learning Rate Decay Wastes Your Best Data in Curriculum-Based LLM Pretraining",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2511.18903v1.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2511.18903v1.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2511.18903v1.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Due to the scarcity of high-quality data, large language models (LLMs) are often trained on mixtures of data with varying quality levels, even after sophisticated data curation. A natural approach to better leverage high-quality data is curriculum-based pretraining, where the model is trained on data sorted in ascending order of quality as determined by a quality metric. However, prior studies have reported limited improvements from such curriculum-based pretraining strategies. This work identifies a critical factor constraining these methods: the incompatibility between the ascending data quality order and the decaying learning rate (LR) schedule. We find that while curriculum-based training substantially outperforms random shuffling when using a constant LR, its advantage diminishes under standard LR decay schedules. Our experiments show this incompatibility can be mitigated by two simple strategies: (1) employing a more moderate LR decay schedule, where the final LR is only moderately smaller than the peak LR, and (2) replacing LR decay with model averaging, i.e., computing a weighted average of the final few checkpoints. By combining these strategies, we improve the average score on a suite of standard benchmarks by 1.64% over random shuffling, without additional data refinement. Validated on 1.5B-parameter models trained over 30B tokens with various data-quality metrics, our findings call for a re-evaluation of curriculum-based LLM pretraining and underscore the potential of co-designing data curricula with optimization methods.",
+      "word_count": 223
+    },
+    {
+      "index": 2,
+      "title": "INTRODUCTION",
+      "kind": "introduction",
+      "text": "Large language models (LLMs) are typically trained on massive text corpora collected from the Internet (Dubey et al., 2024; DeepSeek-AI et al., 2024; Yang et al., 2025; OpenAI, 2023) , covering a wide range of sources and quality levels. High-quality data plays a crucial role in enhancing model capabilities, but it is usually limited in amount. To address this issue, current LLM pretraining pipelines employ sophisticated data curation procedures to filter out low-quality data and increase the proportion of high-quality data, including rule-based (or heuristic-based) filtering, quality scoring (model-based labeling), and score-based data selection (Su et al., 2025; Li et al., 2024; Penedo et al., 2025; 2023; Weber et al., 2024) . Despite these advances, relatively little attention has been given to developing training strategies that more effectively utilize the high-quality data during training, rather than only during data curation.\n\nA natural idea to improve the utilization of high-quality data is to use curriculum learning 1 . This is motivated by the catastrophic forgetting problem (McCloskey & Cohen, 1989) , which refers to the phenomenon that a model may forget the knowledge it has learned before when it is exposed to new data (Dai et al., 2025; Liao et al., 2025) . In contrast to random shuffling, this curriculum-based Preprint 6WHS×10 4 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP 'HVFHQG $VFHQG /5 8QLIRUP 'HVFHQG $VFHQG /5 (a) Constant LR schedule. 6WHS×10 4 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP 'HVFHQG $VFHQG /5 8QLIRUP 'HVFHQG $VFHQG /5 (b) WSD LR schedule. 6WHS×10 4 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP 'HVFHQG $VFHQG /5 8QLIRUP 'HVFHQG $VFHQG /5 (c) Cosine LR schedule. )UDFWLRQRI'DWD 'DWD4XDOLW\\6FRUH /HDUQLQJ5DWHî 3 +LJK4XDOLW\\'DWD /RZ/HDUQLQJ5DWH $VFHQG :6'/56 &RVLQH/56 (d) LR schedule vs Data schedule. (Li et al., 2024) ) under constant, Warmup-Stable-Decay (WSD) (Hu et al., 2024; Hägele et al., 2024) , and cosine schedules. While curricula improve validation loss over a uniform baseline with a constant LR, this advantage is significantly reduced during a low-LR phase following LR decay. (d) In the data curriculum, high-quality data is placed in the latter phase, which coincides with the LR decaying to a relatively low scale.\n\napproach aims to optimize knowledge acquisition by exposing the model to high-quality data in the latter stages of training.\n\nOne successful curriculum learning strategy is multi-stage pretraining: first training on a data mixture dominated by massive web data, then in the second stage, referred to as mid-training (OLMo et al., 2025; Abdin et al., 2024b) , shifting the data mixture to one that mainly consists of high-quality data. This strategy has been adopted by many recent LLMs, including OLMo 2 (OLMo et al., 2025) , Phi-4 (Abdin et al., 2024a) , and LongCat-Flash (Team et al., 2025) . This two-phase design is most common, and it is also promising to extend with more stages (Yiwen et al., 2025; Allal et al., 2025) or follow with long-context extension (Yang et al., 2025) .\n\nAnother line of work explores curriculum learning at the instance level, where data samples are sorted according to quality scores and presented to the model sequentially (Wettig et al., 2024; Dai et al., 2025; Zhang et al., 2025; Kim & Lee, 2024) . We refer to this as the data curriculum foot_0 . However, these studies mainly investigate different quality metrics and find that simple end-to-end sorting yields limited benefits. Consequently, several works propose alternative strategies such as folding curriculum (Detailed in Section 4), which reorders samples within consecutive phases in an interleaved manner (Dai et al., 2025; Zhang et al., 2025) . Despite showing promise, we find that this interleaved approach is fragile: its advantage does not extend to our larger-scale experiments with the DCLM fastText score (Li et al., 2024) , a widely used scoring metric (see Section 4).\n\nThis raises a central question: Why do instance-level curriculum learning strategies often yield limited benefits? This is not simply due to unreliable quality scores: metrics like the QuRating score (proposed and used by Wettig et al. (2024) ), the PDS score (proposed by Gu et al. (2025b) and discussed by Dai et al. (2025) ), and the DCLM score (Li et al., 2024) are already informative enough to improve training efficiency by guiding high-quality data selection.\n\nOur Contributions. In this paper, we identify a key, yet previously overlooked factor: the incompatibility between the ascending order of data quality and the decaying schedule of learning rate.\n\nAs illustrated in Figure 1 , if we train an LLM with a constant LR, using a data curriculum that sorts data in ascending order of quality can indeed outperform the baseline that trains the model on data in a uniform order. However, when we switch to a more standard LR decay schedule, such as cosine or Warmup-Stable-Decay (WSD) (Loshchilov & Hutter, 2017; Hu et al., 2024) (a schedule with warmup, plateau, and decay phases, see Figure 1(b) ), the benefit of the data curriculum diminishes. Moreover, we observe that as the LR decay becomes more aggressive (e.g., having a longer decay phase or a lower ending LR), the benefit of the data curriculum diminishes more.\n\nTo resolve the incompatibility between data curriculum and LR decay, firstly, we discuss a straightforward remedy: adopting a moderate LR decay schedule in curriculum learning. In Section 5.1, we show that tuning the ending LR in WSD schedules trades off the benefits of data curriculum and loss convergence, and setting it to a moderate value (approximately decaying to 1/3 of peak LR in our setting) can make use of high-quality data and outperform uniform data ordering.\n\nFurther, we propose a strategy that largely resolves the incompatibility between the data curriculum and the LR schedule by replacing LR decay with weight averaging (Li et al., 2025c; Izmailov et al., 2018; Tian et al., 2025) . Weight averaging computes a weighted average of recent checkpoints as the final model. It stabilizes model parameters and reduces noise in the training process, similar to the effect of LR decay. However, it can achieve this without diminishing the magnitude of updates.\n\nTherefore, we adopt a constant LR throughout training and pair weight averaging with the data curriculum. This combination allows the model to maintain a high learning rate and fully exploit the high-quality data introduced later in the curriculum. We call this approach Curriculum Model Averaging (CMA). Notably, CMA also extends emerging practices of introducing weight averaging into LLM training (Tian et al., 2025; Li et al., 2025c; Sanyal et al., 2024) , showing that combining weight averaging with curriculum learning yields greater benefits than applying weight averaging to standard uniform-ordering pretraining. This combination is particularly effective under multi-phase pretraining, where high-quality data is introduced in the mid-training phase. In this setting, our approach achieves an average improvement of 1.2% in accuracy-and over 2% on core benchmarks (defined in Section 4)-solely by reordering data samples (Table 2 ).\n\nBuilding on these explorations, we further demonstrate that combining moderate LR decay, curriculum learning, and weight averaging can produce synergistic advantages and reveal a previously overlooked high-performing pretraining regime, improving standard benchmarks by 1.64% in average accuracy over random shuffling and standard decay. This finding underlines that hyperparameter settings optimized for uniform data ordering are not necessarily optimal for curriculum-based training. Prior work has naturally evaluated curriculum-based training using regimes originally optimized for uniform data ordering. However, this regime is suboptimal for curriculum-based training and, as previously reported, leads to only marginal benefits (Wettig et al., 2024; Kim & Lee, 2024) . In contrast, we identify a previously underexplored and more effective regime in the design space of LLM pretraining by co-designing these components, paving the way for future exploration.\n\nWe validate our hypotheses and proposed strategies through experiments at a scale sufficient to support our conclusions, training a 1.5 billion-parameter model on 30 billion tokens. Our findings demonstrate robustness across different quality metrics, LR schedules, and data mixtures, highlighting that co-designing data curricula with training dynamics is a powerful, data-aware strategy for improving LLM pretraining efficiency.",
+      "word_count": 1320
+    },
+    {
+      "index": 3,
+      "title": "RELATED WORK",
+      "kind": "related_work",
+      "text": "Curriculum Learning in LLM Pretraining. While data quality is known to be critical, leveraging it through fine-grained, instance-level curricula has shown limited success and has not been validated at a substantial scale (Dai et al., 2025; Zhang et al., 2025; Wettig et al., 2024; Campos, 2021) . Prior studies have reported only marginal gains, sometimes observing benefits from counterintuitive data orders without a clear underlying mechanism (Wettig et al., 2024) . Other works either lack sufficient validation (Campos, 2021; Kim & Lee, 2024) or, finding simple curricula ineffective, propose more complex strategies like data folding (Zhang et al., 2025; Dai et al., 2025) . However, we find that the benefits of such complex strategies are often confined to smaller-scale experiments with low learning rates and can degrade at larger scales and under a high LR regime (Section B.1).\n\nA common thread in these attempts is the use of standard cosine learning rate schedules. We demonstrate that decayed LR prevents the model from effectively learning from the high-quality data introduced late in the training process, showing that a more moderate decay is required to unlock the curriculum's full potential. A more detailed discussion can refer to Section B.1.",
+      "word_count": 197
+    },
+    {
+      "index": 4,
+      "title": "Learning Rate Schedules.",
+      "kind": "body",
+      "text": "The learning rate (LR) schedule is a crucial hyperparameter in model pretraining. Traditional LR schedules like cosine decay are the most widely used in LLM pretraining (Loshchilov & Hutter, 2017; Dubey et al., 2024; Li et al., 2024) . More recent schedules like Warmup-Stable-Decay (WSD) have demonstrated strong performance and are suitable for midtraining resumption paradigms (Hu et al., 2024; Hägele et al., 2024) . Loss curve scaling laws suggest that they possess an optimal shape for a given peak LR (Tissue et al., 2024; Luo et al., 2025; Li et al., 2025a) . A prevailing finding for training with standard uniform data ordering is that an optimal or near-optimal LR schedule should decay to a value close to zero (Li et al., 2025b; OLMo et al., 2025; Li et al., 2024) . Our work challenges this convention in the context of curriculum-based pretraining. We find that for a data curriculum, such an aggressive decay has negative effects on the data schedule. Instead, a moderate decay that maintains a higher learning rate during the high-quality data phase proves superior, especially when using model averaging. Unless otherwise specified, we discuss the LR schedules with a warmup phase. For example, a constant LR schedule refers to a linear warmup followed by a constant LR.",
+      "word_count": 212
+    },
+    {
+      "index": 5,
+      "title": "Model Averaging.",
+      "kind": "body",
+      "text": "Model averaging, which combines parameters from multiple checkpoints to produce a final, improved model, is a well-established technique for improving generalization (Izmailov et al., 2018; Jin et al., 2023; Yang et al., 2024b) . It has been successfully applied in LLM pretraining to accelerate convergence and boost performance, and was reportedly used in training prominent models like Llama 3 (Kaddour, 2022; Li et al., 2025c; Dubey et al., 2024) . Prior work has explored combining model averaging with decay-free LR schedules for training on uniformly ordered data and in the mid-training setting (Li et al., 2025c; Tian et al., 2025) . However, Li et al. (2025c) finds that the performance of weight averaging is merely comparable to standard LR decay, and Tian et al. (2025) attempts to improve the results through a weighting strategy derived from the LR schedule (Discussed in Sections A.2 and 3). Unlike this prior work, which focused on uniform data ordering, our research is the first to investigate the interaction between model averaging and a quality-based data curriculum. We find that these two strategies have a strong synergistic relationship, as model averaging provides the necessary training stability to learn from high-quality data with a high, moderately decaying learning rate.",
+      "word_count": 203
+    },
+    {
+      "index": 6,
+      "title": "PRELIMINARY",
+      "kind": "body",
+      "text": "Learning Rate Schedule. We consider two primary types of learning rate (LR) schedules in addition to a constant LR schedule. The commonly used cosine schedule defines the LR at step t as η(t) = η 0 1+α 2 + 1-α 2 cos πt T , where η 0 is the peak LR, T is the total number of training steps, and α is the ratio of the final LR to the peak LR. A more recent alternative is the Warmup-Stable-Decay (WSD) schedule, which consists of a linear warmup phase, a stable phase with a constant LR η 0 , and a final decay phase. For the decay phase, we use the 1-sqrt function, where the LR is given by η(t) = η 0 1 -r(t) + η T r(t), with r(t) = t-tdecay T -tdecay representing the progress through the decay period, which begins at step t decay . Further details on our schedule choices are discussed in Section A.1.",
+      "word_count": 160
+    },
+    {
+      "index": 7,
+      "title": "Model Averaging.",
+      "kind": "body",
+      "text": "Model averaging computes a weighted average of several model checkpoints to produce a single, final model. We consider three common strategies. Suppose we have N checkpoints, M 1 , . . . , M N , typically the last N checkpoints collected at fixed intervals, corresponding to steps t 1 , . . . , t N . We focus on the model averaging strategies discussed in Li et al. (2025c) summarized as follows. Simple Moving Average (SMA) (Izmailov et al., 2018) applies a uniform weight to all these checkpoints: M avg = 1 N N i=1 M i . Exponential Moving Average (EMA) assigns exponentially decaying weights. EMA is defined recursively as M (i) avg = αM i + (1 -α)M (i-1) avg , with the base case M (1) avg = M 1 . The hyperparameter α ∈ (0, 1] controls the decay rate; a larger α assigns greater weight to the most recent checkpoint. Weighted Moving Average (WMA) uses a predefined set of normalized weights w 1 , . . . , w N (where w i = 1) to compute the final model as M avg = N i=1 w i M i . Prior work (Tian et al., 2025) derives these weights from the learning rate schedule, where each weight is proportional to the drop in learning rate between checkpoints:\n\nw i ∝ η(t i ) -η(t i+1 ) for i < N ,\n\nand w N ∝ η(t N ). The weight computation procedure for WMA is detailed in Section A.2. 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP/RQJ $VFHQG/RQJ 8QLIRUP0LG $VFHQG0LG 8QLIRUP6KRUW $VFHQG6KRUW 8QLIRUP=HUR $VFHQG=HUR /5 8QLIRUP/RQJ $VFHQG/RQJ 8QLIRUP0LG $VFHQG0LG 8QLIRUP6KRUW $VFHQG6KRUW 8QLIRUP=HUR $VFHQG=HUR /5 (a) Validation loss for different decay steps.\n\n6WHS×10 4 9DOLGDWLRQ/RVV'LII /RQJ 0LG 6KRUW =HUR (b) LUniform -LAscend 6WHS×10 4 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP×10 5 $VFHQG×10 5 8QLIRUP×10 3 $VFHQG×10 3 8QLIRUP×10 3 $VFHQG×10 3 8QLIRUP×10 3 $VFHQG×10 3 /5 8QLIRUP×10 5 $VFHQG×10 5 8QLIRUP×10 3 $VFHQG×10 3 8QLIRUP×10 3 $VFHQG×10 3 8QLIRUP×10 3 $VFHQG×10 3 /5 (c) Validation loss for different ending LRs. 6WHS×10 4 9DOLGDWLRQ/RVV'LII ×10 5 ×10 3 ×10 3 ×10 3 (d) LUniform -LAscend\n\nFigure 2 : When varying the decay steps across 37%, 18%, 6% and 0% of training (Long, Mid, Short, Zero, respectively) and ending LRs (1 × 10 -5 , 1 × 10 -3 , 2 × 10 -3 , 3 × 10 -3 ), the benefit of data curriculum diminishes with more aggressive LR decay. For each LR decay, we train 1.5B-parameter models with uniform and ascending ordering of data based on DCLM scores, and measure the difference in validation loss. As shown in (b) and (d), this difference becomes smaller with more decay steps or smaller ending LRs.",
+      "word_count": 454
+    },
+    {
+      "index": 8,
+      "title": "Data Scoring.",
+      "kind": "body",
+      "text": "Raw web data must pass through a processing pipeline before it is used for pretraining. The raw data first goes through heuristic filtering rules. Then in the model-based filtering phase, a scorer model assigns a quality score to each data sample. For example, DCLM Baseline dataset uses scores from a fasttext model (Joulin et al., 2017) measuring similarity to high-quality sources like OpenHermes 2.5 (Teknium, 2023) and top posts from the ELI5 subreddit. Another approach, PreSelect (SHUM et al., 2025) , scores data based on its similarity to downstream tasks. Typically, these scores are used to filter the dataset by removing samples below a certain quality threshold. In contrast, our work does not use these scores to discard data; instead, we use these quality scores to define the data ordering for curriculum learning.",
+      "word_count": 133
+    },
+    {
+      "index": 9,
+      "title": "LEARNING RATE DECAY COUNTERACTS DATA CURRICULUM",
+      "kind": "body",
+      "text": "In this section, we analyze the critical yet often overlooked interaction between the learning rate (LR) schedule and the data schedule. We first explain how the learning rate acts as an implicit importance weight for each data sample. We then present empirical results to demonstrate three key points: (1) a data curriculum can yield significant benefits over a uniform data order under a constant LR schedule; (2) these benefits diminish when a conventional decaying LR schedule is applied, particularly during the final, high-quality data regime; and (3) while adjustments to the data schedule can mitigate this issue, the underlying conflict persists.",
+      "word_count": 101
+    },
+    {
+      "index": 10,
+      "title": "Analysis of Coupling between Learning Rate and Data Schedules.",
+      "kind": "results",
+      "text": "A key insight is that the learning rate schedule acts as an implicit importance weight for each training sample. The parameter update at training step t is θ t+1 = θ t -η t g t , where η t is the learning rate. The gradient g t can be decomposed into a signal component, E[g t ], which points in the direction of steady improvement, and a noise component, ϵ t . A decaying learning rate η t serves a dual purpose: it reduces the noise ϵ t to stabilize training, but it also shrinks the update step taken in the signal direction E[g t ]. While modern optimizers like Adam (Kingma & Ba, 2015) use more complex update rules, the learning rate remains a dominant factor in the update magnitude. This dual role of η t creates a fundamental conflict in quality-based curricula. High-quality samples are intentionally processed at the end of training, but this is precisely when conventional LR schedules reduce η t to its minimum. Consequently, the decaying learning rate diminishes the influence of the most valuable data, counteracting the intended benefit of the curriculum.",
+      "word_count": 189
+    },
+    {
+      "index": 11,
+      "title": "Experimental Settings.",
+      "kind": "body",
+      "text": "Our experiments are grounded in the DataComps-LM (DCLM) framework (Li et al., 2024) at the 1B-1x scale, ensuring our findings are validated at a substantial scale. We adopt the Qwen2.5-1.5B model architecture (Yang et al., 2024a) and train models on a 30B token subset of the DCLM-Baseline dataset. For the data curriculum, we use DCLM's fasttext scores as our quality metric. We set the peak LR to 3 × 10 -3 and the ending LR to 1 × 10 -5 , aligning with optimal settings found in prior work for uniform data schedules (Li et al., 2024; Luo et al., 2025; Li et al., 2025b) . We evaluate performance on a high-quality subset of the DCLM-Baseline dataset held out for validation. We also report downstream task scores by the OLMES framework (Gu et al., 2025a) . Among the standard benchmark suite, we choose MMLU (Hendrycks et al., 2021) , ARC (Clark et al., 2018) , and CSQA (Talmor et al., 2019) as Core benchmarks, as recent work suggests they have a higher signal-to-noise ratio to distinguish model performance (Heineman et al., 2025) . Further experimental details are provided in Section A.1.\n\nA Data Curriculum is Highly Effective with a Constant Learning Rate. To isolate the effect of the data schedule from the LR schedule, we first conducted experiments using a constant learning rate of 3 × 10 -3 . We compared three data schedules: a uniform random baseline, an ascendingorder curriculum, and a reverse (descending-order) curriculum, both curricula sorted by DCLM quality scores. As shown in Figure 1 (a), the ascending-order curriculum significantly outperforms the uniform baseline, achieving a much lower validation loss and faster convergence. In contrast, the reverse curriculum's validation loss trends upward, likely because the data distribution shifts progressively away from the high-quality validation set. These results clearly demonstrate that a quality-based curriculum is effective when its impact is not confounded by a decaying learning rate. Similar trends were observed using PreSelect scores (SHUM et al., 2025) (see Appendix Figure 8(a) ).",
+      "word_count": 335
+    },
+    {
+      "index": 12,
+      "title": "The Curriculum's Advantage Diminishes with a Decaying LR Schedule.",
+      "kind": "body",
+      "text": "In sharp contrast to the constant LR experiments, the advantage of the data curriculum largely disappears when we employ a WSD schedule (Figure 1(b) ). The performance degradation is even more pronounced with a cosine schedule, which decays throughout its entire range (Figure 1(c) ). To further probe this relationship, we varied the aggressiveness of the LR decay by adjusting two WSD parameters: the number of decay steps and the final learning rate. The results in Figure 2 show a clear trend: as the decay phase becomes longer or more aggressive (i.e., a smaller ending LR), the performance benefit of the data curriculum over the uniform baseline shrinks, eventually becoming negligible. This confirms the previously overlooked effect of LR decay on the data curriculum, where LR decay undermines the contribution of high-quality data.\n\nExploring an Alternative Curriculum: Data Folding. We also investigated whether a different curriculum design could mitigate the coupling effect. We tested a folding curriculum, inspired by prior work (Dai et al., 2025; Zhang et al., 2025) , where the dataset is split into several chunks and each chunk is sorted internally. This stage-wise design distributes high-quality data more evenly throughout training than the standard data curriculum. As shown in Figure 3 , under a cosine schedule, the ascending with folding strategy performed better than a simple end-to-end ascending sort but still underperformed the uniform baseline. Conversely, under a constant LR schedule, the simple ascending-order curriculum proved to be the most effective strategy, outperforming the folding cur- riculum. These results support our hypothesis: when the LR decays, folding offers a slight benefit over simple sorting by processing some high-quality data earlier, but under a constant LR, where this is not a concern, a simple end-to-end curriculum remains superior. Refer to Section B.1 for a more detailed discussion on data folding experiments.",
+      "word_count": 303
+    },
+    {
+      "index": 13,
+      "title": "UNLOCKING DATA CURRICULA POTENTIAL VIA MODERATE LR DECAY AND MODEL AVERAGING",
+      "kind": "body",
+      "text": "To resolve the interaction between data curricula and learning rate (LR) schedules, we first utilize a more moderate LR decay in place of a standard aggressive decay, which we find mitigates the issue. We then turn to a more principled approach: model averaging (Izmailov et al., 2018; Li et al., 2025c; Tian et al., 2025) . We investigate replacing LR decay entirely with model averaging, which allows high-quality data to be processed with a constant learning rate. While model averaging alone may not match the performance of LR decay with uniform data, we find that combining a data curriculum with model averaging produces comparable or even superior results to a standard decaying LR schedule, particularly in a mid-training setting. This reveals a synergistic relationship between data curricula and model averaging. Furthermore, we find that a combination of model averaging and moderate LR decay can yield even stronger and stable results for curriculum-based pretraining.\n\nOur results highlight a previously unexplored regime for improving LLM pretraining and reveal the potential of co-designing LR schedules, data curricula, and model averaging strategies.",
+      "word_count": 178
+    },
+    {
+      "index": 14,
+      "title": "MITIGATING NEGATIVE INTERACTION WITH MODERATE LEARNING RATE DECAY",
+      "kind": "body",
+      "text": "A straightforward way to mitigate the negative impact of LR decay on data curricula is to use a moderate LR decay instead of a standard aggressive one. As shown in Figure 2 , for uniform data, the validation loss decreases with more aggressive LR decay, like increasing decay steps and lower ending LRs in our experimental setting. In comparison, the benefits of data curricula increase with a more moderate LR decay, like fewer decay steps or higher ending LRs. The different preferences of LR decay suggest that the optimal ending LR or number of decay steps can differ for curriculumbased training from uniform data training, also indicated by the validation loss curves in Figure 2 . Since the optimal ending LR is typically close to zero for uniform data ordering, but more decay steps are not always better (Li et al., 2025b; 2024; Hu et al., 2024) , it is more convenient to ablate on the ending LRs to see whether the optimal LR schedule changes for curricula.\n\nTo investigate this, we run experiments on ending LRs in a fine-grained manner and report the training results for both uniform data ordering and a data curriculum. As shown in Figure 5(a) , we find that the data curriculum (Ascend+WSD) may only achieve a marginal improvement or even fail to match the performance of uniform ordering (Uniform+WSD) when the ending LR is close to zero, like at the scale of 10 -5 . However, as the ending LR increases, the performance of curriculum training improves, but may degrade when the ending LR approaches the peak LR. Note that the performance of the data curriculum can decline while its relative benefit over uniform ordering can still increase as the uniform training performance degrades more sharply when ending LR increases.\n\nThe optimal ending LR of the data curriculum is around 1×10 -3 , much higher than that for uniform Preprint\n\nw sig na l w n o is e 8QLIRUP'HFD\\ w sig na l w n o is e $VFHQG'HFD\\ w sig na l w n o is e (w) $VFHQG(0$ 7UDMHFWRU\\ 6WDUW (QG 9DOOH\\)ORRU /DVWWR$YJ 0RGHO$YHUDJH wnoise (w) wnoise (w)3ODQH\n\nFigure 4 : Visualization of our intuition about the interplay between data ordering and LR schedules. We assume the gradient update can be decomposed as a signal direction and a noise direction. High-quality data can offer a less noisy direction and a more stable signal direction, while low-quality data can induce a more noisy update. Uniform+Decay, Ascend+Decay and Ascend+EMA represent different training strategies. As-cend+EMA can make the best use of the high-quality data in the curriculum. The right-hand figure shows the projection of the trajectories of the last 8 steps for these cases onto the wnoise-L(w) plane.\n\ndata ordering, and the tuned data curriculum training outperforms the optimal uniform data training results. These experiments validate that using a more moderate LR decay-for instance, adjusting the ending LR to approximately 1/3 of the peak LR in our setting-can effectively mitigate the negative interaction and unlock the benefits of a data curriculum.",
+      "word_count": 507
+    },
+    {
+      "index": 15,
+      "title": "MODEL AVERAGE CAN HELP DATA CURRICULUM",
+      "kind": "body",
+      "text": "CMA: Replacing Learning Rate Decay with Model Averaging. Adjusting the ending LR serves as a trade-off between the benefits of a data curriculum and LR decay. To fully utilize the benefits of data curricula, we propose to decouple the data schedule from the side effects of LR annealing by replacing LR decay entirely with model averaging. In this approach, we replace the decaying LR schedule with a constant LR and apply model averaging to the final checkpoints of the training process. We call this strategy Curriculum Model Averaging (CMA), detailed in Algorithm 1. In our default setting, we use Exponential Moving Average (EMA) with α = 0.2 over the last six checkpoints. The types of weight averaging considered include Simple Moving Average (SMA), EMA, and Weighted Moving Average (WMA), as introduced in Section 3. For comparison, we use standard LR pretraining schedules, including cosine and WSD (introduced in Section 3). The strongest baseline for our evaluation, denoted WSD + Uniform, is the best-performing combination of a standard LR schedule and data order. Downstream task performances are reported in Table 1 , and practical implementation details are reported in Section A.2.\n\nThe Synergy of Data Curriculum and Model Averaging. The results in Table 1 lead to several key observations. First, the combination of a data curriculum and model averaging (e.g., EMA + Ascend) outperforms models trained with a standard LR decay schedule, including WSD + Uniform and WSD + Ascend. It also consistently outperforms model averaging applied to a uniform data order (e.g., EMA + Uniform). Second, this synergy is crucial, as other combinations yield limited improvements. For instance, model averaging with a uniform data order (EMA + Uniform) under a constant learning rate does not fully match a standard WSD schedule. Furthermore, combining a standard LR decay with a data curriculum (WSD + Ascend) provides only marginal gains and can even degrade performance, confirming the negative interaction we identified between schedules. These results highlight the necessity of combining both a data curriculum and weight averaging, a strategy largely overlooked by prior work that has focused on either weight averaging (Tian et al., 2025; Yang et al., 2024b) or curriculum design (Dai et al., 2025) in isolation. Third, aligning the checkpoint weights with the data schedule is beneficial: EMA and SMA, which assign non-decreasing weights to later (and higher-quality) checkpoints, outperform WMA under a data curriculum. The differences between these moving average strategies are detailed in Section 3.\n\nMotivation: Synergy from Decoupling Schedules. We intuitively interpret the synergy between a data curriculum and model averaging from a loss landscape perspective, emphasizing the interplay between two key factors: the learning rate and data quality. We present a visualization of this concept in Figure 4 . The learning rate controls the size of the update steps, while data quality influences the signal-to-noise ratio of the gradients. Uniform+Decay progresses with a relatively consistent level of noise compared to the signal from the training data, and the final decay reduces the noise but also limits the update rate along the signal direction; Ascend+Decay starts with high noise, but the step-size decays too fast, so it does not utilize the good signal from high-quality data to move faster near the end; When it comes to the model averaging strategy, the training over uniform data may not reduce noise as effectively as a near-zero learning rate, which could explain its slightly lower performance reported in Table 1 . However, when using a curriculum strategy, labeled as Ascend+EMA, although the training starts with higher noise, the high-quality data introduced late in training provides a clearer and more reliable gradient. This strategy maintains the update magnitude in the high-quality regime, allowing it to take advantage of the good signal near the end along the signal direction. Using model averaging can also reduce noise along the noise direction, probably achieving a better balance between progress and stability compared to aggressive learning rate decay. We also provide a simplified theoretical model in Section 6 and discuss our perspective in the context of prior work (Wen et al., 2025) in Section B.1.",
+      "word_count": 680
+    },
+    {
+      "index": 16,
+      "title": "RESULTS ON MID-TRAINING WITH MIXED QUALITY DATA",
+      "kind": "results",
+      "text": "CMA Benefits are More Pronounced in Mid-Training. Mid-training is an emerging practice in LLM pretraining where a large corpus of average-quality data is supplemented by a smaller, highquality dataset in a later training stage (Yang et al., 2025; OLMo et al., 2025; Hu et al., 2024) . We conduct mid-training experiments, with settings detailed in Section A.1. As shown in Table 2 , CMA exhibits a larger benefit in this practical setting compared to experiments on uniformly high-quality data. The CMA results (e.g., EMA + A-T) show a significant advantage over the WSD schedule baseline (WSD + U,U), improving the average accuracy by 1.20% and achieving over a 2.0% improvement on average across the core suite of benchmarks. This margin is notable given that no additional complex data filtering is applied. A possible explanation for the more prominent improvement is that, when high-quality data is sparse, each sample provides a relatively more valuable signal for parameter updates, amplifying the benefit of CMA.\n\nA Practical and Simplified Strategy also Performs Well. In practice, sorting an entire data corpus globally may not be feasible. As an alternative, we tested a strategy where data is sorted in ascending order within each training phase separately (A,A in Table 2 ). The results show that the benefits of our approach over standard LR decay largely persist. However, applying a curriculum only to the final, high-quality data phase (EMA + U,A) is not sufficient for optimal results. The superior performance of the A,A schedule over U,A suggests that applying a curriculum to the initial, lower-quality data phase is also beneficial. One possible explanation is that reordering data in the lower-quality phase can exploit the model's forgetting mechanism to mitigate the adverse effects of toxic samples that pass through the cleaning pipeline by chance. These results further confirm the synergy between model averaging and a data curriculum.",
+      "word_count": 310
+    },
+    {
+      "index": 17,
+      "title": "OVERLOOKED BENEFIT: CO-DESIGN OF DATA CURRICULUM, LR SCHEDULE, AND WEIGHT AVERAGE",
+      "kind": "body",
+      "text": "CDMA: Combining Moderate LR Decay with Model Averaging. We have identified the benefits of the moderate LR decay and weight averaging in curriculum-based pretraining. A natural question is whether combining a moderate LR decay with model averaging under a data curriculum can yield further improvements. We conducted a series of experiments varying the ending learning rate in WSD schedules, from 1 × 10 -5 to 3 × 10 -3 , and then applied EMA to the final checkpoints. As shown in Figure 5 , this combination achieves stable and optimal results with a moderate LR de-\n\n(QGLQJ/5 $YHUDJH6FRUH 3UHYLRXV)RFXV5HJLPH 2SWLPDO5HJLPH $VFHQG(0$ $VFHQG:6' 8QLIRUP(0$ 8QLIRUP:6' (QGLQJ/5 &RUH6FRUH $VFHQG(0$ $VFHQG:6' 8QLIRUP(0$ 8QLIRUP:6' (a) DCLM. (QGLQJ/5 $YHUDJH6FRUH 3UHYLRXV)RFXV5HJLPH 2SWLPDO5HJLPH $VFHQG(0$ $VFHQG:6' 8QLIRUP(0$ 8QLIRUP:6' (QGLQJ &RUH6FRUH $VFHQG(0$ $VFHQG:6' 8 8 (b) Mid-Training (WebOrganizer-DCLM). derexplored Optimal Regime where moderate learning rate (LR) decay, weight averaging, and curriculum learning produce synergistic advantages. We run experiments on both Uniform (uniformly ordered data) and Ascend (training data arranged by ascending DCLM scores) data schedules. For both schedules, we conduct an ablation on the ending learning rates of WSD schedules, ranging from 1 × 10 -5 to 1 × 10 -3 , representing aggressive to moderate LR decay. We denote strategies applying weight averaging as EMA, which compute the final model checkpoint via an EMA of the last six checkpoints, and denote those strategies without weight averaging as WSD. We measure performance by the average downstream task score (as in Table 1 ). This newly identified regime contrasts with the Previous Focus Regime, which represents common practices without a data curriculum or weight averaging, and with an ending LR between 1 × 10 -5 and 1 × 10 -4 . This range is typical in prior work, which often uses an ending LR of one-tenth of a peak LR (on the scale of ×10 -4 ) (Dubey et al., 2024; DeepSeek-AI et al., 2024) or fixes the ending LR around 10 -5 (Li et al., 2024; 2025b) . This observation also holds for mid-training settings.\n\ncay (i.e., a higher ending LR than in standard practice). While a data curriculum with moderate LR decay alone also achieves near-optimal results, it does not fully match the combined strategy and may need a more careful tuning of ending LRs. These two curriculum-based strategies both outperform their uniform-ordering training counterparts when the LR decay is properly tuned for both curriculum-based and uniform-ordering. Furthermore, as shown in Figure 5 (b) of the mid-training setting, the best combination can improve by 1.68% in the average benchmark accuracy over the baseline (Uniform+WSD with ending LR 1 × 10 -5 , corresponding to the left endpoint of the blue dash line), a prominent improvement without any additional data refinement. This motivates the following guideline for curriculum-based pretraining: use a moderate LR decay and adopt model averaging. To distinguish this from CMA, we call this strategy Curriculum with LR Decay Model Averaging (CDMA). Specifically, curriculum-based LLM pretraining should use a more moderate LR decay than the optimal setting for uniform data training; their optimal regimes can differ substantially (around 1 × 10 -5 for uniform training versus roughly 1 × 10 -3 for curriculum-based training in our setting). A weight averaging strategy can further enhance performance and produce more stable benefits in this moderate LR regime. A more systematic recipe for the strategy combinations can be a promising direction for future work.\n\nDiscussion: Why is this Combination Under-Explored? The CDMA strategy is straightforward and effective, which raises the question of why it has been underexplored. A possible explanation is that prior work has focused on an aggressive LR decay regime, which has obscured the discovery of alternative approaches. Confirmed by prior work (Li et al., 2025b) , this aggressive decay regime is close to optimal for the standard uniform data scenario, and there is a clear trend favoring a near-zero ending LR, as shown in Figure 5 . However, the optimal regime for uniform data is not necessarily optimal for other settings. Prior work focusing on curriculum design mostly adopts cosine annealing schedules, within this aggressive decay regime, and has consequently reported marginal or disappointing results (Zhang et al., 2025) . The negative results caused by these compounding factors can prevent more progress on curriculum-based pretraining. Hence, our proposed optimization space involving the co-design of LR schedules, data curricula, and model averaging strategies is still underexplored Ablation Study. We conduct ablation studies to verify the robustness of our method. Our approach generalizes effectively when evaluated with an alternative quality metric (PreSelect) and a different, unfiltered pretraining dataset (WebOrganizer) (SHUM et al., 2025; Wettig et al., 2025) .\n\nFull experimental details are presented in Section A.3.",
+      "word_count": 777
+    },
+    {
+      "index": 18,
+      "title": "A THEORETICAL DEMONSTRATION",
+      "kind": "body",
+      "text": "As we reported and discussed above, the benefit of curriculum learning emerges when we apply a weight averaging method instead of a learning rate schedule with excessive decay, such as Cosine averaged over R = 20 runs. The yellow star marks the global optimal, and w1 represents a signal direction and w2 represents a noise direction. The data samples are distributed evenly along the signal direction and randomly located along the noise direction. Ascend+WSMD and Ascend+EMA win by sufficient progress along signal direction; Uniform+WSD fails for inconsistent signal and thus large variance along signal direction; Ascend+WSD fails for early-decay, resulting in insufficient update along the signal direction.\n\nor WSD schedules, in practical pretraining. In the following, we present a simple theoretical model that recovers the above empirical insight. The main proof of this section can be found in Section C.\n\nProblem Setup. We consider a quadratic loss function L(w) = 1 2 ∥w -w * ∥ 2 2 , where w = (w 1 , w 2 ) ∈ R 2 represents the trainable parameter, and w * denotes the ground truth, which is set to the original point (0, 0). We use Stochastic Gradient Descent (SGD) to optimize this problem. We denote the one-sample loss used to calculate the gradient for the t-th iteration as ℓ t (w) := ∥w -x t ∥ 2 2 , where data point x t is sampled from some given dataset D = {x (1) , x (2) , . . . , x (M ) }. Therefore, we have the SGD update rule for the t-th iteration as w t = w t-1 -η t ∇ℓ t (w t-1 ), where the η t denotes the learning rate in the t-th iteration. We initialize the parameter as w 0 = (L, 0). We denote the learning rate schedule by E := {η 1 , η 2 , . . . , η M }. We denote w t = (w (1) t , w\n\n(2) t ). We define W M ;E to be the distribution of w M . The randomness within w M comes from the random draw of the distribution in SGD. We further define the expected loss L(M ; E) := E w∼W M ;E [L(w)].\n\nIn the following, we consider the training dataset D, which consists of M different data points with varying data qualities. Specifically, data point\n\nx (i) = (x (i) 1 , x (i)\n\n2 ) satisfy that x (i) 1 = (i -1)d and x (i) 2 ∼ Uniform(-L, L), we further set d = L/M . x (i) provides a signal in the first dimension and introduces noise in the second dimension. Next, we consider two sampling strategies for each iteration of SGD: (1) We sample one data point uniformly from Uniform(D); (2) we sample one data point from D in an ascending order. In other word, in t-th iteration, x t = x (M -t+1) ∈ D. The visualization of optimization trajectories in a simulation experiment can refer to Figure 6 .\n\nUniform Sampling + Learning Rate Schedule. SGD acts as an exponential averaging of the current parameter and the sampled data point. Once we uniformly sample data points with no ordering, then on the x-axis, the parameter would approximately oscillate from 0 to (m -1)d with a large variance. We can prove that given any data schedule E starting with some η 1 ≤ 1, the expected loss for uniformly sampling SGD has a lower bound\n\nmin E L(M ; E) = Ω(L 2 ). (1)\n\nThis lower bound is derived from the loss on the x-axis. When we apply the uniform sampling, SGD cannot get enough signal towards the right direction; instead, the SGD optimizer would approach the mean of\n\nx (1) 1 , x (2) 1 , . . . , x (M ) 1 in expectation.\n\nAscending Data-Ordering + Practical WSD Schedule. Next, we sample data in an ascending order from x (M ) to x (1) , using the following WSD learning rate schedule Ẽ such that η t = 1 2 for 1 ≤ t ≤ ⌊0.9M ⌋ + 1, and η t =\n\n1 T -(M -T0) for ⌊0.9M ⌋ + 2 ≤ t ≤ M , where T 0 = M -⌊0.9M ⌋. In this learning rate schedule, we follow a practical setting, where we decay 10% of the total iterations. We then show that for this learning rate schedule Ẽ, the expected loss still cannot break the lower bound\n\nL(M ; Ẽ) = Θ(L 2 ).\n\n(\n\nAscending Data-Ordering + WSMD Schedule. In the above, we show that even using an ascending data-ordering, the loss lower bound does not improve if we decay too much in the learning rate schedule. Next, we show a Warmup-Stable-Moderate Decay (WSMD) schedule with less decay and a larger ending learning rate can better utilize the ascending data-ordering and get a smaller loss. Specifically, do a modification of the above WSD schedule, setting T 0 = Θ(M 2 3 ). WSMD schedule can break through the above lower bound, denoted as\n\nE * L(M ; E * ) = Θ(M -2 3 L 2 ). (3)\n\nAscending Data-Ordering + Stochastic Weight Averaging (SWA). Despite the failure of the practical WSD learning rate schedule, we demonstrate that with a constant learning rate, a sample SWA surpasses the aforementioned lower bound. The reason is that: (1) First, along the x-axis, with a constant learning rate, the updated parameter gets a larger gradient accumulation towards the ground truth compared with the practical WSD with 10% decay, which is too much to get enough loss reduction. (2) Second, the SWA allows appropriate averaging along the y-axis and results in noise reduction, thus leading to smaller loss, as the WSMD schedule does. Theorem 6.1. Given a learning rate η 0 ≤ 1, the parameter derived by the averaging on the last n weights wM =\n\n1 n n-1 t=0 w M -t , where n = Θ(M 2 3\n\n) such that the expected loss\n\nE[L( wM )] = Õ(M -2 3 L 2 ),\n\nwhere Õ(•) hides log factors and constants independent of L and M .",
+      "word_count": 1036
+    },
+    {
+      "index": 19,
+      "title": "CONCLUSION",
+      "kind": "conclusion",
+      "text": "In this paper, we investigate the interaction between data schedules and learning-rate (LR) schedules in language model pretraining and identify a fundamental tension between curriculum learning and conventional LR-decay strategies. To address this mismatch, we propose replacing sharp LR decay with a combination of moderate decay and model averaging. This design uncovers a previously underexplored optimization regime that better aligns curriculum-based data ordering with LR decay. Our findings highlight the importance of co-designing LR and data schedules rather than optimizing them in isolation. We advocate for future work on developing more principled and efficient methods for jointly tuning these hyperparameters and coordinating the interplay between training dynamics and distributional shifts-an effort that we believe will be central to further improving the efficiency and effectiveness of LLM pretraining.",
+      "word_count": 127
+    },
+    {
+      "index": 20,
+      "title": "A EXPERIMENTS A.1 EXPERIMENTAL SETTINGS",
+      "kind": "results",
+      "text": "This section details our experimental setup, which is grounded at a substantial scale for academic research. We describe our pretraining and evaluation procedures, justify our learning rate schedule choices, and outline a practical mid-training configuration.\n\nPretraining Settings. Our experiments are conducted at a substantial scale for academic validation, grounded in the DataComps-LM (DCLM) framework (Li et al., 2024) at the 1B-1x level. We use Qwen2.5-1.5B model (Yang et al., 2024a) for pretraining experiments, which is a modern architecture incorporating SwiGLU activation functions and Grouped-Query Attention (GQA). The training dataset consists of a 30B token subset sample from the first shard of the DCLM-Baseline dataset (Li et al., 2024) . For our data curricula, we sort data in ascending order based on DCLM fasttext scores; a reverse curriculum, sorting in descending order, is also used for comparison. After moderate tuning, we set the peak learning rate to 3 × 10 -3 , with a sequence length of 4096 and a batch size of 512, which we found provides a good trade-off between throughput and stability.\n\nFor LR decay schedules, we set the final learning rate to 1 × 10 -5 , aligning with optimal settings found in prior work (Li et al., 2024; Luo et al., 2025; Li et al., 2025b) . To ensure reproducibility, we provide a detailed list of hyperparameters in Table 3 . Evaluation Settings. To ensure a robust comparison between methods, we track validation loss during training and evaluate final performance on a comprehensive suite of downstream tasks. Because the data distribution shifts during a curriculum, we created a dedicated high-quality validation set to provide a consistent measure of progress. This set consists of 100,000 of the highest-scoring documents from a partition of the DCLM-Baseline dataset that is disjoint from our training data. For downstream evaluation, we use the OLMES benchmark (Gu et al., 2025a) , reporting performance on MMLU (Hendrycks et al., 2021) , ARC-easy/challenge (Clark et al., 2018) , CommonSenseQA (CSQA) (Talmor et al., 2019) , OpenBookQA (Mihaylov et al., 2018) , PIQA (Bisk et al., 2020) , Social IQA (Sap et al., 2019) , and WinoGrande (Sakaguchi et al., 2020) , covering world knowledge, common sense, and reasoning capabilities. Among these, we designate MMLU, ARC, and CSQA as Core benchmarks, as recent work suggests they have a higher signal-to-noise ratio for distinguishing model performance (Heineman et al., 2025) . Furthermore, as shown in Figure 7 , the average downstream scores exhibit a strong correlation with validation loss.",
+      "word_count": 413
+    },
+    {
+      "index": 21,
+      "title": "LR Schedule Choice Ablation.",
+      "kind": "body",
+      "text": "The decay phase of the WSD schedule can be implemented with various functions. Following prior work (Hägele et al., 2024; Luo et al., 2025) , we compared the 1 and 2 .\n\n1-sqrt decay function, η(t) = η 0 1 -r(t) + η T r(t), and the sqrt-cube function, η(t) = η 0 (1 -r(t))\n\n1.5 . Both decay functions outperform simpler alternatives like linear decay, and as shown in Table 4 , they produce strong and comparable results. We adopt the 1-sqrt function for our main experiments due to its wide adoption in recent literature (Hägele et al., 2024; Tian et al., 2025) . Unless otherwise specified, our experiments use a decay phase ratio of approximately between 15% and 20% of total training steps, consistent with optimal ratios reported in prior work (Hägele et al., 2024; Hu et al., 2024) . The Mid-Training Experiment Settings. We model mid-training, an emerging and practical pretraining paradigm (Yang et al., 2025; OLMo et al., 2025; Hu et al., 2024) , with a two-phase setup. The initial stable-LR phase uses 29B tokens from the WebOrganizer dataset (Wettig et al., 2025) as lower-quality data, while the subsequent decay phase uses 5B tokens from the higher-quality DCLM-Baseline dataset (Li et al., 2024) . The WebOrganizer data has not undergone model-based filtering, whereas the DCLM-Baseline data represents the top 10% of its source, which has a distribution roughly similar to the WebOrganizer data. The LR decays to 1 × 10 -5 during the second, high-quality phase.",
+      "word_count": 250
+    },
+    {
+      "index": 22,
+      "title": "A.2 PRACTICAL IMPLEMENTATION DETAILS",
+      "kind": "body",
+      "text": "Weight Computation for WMA. The computation of Weighted Moving Average (WMA) follows Tian et al. (2025) , where weights are derived from a hypothetical learning rate schedule. For our experiments, we use a WSD schedule with a 1-sqrt decay function and a final LR set to 5% of the peak LR. Given normalized LR values η 1 , . . . , η N at each checkpoint (with η 1 = 1), the weights are calculated as the drop in learning rate between steps: w i = η i -η i+1 for i < N , and w N = η N . Suppose M 0 , M 1 , . . . , M N are the model parameters of the last N + 1 checkpoints, and assume M k = M 0 + k j=1 g j , where g j represents the total parameter update between checkpoint j -1 and j. This weighting strategy ensures that the averaged model is equivalent to re-weighting each update:\n\nN i=1 w i M i = N -1 i=1 (η i -η i+1 )   M 0 + i j=1 g j   + η N   M 0 + N j=1 g j   = M 0 + N i=1 η i g i\n\nThis formulation shows how the weighted average effectively re-weights the parameter updates g i by their corresponding normalized learning rates η i , thus simulating the effect of an LR schedule through averaging. Notably, for the 1-sqrt decay function, this method results in a set of monotonically decreasing weights, as shown in Table 5 .\n\nTable 5 : Model Checkpoint Weights. Index -k corresponds to the last k-th checkpoint.\n\nCheckpoint Index -6 -5 -4 -3 -2 -1 Weight 0.4249 0.1760 0.1350 0.1138 0.1003 0.0500\n\nPractical Implementation of CMA (and CDMA). Our Curriculum Model Averaging (CMA) approach consists of a three-stage pipeline, as detailed in Algorithm 1. First, in an offline data scheduling stage, the entire training dataset is sorted in ascending order based on a pre-computed quality score. This large-scale sorting is performed efficiently as a one-time process using Apache Spark. A significant practical advantage is that these quality scores (e.g., DCLM fasttext (Li et al., 2024) or PreSelect (SHUM et al., 2025) ) are often already generated during data preprocessing for filtering purposes, allowing our method to be integrated into existing pipelines without requiring an additional, costly scoring step. Second, during the training stage, we employ a simple warmupconstant LR schedule, forgoing any LR decay. Finally, to ensure the stability of the final parameters, we perform model averaging on the last several checkpoints saved during the constant-LR phase. We primarily use Exponential Moving Average (EMA), which assigns higher weights to more recent checkpoints trained on higher-quality data, thereby smoothing parameter variance while emphasizing high-quality signals. For CDMA, the only difference is that instead of entirely forgoing LR decay, we use a moderate decay (e.g., to a final LR of 1/5 to 1/2 of the peak LR) and then apply weight averaging. Further exploration of optimal ending LRs and the scaling properties of this combined strategy are promising directions for future work.",
+      "word_count": 530
+    },
+    {
+      "index": 23,
+      "title": "A.3 ABLATION STUDIES",
+      "kind": "body",
+      "text": "In this section, we validate the robustness of our findings. We conduct ablation studies to demonstrate that our approach generalizes across a different quality metric (PreSelect) and a different, unfiltered pretraining dataset (WebOrganizer) (SHUM et al., 2025; Wettig et al., 2025) .\n\nAblation on Quality Metric. To test if our approach generalizes to other quality metrics, we conducted experiments using PreSelect scores (SHUM et al., 2025) to order the data. The results in Table 6 show that when using an ascending order of PreSelect scores, both CMA and CDMA outperform the standard WSD baseline. However, we note that ordering by PreSelect scores yielded slightly lower average performance than ordering by DCLM scores in our setup. Moreover, as shown in Figure 8 (a), although the ascending-order training shows an overall faster convergence in the latter phase of the training process, the final validation loss goes above the uniform-ordering data training. We conjecture this may be due to an inconsistency, as our base dataset was originally filtered using DCLM scores before being re-sorted by PreSelect scores, while the targeted validation set consists of samples with the highest DCLM scores.\n\nAblation on Pretraining Dataset. To verify that our method is applicable to broader data distributions, we conducted experiments on the WebOrganizer dataset (Wettig et al., 2025) alone, which has not undergone model-based filtering. As shown in Table 7 , combining model averaging with a data curriculum again produces superior results compared to a standard LR decay approach. Notably, in this setting, model averaging without any decay showed a larger benefit than model averaging with moderate decay, possibly indicating that a high ending learning rate is particularly beneficial when high-quality data is extremely sparse.",
+      "word_count": 280
+    },
+    {
+      "index": 24,
+      "title": "Algorithm 1 Curriculum Model Averaging (CMA)",
+      "kind": "body",
+      "text": "1: Input: Unsorted dataset D, quality scoring function Q(•), training steps T , warmup steps T w , peak learning rate η peak , number of checkpoints to average k, averaging decay hyperparameter α, checkpointing interval s. 2: Output: Final model parameters θfinal .\n\n3: # Stage 1: Data Scheduling 4: Sort dataset D to create D sorted where for any samples x i , x j , if i < j, then Q(x i ) ≤ Q(x j ).\n\n5: # Stage 2: Warmup-Constant LR Training 6: Initialize model parameters θ 0 . 7: for t = 1 to T do 8: if t ≤ T w then 9: η t ← η peak • (t/T w ) ▷ Linear warmup 10: else 11: η t ← η peak ▷ Constant LR 12: end if 13: Fetch next data batch B t from D sorted . 14: θ t ← OptimizerUpdate(θ t-1 , η t , B t ) ▷ e.g., Adam 15:\n\nif t ∈ {T -(k -1)s, . . . , T -s, T } then 16:\n\nSave checkpoint θ t .\n\n17:\n\nend if 18: end for 19: # Stage 3: Model Averaging, e.g., EMA or SMA. 20: Let the set of saved checkpoints be {θ T\n\n-is } k-1 i=0 . 21: EMA: θfinal ← k-1 i=0 α i θ T -is k-1 i=0 α i ▷ SMA: θfinal ← k-1 i=0 θ T -is k 22: return θfinal 6WHS×10\n\n4 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP 'HVFHQG $VFHQG /5 8QLIRUP 'HVFHQG $VFHQG /5 (a) Constant LR schedule. 6WHS×10 4 9DOLGDWLRQ/RVV /HDUQLQJ5DWH×10 3 8QLIRUP 'HVFHQG $VFHQG /5 8QLIRUP 'HVFHQG $VFHQG /5 (b) WSD LR schedule. B DISCUSSION B.1 COMPARISON WITH RELATED WORK\n\nIn this section, we situate our findings in the context of prior research on curriculum learning and discuss our interpretation compared with previous work on the loss landscape. We discuss how our experimental setup differs from related approaches and how our findings elucidate the interplay between learning rate (LR) scheduling, data ordering, and data quality. Comparison with Prior Curriculum Learning Studies. Previous work on curriculum learning for large-scale language model (LLM) pretraining has often overlooked the interaction between data ordering and the learning rate schedule, typically adopting cosine LR schedules with low peak values on the order of 10 -4 (Wettig et al., 2024; Dai et al., 2025; Zhang et al., 2025) . For example, Wettig et al. (2024) reported a modest 0.6% improvement with a low-to-high quality curriculum but also found a counterintuitive 0.5% improvement with a reverse (descending-order) curriculum. Two factors may explain this paradox. First, in a low-peak-LR regime, LR decay can prematurely reduce the effective learning rate, narrowing the performance gap between curriculum and reversecurriculum orders. Second, the data-quality metric itself may lack self-consistency, yielding noisy rankings.\n\nIn contrast, our experiments demonstrate a consistent performance drop for the reverse curriculumespecially under a constant LR schedule-and a smaller but still negative effect under schedules with LR decay (Table 8 ). These results indicate that our data-quality metric produces more self-consistent orderings and that LR decay indeed diminishes the benefits of a curriculum. While a direct quantitative comparison is not possible due to differences in scale and benchmarks, our best configuration (Const+SMA) achieves a relative improvement of over 2.7% compared to a comparable baseline (Cos+Uniform), demonstrating a substantially stronger effect than previously reported.",
+      "word_count": 560
+    },
+    {
+      "index": 25,
+      "title": "Limitations of the Data Folding Strategy.",
+      "kind": "limitations",
+      "text": "To address the limited gains of vanilla data curricula, recent work introduced the folding strategy, which divides the dataset into several consecutive folds and applies sorting within each stage (Dai et al., 2025; Zhang et al., 2025) . Following Dai et al. (2025) , we tested the three-fold configuration they identified as optimal. These experiments are conducted with a 0.5B model. We replicate their observation that folding improves performance under a low peak LR (1 × 10 -4 ) but find that this benefit diminishes-and even reverses-under a higher peak LR (3 × 10 -3 ), as shown in Table 9 . The higher-LR setting shows better overall performance than the low-LR setting in our experiments. These findings, as well as results of 1.5B models in Section 4, suggest that folding is not robust across different model scales or learning-",
+      "word_count": 140
+    },
+    {
+      "index": 26,
+      "title": "C PROOFS IN SECTION 6",
+      "kind": "body",
+      "text": "In Section 6, we analyze the bounds of expected loss under four different optimization cases:\n\n1. Uniform Sampling + Learning Rate Schedule.",
+      "word_count": 22
+    },
+    {
+      "index": 27,
+      "title": "Ascending Data-Ordering + Practical WSD Schedule.",
+      "kind": "body",
+      "text": "3. Ascending Data-Ordering + WSMD Schedule.",
+      "word_count": 6
+    },
+    {
+      "index": 28,
+      "title": "Ascending Data-Ordering + Stochastic Weight Averaging (SWA).",
+      "kind": "body",
+      "text": "In the following, we give the proof of their corresponding theoretical claims we mentioned in Section 6 one by one. Lemma C.1. Consider the uniform sampling, for any learning rate schedule E such that 0 ≤ η i ≤ 1, and the parameter initialized at (L, 0), it holds that min E L(M ; E) = Ω(L 2 ).\n\nProof. We first consider the update rule of SGD in the optimization process on the x-axis as\n\nw (1) t = w (1)\n\nt -η t (w\n\nt-1 -x (1)\n\nt ). Then, taking the expectation over the randomness in SGD and the data generation gives\n\nE[w (1) t ] = (1 -η t )E[w (1) t-1 ] + η t E[x t ] = (1 -η t )E[w (1) t-1 ] + η t M (M -1)d 2 ≥ M (M -1)d 2 .\n\nThus, we write out the lower bound for the expected loss\n\nE[L(w t )] = E[w ⊤ t w t ] ≥ E[w (1) t w (1) t ] ≥ E[w (1) t ]E[w\n\nt ] = Θ(L 2 ). The above equation completes the proof of Equation (1).\n\nFor Case 2 and Case 3, we give a more general lemma, for which the conclusions for Case 2 and Case 3 are direct corollaries. Lemma C.2. Consider the Ascending data-ordering, and a class of WSD learning rate schedules with the following formula\n\nη t = η 0 for 1 ≤ t ≤ M -T 0 + 1 1 t-(M -T0)\n\nfor M -T 0 + 2 ≤ t ≤ M , where T 0 = ω (1), M -T 0 = Θ(M ) and η 0 = 1 2 , it holds for any learning rate schedule E with the above formula that\n\nL(M ; E) = Θ T 2 0 d 2 + L 2 T 0 .\n\nProof. We write out the update rule on the x-axis in the Ascending data-ordering case\n\nw (1) t = (1 -η t )w (1) t-1 + η t x (M -t+1) 1 .\n\nUsing the above update rule, we can get the expression of w\n\nM as w\n\nM = M t=M -T0+2 (1 -η t )w (1)\n\nM -T0+1 + M i=M -T0+2 M j=i+1 (1 -η j )η i x (M -i+1) 1 (1)",
+      "word_count": 389
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "",
+      "doi": "10.48550/arXiv.2412.08905",
+      "year": "2024",
+      "authors": [
+        "Jyoti Marah I Abdin",
+        "Harkirat S Aneja",
+        "Sébastien Behl",
+        "Ronen Bubeck",
+        "Suriya Eldan",
+        "Michael Gunasekar",
+        "Russell J Harrison",
+        "Mojan Hewett"
+      ],
+      "raw_text": "Jyoti Marah I Abdin Harkirat S Aneja Sébastien Behl Ronen Bubeck Suriya Eldan Michael Gunasekar Russell J Harrison Mojan Hewett Piero Javaheripi James R Kauffmann Yin Lee Yuanzhi Tat Lee Weishung Li Liu C T Caio Anh Mendes Eric Nguyen Gustavo Price Olli De Rosa Adil Saarikivi Shital Salim Xin Shah Rachel Wang Yue Ward Dingli Wu Cyril Yu Yi Zhang Zhang 10.48550/arXiv.2412.08905 2024 Phi-4 technical report"
+    },
+    {
+      "index": 2,
+      "title": "",
+      "doi": "10.48550/arXiv.2404.14219",
+      "year": "",
+      "authors": [
+        "Sam Ade Marah I Abdin",
+        "Ammar Jacobs",
+        "Jyoti Ahmad Awan",
+        "Ahmed Aneja",
+        "Hany Awadallah",
+        "Nguyen Awadalla",
+        "Amit Bach",
+        "Arash Bahree"
+      ],
+      "raw_text": "Sam Ade Marah I Abdin Ammar Jacobs Jyoti Ahmad Awan Ahmed Aneja Hany Awadallah Nguyen Awadalla Amit Bach Arash Bahree Harkirat S Bakhtiari Alon Behl Misha Benhaim Johan Bilenko Sébastien Bjorck Martin Bubeck Caio Cai Teodoro César Weizhu Mendes Vishrav Chen Parul Chaudhary Allie Chopra Gustavo Del Giorno Matthew De Rosa Ronen Dixon Dan Eldan Amit Iter Abhishek Garg Suriya Goswami Emman Gunasekar Junheng Haider Russell J Hao Jamie Hewett Mojan Huynh Xin Javaheripi Piero Jin Nikos Kauffmann Dongwoo Karampatziakis Mahoud Kim Lev Khademi James R Kurilenko Yin Lee Yuanzhi Tat Lee Chen Li Weishung Liang Eric Liu Zeqi Lin Piyush Lin Arindam Madan Hardik Mitra Anh Modi Brandon Nguyen Barun Norick Daniel Patra Thomas Perez-Becker Reid Portet Heyang Pryzant Marko Qin Corby Radmilac Sambudha Rosset Olatunji Roy Olli Ruwase Saarikivi ; Sonali Fan Yadav Ziyi Yang Donghan Yang Chengruidong Yu Cyril Zhang Jianwen Zhang Li Lyna Zhang Yi Zhang Yue Zhang Yunan Zhang Xiren Zhang Zhou 10.48550/arXiv.2404.14219 Amin Saied, Adil Salim, Michael Santacroce, Shital Shah, Ning Shang, Hiteshi Sharma, Xia Song, Masahiro Tanaka, Xin Wang, Rachel Ward, Guanhua Wang, Philipp A. Witte, Michael Wyatt, Can Xu, Jiah"
+    },
+    {
+      "index": 3,
+      "title": "Smollm2: When smol goes big -data-centric training of a small language model",
+      "doi": "10.48550/arXiv.2502.02737",
+      "year": "",
+      "authors": [
+        "Loubna Ben Allal",
+        "Anton Lozhkov",
+        "Elie Bakouch",
+        "Guilherme Gabriel Martín Blázquez",
+        "Lewis Penedo",
+        "Andrés Tunstall",
+        "Hynek Marafioti",
+        "Agustín Kydlícek"
+      ],
+      "raw_text": "Smollm2: When smol goes big -data-centric training of a small language model Loubna Ben Allal Anton Lozhkov Elie Bakouch Guilherme Gabriel Martín Blázquez Lewis Penedo Andrés Tunstall Hynek Marafioti Agustín Kydlícek Vaibhav Piqueres Lajarín Joshua Srivastav Caleb Lochner Xuan-Son Fahlgren Clémentine Nguyen Ben Fourrier Hugo Burtenshaw Haojun Larcher Cyril Zhao Zakka Colin Mathieu Morlon Leandro Raffel Thomas Von Werra Wolf 10.48550/arXiv.2502.02737 2025"
+    },
+    {
+      "index": 4,
+      "title": "PIQA: reasoning about physical commonsense in natural language",
+      "doi": "10.1609/aaai.v34i05.6239",
+      "year": "2020",
+      "authors": [
+        "Yonatan Bisk",
+        "Rowan Zellers",
+        "Le Ronan",
+        "Jianfeng Bras",
+        "Yejin Gao",
+        "Choi"
+      ],
+      "raw_text": "PIQA: reasoning about physical commonsense in natural language Yonatan Bisk Rowan Zellers Le Ronan Jianfeng Bras Yejin Gao Choi 10.1609/aaai.v34i05.6239 The Thirty-Fourth AAAI Conference on Artificial Intelligence, AAAI 2020, The Thirty-Second Innovative Applications of Artificial Intelligence Conference, IAAI 2020, The Tenth AAAI Symposium on Educational Advances in Artificial Intelligence New York, NY, USA AAAI Press February 7-12, 2020. 2020 2020 6239"
+    },
+    {
+      "index": 5,
+      "title": "Curriculum learning for language modeling",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Daniel Campos"
+      ],
+      "raw_text": "Curriculum learning for language modeling Daniel Campos CoRR, abs/2108.02170 2021"
+    },
+    {
+      "index": 6,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Peter Clark",
+        "Isaac Cowhey",
+        "Oren Etzioni",
+        "Tushar Khot",
+        "Ashish Sabharwal",
+        "Carissa Schoenick",
+        "Oyvind Tafjord"
+      ],
+      "raw_text": "Peter Clark Isaac Cowhey Oren Etzioni Tushar Khot Ashish Sabharwal Carissa Schoenick Oyvind Tafjord Think you have solved question answering? try ARC, the AI2 reasoning challenge"
+    },
+    {
+      "index": 7,
+      "title": "",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Corr"
+      ],
+      "raw_text": "Corr abs/1803.05457 2018"
+    },
+    {
+      "index": 8,
+      "title": "Data efficacy for language model training",
+      "doi": "10.48550/arXiv.2506.21545",
+      "year": "",
+      "authors": [
+        "Yalun Dai",
+        "Yangyu Huang",
+        "Xin Zhang",
+        "Wenshan Wu",
+        "Chong Li",
+        "Wenhui Lu",
+        "Shijie Cao",
+        "Li Dong"
+      ],
+      "raw_text": "Data efficacy for language model training Yalun Dai Yangyu Huang Xin Zhang Wenshan Wu Chong Li Wenhui Lu Shijie Cao Li Dong Scarlett Li 10.48550/arXiv.2506.21545 2025"
+    },
+    {
+      "index": 9,
+      "title": "",
+      "doi": "10.48550/arXiv.2412.19437",
+      "year": "",
+      "authors": [
+        "Deepseek-Ai",
+        "Aixin Liu",
+        "Bei Feng",
+        "Bing Xue",
+        "Bingxuan Wang",
+        "Bochao Wu",
+        "Chengda Lu",
+        "Chenggang Zhao"
+      ],
+      "raw_text": "Deepseek-Ai Aixin Liu Bei Feng Bing Xue Bingxuan Wang Bochao Wu Chengda Lu Chenggang Zhao Chengqi Deng Chenyu Zhang Chong Ruan Damai Dai Daya Guo Dejian Yang Deli Chen Dongjie Ji Erhang Li Fangyun Lin Fucong Dai Fuli Luo Guangbo Hao Guanting Chen Guowei Li H Zhang Han Bao Hanwei Xu Haocheng Wang Haowei Zhang Honghui Ding Huajian Xin Huazuo Gao Hui Li Hui Qu J L Cai Jian Liang Jianzhong Guo Jiaqi Ni Jiashi Li Jiawei Wang Jin Chen Jingchang Chen Jingyang Yuan Junjie Qiu Junlong Li Junxiao Song Kai Dong Kai Hu Kaige Gao Kexin Kang Guan Kuai Huang Lean Yu Lecong Wang Lei Zhang Leyi Xu Liang Xia Litong Zhao Liyue Wang Meng Zhang Miaojun Li Mingchuan Wang Minghua Zhang Minghui Zhang Mingming Tang Ning Li Panpan Tian Peiyi Huang Peng Wang Qiancheng Zhang Qihao Wang Qinyu Zhu Qiushi Chen R J Du R L Chen Ruiqi Jin Ruisong Ge Ruizhe Zhang Runji Pan Runxin Wang Ruoyu Xu Ruyi Zhang S S Chen Shanghao Li Shangyan Lu Shanhuang Zhou Shaoqing Chen Shengfeng Wu Shirong Ye Shiyu Ma Shuang Wang Shuiping Zhou Shunfeng Yu Zhou T Shuting Pan Tao Wang Tian Yun Tianyu Pei W L Sun Wangding Xiao Zeng 10.48550/arXiv.2412.19437 DeepSeek-V3 technical report. CoRR, abs/2412.19437, 2024"
+    },
+    {
+      "index": 10,
+      "title": "The Llama 3 herd of models",
+      "doi": "10.48550/arXiv.2407.21783",
+      "year": "",
+      "authors": [
+        "Abhimanyu Dubey",
+        "Abhinav Jauhri",
+        "Abhinav Pandey",
+        "Abhishek Kadian",
+        "Ahmad Al-Dahle",
+        "Aiesha Letman",
+        "Akhil Mathur",
+        "Alan Schelten"
+      ],
+      "raw_text": "The Llama 3 herd of models Abhimanyu Dubey Abhinav Jauhri Abhinav Pandey Abhishek Kadian Ahmad Al-Dahle Aiesha Letman Akhil Mathur Alan Schelten Amy Yang Angela Fan Anirudh Goyal Anthony Hartshorn Aobo Yang Archi Mitra Archie Sravankumar Artem Korenev Arthur Hinsvark Arun Rao Aston Zhang Aurélien Rodriguez Austen Gregerson Ava Spataru Baptiste Rozière Bethany Biron Binh Tang Bobbie Chern Charlotte Caucheteux Chaya Nayak Chloe Bi Chris Marra Chris Mcconnell Christian Keller Christophe Touret Chunyang Wu Corinne Wong Preprint Cristian Canton Cyrus Ferrer Damien Nikolaidis Daniel Allonsius Danielle Song Danny Pintz David Livshits Dhruv Esiobu Dhruv Choudhary Diego Mahajan Diego Garcia-Olano Dieuwke Perino Egor Hupkes Ehab Lakomkin Elina Albadawy Emily Lobanova Eric Michael Dinan Filip Smith Frank Radenovic Gabriel Zhang Gabrielle Synnaeve Georgia Lee Graeme Lewis Anderson Grégoire Nail Guan Mialon Guillem Pang Hailey Cucurell Hannah Nguyen Hu Korevaar Hugo Xu Iliyan Touvron Zarov Arrieta Imanol Isabel M Ibarra Ishan Kloumann Ivan Misra Jade Evtimov Jaewon Copet Jan Lee Jana Geffert Jason Vranes Jay Park Jeet Mahadeokar Jelmer Shah Jennifer Van Der Linde Jenny Billock Jenya Hong Jeremy"
+    },
+    {
+      "index": 11,
+      "title": "OLMES: A standard for language model evaluations",
+      "doi": "10.18653/v1/2025.findings-naacl.282",
+      "year": "2025",
+      "authors": [
+        "Yuling Gu",
+        "Oyvind Tafjord",
+        "Bailey Kuehl",
+        "Dany Haddad",
+        "Jesse Dodge",
+        "Hannaneh Hajishirzi"
+      ],
+      "raw_text": "OLMES: A standard for language model evaluations Yuling Gu Oyvind Tafjord Bailey Kuehl Dany Haddad Jesse Dodge Hannaneh Hajishirzi 10.18653/v1/2025.findings-naacl.282 Findings of the Association for Computational Linguistics: NAACL 2025, Albuquerque Luis Chiruzzo Alan Ritter Lu Wang New Mexico, USA Association for Computational Linguistics April 29 -May 4, 2025"
+    },
+    {
+      "index": 12,
+      "title": "Data selection via optimal control for language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yuxian Gu",
+        "Li Dong",
+        "Hongning Wang",
+        "Yaru Hao",
+        "Qingxiu Dong",
+        "Furu Wei",
+        "Minlie Huang"
+      ],
+      "raw_text": "Data selection via optimal control for language models Yuxian Gu Li Dong Hongning Wang Yaru Hao Qingxiu Dong Furu Wei Minlie Huang The Thirteenth International Conference on Learning Representations, ICLR 2025 Singapore April 24-28, 2025 OpenReview.net, 2025b"
+    },
+    {
+      "index": 13,
+      "title": "Scaling laws and compute-optimal training beyond fixed training durations",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Hägele",
+        "Elie Bakouch",
+        "Atli Kosson",
+        "Loubna Ben Allal",
+        "Leandro Von Werra",
+        "Martin Jaggi"
+      ],
+      "raw_text": "Scaling laws and compute-optimal training beyond fixed training durations Alexander Hägele Elie Bakouch Atli Kosson Loubna Ben Allal Leandro Von Werra Martin Jaggi Advances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024 Amir Globersons Lester Mackey Danielle Belgrave Angela Fan Ulrich Paquet M Jakub Cheng Tomczak Zhang Vancouver, BC, Canada December 10 -15, 2024. 2024 b970e15a89bf5d12542810df8eae8fc-Abstract-Conference.html"
+    },
+    {
+      "index": 14,
+      "title": "Signal and noise: A framework for reducing uncertainty in language model evaluation",
+      "doi": "10.48550/arXiv.2508.13144",
+      "year": "",
+      "authors": [
+        "David Heineman",
+        "Valentin Hofmann",
+        "Ian Magnusson",
+        "Yuling Gu",
+        "Noah A Smith",
+        "Hannaneh Hajishirzi",
+        "Kyle Lo",
+        "Jesse Dodge"
+      ],
+      "raw_text": "Signal and noise: A framework for reducing uncertainty in language model evaluation David Heineman Valentin Hofmann Ian Magnusson Yuling Gu Noah A Smith Hannaneh Hajishirzi Kyle Lo Jesse Dodge 10.48550/arXiv.2508.13144 2025"
+    },
+    {
+      "index": 15,
+      "title": "Measuring massive multitask language understanding",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Dan Hendrycks",
+        "Collin Burns",
+        "Steven Basart",
+        "Andy Zou",
+        "Mantas Mazeika",
+        "Dawn Song",
+        "Jacob Steinhardt"
+      ],
+      "raw_text": "Measuring massive multitask language understanding Dan Hendrycks Collin Burns Steven Basart Andy Zou Mantas Mazeika Dawn Song Jacob Steinhardt 9th International Conference on Learning Representations, ICLR 2021, Virtual Event Austria May 3-7, 2021 OpenReview.net, 2021"
+    },
+    {
+      "index": 16,
+      "title": "Unveiling the potential of small language models with scalable training strategies",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shengding Hu",
+        "Yuge Tu",
+        "Xu Han",
+        "Ganqu Cui",
+        "Chaoqun He",
+        "Weilin Zhao",
+        "Xiang Long",
+        "Zhi Zheng"
+      ],
+      "raw_text": "Unveiling the potential of small language models with scalable training strategies Shengding Hu Yuge Tu Xu Han Ganqu Cui Chaoqun He Weilin Zhao Xiang Long Zhi Zheng Yewei Fang Yuxiang Huang Xinrong Zhang Zhen Leng Thai Chongyi Wang Yuan Yao Chenyang Zhao Jie Zhou Jie Cai Zhongwu Zhai Ning Ding Chao Jia Guoyang Zeng Zhiyuan Liu Maosong Sun Minicpm First Conference on Language Modeling 2024"
+    },
+    {
+      "index": 17,
+      "title": "Averaging weights leads to wider optima and better generalization",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Pavel Izmailov",
+        "Dmitrii Podoprikhin",
+        "Timur Garipov",
+        "P Dmitry",
+        "Andrew Vetrov",
+        "Wilson Gordon"
+      ],
+      "raw_text": "Averaging weights leads to wider optima and better generalization Pavel Izmailov Dmitrii Podoprikhin Timur Garipov P Dmitry Andrew Vetrov Wilson Gordon Proceedings of the Thirty-Fourth Conference on Uncertainty in Artificial Intelligence, UAI 2018 Amir Globerson Ricardo Silva the Thirty-Fourth Conference on Uncertainty in Artificial Intelligence, UAI 2018 Monterey, California, USA AUAI Press August 6-10, 2018. 2018"
+    },
+    {
+      "index": 18,
+      "title": "Dataless knowledge fusion by merging weights of language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Xisen Jin",
+        "Xiang Ren",
+        "Daniel Preotiuc-Pietro",
+        "Pengxiang Cheng"
+      ],
+      "raw_text": "Dataless knowledge fusion by merging weights of language models Xisen Jin Xiang Ren Daniel Preotiuc-Pietro Pengxiang Cheng The Eleventh International Conference on Learning Representations, ICLR 2023 Kigali, Rwanda May 1-5, 2023. 2023 OpenReview.net"
+    },
+    {
+      "index": 19,
+      "title": "Bag of tricks for efficient text classification",
+      "doi": "10.18653/v1/e17-2068",
+      "year": "2017",
+      "authors": [
+        "Armand Joulin",
+        "Edouard Grave",
+        "Piotr Bojanowski",
+        "Tomás Mikolov"
+      ],
+      "raw_text": "Bag of tricks for efficient text classification Armand Joulin Edouard Grave Piotr Bojanowski Tomás Mikolov 10.18653/v1/e17-2068 Proceedings of the 15th Conference of the European Chapter Mirella Lapata Phil Blunsom Alexander Koller the 15th Conference of the European Chapter Valencia, Spain Association for Computational Linguistics 2017. April 3-7, 2017. 2017 2"
+    },
+    {
+      "index": 20,
+      "title": "Stop wasting my time! saving days of imagenet and BERT training with latest weight averaging",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jean Kaddour"
+      ],
+      "raw_text": "Stop wasting my time! saving days of imagenet and BERT training with latest weight averaging Jean Kaddour Has it Trained Yet? NeurIPS 2022 Workshop 2022"
+    },
+    {
+      "index": 21,
+      "title": "Strategic data ordering: Enhancing large language model performance through curriculum learning",
+      "doi": "10.48550/arXiv.2405.07490",
+      "year": "",
+      "authors": [
+        "Jisu Kim",
+        "Juhwan Lee"
+      ],
+      "raw_text": "Strategic data ordering: Enhancing large language model performance through curriculum learning Jisu Kim Juhwan Lee 10.48550/arXiv.2405.07490 2024"
+    },
+    {
+      "index": 22,
+      "title": "Adam: A method for stochastic optimization",
+      "doi": "",
+      "year": "2015",
+      "authors": [
+        "P Diederik",
+        "Jimmy Kingma",
+        "Ba"
+      ],
+      "raw_text": "Adam: A method for stochastic optimization P Diederik Jimmy Kingma Ba 3rd International Conference on Learning Representations, ICLR 2015 Yoshua Bengio Yann Lecun San Diego, CA, USA May 7-9, 2015. 2015 Conference Track Proceedings"
+    },
+    {
+      "index": 23,
+      "title": "Unveiling the role of learning rate schedules via functional scaling laws",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Binghui Li",
+        "Fengling Chen",
+        "Zixun Huang",
+        "Lean Wang",
+        "Lei Wu"
+      ],
+      "raw_text": "Unveiling the role of learning rate schedules via functional scaling laws Binghui Li Fengling Chen Zixun Huang Lean Wang Lei Wu arXiv:2509.19189 2025 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "Predictable scale: Part I -optimal hyperparameter scaling law in large language model pretraining",
+      "doi": "10.48550/arXiv.2503.04715",
+      "year": "2025",
+      "authors": [
+        "Houyi Li",
+        "Wenzhen Zheng",
+        "Jingcheng Hu",
+        "Qiufeng Wang",
+        "Hanshan Zhang",
+        "Zili Wang",
+        "Shijie Xuyang",
+        "Yuantao Fan"
+      ],
+      "raw_text": "Predictable scale: Part I -optimal hyperparameter scaling law in large language model pretraining Houyi Li Wenzhen Zheng Jingcheng Hu Qiufeng Wang Hanshan Zhang Zili Wang Shijie Xuyang Yuantao Fan Shuigeng Zhou Xiangyu Zhang Daxin Jiang 10.48550/arXiv.2503.04715 2025"
+    },
+    {
+      "index": 25,
+      "title": "DataComp-LM: In search of the next generation of training sets for language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jeffrey Li",
+        "Alex Fang",
+        "Georgios Smyrnis",
+        "Maor Ivgi",
+        "Matt Jordan",
+        "Samir Yitzhak Gadre",
+        "Hritik Bansal",
+        "Etash Kumar Guha"
+      ],
+      "raw_text": "DataComp-LM: In search of the next generation of training sets for language models Jeffrey Li Alex Fang Georgios Smyrnis Maor Ivgi Matt Jordan Samir Yitzhak Gadre Hritik Bansal Etash Kumar Guha Sedrick Scott Keh Kushal Arora Saurabh Garg Rui Xin Niklas Muennighoff Reinhard Heckel Jean Mercat Mayee F Chen Suchin Gururangan Mitchell Wortsman Alon Albalak Yonatan Bitton Marianna Nezhurina Amro Abbas Cheng-Yu Hsieh Dhruba Ghosh Josh Gardner Maciej Kilian Hanlin Zhang Rulin Shao Sarah M Pratt Sunny Sanyal Gabriel Ilharco Giannis Daras Kalyani Marathe Aaron Gokaslan Jieyu Zhang Khyathi Raghavi Chandu Thao Nguyen Igor Vasiljevic M Sham Shuran Kakade Sujay Song Fartash Sanghavi Sewoong Faghri Luke Oh Kyle Zettlemoyer Alaaeldin Lo Hadi El-Nouby Alexander Pouransari Stephanie Toshev Dirk Wang Luca Groeneveld Pang Soldaini Jenia Wei Koh Thomas Jitsev Alex Kollar Yair Dimakis Achal Carmon Ludwig Dave Vaishaal Schmidt Shankar Advances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems Amir Globersons Lester Mackey Danielle Belgrave Angela Fan Ulrich Paquet M Jakub Cheng Tomczak Zhang NeurIPS; Vancouver, BC, Canada 2024. 2024. December 10 -15,"
+    },
+    {
+      "index": 26,
+      "title": "Model merging in pre-training of large language models",
+      "doi": "10.48550/arXiv.2505.12082",
+      "year": "2025",
+      "authors": [
+        "Yunshui Li",
+        "Yiyuan Ma",
+        "Shen Yan",
+        "Chaoyi Zhang",
+        "Jing Liu",
+        "Jianqiao Lu",
+        "Ziwen Xu",
+        "Mengzhao Chen"
+      ],
+      "raw_text": "Model merging in pre-training of large language models Yunshui Li Yiyuan Ma Shen Yan Chaoyi Zhang Jing Liu Jianqiao Lu Ziwen Xu Mengzhao Chen Minrui Wang Shiyi Zhan Jin Ma Xunhao Lai Deyi Liu Yao Luo Xingyan Bin Hongbin Ren Mingji Han Wenhao Hao Bairen Yi Lingjun Liu Bole Ma Xiaoying Jia Xun Zhou Siyuan Qiao Liang Xiang Yonghui Wu 10.48550/arXiv.2505.12082 2025"
+    },
+    {
+      "index": 27,
+      "title": "Exploring forgetting in large language model pre-training",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Chonghua Liao",
+        "Ruobing Xie",
+        "Xingwu Sun",
+        "Haowen Sun",
+        "Zhanhui Kang"
+      ],
+      "raw_text": "Exploring forgetting in large language model pre-training Chonghua Liao Ruobing Xie Xingwu Sun Haowen Sun Zhanhui Kang Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics Wanxiang Che Joyce Nabende Ekaterina Shutova Mohammad Taher Pilehvar the 63rd Annual Meeting of the Association for Computational Linguistics Vienna, Austria Association for Computational Linguistics July 27 -August 1, 2025. 2025 1 ACL 2025"
+    },
+    {
+      "index": 28,
+      "title": "SGDR: stochastic gradient descent with warm restarts",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Ilya Loshchilov",
+        "Frank Hutter"
+      ],
+      "raw_text": "SGDR: stochastic gradient descent with warm restarts Ilya Loshchilov Frank Hutter 5th International Conference on Learning Representations Toulon, France 2017. April 24-26, 2017. 2017 Conference Track Proceedings. OpenReview.net"
+    },
+    {
+      "index": 29,
+      "title": "A Multi-Power law for loss curve prediction across learning rate schedules",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Kairong Luo",
+        "Haodong Wen",
+        "Shengding Hu",
+        "Zhenbo Sun",
+        "Zhiyuan Liu",
+        "Maosong Sun",
+        "Kaifeng Lyu",
+        "Wenguang Chen"
+      ],
+      "raw_text": "A Multi-Power law for loss curve prediction across learning rate schedules Kairong Luo Haodong Wen Shengding Hu Zhenbo Sun Zhiyuan Liu Maosong Sun Kaifeng Lyu Wenguang Chen The Thirteenth International Conference on Learning Representations, ICLR 2025 Singapore April 24-28, 2025 OpenReview.net, 2025"
+    },
+    {
+      "index": 30,
+      "title": "Catastrophic interference in connectionist networks: The sequential learning problem",
+      "doi": "",
+      "year": "1989",
+      "authors": [
+        "Michael Mccloskey",
+        "Neal J Cohen"
+      ],
+      "raw_text": "Catastrophic interference in connectionist networks: The sequential learning problem Michael Mccloskey Neal J Cohen Psychology of learning and motivation 24 1989 Elsevier"
+    },
+    {
+      "index": 31,
+      "title": "Can a suit of armor conduct electricity? a new dataset for open book question answering",
+      "doi": "10.18653/v1/D18-1260",
+      "year": "2018",
+      "authors": [
+        "Todor Mihaylov",
+        "Peter Clark",
+        "Tushar Khot",
+        "Ashish Sabharwal"
+      ],
+      "raw_text": "Can a suit of armor conduct electricity? a new dataset for open book question answering Todor Mihaylov Peter Clark Tushar Khot Ashish Sabharwal 10.18653/v1/D18-1260 Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing Ellen Riloff David Chiang Julia Hockenmaier Jun'ichi Tsujii the 2018 Conference on Empirical Methods in Natural Language Processing Brussels, Belgium Association for Computational Linguistics oct 2018"
+    },
+    {
+      "index": 32,
+      "title": "2 OLMo 2 furious",
+      "doi": "10.48550/arXiv.2501.00656",
+      "year": "",
+      "authors": [
+        "Team Olmo",
+        "Pete Walsh",
+        "Luca Soldaini",
+        "Dirk Groeneveld",
+        "Kyle Lo",
+        "Shane Arora",
+        "Akshita Bhagia",
+        "Yuling Gu"
+      ],
+      "raw_text": "2 OLMo 2 furious Team Olmo Pete Walsh Luca Soldaini Dirk Groeneveld Kyle Lo Shane Arora Akshita Bhagia Yuling Gu Shengyi Huang Matt Jordan Nathan Lambert Dustin Schwenk Oyvind Tafjord Taira Anderson David Atkinson Faeze Brahman Christopher Clark Pradeep Dasigi Nouha Dziri Michal Guerquin Hamish Ivison Pang Wei Koh Jiacheng Liu Saumya Malik William Merrill Lester James V Miranda Jacob Morrison Tyler Murray Crystal Nam Valentina Pyatkin Aman Rangapur Michael Schmitz Sam Skjonsberg David Wadden Christopher Wilhelm Michael Wilson Luke Zettlemoyer Ali Farhadi Noah A Smith Hannaneh Hajishirzi 10.48550/arXiv.2501.00656 2025"
+    },
+    {
+      "index": 33,
+      "title": "GPT-4 technical report",
+      "doi": "10.48550/arXiv.2303.08774",
+      "year": "2023",
+      "authors": [],
+      "raw_text": "GPT-4 technical report 10.48550/arXiv.2303.08774 CoRR, abs/2303.08774, 2023 OpenAI"
+    },
+    {
+      "index": 34,
+      "title": "The Re-finedWeb dataset for Falcon LLM: outperforming curated corpora with web data only",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Guilherme Penedo",
+        "Quentin Malartic",
+        "Daniel Hesslow",
+        "Ruxandra Cojocaru",
+        "Hamza Alobeidli",
+        "Alessandro Cappelli",
+        "Baptiste Pannier",
+        "Ebtesam Almazrouei"
+      ],
+      "raw_text": "The Re-finedWeb dataset for Falcon LLM: outperforming curated corpora with web data only Guilherme Penedo Quentin Malartic Daniel Hesslow Ruxandra Cojocaru Hamza Alobeidli Alessandro Cappelli Baptiste Pannier Ebtesam Almazrouei Julien Launay Advances in Neural Information Processing Systems 36: Annual Conference on Neural Information Processing Systems 2023, NeurIPS 2023 Alice Oh Tristan Naumann Amir Globerson Kate Saenko Moritz Hardt Sergey Levine New Orleans, LA, USA December 10 -16, 2023. 2023 3ed726cc5073b9c31e3e49a807789c-Abstract-Datasets_and_ Benchmarks.html"
+    },
+    {
+      "index": 35,
+      "title": "Fineweb2: One pipeline to scale them all -adapting pre-training data processing to every language",
+      "doi": "10.48550/arXiv.2506.20920",
+      "year": "2025",
+      "authors": [
+        "Guilherme Penedo",
+        "Hynek Kydlícek",
+        "Vinko Sabolcec",
+        "Bettina Messmer",
+        "Negar Foroutan",
+        "Colin Amir Hossein Kargaran",
+        "Martin Raffel",
+        "Leandro Jaggi"
+      ],
+      "raw_text": "Fineweb2: One pipeline to scale them all -adapting pre-training data processing to every language Guilherme Penedo Hynek Kydlícek Vinko Sabolcec Bettina Messmer Negar Foroutan Colin Amir Hossein Kargaran Martin Raffel Leandro Jaggi Thomas Von Werra Wolf 10.48550/arXiv.2506.20920 CoRR, abs/2506.20920, 2025"
+    },
+    {
+      "index": 36,
+      "title": "WinoGrande: An adversarial winograd schema challenge at scale",
+      "doi": "10.1609/aaai.v34i05.6399",
+      "year": "2020",
+      "authors": [
+        "Keisuke Sakaguchi",
+        "Le Ronan",
+        "Chandra Bras",
+        "Yejin Bhagavatula",
+        "Choi"
+      ],
+      "raw_text": "WinoGrande: An adversarial winograd schema challenge at scale Keisuke Sakaguchi Le Ronan Chandra Bras Yejin Bhagavatula Choi 10.1609/aaai.v34i05.6399 The Thirty-Fourth AAAI Conference on Artificial Intelligence, AAAI 2020, The Thirty-Second Innovative Applications of Artificial Intelligence Conference, IAAI 2020, The Tenth AAAI Symposium on Educational Advances in Artificial Intelligence New York, NY, USA AAAI Press February 7-12, 2020. 2020 2020"
+    },
+    {
+      "index": 37,
+      "title": "Early weight averaging meets high learning rates for LLM pre-training",
+      "doi": "10.1609/aaai.v34i05.6399",
+      "year": "2024",
+      "authors": [
+        "Sunny Sanyal",
+        "Atula Tejaswi Neerkaje",
+        "Jean Kaddour"
+      ],
+      "raw_text": "Early weight averaging meets high learning rates for LLM pre-training Sunny Sanyal Atula Tejaswi Neerkaje Jean Kaddour 10.1609/aaai.v34i05.6399 First Conference on Language Modeling 2024 Abhishek Kumar, and sujay sanghavi"
+    },
+    {
+      "index": 38,
+      "title": "Social IQa: Commonsense reasoning about social interactions",
+      "doi": "10.18653/v1/D19-1454",
+      "year": "2019",
+      "authors": [
+        "Maarten Sap",
+        "Hannah Rashkin",
+        "Derek Chen",
+        "Ronan Le Bras",
+        "Yejin Choi"
+      ],
+      "raw_text": "Social IQa: Commonsense reasoning about social interactions Maarten Sap Hannah Rashkin Derek Chen Ronan Le Bras Yejin Choi 10.18653/v1/D19-1454 Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) Kentaro Inui Jing Jiang Vincent Ng Xiaojun Wan the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) Hong Kong, China Association for Computational Linguistics November 2019"
+    },
+    {
+      "index": 39,
+      "title": "Predictive data selection: The data that predicts is the data that teaches",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Shum Kashun",
+        "Yuzhen Huang",
+        "Hongjian Zou",
+        "Yixuan Dingqi",
+        "Xiaoxin Liao",
+        "Qian Chen",
+        "Junxian Liu",
+        "He"
+      ],
+      "raw_text": "Predictive data selection: The data that predicts is the data that teaches Shum Kashun Yuzhen Huang Hongjian Zou Yixuan Dingqi Xiaoxin Liao Qian Chen Junxian Liu He Fortysecond International Conference on Machine Learning 2025"
+    },
+    {
+      "index": 40,
+      "title": "Nemotron-CC: Transforming Common Crawl into a refined long-horizon pretraining dataset",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Dan Su",
+        "Kezhi Kong",
+        "Ying Lin",
+        "Joseph Jennings",
+        "Brandon Norick",
+        "Markus Kliegl",
+        "Mostofa Patwary",
+        "Mohammad Shoeybi"
+      ],
+      "raw_text": "Nemotron-CC: Transforming Common Crawl into a refined long-horizon pretraining dataset Dan Su Kezhi Kong Ying Lin Joseph Jennings Brandon Norick Markus Kliegl Mostofa Patwary Mohammad Shoeybi Bryan Catanzaro Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics Wanxiang Che Joyce Nabende Ekaterina Shutova Mohammad Taher Pilehvar the 63rd Annual Meeting of the Association for Computational Linguistics Vienna, Austria Association for Computational Linguistics July 27 -August 1, 2025. 2025 1 Long Papers), ACL 2025"
+    },
+    {
+      "index": 41,
+      "title": "CommonsenseQA: A question answering challenge targeting commonsense knowledge",
+      "doi": "10.18653/v1/N19-1421",
+      "year": "2019",
+      "authors": [
+        "Alon Talmor",
+        "Jonathan Herzig",
+        "Nicholas Lourie",
+        "Jonathan Berant"
+      ],
+      "raw_text": "CommonsenseQA: A question answering challenge targeting commonsense knowledge Alon Talmor Jonathan Herzig Nicholas Lourie Jonathan Berant 10.18653/v1/N19-1421 Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies Long and Short Papers Jill Burstein Christy Doran Thamar Solorio the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies Minneapolis, Minnesota Association for Computational Linguistics June 2019 1"
+    },
+    {
+      "index": 42,
+      "title": "Shizhe Wu, and Shuai Liang. LongCat-Flash technical report",
+      "doi": "10.48550/arXiv.2509.01322",
+      "year": "",
+      "authors": [
+        "Meituan Longcat Team",
+        "Bei Bayan",
+        "Bingye Li",
+        "Bo Lei",
+        "Bolin Wang",
+        "Chao Rong",
+        "Chao Wang",
+        "Chen Zhang"
+      ],
+      "raw_text": "Meituan Longcat Team Bei Bayan Bingye Li Bo Lei Bolin Wang Chao Rong Chao Wang Chen Zhang Chen Gao Cheng Zhang Chengcheng Sun Chenguang Han Chi Xi Chong Zhang Chuan Peng Chuyu Qin Cong Zhang Congkui Chen Dan Wang Daoru Ma Defei Pan Dengchang Bu Deyang Zhao Dishan Kong Feiye Liu Fengcun Huo Fubao Li Gan Zhang Gang Dong Gang Liu Ge Xu Guoqiang Li Guoyuan Tan Haihang Lin Haomin Jing Haonan Fu Haoxing Yan Haozhe Wen Hong Zhao Hongmei Liu Hongyan Shi Hongyin Hao Huantian Tang Hui Lv Jiacheng Su Jiahao Li Jiahuan Liu Jiajun Li Jiaming Yang Jian Wang Jianchao Yang Jiaqi Tan Jiaqi Sun Jiawei Zhang Jiawei Fu Jiaxi Yang Jiayu Hu Jingang Qin Jiyuan Wang Jun He Junhui Kuang Kai Mei Ke Liang Kefeng He Keheng Zhang Keqing Wang Liang He Liang Gao Lianhui Shi Lin Ma Lingbin Qiu Lingtong Kong Linkun Si Linsen Lyu Liqi Guo Lizhi Yang Mai Yan Man Xia Manyuan Gao Meng Zhang Mengxia Zhou Mingxiang Shen Mingyang Tuo Peiguang Zhu Peng Li Peng Pei Pengcheng Zhao Pingwei Jia Qi Sun Qianyun Gu Qingyuan Li Qiong Li Qiyuan Huang Ran Duan Rongxiang Meng Ruichen Weng Rumei Shao Li 10.48550/arXiv.2509.01322 Shizhe Wu, and Shuai Liang. LongCat-Flash technical report 2025"
+    },
+    {
+      "index": 43,
+      "title": "OpenHermes 2.5: An open dataset of synthetic data for generalist llm assistants",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Teknium"
+      ],
+      "raw_text": "OpenHermes 2.5: An open dataset of synthetic data for generalist llm assistants Teknium 2023"
+    },
+    {
+      "index": 44,
+      "title": "WSM: decay-free learning rate schedule via checkpoint merging for LLM pre-training",
+      "doi": "10.48550/arXiv.2507.17634",
+      "year": "",
+      "authors": [
+        "Changxin Tian",
+        "Jiapeng Wang",
+        "Qian Zhao",
+        "Kunlong Chen",
+        "Jia Liu",
+        "Ziqi Liu",
+        "Jiaxin Mao",
+        "Wayne Xin Zhao"
+      ],
+      "raw_text": "WSM: decay-free learning rate schedule via checkpoint merging for LLM pre-training Changxin Tian Jiapeng Wang Qian Zhao Kunlong Chen Jia Liu Ziqi Liu Jiaxin Mao Wayne Xin Zhao Zhiqiang Zhang Jun Zhou 10.48550/arXiv.2507.17634 2025"
+    },
+    {
+      "index": 45,
+      "title": "Scaling law with learning rate annealing",
+      "doi": "10.48550/arXiv.2408.11029",
+      "year": "",
+      "authors": [
+        "Venus Howe Tissue",
+        "Lu Wang",
+        "Wang"
+      ],
+      "raw_text": "Scaling law with learning rate annealing Venus Howe Tissue Lu Wang Wang 10.48550/arXiv.2408.11029 2024"
+    },
+    {
+      "index": 46,
+      "title": "Redpajama: an open dataset for training large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Maurice Weber",
+        "Daniel Y Fu",
+        "Quentin Anthony",
+        "Yonatan Oren",
+        "Shane Adams",
+        "Anton Alexandrov",
+        "Xiaozhong Lyu",
+        "Huu Nguyen"
+      ],
+      "raw_text": "Redpajama: an open dataset for training large language models Maurice Weber Daniel Y Fu Quentin Anthony Yonatan Oren Shane Adams Anton Alexandrov Xiaozhong Lyu Huu Nguyen Xiaozhe Yao Virginia Adams Ben Athiwaratkun Rahul Chalamala Kezhen Chen Max Ryabinin Tri Dao Percy Liang Christopher Ré Irina Rish Preprint Ce Zhang Advances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024 Amir Globersons Lester Mackey Danielle Belgrave Angela Fan Ulrich Paquet M Jakub Cheng Tomczak Zhang Vancouver, BC, Canada, De cember 10 -15, 2024. 2024 d34497330b1fd6530f7afd86d0df9f76-Abstract-Datasets_ and_Benchmarks_Track.html"
+    },
+    {
+      "index": 47,
+      "title": "Understanding warmup-stable-decay learning rates: A river valley loss landscape view",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Kaiyue Wen",
+        "Zhiyuan Li",
+        "Jason S Wang",
+        "David Leo",
+        "Wright Hall",
+        "Percy Liang",
+        "Tengyu Ma"
+      ],
+      "raw_text": "Understanding warmup-stable-decay learning rates: A river valley loss landscape view Kaiyue Wen Zhiyuan Li Jason S Wang David Leo Wright Hall Percy Liang Tengyu Ma The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 48,
+      "title": "QuRating: Selecting highquality data for training language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Wettig",
+        "Aatmik Gupta",
+        "Saumya Malik",
+        "Danqi Chen"
+      ],
+      "raw_text": "QuRating: Selecting highquality data for training language models Alexander Wettig Aatmik Gupta Saumya Malik Danqi Chen Forty-first International Conference on Machine Learning, ICML 2024 Vienna, Austria July 21-27, 2024. 2024 OpenReview.net"
+    },
+    {
+      "index": 49,
+      "title": "Organize the web: Constructing domains enhances pre-training data curation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Alexander Wettig",
+        "Kyle Lo",
+        "Sewon Min",
+        "Hannaneh Hajishirzi",
+        "Danqi Chen",
+        "Luca Soldaini"
+      ],
+      "raw_text": "Organize the web: Constructing domains enhances pre-training data curation Alexander Wettig Kyle Lo Sewon Min Hannaneh Hajishirzi Danqi Chen Luca Soldaini Forty-second International Conference on Machine Learning 2025"
+    },
+    {
+      "index": 50,
+      "title": "Qwen2.5 technical report",
+      "doi": "10.48550/arXiv.2412.15115",
+      "year": "2024",
+      "authors": [
+        "An Yang",
+        "Baosong Yang",
+        "Beichen Zhang",
+        "Binyuan Hui",
+        "Bo Zheng",
+        "Bowen Yu",
+        "Chengyuan Li",
+        "Dayiheng Liu"
+      ],
+      "raw_text": "An Yang Baosong Yang Beichen Zhang Binyuan Hui Bo Zheng Bowen Yu Chengyuan Li Dayiheng Liu Fei Huang Haoran Wei Huan Lin Jian Yang Jianhong Tu Jianwei Zhang Jianxin Yang Jiaxi Yang Jingren Zhou Junyang Lin Kai Dang Keming Lu Keqin Bao Kexin Yang Le Yu Mei Li Mingfeng Xue Pei Zhang Qin Zhu Rui Men Runji Lin Tianhao Li Tingyu Xia Xingzhang Ren Xuancheng Ren Yang Fan Yang Su Yichang Zhang Yu Wan Yuqiong Liu Zeyu Cui Zhenru Zhang Zihan Qiu 10.48550/arXiv.2412.15115 Qwen2.5 technical report 2024"
+    },
+    {
+      "index": 51,
+      "title": "",
+      "doi": "10.48550/arXiv.2505.09388",
+      "year": "",
+      "authors": [
+        "An Yang",
+        "Anfeng Li",
+        "Baosong Yang",
+        "Beichen Zhang",
+        "Binyuan Hui",
+        "Bo Zheng",
+        "Bowen Yu",
+        "Chang Gao"
+      ],
+      "raw_text": "An Yang Anfeng Li Baosong Yang Beichen Zhang Binyuan Hui Bo Zheng Bowen Yu Chang Gao Chengen Huang Chenxu Lv Chujie Zheng Dayiheng Liu Fan Zhou Fei Huang Feng Hu Hao Ge Haoran Wei Huan Lin Jialong Tang Jian Yang Jianhong Tu Jianwei Zhang Jian Yang Jiaxi Yang Jingren Zhou Junyang Lin Kai Dang Keqin Bao Kexin Yang Le Yu Lianghao Deng Mei Li Mingfeng Xue Mingze Li Pei Zhang Peng Wang Qin Zhu Rui Men Ruize Gao Shixuan Liu Shuang Luo Tianhao Li Tianyi Tang Wenbiao Yin Xingzhang Ren Xinyu Wang Xinyu Zhang Xuancheng Ren Yang Fan Yang Su Yichang Zhang Yinger Zhang Yu Wan Yuqiong Liu Zekun Wang Zeyu Cui Zhenru Zhang Zhipeng Zhou Zihan Qiu 10.48550/arXiv.2505.09388 2025"
+    },
+    {
+      "index": 52,
+      "title": "Adamerging: Adaptive model merging for multi-task learning",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Enneng Yang",
+        "Zhenyi Wang",
+        "Li Shen",
+        "Shiwei Liu",
+        "Guibing Guo",
+        "Xingwei Wang",
+        "Dacheng Tao"
+      ],
+      "raw_text": "Adamerging: Adaptive model merging for multi-task learning Enneng Yang Zhenyi Wang Li Shen Shiwei Liu Guibing Guo Xingwei Wang Dacheng Tao The Twelfth International Conference on Learning Representations, ICLR 2024 Vienna, Austria May 7-11, 2024 OpenReview.net, 2024b"
+    },
+    {
+      "index": 53,
+      "title": "YuLan-mini: Pushing the limits of open data-efficient language model",
+      "doi": "10.18653/v1/2025.acl-long.268",
+      "year": "2025",
+      "authors": [
+        "Huatong Hu Yiwen",
+        "Jie Song",
+        "Jia Chen",
+        "Jiapeng Deng",
+        "Kun Wang",
+        "Yutao Zhou",
+        "Jinhao Zhu",
+        "Zican Jiang"
+      ],
+      "raw_text": "YuLan-mini: Pushing the limits of open data-efficient language model Huatong Hu Yiwen Jie Song Jia Chen Jiapeng Deng Kun Wang Yutao Zhou Jinhao Zhu Zican Jiang Yang Dong Xu Lu Xin Miao Ji-Rong Zhao Wen 10.18653/v1/2025.acl-long.268 Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics Wanxiang Che Joyce Nabende Ekaterina Shutova Mohammad Taher Pilehvar the 63rd Annual Meeting of the Association for Computational Linguistics Vienna, Austria Association for Computational Linguistics July 2025 1"
+    },
+    {
+      "index": 54,
+      "title": "Beyond random sampling: Efficient language model pretraining via curriculum learning",
+      "doi": "10.48550/arXiv.2506.11300",
+      "year": "",
+      "authors": [
+        "Yang Zhang",
+        "Amr Mohamed",
+        "Guokan Hadi Abdine",
+        "Michalis Shang",
+        "Vazirgiannis"
+      ],
+      "raw_text": "Beyond random sampling: Efficient language model pretraining via curriculum learning Yang Zhang Amr Mohamed Guokan Hadi Abdine Michalis Shang Vazirgiannis 10.48550/arXiv.2506.11300 2025"
+    }
+  ],
+  "section_count": 28,
+  "reference_count": 54,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:46.714356+00:00"
+}

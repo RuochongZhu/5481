@@ -1,0 +1,3072 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Multi-speaker Attention Alignment for Multimodal Social Interaction</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-11-22">22 Nov 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Liangyang</forename><surname>Ouyang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">The University of Tokyo</orgName>
+								<address>
+									<settlement>Tokyo</settlement>
+									<country key="JP">Japan</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yifei</forename><surname>Huang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">The University of Tokyo</orgName>
+								<address>
+									<settlement>Tokyo</settlement>
+									<country key="JP">Japan</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Mingfang</forename><surname>Zhang</surname></persName>
+							<email>mfzhang@iis.u-tokyo.ac.jp</email>
+							<affiliation key="aff0">
+								<orgName type="institution">The University of Tokyo</orgName>
+								<address>
+									<settlement>Tokyo</settlement>
+									<country key="JP">Japan</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Caixin</forename><surname>Kang</surname></persName>
+							<email>cxkang@iis.u-tokyo.ac.jp</email>
+							<affiliation key="aff0">
+								<orgName type="institution">The University of Tokyo</orgName>
+								<address>
+									<settlement>Tokyo</settlement>
+									<country key="JP">Japan</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Ryosuke</forename><surname>Furuta</surname></persName>
+							<email>furuta@iis.u-tokyo.ac.jp</email>
+							<affiliation key="aff0">
+								<orgName type="institution">The University of Tokyo</orgName>
+								<address>
+									<settlement>Tokyo</settlement>
+									<country key="JP">Japan</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yoichi</forename><surname>Sato</surname></persName>
+							<email>ysato@iis.u-tokyo.ac.jp</email>
+							<affiliation key="aff0">
+								<orgName type="institution">The University of Tokyo</orgName>
+								<address>
+									<settlement>Tokyo</settlement>
+									<country key="JP">Japan</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Multi-speaker Attention Alignment for Multimodal Social Interaction</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-11-22">22 Nov 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">12989E0045162CC2E2117F88000561A6</idno>
+					<idno type="arXiv">arXiv:2511.17952v1[cs.CV]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T01:36+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Understanding social interaction in video requires reasoning over a dynamic interplay of verbal and non-verbal cues: who is speaking, to whom, and with what gaze or gestures. While Multimodal Large Language Models (MLLMs) are natural candidates, simply adding visual inputs yields surprisingly inconsistent gains on social tasks. Our quantitative analysis of cross-modal attention inside state-of-theart MLLMs reveals a core failure mode: in multi-speaker scenes, visual and textual tokens lack speaker-consistent alignment, exhibiting substantially weaker cross-modal attention than in object-centric images. To address this, we propose a multimodal multi-speaker attention alignment method that can be integrated into existing MLLMs. First, we introduce dynamic cross-modal head selection to identify attention heads most responsible for grounding. Then, an adaptive social-aware attention bias, computed from existing attention patterns and speaker locations, is injected into the attention mechanism. This bias reinforces alignment between a speaker's visual representation and their utterances without introducing trainable parameters or architectural changes. We integrate our method into three distinct MLLMs (LLaVA-NeXT-Video, Qwen2.5-VL, and InternVL3) and evaluate on three benchmarks (TVQA+, MMSI, OnlineMMSI). Across four social tasks, results demonstrate that our approach improves the ability of MLLMs and achieves state-of-the-art results. Attention visualizations confirm our method successfully focuses the model on speaker-relevant regions, enabling more robust multi-party social reasoning. Our implementation and model will be available at <ref type="url" target="https://github.com/ut-vision/SocialInteraction">https://github.com/ut- vision/SocialInteraction</ref>.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>Understanding social interaction requires modeling multiparty human behaviors through both verbal and non-verbal cues, including dialogue <ref type="bibr" target="#b25">[26]</ref>, gestures <ref type="bibr" target="#b7">[8]</ref>, gaze <ref type="bibr" target="#b85">[86]</ref>, and facial expressions <ref type="bibr" target="#b23">[24]</ref>. To study these interactions, prior works have proposed a variety of tasks and benchmarks, such as video question answering (VQA), speaking tar-get detection, mentioned player prediction, and pronoun coreference resolution <ref type="bibr" target="#b30">[31,</ref><ref type="bibr" target="#b33">34]</ref>. Beyond serving as evaluation platforms, these tasks underpin socially intelligent AI agents that operate in real-world multi-party scenarios like board games, daily conversations, and meetings.</p><p>Given their ability to comprehend both verbal and non-verbal information, multimodal large language models (MLLMs) are natural candidates for these tasks <ref type="bibr" target="#b30">[31,</ref><ref type="bibr" target="#b34">35,</ref><ref type="bibr" target="#b52">53]</ref>. However, our analysis reveals a critical limitation: the addition of visual information does not consistently improve, and can even degrade their performance in multi-person settings. For example, on OnlineMMSI <ref type="bibr" target="#b34">[35]</ref>, supplying video frames to Qwen2.5-VL <ref type="bibr" target="#b4">[5]</ref> input yields no gain on the mentioned player prediction task, while LLaMA-3.2-Vision <ref type="bibr" target="#b17">[18]</ref> sees its performance drop on the pronoun coreference resolution task <ref type="bibr" target="#b34">[35]</ref>. These observations suggest that current MLLMs struggle to effectively exploit multimodal cues in complex multi-person social settings.</p><p>To better understand why MLLMs fail to leverage multimodal cues, we conduct a systematic quantitative analysis of cross-modal attention weights inside state-of-the-art MLLMs <ref type="bibr" target="#b4">[5]</ref>. By measuring the attention weights between a speaker's textual tokens and their corresponding visual region (i.e., their bounding boxes), we uncover a stark deficiency. We find that the cross-modal alignment in multiperson videos is significantly weaker and less focused compared to the alignment observed in general object-centric datasets like COCO <ref type="bibr" target="#b38">[39]</ref>. This limitation results in inconsistent alignment between visual and textual modalities, thereby constraining the effectiveness of MLLMs in multiperson social tasks.</p><p>To address this misalignment problem, we propose a multimodal multi-speaker attention alignment method. Our approach intervenes directly within the transformer's crossattention layers. We first propose a dynamic cross-modal head selection strategy that identifies attention heads most responsible for visual-text grounding. We then apply an adaptive social-aware attention bias to these heads, which amplifies the attention scores between the visual and textual tokens belonging to the same speaker. As illustrated </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Visual Encoder</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Social Interaction Videos</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Text Encoder</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Multimodal Multi-speaker Attention Alignment</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>MLLM Transformer Layers</head><p>Who is "he" ?</p><p>Who is S4 speaking to ?</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Multi-party Conversations</head><p>Social Tasks</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>…</head><p>MLLM Outputs: S4, S1.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>S1 S2 S3 S4</head><p>Attnmap</p><formula xml:id="formula_0">['S2'] Attnmap['S4'] Attnmap['S2'] Attnmap['S4']</formula><p>Previous Attention Weights: weak and misaligned Our Attention Weights: strong and aligned in Fig. <ref type="figure" target="#fig_1">1</ref>, this mechanism explicitly guides the model to associate the correct visual features with the corresponding dialogue. Crucially, this mechanism requires no architectural changes or additional trainable parameters, making it a lightweight and generalizable solution.</p><p>We evaluate our method on three multimodal social interaction benchmarks (TVQA+ <ref type="bibr" target="#b33">[34]</ref>, MMSI <ref type="bibr" target="#b30">[31]</ref>, and On-lineMMSI <ref type="bibr" target="#b34">[35]</ref>) across four representative tasks. Integrated into three modern MLLMs, LLaVA-NeXT-Video <ref type="bibr" target="#b76">[77]</ref>, Qwen2.5-VL <ref type="bibr" target="#b4">[5]</ref> and InternVL3 <ref type="bibr" target="#b86">[87]</ref>, our method consistently outperforms their respective baselines, yielding an average accuracy improvement of 3% across multiple datasets and tasks. It achieves state-of-the-art performance on three task settings and remains highly competitive on the remaining one. Attention visualizations further confirm that our approach successfully guides the model to focus on speaker-relevant regions in videos.</p><p>Our main contributions are summarized as follows: • We are the first to systematically quantify and identify the cross-modal attention misalignment in MLLMs as a key bottleneck for understanding multi-party interactions.</p><p>• We propose a novel attention alignment method that dynamically reinforces the association between speakers' visual and textual representations without additional trainable parameters.</p><p>• Extensive experiments demonstrate that our method effectively guides model attention to speaker-relevant regions, thereby improving performance in diverse multimodal social interaction tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Related Works</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.">Multimodal Social Interaction</head><p>Multimodal social interaction refers to human communication across multiple modalities, including spoken language, facial expressions <ref type="bibr" target="#b23">[24]</ref>, gaze <ref type="bibr" target="#b40">[41,</ref><ref type="bibr" target="#b41">42,</ref><ref type="bibr" target="#b85">86]</ref>, gestures <ref type="bibr" target="#b7">[8,</ref><ref type="bibr" target="#b8">9]</ref>, and body movements <ref type="bibr" target="#b5">[6]</ref>. Prior research has proposed a variety of related tasks and benchmarks, such as video question answering (VQA) <ref type="bibr" target="#b23">[24,</ref><ref type="bibr" target="#b27">28,</ref><ref type="bibr" target="#b32">33,</ref><ref type="bibr" target="#b43">44,</ref><ref type="bibr" target="#b73">74]</ref>, conversational modeling <ref type="bibr" target="#b9">[10,</ref><ref type="bibr" target="#b24">25,</ref><ref type="bibr" target="#b30">31,</ref><ref type="bibr" target="#b57">58]</ref>, speaker prediction <ref type="bibr" target="#b46">[47,</ref><ref type="bibr" target="#b47">48]</ref>, and social behavior classification <ref type="bibr" target="#b7">[8,</ref><ref type="bibr" target="#b29">30,</ref><ref type="bibr" target="#b50">51]</ref>. These tasks hold strong potential for enabling AI agents to operate in multi-party social scenarios, including board games <ref type="bibr" target="#b19">[20,</ref><ref type="bibr" target="#b29">30,</ref><ref type="bibr" target="#b81">82]</ref>, daily conversations <ref type="bibr" target="#b47">[48]</ref>, and multiperson meetings <ref type="bibr" target="#b28">[29,</ref><ref type="bibr" target="#b45">46]</ref>. Leveraging MLLMs for such social interaction tasks has recently become an emerging trend <ref type="bibr" target="#b31">[32,</ref><ref type="bibr" target="#b42">43,</ref><ref type="bibr" target="#b44">45]</ref>. Our work is the first to introduce a multimodal attention alignment method for multi-person conversations, evaluated across three datasets and four social interaction tasks, showing its capacity to generalize across diverse multimodal social interaction tasks and benchmarks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.">Multimodal Bias and Alignment in MLLMs</head><p>In multimodal learning, diverse modalities have been incorporated into MLLMs <ref type="bibr" target="#b22">[23,</ref><ref type="bibr" target="#b39">40,</ref><ref type="bibr" target="#b49">50,</ref><ref type="bibr" target="#b71">72,</ref><ref type="bibr" target="#b75">76]</ref>, where one fundamental challenge is achieving effective cross-modal alignment <ref type="bibr" target="#b2">[3,</ref><ref type="bibr" target="#b14">15,</ref><ref type="bibr" target="#b16">17,</ref><ref type="bibr" target="#b18">19,</ref><ref type="bibr" target="#b35">36,</ref><ref type="bibr" target="#b56">57,</ref><ref type="bibr" target="#b82">83]</ref>. Recent studies <ref type="bibr" target="#b2">[3,</ref><ref type="bibr" target="#b52">53,</ref><ref type="bibr" target="#b67">68,</ref><ref type="bibr" target="#b69">70,</ref><ref type="bibr" target="#b80">81,</ref><ref type="bibr" target="#b83">84]</ref> have highlighted that MLLMs are deeply affected by modality bias, where the models' understanding and reasoning capabilities rely heavily on the tex-tual modality while underutilizing other modalities. To mitigate this bias and align modalities, some approaches have focused on collecting additional datasets <ref type="bibr" target="#b12">[13,</ref><ref type="bibr" target="#b13">14,</ref><ref type="bibr" target="#b68">69,</ref><ref type="bibr" target="#b72">73]</ref>, reinforcement learning <ref type="bibr" target="#b54">[55,</ref><ref type="bibr" target="#b60">61,</ref><ref type="bibr" target="#b77">78,</ref><ref type="bibr" target="#b79">80]</ref>, while other methods have sought to adjust the model's attention toward nontext modalities <ref type="bibr" target="#b3">[4,</ref><ref type="bibr" target="#b59">60,</ref><ref type="bibr" target="#b61">62,</ref><ref type="bibr" target="#b62">63,</ref><ref type="bibr" target="#b65">66,</ref><ref type="bibr" target="#b70">71,</ref><ref type="bibr" target="#b74">75,</ref><ref type="bibr" target="#b78">79]</ref>. These methods have demonstrated effectiveness on tasks such as VQA, but they lack evaluation and exploration in multi-speaker social interaction scenarios. Existing work on multimodal social interaction has proposed several strategies for aligning visual and textual modalities across multiple speakers. <ref type="bibr" target="#b30">[31]</ref> uses speaker embeddings <ref type="bibr" target="#b15">[16]</ref>, <ref type="bibr" target="#b34">[35]</ref> leverages visual prompts <ref type="bibr" target="#b58">[59]</ref>, <ref type="bibr" target="#b51">[52]</ref> introduces Chain-of-Thought, and <ref type="bibr" target="#b0">[1]</ref> incorporates the audio modality for alignment. Compared to these works on social interactions, our study is the first to systematically and quantitatively investigate this misalignment in social benchmarks. We are also the first to utilize the cross-attention map within transformer layers for multi-person social interaction tasks, with validation across three strong MLLMs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Analysis of Cross-modal Alignment in Multi-speaker Settings</head><p>Alignment between modalities is a fundamental challenge in vision-language models (VLMs) and multimodal large language models (MLLMs), and a large body of work has focused on learning aligned representations between visual and textual encoders <ref type="bibr" target="#b56">[57]</ref>. This alignment can be quantitatively assessed via the cross-modal attention weights between textual and visual features <ref type="bibr" target="#b1">[2]</ref>. When the visual tokens V and textual tokens U are concatenated and processed by a transformer, the self-attention mechanism <ref type="bibr" target="#b63">[64]</ref> enables interactions across modalities. Formally, let X = [V; U] ∈ R (T HW +K)×d denote the concatenated token sequence. The attention weights are computed as</p><formula xml:id="formula_1">Attn(i, j) = softmax j (x i W Q )(x j W K ) ⊤ √ d ,<label>(1)</label></formula><p>where x i , x j ∈ X are token embeddings and W Q , W K are projection matrices. In the cross-modal case, we specifically focus on the sub-matrix of Attn(i, j) where i indexes text tokens and j indexes visual tokens. This sub-matrix, denoted as the cross-modal attention weights, captures the semantic grounding between textual and visual modalities. High attention weights in this matrix indicate that tokens from text effectively attend to semantically corresponding visual tokens. For example, as shown in Fig. <ref type="figure" target="#fig_0">2</ref> (a), tokens representing "cat", "car", and "flower" attend strongly to visual tokens corresponding to object regions. Such interpretable cross-modal attention maps have been widely used in multimodal tasks, including MLLMs for visual grounding <ref type="bibr" target="#b66">[67,</ref><ref type="bibr" target="#b74">75]</ref> and text-to-image generation <ref type="bibr" target="#b10">[11,</ref><ref type="bibr" target="#b20">21,</ref><ref type="bibr" target="#b48">49]</ref>.</p><p>In multi-speaker social interaction scenarios, challenges arise due to the presence of multiple individuals in the visual scene and ambiguous textual references in conversations. For example, speakers are often mentioned by names or anonymized labels such as "speaker 2", which do not clearly correspond to visual regions. As illustrated in Fig. <ref type="figure" target="#fig_3">2 (b)</ref>, the attention weights of speakers' textual tokens are highly scattered, preventing the model from effectively leveraging the corresponding visual information. One attempt to mitigate this issue is shown in Fig. <ref type="figure" target="#fig_3">2 (c</ref>), where bounding box coordinates are prompted into the text input. However, we observe that the resulting cross-modal attention remains weak, and the model still struggles to establish clear correspondences. Previous works <ref type="bibr" target="#b34">[35,</ref><ref type="bibr" target="#b58">59]</ref> have also proposed introducing visual prompts, such as adding highlighted bounding boxes or keypoints in the image (Fig. <ref type="figure" target="#fig_3">2  (d</ref>)). This strategy indeed helps speakers' textual tokens attend to the correct region, but the attention tends to concentrate along the bounding box boundaries rather than the interior. Moreover, we find that the attention map of speaker 3 becomes misaligned, incorrectly overlapping with the region of speaker 2.</p><p>To investigate how well MLLMs align textual references with visual evidence in multi-speaker images, we quantitatively analyze cross-modal attention through controlled experiments with Qwen2.5-VL <ref type="bibr" target="#b4">[5]</ref>. Specifically, given a text token u i ∈ U and its corresponding visual tokens V s ⊂ V, we define the alignment score as</p><formula xml:id="formula_2">AttnM ax(u i , V s ) = max v∈Vs Attn(u i , v) AttnM ean(u i , V s ) = 1 |V s | v∈Vs Attn(u i , v)<label>(2)</label></formula><p>We compute such statistics across different datasets and compare under various alignment strategies: COCO <ref type="bibr" target="#b38">[39]</ref>. We sample 1,110 images from the COCO object detection validation set, and compute attention with text queries such as "{class 1}, {class 2}, . . . ". MMSI <ref type="bibr" target="#b30">[31]</ref>. We use 1,921 images in MMSI with queries "{speaker 1}, {speaker 2}, . . . ". MMSI + Box Prompt <ref type="bibr" target="#b4">[5]</ref>. The text input is augmented with bounding box coordinates, e.g., "{speaker 1} in [x,y,z,t], {speaker 2} in [a,b,c,d], . . . ". <ref type="bibr" target="#b34">[35]</ref>. Bounding boxes are drawn in distinct colors on the image, and the query takes the form "{speaker 1} in red box, {speaker 2} in blue box, . . . ". MMSI + Fine-tuning <ref type="bibr" target="#b21">[22]</ref>. We fine-tune the model on the three MMSI tasks with box coordinates prompts to verify whether better downstream performance corresponds to higher multi-speaker alignment scores. Ours. We apply our proposed multi-speaker alignment method, which explicitly enhances attention weights in speaker-specific regions (without model fine-tuning). See Sec. 4 for details. Attnmap['S1'] Attnmap['S2'] Attnmap['S3'] Attnmap['cat'] Attnmap['flower'] Attnmap['car'] MMSI + Box Prompt MMSI + Visual Prompt MMSI COCO Cross-Attention Maps of Different Objects  We report the quantitative results in Tab. 1. Compared to general objects in COCO detection dataset, the attention between images and speaker tokens in MMSI is substantially lower, highlighting the difficulty of aligning speaker references in multi-person contexts. We further observe that introducing visual prompts and model fine-tuning indeed improves attention weights, but the gains remain limited. This reveals a fundamental challenge for MLLMs: crossmodal alignment for multi-speaker scenarios is weak and inconsistent, as the model struggles to establish clear correspondences between textual references to speakers and their visual representations.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>MMSI + Visual Prompt</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Input Image &amp; Input Text</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Proposed Method</head><p>To address the problem of weak and inconsistent crossmodal alignment in social tasks, we propose a multimodal multi-speaker attention alignment method. Our approach consists of two key components: (1) a dynamic cross-modal head selection mechanism that identifies attention heads most relevant for multimodal grounding, and (2) an adaptive social-aware attention bias that reinforces cross-modal token alignment. An overview of the method is illustrated in Fig. <ref type="figure" target="#fig_4">3</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Input for MLLMs.</head><p>Let the social interaction video be mapped into a set of visual tokens V = {v t,h,w ∈ R d | t ∈ [1, T ], h ∈ [1, H], w ∈ [1, W ]} by the patch embedder and visual encoder, where each token corresponds to a spatio-temporal patch indexed by (t, h, w). The transcripts consist of speakers' utterances, which are tokenized and encoded into U = {u k ∈ R d | k ∈ [1, K]}, where each token u k is associated with a speaker label s and a timestamp t. In general, the speaker label s is determined by who speaks the utterance, except for certain special tokens that explicitly refer to speakers (e.g., "Mitchell" or "speaker 2"), which are consistently assigned the label of the person they denote. Note that textual contents unrelated to speaker ut-</p><p>Transcripts Social Interaction Tasks Speaker 1 Speaker 2 Speaker 3 Speaker 4 S2: Yeah, now he find out he was werewolf. S1: Yes. S4: Oh, I see what you did. You switched … Who is "he" in "Now he find … "? Who is the speaking target in "I see what you did …"? Inputs for MLLMs Video Dynamic Cross-modal Head Selection Adaptive Social-aware Attention Bias Visual tokens Text tokens Cross AttnMaps Inactive Active Not selected Selected Multi-head Attention 'S2' 'Yeah' 'S4' 𝑾 𝒃 'S2' 'Yeah' 'S4' 𝑡 = 1 𝑡 = 0 speaking S4 speaking S2 non-speaking S4 Boxes S1:[0,0,10,20] S2:[12,10,25,30] … Intra-modal attention Cross attention weights Cross attention sub-matrix Aligned positions Social-aware bias terances, such as the system prompt and task instructions, are not included in U. In addition, the dataset provides a set of speaker bounding boxes B = {b s,t }, where each box b s,t specifies the spatial location of speaker s at frame t. By mapping box coordinates to the grid of visual tokens, we obtain subset V s,t associated with each speaker label.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.">Dynamic Cross-modal Head Selection</head><p>Modern MLLMs employ multi-head attention, with different heads capturing complementary facets of token interactions <ref type="bibr" target="#b63">[64,</ref><ref type="bibr" target="#b64">65]</ref>. Previous studies <ref type="bibr" target="#b6">[7]</ref> in MLLMs have identified that specific transformer layers contain specialized "visual heads" that reliably focus on image tokens during tasksolving. The presence and focus of such heads vary across models and training strategies, indicating that visual heads are dynamic rather than fixed.</p><p>To preserve the pretrained capabilities of MLLMs while improving their cross-modal grounding, we propose a dynamic cross-modal head selection mechanism that identifies the subset of heads with strong cross-modal interactions. Concretely, let V all = s∈S t∈T V s,t denote the set of visual tokens inside bounding boxes for all speakers in the video. We define a threshold λ to classify each at-tention head, based on the cross-modal attention sub-matrix Attn(U, V all ) that represents the attention from utterance tokens to all speaker regions:</p><formula xml:id="formula_3">head is      active, 1 |U| |V all | u∈U v∈V all Attn(u, v) &gt; λ, inactive, otherwise.<label>(3)</label></formula><p>As illustrated in Fig. <ref type="figure" target="#fig_4">3</ref>, an active head is characterized by having distinctly high attention weights concentrated in one or more speaker regions, whereas an inactive head exhibits weak cross-modal attention across all regions. Only active heads are selected for applying the subsequent social-aware attention bias.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.">Adaptive Social-aware Attention Bias</head><p>In attention computation, adding a bias term to attention weights is a common strategy to control token interactions. For example, language models introduce padding masks or causal masks to prevent tokens from attending to irrelevant or future positions <ref type="bibr" target="#b15">[16,</ref><ref type="bibr" target="#b55">56]</ref>. In the context of social interaction, to strengthen the attention between visual and textual tokens belonging to the same speaker s in frame t, we introduce a social-aware bias W b applied within the active heads. Specifically, for a text token u i associated with speaker s, we assign bias value for each visual token v j as</p><formula xml:id="formula_4">W b (u i , v j ) = α • max v∈V all (u i W Q )(vW K ) ⊤ √ d , u i ∈ U s,t , v j ∈ V s,t ,<label>(4)</label></formula><p>where α is a scaling factor controlling the bias strength, and max v∈V all Attn(u i , v) captures the strongest cross-modal interaction that u i originally attends to among all speakers' visual tokens. The motivation of using adaptive weights for different tokens is that certain tokens (e.g., "speaker", "Sheldon", or object mentions) naturally exhibit stronger semantic interactions with visual content, while others (e.g., discourse fillers such as "yeah", "then") are much weaker. By assigning the maximum attention value to speaker-associated regions, we softly shift the distribution of attention towards the visual area of the current speaker, without suppressing the token's original attention pattern. This design ensures that attention alignment is enhanced in a smooth and adaptive way rather than enforced rigidly. Finally, the adjusted attention is computed as:</p><formula xml:id="formula_5">Attn(i, j) = softmaxj (uiWQ)(vjWK ) ⊤ √ d + W b (ui, vj) . (<label>5</label></formula><formula xml:id="formula_6">)</formula><p>Our method requires no additional trainable parameters. Moreover, by leveraging dynamic head selection, it introduces only minimal computational overhead while effectively utilizing speaker bounding box annotations to enhance cross-modal alignment in multi-speaker videos.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Experiments</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1.">Datasets</head><p>We conduct experiments on three publicly available datasets under four social task settings. These datasets contain videos, timestamped transcripts, and speaker bounding box annotations, which are utilized in both training and evaluation. The datasets statistics are described below: TVQA+ <ref type="bibr" target="#b32">[33,</ref><ref type="bibr" target="#b33">34]</ref> is a multi-party video question answering dataset with rich dynamics and realistic social interactions built on TV series. The QA-pairs are diverse, covering dialogue understanding, reasoning, and relations modeling. In our experiments, we select samples containing at least one annotated speaker bounding box, resulting in 17,306 training samples and 2,211 test samples. On average, each sample involves 1.9 speakers, 23.8 words and 7.8 seconds. MMSI <ref type="bibr" target="#b30">[31]</ref> is a recent social interaction benchmark built from multi-party board game videos <ref type="bibr" target="#b29">[30]</ref> collected from YouTube and Ego4D <ref type="bibr" target="#b19">[20]</ref>. It defines three challenging tasks to capture fine-grained interaction dynamics: speaking target identification, pronoun coreference resolution, and mentioned player prediction. Following their split, we use the YouTube subset, which contains 7,111 training samples and 1,921 test samples. On average, each sample involves 4.1 speakers, 85.2 words, and 3.0 seconds of video. OnlineMMSI <ref type="bibr" target="#b34">[35]</ref> is an extension of MMSI that reformulates three tasks under an online setting, where only preceding context of a conversation is available, without access to future dialogue. This design increases task difficulty and enhances practical applicability. The data split and statistics is identical to MMSI, with a forward-shifted historical window applied to each sample.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2.">Implementation Details</head><p>We adopt LLaVA-NeXT-Video-7B <ref type="bibr" target="#b76">[77]</ref>, Qwen2.5-VL-Instruct-7B <ref type="bibr" target="#b4">[5]</ref>, InternVL3-8B <ref type="bibr" target="#b86">[87]</ref> as the base MLLMs in experiments. Following dataset annotations <ref type="bibr" target="#b30">[31,</ref><ref type="bibr" target="#b33">34]</ref>, videos are processed at resolution of 640×360 and uniformly sampled into 8 frames. During training, both the baseline MLLMs and our method are fine-tuned using LoRA <ref type="bibr" target="#b21">[22]</ref> applied to all projection layers. We set the LoRA rank to 128, the learning rate to 1e-4, the batch size to 4, and train for 3 epochs. The accuracy is reported as the average over three independent runs. All experiments are conducted on a single NVIDIA A100 GPU, with the implementation built on LLaMA-Factory <ref type="bibr" target="#b84">[85]</ref> and pytorch <ref type="bibr" target="#b53">[54]</ref>. We set λ = 5e -5 and α = 1.0 in our method. The prompts used for MLLM instructions are provided in the appendix.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3.">Results</head><p>Comparison with baselines Tab. 2 presents the accuracy on TVQA+, MMSI, and OnlineMMSI. On TVQA+, our method improves Video Multiple-Choice QA accuracy by an average of 2.1% across three MLLMs, achieving new state-of-the-art results. On MMSI and OnlineMMSI, our approach yields gains of 2.4%, 3.2%, and 2.4% across three social tasks, demonstrating that our method significantly enhances MLLMs' ability to understand social interaction. We observe that the improvements on MMSI are higher than on TVQA+. This is because MMSI videos involve more participants, highlighting the advantage of our approach in handling multi-speaker alignment under more complex scenarios. In addition, TVQA+ videos are drawn from scripted TV shows, where speaker characters are fixed and the model may learn name-token associations during finetuning.</p><p>Compared to baselines that rely on injecting box coordinates, speaker names, or color cues into the text input to associate modalities, our method requires no such auxiliary language prompts. In experiments based on Qwen2.5-VL, adding visual and box information to the text input improved performance on some tasks but led to drops on others, demonstrating unstable gains. In contrast, our method consistently improves performance across different models, datasets, and tasks. This is because it naturally and directly modifies attention distributions, achieving stable and generalizable cross-modal alignment for social interaction tasks. On the other hand, our method does not surpass current state-of-the-art on speaking target identification task, likely because this task requires more balancing attention between both the current speaker and the speaking target. However, we still achieves the second-best accuracy with competitive performance, and on pronoun coreference resolution and mentioned speaker prediction, our approach significantly outperforms prior methods on MMSI and OnlineMMSI. Visualizations We present visualizations of Qwen2.5-VL's cross-attention maps before and after applying our socialaware bias in Fig. <ref type="figure" target="#fig_5">4</ref>. As shown in example (a), when asked about the behavior of the character Penny, Qwen2.5-VL incorrectly predicted "raise hand", which is actually the action of another character, Beverley. The attention map reveals that a considerable portion of Penny's attention was misaligned to Beverley's region. After adding our bias, the attention naturally concentrates on Penny, leading to the correct answer "tap the bar".</p><p>In the case (b), the question concerns the emotion of Sheldon when switching beds (third image, corresponding to Sheldon's second utterance). We visualize the attention maps of the second "Sheldon" token across frames. Without our bias, Qwen2.5-VL assigns attention uniformly across Sheldon's visual tokens over all frames. By adding our bias, the model clearly emphasizes the third frame over the first, achieving more accurate spatial-temporal-speaker alignment between text and video, and producing the correct answer. Similarly, in two examples (c)(d) from MMSI, our bias enables precise modeling of current speaker in videos, further enhancing the understanding of social interactions.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.4.">Ablations</head><p>To examine the effectiveness of different components of our method, we conduct ablations on active head selection and social-aware bias based on Qwen2.5-VL-7B model. Transformer Layers We investigate the effect of applying bias at different layers of the transformer, including all layers (0-27), as well as subsets of early, middle, and late layers. As shown in Tab. 3, the best performance is achieved when the bias is applied to middle layers, followed by all layers. This finding suggests that middle layers may play a more crucial role in cross-modal feature fusion. This observation is consistent with prior studies <ref type="bibr" target="#b6">[7,</ref><ref type="bibr" target="#b11">12,</ref><ref type="bibr" target="#b37">38,</ref><ref type="bibr" target="#b74">75]</ref>, as well as with our visualization analysis conducted on layer 16. Active Head Threshold We vary the cross-attention strength threshold λ and report the results with the ratio of active heads in Tab. 4. Note that we only apply the bias to middle layers, thus the maximum ratio is 35.7%. We find that the best performance is achieved at a small threshold of 5e -5. Compared to the original Qwen2.5-VL, even activating only 9% of heads yields an average improvement of about 3% across tasks, while activating 25% achieves a 4% gain. This demonstrates the importance of our bias in facilitating multi-speaker multimodal understanding. In contrast, activating all heads leads to a drop in performance, likely</p><p>Q: What did Penny do when she told the bartender to hit them? A1: She raised her hands. A2: She tapped the bar. Penny: Hit us again. Yes. Beverley: If little is good, more must be better. Haha. Q: How did Sheldon feel when he switching beds? A1: sleepy. A2: irritated. A3: relieved. A4: tired. Q: Who is Mitchell? Q: Who is S1 speaking to? S1: Boring for me. Who were you? S3: A drunk is not boring. S4: Insomniac? It's exciting. S2: I think it's Mitchell, … S4: If you telling truth... If you're telling a lie... S1 : We have 15 seconds. Sheldon: I 'm comfortable sleeping on a bouncy castle. Howard : We 're switching. Just get in the bed. Sheldon: Only if you want to. Qwen2.5-VL: A1 ❌ Ours: A2 ✅ Correct answer's Attnmap['Penny'] Wrong answer's Attnmap['Penny'] Qwen2.5-VL: S3 ❌ Ours: S4 ✅ Correct answer's Attnmap['S2'] Wrong answer's Attnmap['S2'] Qwen2.5-VL: A2 ❌ Ours: A3 ✅ Correct answer's Attnmap['Sheldon'] Wrong answer's Attnmap['Sheldon'] Qwen2.5-VL: S4 ❌ Ours: S2 ✅ Correct answer's Attnmap['S1'] Wrong answer's Attnmap['S1']  because some heads are responsible for attending positional encoding or text modality, while adding bias on them disrupts their stability. In practice, we recommend selecting λ such that the active head ratio falls around 10%-20%.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Bias Strength</head><p>We evaluate different strategies for setting the bias strength, with results shown in Tab. 5. Compared to the fixed-value strategy, our adaptive W b in Eq. ( <ref type="formula" target="#formula_4">4</ref>) consistently achieves better performance. A fixed large bias forces the model to over-focus on the guided regions while ignoring global visual information, which in turn leads to a performance drop. This indicates that our adaptive socialaware biasing mechanism is highly natural: it enhances attention toward the current speaker's region without disrupting the model's inherent attention patterns, thereby improving cross-modal alignment and yielding stronger performance across social interaction tasks. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">Conclusion</head><p>This paper presents a method to help multimodal large language models better understand multimodal multi-speaker social interactions. Building on a systematic analysis of cross-modal attention, the proposed method strengthens the alignment between visual and textual tokens belonging to the same speaker. Experiments across multiple datasets and tasks validate its effectiveness in improving multispeaker reasoning. Future research directions include further investigating the role of attention heads in cross-modal alignment, exploring ways to leverage inherent grounding abilities of MLLMs to guide alignment without relying on bounding box annotations, thereby reducing annotation costs and enhancing efficiency for social AI.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Speaker 2 :</head><label>2</label><figDesc>Yeah, now he find out he was werewolf. Speaker 1 : Yes. Speaker 4 : Oh, I see what you did. You switched …</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 1 .</head><label>1</label><figDesc>Figure1. We propose a multimodal multi-speaker attention alignment method for MLLMs to understand social interactions in videos. Visualization of cross-attention weights in transformer layers confirms that our approach strengthens the model's focus on areas relevant to the active speaker.</figDesc><graphic coords="2,61.10,245.94,120.04,73.26" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>"cat, car, flower" "speaker 1, speaker 2, speaker 3" "speaker 1 [1, 53, 5, 175], speaker 2 [3, 73, 5, 129], speaker 3 [8, 71, 9, 120]" "speaker 1 in red box, speaker 2 in blue box, speaker 3 in green box"</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 2 .</head><label>2</label><figDesc>Figure 2. Cross attention weights in Qwen2.5-VL layer 16. Compared to general images, cross-modal alignment in multi-speaker images is weak and inconsistent. Image resolution is 2000×1600.</figDesc><graphic coords="4,273.15,307.00,86.94,67.40" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 3 .</head><label>3</label><figDesc>Figure 3. Overview of proposed method.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. Attention maps in Qwen2.5-VL layer 16 before and after adding social-aware bias. Our bias enables more accurate spatial-temporal-speaker alignment. Video resolution is 640×360.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Cross attention weights in COCO and MMSI images.</figDesc><table><row><cell>Image</cell><cell>Alignment</cell><cell>AttnM ax</cell><cell>AttnM ean</cell></row><row><cell>Source</cell><cell>Method</cell><cell>×10 -2</cell><cell>×10 -4</cell></row><row><cell>COCO</cell><cell>/</cell><cell>9.23</cell><cell>15.56</cell></row><row><cell></cell><cell>/</cell><cell>4.54</cell><cell>3.26</cell></row><row><cell>MMSI</cell><cell>Box Prompt Visual Prompt</cell><cell>4.49 6.29</cell><cell>3.93 5.29</cell></row><row><cell></cell><cell>Fine-Tuning</cell><cell>6.82</cell><cell>6.32</cell></row><row><cell></cell><cell>Ours</cell><cell>17.09</cell><cell>26.20</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>Accuracy on TVQA+, MMSI and OnlineMMSI. T for speaking target identification, P for pronoun coreference resolution, M for mentioned speaker prediction. * TLNet/ST-VLM results are taken from their paper, which may adopt a different split from ours. For input modality, V for video, L for text, B for speaker's bounding box. More descriptions of the baselines are provided in the appendix.</figDesc><table><row><cell>Method</cell><cell>Input Modality</cell><cell>TVQA+ VideoQA</cell><cell>T</cell><cell>MMSI P</cell><cell>M</cell><cell>T</cell><cell>OnlineMMSI P</cell><cell>M</cell><cell>Average Increase</cell></row><row><cell>Random</cell><cell></cell><cell>20.0</cell><cell>21.0</cell><cell>23.2</cell><cell>23.7</cell><cell>21.0</cell><cell>23.2</cell><cell>23.7</cell><cell></cell></row><row><cell>ST-VLM-7B* [27]</cell><cell>VLB</cell><cell>68.1</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell></cell></row><row><cell>TLNet* [37]</cell><cell>VL</cell><cell>75.5</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell></cell></row><row><cell>MMSI [31]</cell><cell>VLB</cell><cell>-</cell><cell>74.5</cell><cell>73.0</cell><cell>62.5</cell><cell>59.1</cell><cell>63.4</cell><cell>47.3</cell><cell></cell></row><row><cell>OnlineMMSI [5, 35]</cell><cell>VLB</cell><cell>86.1</cell><cell>66.5</cell><cell>76.2</cell><cell>63.5</cell><cell>64.8</cell><cell>72.9</cell><cell>49.4</cell><cell></cell></row><row><cell>Qwen2.5-Text [5]</cell><cell>L</cell><cell>78.0</cell><cell>66.3</cell><cell>77.0</cell><cell>61.7</cell><cell>59.3</cell><cell>74.4</cell><cell>49.0</cell><cell></cell></row><row><cell>Qwen2.5-VL [5]</cell><cell>VL</cell><cell>85.1</cell><cell>63.3</cell><cell>77.2</cell><cell>58.3</cell><cell>59.6</cell><cell>75.1</cell><cell>50.2</cell><cell></cell></row><row><cell>Qwen2.5-VL [5]</cell><cell>VLB</cell><cell>86.1</cell><cell>64.8</cell><cell>76.6</cell><cell>62.4</cell><cell>60.1</cell><cell>75.9</cell><cell>50.2</cell><cell></cell></row><row><cell>LLaVA-NeXT-Video [77]</cell><cell>VLB</cell><cell>83.1</cell><cell>66.1</cell><cell>75.9</cell><cell>62.4</cell><cell>60.6</cell><cell>73.7</cell><cell>51.7</cell><cell></cell></row><row><cell>InternVL3 [87]</cell><cell>VLB</cell><cell>85.6</cell><cell>65.0</cell><cell>76.9</cell><cell>63.0</cell><cell>61.3</cell><cell>76.6</cell><cell>52.1</cell><cell></cell></row><row><cell>Qwen2.5-VL+Ours</cell><cell>VLB</cell><cell>87.3</cell><cell>68.5</cell><cell>78.6</cell><cell>66.0</cell><cell>62.4</cell><cell>78.2</cell><cell>53.1</cell><cell>+2.6</cell></row><row><cell>LLaVA-NeXT-Video+Ours</cell><cell>VLB</cell><cell>84.6</cell><cell>68.0</cell><cell>79.9</cell><cell>63.3</cell><cell>61.0</cell><cell>77.8</cell><cell>52.9</cell><cell>+2.1</cell></row><row><cell>InternVL3+Ours</cell><cell>VLB</cell><cell>89.1</cell><cell>69.7</cell><cell>80.5</cell><cell>65.7</cell><cell>62.6</cell><cell>79.7</cell><cell>55.2</cell><cell>+3.2</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 .</head><label>3</label><figDesc>Effect of transformer layers.</figDesc><table><row><cell>Layers</cell><cell>TVQA+ VideoQA</cell><cell>T</cell><cell>MMSI P</cell><cell>M</cell></row><row><cell>0-27</cell><cell>85.6</cell><cell>66.9</cell><cell>79.1</cell><cell>63.2</cell></row><row><cell>0-9</cell><cell>86.0</cell><cell>66.9</cell><cell>76.7</cell><cell>64.4</cell></row><row><cell>10-19</cell><cell>87.3</cell><cell>68.5</cell><cell>78.6</cell><cell>66.0</cell></row><row><cell>20-27</cell><cell>86.2</cell><cell>66.4</cell><cell>78.4</cell><cell>64.4</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 4 .</head><label>4</label><figDesc>Effect of the number of active heads.</figDesc><table><row><cell>λ</cell><cell cols="2">Active heads(%) VideoQA TVQA+</cell><cell>T</cell><cell>MMSI P</cell><cell>M</cell></row><row><cell>0</cell><cell>35.7</cell><cell>85.6</cell><cell>65.4</cell><cell>77.8</cell><cell>61.2</cell></row><row><cell cols="2">5e-5 24.6</cell><cell>87.3</cell><cell>68.5</cell><cell>78.6</cell><cell>66.0</cell></row><row><cell cols="2">2e-4 15.8</cell><cell>86.8</cell><cell>67.9</cell><cell>78.2</cell><cell>66.0</cell></row><row><cell>8e-4</cell><cell>9.0</cell><cell>86.5</cell><cell>68.3</cell><cell>78.8</cell><cell>64.9</cell></row><row><cell>inf</cell><cell>0.0</cell><cell>85.1</cell><cell>63.3</cell><cell>77.2</cell><cell>58.3</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 5 .</head><label>5</label><figDesc>Effect of bias strength.</figDesc><table><row><cell cols="2">Bias Strength</cell><cell>TVQA+ VideoQA</cell><cell>T</cell><cell>MMSI P</cell><cell>M</cell></row><row><cell>fixed</cell><cell>0 10</cell><cell>85.1 86.4</cell><cell>63.3 65.7</cell><cell>77.2 75.3</cell><cell>58.3 63.5</cell></row><row><cell></cell><cell>100</cell><cell>84.4</cell><cell>64.2</cell><cell>72.5</cell><cell>53.8</cell></row><row><cell>adaptive</cell><cell>0.5 • max 1 • max 2 • max</cell><cell>86.8 87.3 86.0</cell><cell>66.8 68.5 66.7</cell><cell>77.2 78.6 77.4</cell><cell>63.7 66.0 64.1</cell></row></table></figure>
+		</body>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Listen then see: Video alignment with speaker attention</title>
+		<author>
+			<persName><forename type="first">Aviral</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carlos</forename><surname>Mateo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Samudio</forename><surname>Lezcano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iqui</forename><surname>Balam Heredia-Marin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prabhdeep</forename><forename type="middle">Singh</forename><surname>Sethi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="2018" to="2027" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Flamingo: a visual language model for few-shot learning</title>
+		<author>
+			<persName><forename type="first">Jean-Baptiste</forename><surname>Alayrac</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Donahue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pauline</forename><surname>Luc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antoine</forename><surname>Miech</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iain</forename><surname>Barr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yana</forename><surname>Hasson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karel</forename><surname>Lenc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Malcolm</forename><surname>Reynolds</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="23716" to="23736" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">Elmira</forename><surname>Amirloo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jean-Philippe</forename><surname>Fauconnier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christoph</forename><surname>Roesmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christian</forename><surname>Kerl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rinu</forename><surname>Boney</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yusu</forename><surname>Qian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zirui</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Afshin</forename><surname>Dehghan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yinfei</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhe</forename><surname>Gan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.02477</idno>
+		<title level="m">Understanding alignment in multimodal llms: A comprehensive study</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Mitigating object hallucinations in large vision-language models with assembly of global and local attention</title>
+		<author>
+			<persName><forename type="first">Wenbin</forename><surname>An</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Feng</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sicong</forename><surname>Leng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiahao</forename><surname>Nie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haonan</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qianying</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ping</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoqin</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shijian</forename><surname>Lu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="29915" to="29926" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<author>
+			<persName><forename type="first">Shuai</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Keqin</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuejing</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jialin</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenbin</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sibo</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kai</forename><surname>Dang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peng</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shijie</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Tang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.13923</idno>
+		<title level="m">Qwen2. 5-vl technical report</title>
+		<imprint>
+			<date type="published" when="2007">2025. 1, 2, 3, 6, 7</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Ákos Levente Tánczos, August von Liechtenstein, and Franc ¸ois Brémond. Bodily behaviors in social interaction: Novel annotations and state-ofthe-art evaluation</title>
+		<author>
+			<persName><forename type="first">Michal</forename><surname>Balazia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Müller</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 30th ACM International Conference on Multimedia</title>
+		<meeting>the 30th ACM International Conference on Multimedia</meeting>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="70" to="79" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Unveiling visual perception in language models: An attention head analysis approach</title>
+		<author>
+			<persName><forename type="first">Jing</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junjia</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunlong</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lianggong</forename><surname>Bruce Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhang</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bingjie</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenliang</forename><surname>Xu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">5</biblScope>
+			<biblScope unit="page">7</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Socialgesture: Delving into multi-person gesture understanding</title>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Xu Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenqi</forename><surname>Virupaksha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fiona</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sangmin</forename><surname>Ryan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><forename type="middle">M</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Rehg</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2025">19509-19519, 2025. 1, 2</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Toward human deictic gesture target estimation</title>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Xu Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sangmin</forename><surname>Virupaksha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenqi</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jintai</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rehg</forename><surname>Matthew</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirty-ninth Annual Conference on Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<author>
+			<persName><forename type="first">Mackenzie</forename><surname>Kent K Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanh</forename><surname>Cramer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Ho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ti</forename><surname>Ti Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yilin</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Bamman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.17536</idno>
+		<title level="m">Multimodal conversation structure understanding</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Attend-and-excite: Attention-based semantic guidance for text-to-image diffusion models</title>
+		<author>
+			<persName><forename type="first">Hila</forename><surname>Chefer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuval</forename><surname>Alaluf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yael</forename><surname>Vinker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lior</forename><surname>Wolf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Cohen-Or</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">ACM transactions on Graphics (TOG)</title>
+		<imprint>
+			<biblScope unit="volume">42</biblScope>
+			<biblScope unit="issue">4</biblScope>
+			<biblScope unit="page" from="1" to="10" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title level="m" type="main">Rethinking visual layer selection in multimodal llms</title>
+		<author>
+			<persName><forename type="first">Haoran</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junyan</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinhao</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yue</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xin</forename><surname>Jin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hui</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianfeng</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinlan</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoyu</forename><surname>Shen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.21447</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Are we on the right way for evaluating large vision-language models?</title>
+		<author>
+			<persName><forename type="first">Lin</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinsong</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoyi</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuhang</forename><surname>Zang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zehui</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haodong</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaqi</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Qiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dahua</forename><surname>Lin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="27056" to="27087" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Quantifying and mitigating unimodal biases in multimodal large language models: A causal perspective</title>
+		<author>
+			<persName><forename type="first">Meiqi</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yixin</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chaochao</forename><surname>Lu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2024</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="16449" to="16469" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Internvl: Scaling up vision foundation models and aligning for generic visual-linguistic tasks</title>
+		<author>
+			<persName><forename type="first">Zhe</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiannan</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenhai</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weijie</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guo</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sen</forename><surname>Xing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Muyan</forename><surname>Zhong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qinglong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xizhou</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lewei</forename><surname>Lu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="24185" to="24198" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Bert: Pre-training of deep bidirectional transformers for language understanding</title>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming-Wei</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kenton</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kristina</forename><surname>Toutanova</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies</title>
+		<meeting>the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">5</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Benchmarking robustness of 3d object detection to common corruptions</title>
+		<author>
+			<persName><forename type="first">Yinpeng</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caixin</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinlai</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zijian</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yikai</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hang</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xingxing</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Zhu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="1022" to="1032" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<author>
+			<persName><forename type="first">Abhimanyu</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhishek</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmad</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aiesha</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akhil</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alan</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amy</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Angela</forename><surname>Fan</surname></persName>
+		</author>
+		<title level="m">The llama 3 herd of models. arXiv e-prints</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page">2407</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Imagebind: One embedding space to bind them all</title>
+		<author>
+			<persName><forename type="first">Rohit</forename><surname>Girdhar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alaaeldin</forename><surname>El-Nouby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhuang</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mannat</forename><surname>Singh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kalyan</forename><surname>Vasudev Alwala</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ishan</forename><surname>Misra</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="15180" to="15190" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Ego4d: Around the world in 3,000 hours of egocentric video</title>
+		<author>
+			<persName><forename type="first">Kristen</forename><surname>Grauman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Westbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eugene</forename><surname>Byrne</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zachary</forename><surname>Chavis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antonino</forename><surname>Furnari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rohit</forename><surname>Girdhar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jackson</forename><surname>Hamburger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xingyu</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title level="a" type="main">Prompt-to-prompt image editing with cross-attention control</title>
+		<author>
+			<persName><forename type="first">Amir</forename><surname>Hertz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ron</forename><surname>Mokady</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jay</forename><surname>Tenenbaum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kfir</forename><surname>Aberman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yael</forename><surname>Pritch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Cohen-Or</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Eleventh International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Lora: Lowrank adaptation of large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Edward</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Phillip</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zeyuan</forename><surname>Wallis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanzhi</forename><surname>Allen-Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shean</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weizhu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Chen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">3</biblScope>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">An egocentric vision-language model based portable real-time smart assistant</title>
+		<author>
+			<persName><forename type="first">Yifei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jilan</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baoqi</forename><surname>Pei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuping</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guo</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mingfang</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lijin</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zheng</forename><surname>Nie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinyao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guoshun</forename><surname>Fan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.04250</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Smile: Multimodal dataset for understanding laughter in video with language models</title>
+		<author>
+			<persName><forename type="first">Lee</forename><surname>Hyun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kim</forename><surname>Sung-Bin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Seungju</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Youngjae</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tae-Hyun</forename><surname>Oh</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: NAACL 2024</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">2</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">The audio-visual conversational graph: From an egocentricexocentric perspective</title>
+		<author>
+			<persName><forename type="first">Wenqi</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ishwarya</forename><surname>Ananthabhotla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><forename type="middle">M</forename><surname>Rehg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Krishna</forename><surname>Vamsi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruohan</forename><surname>Ithapu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Gao</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="26396" to="26405" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">Can mllms read the room? a multimodal benchmark for verifying truthfulness in multi-party social interactions</title>
+		<author>
+			<persName><forename type="first">Caixin</forename><surname>Kang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangyang</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mingfang</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoichi</forename><surname>Sato</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2510.27195</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title level="m" type="main">St-vlm: Kinematic instruction tuning for spatio-temporal reasoning in vision-language models</title>
+		<author>
+			<persName><forename type="first">Dohwan</forename><surname>Ko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sihyeon</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yumin</forename><surname>Suh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minseo</forename><surname>Yoon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Manmohan</forename><surname>Chandraker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hyunwoo</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Kim</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.19355</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<author>
+			<persName><forename type="first">Fanqi</forename><surname>Kong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weiqin</forename><surname>Zu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinyu</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yaodong</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Song-Chun</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xue</forename><surname>Feng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.05425</idno>
+		<title level="m">Siv-bench: A video benchmark for social interaction understanding and reasoning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">The ami meeting corpus</title>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wessel Kraaij</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mike</forename><surname>Hain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wilfried</forename><surname>Lincoln</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Post</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proc. International Conference on Methods and Techniques in Behavioral Research</title>
+		<meeting>International Conference on Methods and Techniques in Behavioral Research</meeting>
+		<imprint>
+			<date type="published" when="2005-02">2005. 2</date>
+			<biblScope unit="page" from="1" to="4" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Werewolf among us: Multimodal resources for modeling persuasion behaviors in social deduction games</title>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongxin</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aryan</forename><surname>Pariani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fiona</forename><surname>Ryan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenqi</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shirley</forename><forename type="middle">Anugrah</forename><surname>Hayati</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Rehg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diyi</forename><surname>Yang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: ACL 2023</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Modeling multimodal social interactions: new challenges and baselines with densely aligned representations</title>
+		<author>
+			<persName><forename type="first">Sangmin</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fiona</forename><surname>Ryan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bikram</forename><surname>Boote</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><forename type="middle">M</forename><surname>Rehg</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2007">2024. 1, 2, 3, 6, 7</date>
+			<biblScope unit="page" from="14585" to="14595" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<author>
+			<persName><forename type="first">Sangmin</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minzhi</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenqi</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fiona</forename><surname>Ryan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ozgur</forename><surname>Kara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bikram</forename><surname>Boote</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weiyan</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diyi</forename><surname>Yang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.15316</idno>
+		<title level="m">Towards social ai: A survey on understanding social interactions</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Tvqa: Localized, compositional video question answering</title>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Lei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Licheng</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohit</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tamara</forename><surname>Berg</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2018 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">6</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Tvqa+: Spatio-temporal grounding for video question answering</title>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Lei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Licheng</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tamara</forename><surname>Berg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohit</forename><surname>Bansal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 58th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<date type="published" when="2006">2020. 1, 2, 6</date>
+			<biblScope unit="page" from="8211" to="8225" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<author>
+			<persName><forename type="first">Xinpeng</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shijian</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bolin</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weiguo</forename><surname>Pian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><forename type="middle">M</forename><surname>Rehg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yapeng</forename><surname>Tian</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.19851</idno>
+		<title level="m">Towards online multi-modal social interaction understanding</title>
+		<imprint>
+			<date type="published" when="2007">2025. 1, 2, 3, 6, 7</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">A survey of state of the art large vision language models: Alignment, benchmark, evaluations and challenges</title>
+		<author>
+			<persName><forename type="first">Zongxia</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiyang</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongyang</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fuxiao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huy</forename><surname>Nghiem</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guangyao</forename><surname>Shi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.02189</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">Temporal span localization network with collaborative graph reasoning for video question answering</title>
+		<author>
+			<persName><forename type="first">Lili</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guanglu</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianlin</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuai</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weiping</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Tlnet</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE Transactions on Emerging Topics in Computational Intelligence</title>
+		<imprint>
+			<biblScope unit="issue">7</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">Unleashing region understanding in intermediate layers for mllm-based referring expression generation</title>
+		<author>
+			<persName><forename type="first">Yaoyuan</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhuojun</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jian</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guanbo</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiran</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiahao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ziran</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jingang</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shao-Lun</forename><surname>Huang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="issue">7</biblScope>
+			<biblScope unit="page" from="120578" to="120601" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<analytic>
+		<title level="a" type="main">Microsoft coco: Common objects in context</title>
+		<author>
+			<persName><forename type="first">Tsung-Yi</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Maire</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Serge</forename><surname>Belongie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Hays</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pietro</forename><surname>Perona</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deva</forename><surname>Ramanan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Dollár</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Lawrence</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zitnick</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">European conference on computer vision</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2014">2014</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">3</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<analytic>
+		<title level="a" type="main">Visual instruction tuning</title>
+		<author>
+			<persName><forename type="first">Haotian</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chunyuan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qingyang</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yong Jae</forename><surname>Lee</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page" from="34892" to="34916" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Pnp-ga+: Plug-and-play domain adaptation for gaze estimation using model variants</title>
+		<author>
+			<persName><forename type="first">Ruicong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunfei</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haofei</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Feng</forename><surname>Lu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE Transactions on Pattern Analysis and Machine Intelligence</title>
+		<imprint>
+			<biblScope unit="volume">46</biblScope>
+			<biblScope unit="issue">5</biblScope>
+			<biblScope unit="page" from="3707" to="3721" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">From gaze jitter to domain adaptation: Generalizing gaze estimation by manipulating high-frequency components</title>
+		<author>
+			<persName><forename type="first">Ruicong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haofei</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Feng</forename><surname>Lu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">International Journal of Computer Vision</title>
+		<imprint>
+			<biblScope unit="volume">133</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page" from="1290" to="1305" />
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Advancing social intelligence in ai agents: Technical challenges and open questions</title>
+		<author>
+			<persName><forename type="first">Leena</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><forename type="middle">Pu</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louis-Philippe</forename><surname>Morency</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2024 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="20541" to="20560" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title level="m" type="main">Social genome: Grounded social reasoning abilities of multimodal models</title>
+		<author>
+			<persName><forename type="first">Leena</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marian</forename><surname>Qian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><forename type="middle">Pu</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louis-Philippe</forename><surname>Morency</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.15109</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<author>
+			<persName><forename type="first">Xinyi</forename><surname>Mou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuanwen</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qi</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jingcong</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinnong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Libo</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiayu</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuanjing</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.03563</idno>
+		<title level="m">From individual to society: A survey on social simulation driven by large language model-based agents</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<analytic>
+		<title level="a" type="main">Detecting low rapport during natural interactions in small groups from non-verbal behaviour</title>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Müller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><forename type="middle">Xuelin</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andreas</forename><surname>Bulling</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 23rd International Conference on Intelligent User Interfaces</title>
+		<meeting>the 23rd International Conference on Intelligent User Interfaces</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="153" to="164" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<analytic>
+		<title level="a" type="main">Multimediate: Multi-modal group behaviour analysis for artificial mediation</title>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Müller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Dietz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Schiller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dominike</forename><surname>Thomas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guanhua</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Gebhard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elisabeth</forename><surname>André</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andreas</forename><surname>Bulling</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 29th ACM International Conference on Multimedia</title>
+		<meeting>the 29th ACM International Conference on Multimedia</meeting>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="4878" to="4882" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<analytic>
+		<title level="a" type="main">Egocom: A multi-person multi-modal egocentric communications dataset</title>
+		<author>
+			<persName><forename type="first">Shengxin</forename><surname>Curtis G Northcutt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Steven</forename><surname>Zha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Lovegrove</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Newcombe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE Transactions on Pattern Analysis and Machine Intelligence</title>
+		<imprint>
+			<biblScope unit="volume">45</biblScope>
+			<biblScope unit="issue">6</biblScope>
+			<biblScope unit="page" from="6783" to="6793" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<monogr>
+		<title level="m" type="main">Lore: Latent optimization for precise semantic control in rectified flow-based image editing</title>
+		<author>
+			<persName><forename type="first">Liangyang</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiafeng</forename><surname>Mao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2508.03144</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<analytic>
+		<title level="a" type="main">Actionvos: Actions as prompts for video object segmentation</title>
+		<author>
+			<persName><forename type="first">Liangyang</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruicong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryosuke</forename><surname>Furuta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoichi</forename><surname>Sato</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">European Conference on Computer Vision</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="216" to="235" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<monogr>
+		<author>
+			<persName><forename type="first">Liangyang</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuki</forename><surname>Sakai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryosuke</forename><surname>Furuta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hisataka</forename><surname>Nozawa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hikoro</forename><surname>Matsui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoichi</forename><surname>Sato</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.24389</idno>
+		<title level="m">Leadership assessment in pediatric intensive care unit team training</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<analytic>
+		<title level="a" type="main">Cognitive chain-ofthought</title>
+		<author>
+			<persName><forename type="first">Eunkyu</forename><surname>Park</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wesley</forename><forename type="middle">Hanwen</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gunhee</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Motahhare</forename><surname>Eslami</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Sap</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2507.20409</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Structured multimodal reasoning about social situations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<analytic>
+		<title level="a" type="main">Assessing modality bias in video question answering benchmarks with multimodal large language models</title>
+		<author>
+			<persName><forename type="first">Jean</forename><surname>Park</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jin</forename><surname>Kuk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Basam</forename><surname>Jang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sriharsha</forename><surname>Alasaly</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Mopidevi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Zolensky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Insup</forename><surname>Eaton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Johnson</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the AAAI Conference on Artificial Intelligence</title>
+		<meeting>the AAAI Conference on Artificial Intelligence</meeting>
+		<imprint>
+			<date type="published" when="2025">19821-19829, 2025. 1, 2</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<monogr>
+		<title level="m" type="main">Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems</title>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Paszke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Gross</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francisco</forename><surname>Massa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Lerer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Bradbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gregory</forename><surname>Chanan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Killeen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zeming</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Natalia</forename><surname>Gimelshein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Antiga</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="volume">32</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b54">
+	<analytic>
+		<title level="a" type="main">Strengthening multimodal large language model with bootstrapped preference optimization</title>
+		<author>
+			<persName><forename type="first">Renjie</forename><surname>Pi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyang</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jipeng</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Runtao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rui</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tong</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">European Conference on Computer Vision</title>
+		<imprint>
+			<publisher>Springer</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="382" to="398" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b55">
+	<analytic>
+		<title level="a" type="main">Language models are unsupervised multitask learners</title>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Sutskever</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">OpenAI blog</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="issue">8</biblScope>
+			<biblScope unit="page">5</biblScope>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b56">
+	<analytic>
+		<title level="a" type="main">Learning transferable visual models from natural language supervision</title>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jong</forename><forename type="middle">Wook</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Hallacy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aditya</forename><surname>Ramesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gabriel</forename><surname>Goh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandhini</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pamela</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Clark</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International conference on machine learning</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="volume">2</biblScope>
+			<biblScope unit="page">3</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b57">
+	<analytic>
+		<title level="a" type="main">Egocentric auditory attention localization in conversations</title>
+		<author>
+			<persName><forename type="first">Fiona</forename><surname>Ryan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Shukla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><forename type="middle">M</forename><surname>Rehg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Krishna</forename><surname>Vamsi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Ithapu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="14663" to="14674" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b58">
+	<analytic>
+		<title level="a" type="main">What does clip know about a red circle? visual prompt engineering for vlms</title>
+		<author>
+			<persName><forename type="first">Aleksandar</forename><surname>Shtedritski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christian</forename><surname>Rupprecht</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrea</forename><surname>Vedaldi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF International Conference on Computer Vision</title>
+		<meeting>the IEEE/CVF International Conference on Computer Vision</meeting>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="page" from="11987" to="11997" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b59">
+	<monogr>
+		<author>
+			<persName><forename type="first">Wenxuan</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ziyang</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Han</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiayi</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pengxiang</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haodong</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxin</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Feilong</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Donglin</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haoang</forename><surname>Li</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2508.10333</idno>
+		<title level="m">Reconvla: Reconstructive vision-language-action model as effective robot perceiver</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b60">
+	<analytic>
+		<title level="a" type="main">Aligning large multimodal models with factually augmented rlhf</title>
+		<author>
+			<persName><forename type="first">Zhiqing</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sheng</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shengcao</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haotian</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chunyuan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yikang</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chuang</forename><surname>Gan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangyan</forename><surname>Gui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu-Xiong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Yang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics ACL 2024</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="13088" to="13110" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b61">
+	<analytic>
+		<title level="a" type="main">Seeing far and clearly: Mitigating hallucinations in mllms with attention causal decoding</title>
+		<author>
+			<persName><forename type="first">Feilong</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chengzhi</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhongxing</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zile</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haochen</forename><surname>Xue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ziyang</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zelin</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhiwei</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sijin</forename><surname>Zhou</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="26147" to="26159" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b62">
+	<analytic>
+		<title level="a" type="main">Eyes wide shut? exploring the visual shortcomings of multimodal llms</title>
+		<author>
+			<persName><forename type="first">Shengbang</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhuang</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuexiang</forename><surname>Zhai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yann</forename><surname>Lecun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saining</forename><surname>Xie</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="9568" to="9578" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b63">
+	<analytic>
+		<title level="a" type="main">Attention is all you need</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niki</forename><surname>Parmar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Uszkoreit</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Llion</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><forename type="middle">N</forename><surname>Gomez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Łukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Illia</forename><surname>Polosukhin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<date type="published" when="2005">2017. 3, 5</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b64">
+	<analytic>
+		<title level="a" type="main">Analyzing multi-head self-attention: Specialized heads do the heavy lifting, the rest can be pruned</title>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Voita</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Talbot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fedor</forename><surname>Moiseev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rico</forename><surname>Sennrich</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ivan</forename><surname>Titov</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 57th Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="5797" to="5808" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b65">
+	<monogr>
+		<title level="m" type="main">Seeing is understanding: Unlocking causal attention into modality-mutual attention for multimodal llms</title>
+		<author>
+			<persName><forename type="first">Wei-Yao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Helen</forename><surname>Suzuki</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoshiyuki</forename><surname>Kobayashi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.02597</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b66">
+	<analytic>
+		<title level="a" type="main">Controlmllm: Training-free visual prompt learning for multimodal large language models</title>
+		<author>
+			<persName><forename type="first">Mingrui</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinyue</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiayi</forename><surname>Ji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiale</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oucheng</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gen</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guannan</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaoshuai</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rongrong</forename><surname>Ji</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page" from="45206" to="45234" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b67">
+	<analytic>
+		<title level="a" type="main">Semantic alignment for multimodal large language models</title>
+		<author>
+			<persName><forename type="first">Tao</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mengze</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jingyuan</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Ji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wang</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jinyang</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kun</forename><surname>Kuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhou</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fei</forename><surname>Wu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 32nd ACM International Conference on Multimedia</title>
+		<meeting>the 32nd ACM International Conference on Multimedia</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="3489" to="3498" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b68">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yuhang</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenmeng</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yean</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaohan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiazheng</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxiao</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Alignmmbench</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2406.09295</idno>
+		<title level="m">Evaluating chinese multimodal alignment in large vision-language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b69">
+	<analytic>
+		<title level="a" type="main">Can i trust your answer? visually grounded video question answering</title>
+		<author>
+			<persName><forename type="first">Junbin</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Angela</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yicong</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tat-Seng</forename><surname>Chua</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="13204" to="13214" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b70">
+	<monogr>
+		<title level="m" type="main">Mitigating object hallucination via concentric causal attention. Advances in neural information processing systems</title>
+		<author>
+			<persName><forename type="first">Yun</forename><surname>Xing</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiheng</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ivan</forename><surname>Laptev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shijian</forename><surname>Lu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="92012" to="92035" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b71">
+	<analytic>
+		<title level="a" type="main">Voila-a: Aligning vision-language models with user&apos;s gaze attention</title>
+		<author>
+			<persName><forename type="first">Kun</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zeyu</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lei</forename><surname>Ji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuai</forename><surname>Ma</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="1890" to="1918" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b72">
+	<monogr>
+		<title level="m" type="main">Mmmu-pro: A more robust multidiscipline multimodal understanding benchmark</title>
+		<author>
+			<persName><forename type="first">Xiang</forename><surname>Yue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyu</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuansheng</forename><surname>Ni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yubo</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kai</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shengbang</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuxuan</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Botao</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ge</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huan</forename><surname>Sun</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.02813</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b73">
+	<analytic>
+		<title level="a" type="main">Social-iq: A question answering benchmark for artificial social intelligence</title>
+		<author>
+			<persName><forename type="first">Amir</forename><surname>Zadeh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Chan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><forename type="middle">Pu</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edmund</forename><surname>Tong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louis-Philippe</forename><surname>Morency</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="8807" to="8817" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b74">
+	<analytic>
+		<title level="a" type="main">Mllms know where to look: Training-free perception of small visual details with multimodal llms</title>
+		<author>
+			<persName><forename type="first">Jiarui</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mahyar</forename><surname>Khayatkhoei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prateek</forename><surname>Chhikara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Filip</forename><surname>Ilievski</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">3</biblScope>
+			<biblScope unit="page">7</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b75">
+	<analytic>
+		<title level="a" type="main">Egocentric actionaware inertial localization in point clouds with visionlanguage guidance</title>
+		<author>
+			<persName><forename type="first">Mingfang</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryo</forename><surname>Yonetani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yifei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangyang</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruicong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoichi</forename><surname>Sato</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF International Conference on Computer Vision</title>
+		<meeting>the IEEE/CVF International Conference on Computer Vision</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="27209" to="27219" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b76">
+	<monogr>
+		<title level="m" type="main">Llavanext: A strong zero-shot video understanding model</title>
+		<author>
+			<persName><forename type="first">Yuanhan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bo</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liangke</forename><surname>Yong Jae Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Di</forename><surname>Gui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiashi</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ziwei</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chunyuan</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Li</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">6</biblScope>
+			<biblScope unit="page">7</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b77">
+	<analytic>
+		<title level="a" type="main">Mm-rlhf: The next step forward in multimodal llm alignment</title>
+		<author>
+			<persName><forename type="first">Yifan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tao</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haochen</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chaoyou</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peiyan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianshu</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wulin</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yang</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huanyu</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junkang</forename><surname>Wu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-second International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b78">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yi-Fan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weichen</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qingsong</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xue</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhang</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liang</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rong</forename><surname>Jin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tieniu</forename><surname>Tan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.05262</idno>
+		<title level="m">Debiasing multimodal large language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b79">
+	<analytic>
+		<title level="a" type="main">Debiasing multimodal large language models via noise-aware preference optimization</title>
+		<author>
+			<persName><forename type="first">Zefeng</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hengzhu</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiawei</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenyu</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenyang</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawei</forename><surname>Yin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Duohe</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tingwen</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="9423" to="9433" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b80">
+	<analytic>
+		<title level="a" type="main">Asap: Advancing semantic alignment promotes multi-modal manipulation detecting and grounding</title>
+		<author>
+			<persName><forename type="first">Zhenxing</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yaxiong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lechao</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhun</forename><surname>Zhong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Meng</forename><surname>Wang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition</title>
+		<meeting>the IEEE/CVF Conference on Computer Vision and Pattern Recognition</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="4005" to="4014" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b81">
+	<analytic>
+		<title level="a" type="main">Multimind: Enhancing werewolf agents with multimodal reasoning and theory of mind</title>
+		<author>
+			<persName><forename type="first">Zheng</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nuoqian</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qi</forename><surname>Chai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deheng</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Wang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 33rd ACM International Conference on Multimedia</title>
+		<meeting>the 33rd ACM International Conference on Multimedia</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="5824" to="5833" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b82">
+	<monogr>
+		<title level="m" type="main">Improving multimodal contrastive learning of sentence embeddings with object-phrase alignment</title>
+		<author>
+			<persName><forename type="first">Kaiyan</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhongtao</forename><surname>Miao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoshimasa</forename><surname>Tsuruoka</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2508.00332</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b83">
+	<monogr>
+		<author>
+			<persName><forename type="first">Chenfei</forename><surname>Xu Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuqian</forename><surname>Liao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kaiyu</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuanhuiyi</forename><surname>Lei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lutao</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bin</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jialei</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiawen</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chengxin</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Li</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.18657</idno>
+		<title level="m">Mllms are deeply affected by modality bias</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b84">
+	<analytic>
+		<title level="a" type="main">Unified efficient fine-tuning of 100+ language models</title>
+		<author>
+			<persName><forename type="first">Yaowei</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junhao</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yeyanhan</forename><surname>Yeyanhan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zheyan</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Llamafactory</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 62nd Annual Meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="volume">3</biblScope>
+			<biblScope unit="page" from="400" to="410" />
+		</imprint>
+	</monogr>
+	<note>System Demonstrations)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b85">
+	<analytic>
+		<title level="a" type="main">Detecting non-verbal speech and gaze behaviours with multimodal data and computer vision to interpret effective collaborative learning interactions</title>
+		<author>
+			<persName><forename type="first">Qi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wannapon</forename><surname>Suraworachet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mutlu</forename><surname>Cukurova</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Education and information technologies</title>
+		<imprint>
+			<biblScope unit="volume">29</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page">2</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b86">
+	<monogr>
+		<title level="m" type="main">Internvl3: Exploring advanced training and test-time recipes for open-source multimodal models</title>
+		<author>
+			<persName><forename type="first">Jinguo</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weiyun</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhe</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhaoyang</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shenglong</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lixin</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuchen</forename><surname>Hao Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weijie</forename><surname>Duan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><surname>Su</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Shao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.10479</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">6</biblScope>
+			<biblScope unit="page">7</biblScope>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

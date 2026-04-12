@@ -1,0 +1,1434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Social-R1: Towards Human-like Social Reasoning in LLMs</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability status="unknown"><licence/></availability>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Jincenzi</forename><surname>Wu</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Yuxuan</forename><surname>Lei</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Jianxun</forename><surname>Lian</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Yitian</forename><surname>Huang</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Lexin</forename><surname>Zhou</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Haotian</forename><surname>Li</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Xing</forename><surname>Xie</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Helen</forename><surname>Meng</surname></persName>
+						</author>
+						<title level="a" type="main">Social-R1: Towards Human-like Social Reasoning in LLMs</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date/>
+						</imprint>
+					</monogr>
+					<idno type="MD5">1C7593DD676773A8173AE4C0852B11DC</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:17+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>While large language models demonstrate remarkable capabilities across numerous domains, social intelligence-the capacity to perceive social cues, infer mental states, and generate appropriate responses-remains a critical challenge, particularly for enabling effective human-AI collaboration and developing AI that truly serves human needs. Current models often rely on superficial patterns rather than genuine social reasoning. We argue that cultivating human-like social intelligence requires training with challenging cases that resist shortcut solutions. To this end, we introduce ToMBench-Hard, an adversarial benchmark designed to provide hard training examples for social reasoning. Building on this, we propose Social-R1, a reinforcement learning framework that aligns model reasoning with human cognition through multi-dimensional rewards. Unlike outcome-based RL, Social-R1 supervises the entire reasoning process, enforcing structural alignment, logical integrity, and information density. Results show that our approach enables a 4B parameter model to surpass much larger counterparts and generalize robustly across eight diverse benchmarks. These findings demonstrate that challenging training cases with trajectory-level alignment offer a path toward efficient and reliable social intelligence.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>Recent advances in Reinforcement Learning from Verifiable Feedback (RLVF) <ref type="bibr" target="#b30">(Wen et al., 2025)</ref> have significantly improved large language models (LLMs)' performance on formal reasoning tasks like mathematics and programming. However, genuine social intelligence-the capacity to perceive subtle cues, infer latent mental states, and navigate complex interpersonal dynamics-remains a substantial challenge. Unlike formal reasoning with deterministic execution paths, social reasoning is inherently polysemic and context-dependent, lacking the traceable verification that enables effective reward modeling in objective domains.</p><p>Despite strong performance on standard benchmarks, current LLMs often rely on shortcut learning rather than authentic social reasoning. Models frequently exhibit a failure mode we term Reasoning Parasitism, characterized by Answer-driven Backfilling-retroactively constructing justifications for predetermined answers rather than deriving inferences through narrative analysis, as illustrated by the example in Figure <ref type="figure" target="#fig_1">1</ref>. The inherent fragility of this parasitic performance becomes particularly evident in adversarial or out-of-distribution scenarios. As highlighted by <ref type="bibr">Shapira et al. (2024)</ref>; <ref type="bibr" target="#b17">Pang et al. (2025)</ref>, models that excel on standard benchmarks often suffer catastrophic failures when confronted with trivial narrative perturbations. It reveals that current approaches create only a facade of social intelligence while failing to develop robust reasoning capabilities. Our analysis further identifies a critical Interpretation Bottleneck: while models can perceive surface-level social cues, they struggle to map these cues to latent mental states, leading to a "logic reversal" where final answer correctness exceeds the logical integrity of the reasoning process.</p><p>We argue that advancing social intelligence requires aligning models' reasoning trajectories with the structured stages of human social inference. Thus, we propose process-based trajectory alignment that cultivates social intelligence as an internalized capability rather than a parasitic performance. Human social reasoning is characterized by highdensity information distillation and recursive belief modeling-properties we aim to instill through structured supervision of the reasoning process, as illustrated in the SocialR1-8B example in Figure <ref type="figure" target="#fig_1">1</ref>.</p><p>In this paper, we introduce Social-R1, a reinforcement learning framework that encourages genuine social reasoning by aligning model trajectories with human cognitive principles: structured, evidence-grounded, and efficient inference. Our approach has two key components. First, we construct ToMBench-Hard, an expert-curated adversarial benchmark designed to expose reasoning shortcuts through socially 1 <ref type="url" target="https://arxiv.org/abs/2603.09249v1">arXiv:2603.09249v1 [cs.AI] 10 Mar 2026</ref> </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Social-R1: Towards Human-like Social Reasoning in LLMs</head><p>Deepseek-R1 <ref type="bibr">[Story]</ref> Isabella is passionate about eco-tourism... Her elderly mother Ethan prefers urban exploration visiting museums ... Isabella invites Ethan on a trip. <ref type="bibr">[Question]</ref> Where does Isabella most likely invite Ethan to go?  nuanced perceptual traps. Second, guided by Social Information Processing (SIP) theory <ref type="bibr" target="#b19">(Salancik &amp; Pfeffer, 1978)</ref> , we develop a multi-dimensional reward system that enforces stage-consistent reasoning progression (R struct ), content integrity (R content ), and inference efficiency (R len ). We demonstrate that this trajectory-level alignment enables more effective and parameter-efficient social intelligence.</p><p>We conduct comprehensive experiments across both indomain and out-of-domain benchmarks related to social intelligence. Results demonstrate that our approach substantially improves model performance on genuine social reasoning tasks. Social-R1 enables smaller models to match or surpass the capabilities of models with significantly larger parameter counts, while showing strong generalization across eight diverse social reasoning evaluations (as illustrated in the right part of Figure <ref type="figure" target="#fig_1">1</ref>). These findings indicate that trajectory-level alignment presents a viable and efficient alternative to reliance on pure model scaling for achieving robust social intelligence. The source code and dataset will be released upon paper acceptance. In summary, our contributions are threefold:</p><p>• ToMBench-Hard: A rigorous benchmark with difficulty for social reasoning that exposes shortcut learning in LLMs and mandates genuine cognitive engagement.</p><p>• Social-R1 Framework: A reinforcement learning approach with multi-dimensional rewards that align LLM reasoning trajectories with human social cognition.</p><p>• Performance Superiority: Demonstration that our method enables small models to achieve large-model performance, proving trajectory quality surpasses parameter scaling for social intelligence.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Related Work</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.">Theory-of-Mind Analysis in LLMs</head><p>Recent evaluations demonstrate LLMs' growing proficiency on Theory-of-Mind tasks, with models like GPT-4 achieving near-human performance on false-belief tasks and various social cognition assessments <ref type="bibr" target="#b11">(Kosinski, 2024;</ref><ref type="bibr" target="#b27">Street et al., 2024;</ref><ref type="bibr" target="#b26">Strachan et al., 2024)</ref>. However, broader audits reveal significant limitations in genuine social reasoning capabilities. Studies highlight inconsistent performance across different evaluation frameworks <ref type="bibr" target="#b4">(Gandhi et al., 2023)</ref>, systematic failure modes in comprehensive capability assessments <ref type="bibr" target="#b1">(Chen et al., 2024)</ref>, and particular weaknesses in psychologically complex scenarios compared to physicalworld contexts <ref type="bibr" target="#b33">(Xu et al., 2024;</ref><ref type="bibr" target="#b6">Gu et al., 2024;</ref><ref type="bibr" target="#b37">Zhou et al., 2023)</ref>. Dynamic evaluation settings further expose models' difficulties with evolving mental states over time <ref type="bibr" target="#b32">(Xiao et al., 2025)</ref>, while higher-order reasoning tasks reveal sharp performance drops beyond first-level inference <ref type="bibr" target="#b8">(He et al., 2023)</ref>. Current improvement attempts remain limited in scope. Prompt-based interventions <ref type="bibr" target="#b6">(Gu et al., 2024)</ref> of-fer task-specific benefits but lack generalizability, while reinforcement learning approaches <ref type="bibr" target="#b14">(Lu et al., 2025)</ref> show promise but risk overfitting to narrow task patterns without broader training diversity.</p><p>From this literature, we identify three key limitations motivating our work: (i) over-reliance on outcome-based evaluation rather than reasoning trajectory analysis; (ii) susceptibility to shallow statistical cues instead of recursive mentalstate inference; and (iii) limited generalization across social reasoning benchmarks and related tasks <ref type="bibr" target="#b18">(Sabour et al., 2024;</ref><ref type="bibr" target="#b35">Yong et al., 2025)</ref>. These gaps necessitate harder adversarial evaluations, trajectory-level supervision, and training regimes designed for transferable social intelligence.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.">RL for LLM General Reasoning</head><p>Reinforcement learning has emerged as a pivotal technique for enhancing LLM reasoning capabilities, with RLHF establishing the foundation for alignment <ref type="bibr" target="#b16">(Ouyang et al., 2022)</ref>. Recent large-scale implementations demonstrate that outcome-based rewards can significantly strengthen structured reasoning in mathematical and coding domains <ref type="bibr" target="#b10">(Jaech et al., 2024;</ref><ref type="bibr" target="#b7">Guo et al., 2025;</ref><ref type="bibr" target="#b27">Team et al., 2025;</ref><ref type="bibr" target="#b34">Yang et al., 2025)</ref>. To address sparse reward challenges, process supervision methods provide denser feedback through step-wise trajectory evaluation <ref type="bibr" target="#b12">(Lightman et al., 2023;</ref><ref type="bibr" target="#b28">Uesato et al., 2022;</ref><ref type="bibr" target="#b36">Zhang et al., 2025)</ref>.</p><p>Despite these advances, RL remains underexplored for social inference tasks, which require empathy and multi-factor reasoning in unstructured scenarios. Preliminary work <ref type="bibr" target="#b14">(Lu et al., 2025)</ref> shows potential but remains in early development. This highlights two critical gaps: (i) the need for refreshed training materials tailored to social reasoning, and (ii) the opportunity for trajectory-level rewards that guide models toward human-like social inference patterns.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">The ToMBench-Hard Benchmark</head><p>Social intelligence remains a persistent bottleneck in LLMs, with current systems often relying on shortcut learning rather than authentic social reasoning. To address this limitation, we introduce ToMBench-Hard, a diagnostic benchmark specifically designed to expose the shortcut learning behaviors prevalent in current LLMs. The primary goal of ToMBench-Hard is to disentangle genuine social inference from surface-level pattern matching by creating a challenging adversarial environment that mandates structured, human-like reasoning processes.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">Adversarial Data Construction</head><p>ToMBench-Hard is grounded in the Abilities in the Theoryof-Mind Space (ATOMS) framework <ref type="bibr" target="#b15">(Osterhaus &amp; Bosacki, 2022)</ref>, providing a comprehensive evaluation covering six core dimensions of social intelligence: Belief, Desire, Emotion, Intention, Knowledge, and Non-literal Communication (NLC). We developed 800 expert-annotated multiple-choice questions through a rigorous annotation protocol involving three independent annotators to ensure cognitive validity and high quality (see Appendix B for details).</p><p>To mitigate heuristic-based reasoning strategies such as lexical overlap between questions and options, we introduced ToM-consistent adversarial perturbations <ref type="bibr" target="#b29">(Ullman, 2023;</ref><ref type="bibr" target="#b9">Hu et al., 2025)</ref>. These perturbations include nuanced manipulations of perceptual access (e.g., unobserved state changes) and asymmetric information (e.g., second-order beliefs), ensuring models cannot succeed through statistical guessing alone. Each sample was carefully designed to require a structured, human-like reasoning process that progresses from cue encoding to mental state interpretation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2.">Diagnostic Analysis: Exposing the Shortcut Illusion</head><p>To validate the diagnostic utility of ToMBench-Hard, we conducted comprehensive benchmarking across a spectrum of state-of-the-art LLMs, comparing their performance against human expert baselines. The results reveal a significant performance cliff between simple synthetic benchmarks and our adversarial evaluation. Hard serves dual purposes: it provides a rigorous evaluation framework for assessing genuine social reasoning capabilities, while also offering a high-quality dataset for aligning LLMs with human-like cognitive processes. To facilitate both training and evaluation, we partition the complete ToMBench-Hard dataset into non-overlapping training and test subsets, enabling the development of our alignment framework in the subsequent sections.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>As shown in</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">The Social-R1 Framework</head><p>The Social-R1 framework introduces a novel paradigm for cultivating genuine social intelligence in LLMs by aligning their reasoning processes with human social cognition.</p><p>Departing from traditional outcome-based reinforcement learning approaches, our method specifically tackles the fundamental challenge of Reasoning Parasitism-a phenomenon where models engage in Answer-driven Backfilling by constructing post-hoc justifications for predetermined answers. Social-R1 counteracts these shortcut behaviors through a multi-dimensional reward system that supervises the entire reasoning trajectory rather than merely rewarding final outcomes. This comprehensive approach transforms social intelligence from a parasitic performance into an internalized capability, ensuring model reasoning embodies the core characteristics of human social cognition: precise, stage-consistent social inference <ref type="bibr" target="#b19">(Salancik &amp; Pfeffer, 1978)</ref> and high information density <ref type="bibr" target="#b25">(Sperber &amp; Wilson, 1986)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.">Multi-Dimensional Reward Design</head><p>The core innovation of Social-R1 lies in its comprehensive reward system that aligns model reasoning trajectories with three key characteristics of human social cognition: structured progression, logical integrity, and information density. This multi-dimensional approach provides fine-grained supervision over the reasoning process, addressing different aspects of high-quality social inference.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>SIP Structural Alignment (R struct ).</head><p>Human social reasoning follows a disciplined progression from perception to response generation <ref type="bibr" target="#b2">(Crick &amp; Dodge, 1994)</ref>.</p><p>To instill this cognitive scaffold, we introduce a structural reward R struct that enforces sequential reasoning across the four stages of Social Information Processing (SIP): (1) Encoding Social Cues: Identifying relevant social signals from the narrative, (2) Interpreting Cues: Inferring latent mental states from perceived cues ,(3) Clarifying Goals: Determining social objectives and interpersonal intentions, and (4) Response Generation: Selecting appropriate behavioral responses. The R struct reward validates whether intermediate reasoning steps adhere to this stage-wise progression, penalizing premature conclusions and stage skipping. This structural constraint encourages coherent, story-grounded causal inference while mitigating shortcut behaviors like op-tion parasitism, where models anchor reasoning directly on multiple-choice options rather than narrative evidence. We leverage GPT-4o as judge for this reward, with the prompt illustrated in Appendix C.1. SIP Content Integrity (R content ). While structural alignment ensures proper reasoning staging, content integrity guarantees logical rigor within each stage. The content reward R content audits whether intermediate inferences remain grounded in story-internal evidence, correctly reflecting social cues, intentions, and goals. This reward penalizes three critical failure modes: (1) Erroneous cue encoding: Misidentification of relevant social signals, (2) Flawed interpretation: Incorrect mental state attribution, and (3) Misidentified goals: Inaccurate inference of social objectives. By ensuring each reasoning step maintains evidential support, R content discourages superficial rationalizations and promotes authentic social sensing derived from narrative context. The detailed implementation of this reward model can be found at Section 5.1.</p><p>Inference Efficiency Optimization (R len ). Human social reasoning achieves high information density through selective attention and avoidance of redundant processing <ref type="bibr" target="#b24">(Simon, 1955;</ref><ref type="bibr" target="#b5">Gigerenzer &amp; Goldstein, 1996)</ref>. To emulate this cognitive efficiency, we design R len as the product of two complementary components:</p><formula xml:id="formula_0">R len = R rep (ρ) • R win (L)<label>(1)</label></formula><p>The repetition penalty component R rep (ρ) specifically targets circular over-thinking by penalizing excessive n-gram repetition beyond a threshold τ = 0.1:</p><formula xml:id="formula_1">R rep (ρ) = 1, ρ ≤ τ exp(-β(ρ -τ )) , ρ &gt; τ<label>(2)</label></formula><p>where β = 8 controls the severity of penalty decay for high repetition ratios. The length window constraint R win (L) maintains reasoning trajectories within an empirically optimal range [L min , L max ] through smooth gating:</p><formula xml:id="formula_2">R win (L) = σ L -L min k • σ L max -L k<label>(3)</label></formula><p>with k = 50 controlling transition smoothness. The bounds L min = 400 and L max = 2500 are derived from strong chain-of-thought baselines, ensuring reasoning remains concise yet comprehensive. This dual-mechanism approach encourages the model to emulate human-like efficiency by avoiding both redundant repetition and excessive verbosity while maintaining substantive social inference.</p><p>Verifiable Format Alignment (R f mt ) We adopt the format reward from <ref type="bibr" target="#b21">Shao et al. (2024)</ref> that enforces structured thinking processes. The model is rewarded for producing outputs with predefined XML-style tags (&lt;thinking&gt; and &lt;answer&gt;), which enables deterministic extraction of both reasoning trajectories and final answers while preserving semantic freedom in the reasoning content.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2.">Reward Synthesis and Learning</head><p>The composite reward function integrates all components through a carefully designed synthesis strategy that balances outcome supervision with process-level reasoning signals:</p><formula xml:id="formula_3">R total = R fmt • w o R out + τ w struct R struct + w content R content • R len (<label>4</label></formula><formula xml:id="formula_4">)</formula><p>where R out denotes the verifiable outcome reward, We implement a curriculum learning strategy where outcome supervision dominates early training phases (w o (t) = 2), while process-level rewards are progressively emphasized through time-dependent weighting: w struct (t) = w content (t) = 1 + γ t T . This curriculum ensures stable initial convergence while gradually reinforcing human-like reasoning patterns as training progresses. The optimization employs Group Relative Policy Optimization <ref type="bibr" target="#b21">(Shao et al., 2024)</ref>, which performs group-relative updates over sampled reasoning trajectories.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Experiment</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1.">Experiment Setting</head><p>We evaluate our model on eight multiple-choice social benchmarks, including two in-domain benchmarks: the public ToMBench <ref type="bibr" target="#b1">(Chen et al., 2024)</ref> and our ToMBench-Hard test set, and six out-of-domain benchmarks: So-cialIQA <ref type="bibr" target="#b20">(Sap et al., 2019)</ref> for social commonsense reasoning, EmoBench <ref type="bibr" target="#b18">(Sabour et al., 2024)</ref> for emotion intelligence, MotiveBench <ref type="bibr" target="#b35">(Yong et al., 2025)</ref> for social motivation reasoning, SimpleToM <ref type="bibr" target="#b6">(Gu et al., 2024)</ref> for examining whether models can consciously infer others' mental states (MS) and proactively applying such reasoning to behavior inference, Hi-ToM <ref type="bibr" target="#b31">(Wu et al., 2023)</ref> for evaluating higherorder Theory-of-Mind reasoning, and TactfulToM <ref type="bibr" target="#b13">(Liu et al., 2025)</ref> for testing whether models can interpret white lies and infer the underlying prosocial intent to preserve interpersonal harmony.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>SIP Content Integrity Reward Model (RM content ).</head><p>To instantiate R content , we train a dedicated Content Reward Model that assigns a scalar quality score to intermediate SIPstage reasoning segments. We construct the SocialPairs-20K dataset by sampling N trajectories per training instance from various Social-R1 checkpoints. These checkpoints span different training stages, ensuring a diverse pool of reasoning qualities ranging from nascent logic to sophisti-cated social inference. For each segment, a strong teacherjudge (o3) generates silver-standard stage-wise rationales by conditioning on the gold final answer and the original social context. We then employ a multi-dimensional rubricfocusing on fact-grounding, mental-state attribution accuracy, and stage-specific relevance-to score the sampled segments against the teacher-generated references. This process forms preference pairs (chosen vs. rejected), while rejected segments exhibit missing cues, incorrect mentalstate attributions, or wrong goal identification. We validate the model on two held-out sets: (1) an automatic test split of 2k pairs, where R content achieves an accuracy of 89.2%; and (2) a human-calibrated subset of 200 pairs annotated by experts, achieving an 87.5% agreement with human labels. ( More R content can be found in Appendix C.2).</p><p>Implementation Details SIP Content Integrity Reward Model (RM content ) is trained as a pairwise preference reward model. We initialize it from Qwen3-4B and fine-tune with LoRA on the SocialPairs-20K dataset mentioned previously. For policy optimisation, we train two versions of reasoning models from Qwen3-4B and Qwen3-8B on ToMBench-Hard, consisting of 700 training instances and 100 test instances. Reinforcement learning is performed for 600 optimisation steps using VERL <ref type="bibr" target="#b23">(Sheng et al., 2024)</ref> on 8 NVIDIA A100 (80GB) GPUs. We set the group size to 5, the KL coefficient to 0.04, and the learning rate to 5 × 10 -7 . More details are provided in Appendix D.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2.">Main Results</head><p>We apply the Social-R1 framework to two open-source backbones of different scales, Qwen3-4B and Qwen3-8B. The overall results across eight social reasoning benchmarks are reported in Table <ref type="table" target="#tab_1">2</ref>. Social-R1 achieves strong and consistent improvements over the corresponding Qwen baselines, demonstrating that reinforcement learning with challenging social supervision and trajectory-level reward signals can substantially enhance Theory-of-Mind reasoning. Notably, Social-R1-4B surpasses LLaMa3.1-70B across all benchmarks, despite being more than an order of magnitude smaller, highlighting the effectiveness of process-based social alignment beyond parameter scaling. Even more strikingly, Social-R1-8B outperforms DeepSeek-R1 on several benchmarks and achieves stronger overall performance, consistently matching or exceeding much larger baselines such as Qwen3-32B in out-of-domain generalization. More detailed results are provided in Appendix E.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3.">Ablation Studies</head><p>To systematically evaluate the contribution of each reward component in Social-R1, we conduct comprehensive ablation experiments on both SocialR1-4B and SocialR1-8B variants. Specifically, we remove three key components: the length-control reward (w/o R len ), the structural trajectory reward (w/o R struct ), and the content integrity reward (w/o R cont ). Additionally, we examine a baseline variant that removes all the progress rewards (only R out ). The complete results are presented in Table <ref type="table" target="#tab_1">2</ref>.</p><p>Benchmarks The ablation analysis reveals distinct performance patterns associated with each reward component. Removing w/o R len results in significant performance degradation on Hi-ToM (e.g., 0.7083 → 0.6267 for SocialR1-8B), indicating that uncontrolled reasoning length negatively impacts high-order social inference. The w/o R len variant exhibits a substantial increase in reasoning verbosity, with the average thinking length rising by approximately +250% compared to SocialR1-8B as shown in Figure <ref type="figure" target="#fig_1">10</ref>.</p><p>The structural reward R struct shows consistent importance across benchmarks, with its removal causing accuracy drops (e.g., from 0.5079 to 0.4558 on TactfulToM). Similarly, R cont removal leads to performance declines, suggesting its role in maintaining reasoning quality. Notably, the only R out variant exhibits more severe overall performance deterio-ration compared to other ablations, demonstrating the importance of incorporating process-level rewards. While these numerical changes demonstrate the overall effectiveness of each component, subsequent in-depth analyses (Sections 6.1-6.3) will provide mechanistic evidence through detailed trajectory examinations and perturbation studies to understand how each reward shapes reasoning behavior.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">In-Depth Analysis</head><p>To examine whether Social-R1 yields genuinely internalised social reasoning-rather than Reasoning Parasitism driven by answer-first backfilling-we conduct a mechanistic analysis of its reasoning dynamics. We compare Social-R1-8B against three strong baselines</p><p>(DeepSeek-R1, DeepSeek-R1-Distill-Llama-70B, and Qwen3-8B), together with controlled reward variants that isolate outcome-only training and ablate key trajectory-level constraints. In line with our reward design, we operationalise human-like social reasoning through three diagnostic signatures: (i) optionindependent inference grounded in narrative cues; (ii) stage-consistent SIP trajectories with content integrity, where intermediate beliefs remain logically valid across Encoding, Interpretation, Goal Clarification, and Response Generation; and (iii) selective robustness, where models avoid redundant trajectory bloat under perturbation. Accordingly, our analysis proceeds in three steps: (1) quantifying Reasoning Parasitism as a diagnostic of shortcut reliance; (2) auditing stage-wise cognitive fidelity to identify interpretation bottlenecks; and (3) introducing controlled distractors to assess robustness and conciseness. 6.1. From Parasitism to Independent Inference Q1 Cue Encoding Q2 Cue Interpretation Q3 Goal Clarification Q4 Response Generation 0 2 4 6 8 10 12 Avg. Option Mentions per Sample 8.45 9.78 3.18 4.14 5.75 8.87 5.17 7.99 1.81 1.79 1.60 1.30 Social-R1 vs. Shortcut-heavy Baselines Deepseek R1 DeepSeek-R1-Distill-Llama-70B Qwen38B SocialR1-8B w/o Combined Reward SocialR1-4B SocialR1-8B Figure 2. Option-Mention Density across SIP reasoning stages. A primary failure mode in multiple-choice social reasoning is Reasoning Parasitism-a shortcut behaviour where models anchor their deductions on statistical regularities in the answer choices rather than deriving conclusions from story-internal social cues. Figure 2 reveals substantial divergence in reasoning dynamics. DeepSeek-R1, Qwen3-8B, and the outcome-only variant of SocialR1-8B exhibit high option-mention density as early as the Cue Encoding stage (Q1 group in Figure <ref type="figure">2</ref>), often exceeding five explicit option references per sample. Such premature reliance suggests answer-conditioned backfilling: models use the provided choices to retroactively assemble plausible justifications, rather than performing independent social inference. In contrast, Social-R1-8B maintains a largely option-agnostic trajectory. Its option mentions remain minimal and nearly flat throughout cue perception and interpretation, increasing only slightly (to ∼1.3) during final Response Generation (Q4). This provides mechanistic evidence that the proposed Social Think Combined Reward effectively suppresses shortcut dependence on answer options, compelling the model to engage in narrative-grounded social deduction. Additional qualitative examples are provided in Appendix F.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.2.">Stage-wise Diagnosis</head><p>To pinpoint where social reasoning most systematically breaks down, we conduct a human audit of 80 instances sampled from eight benchmarks, ensuring high annotation quality and genuine Theory-of-Mind demands. We track success rates across the four Social Information Processing (SIP) stages. Figure <ref type="figure" target="#fig_2">3</ref> exposes a pronounced Interpretation Bottleneck. While strong baselines sustain high accuracy in factual cue encoding (&gt; 80%), performance drops sharply-by nearly 25 points-once entering Cue Interpretation, which requires latent mental-state attribution and recursive belief reasoning. More critically, outcome-only training induces a reasoning reversal phenomenon. For example, Qwen3-8B trained with R out often achieves higher final answer accuracy than the correctness of its preceding SIP stages, indicating that surface-level option correlations can yield correct predictions despite incoherent intermediate social inference. This highlights the limitation of outcome supervision: it rewards answer selection without enforcing psychologically valid reasoning trajectories. Crucially, the proposed Content Reward R content directly targets this failure mode by penalising erroneous cue encoding, flawed mentalstate interpretation, and misidentified social goals. Ablation results provide clear causal evidence: removing R content reduces Interpretation accuracy by 6.2 points (77.5%→71.3%) and Goal Classification by 6.2 points (75.0%→68.8%). Ultimately, Social-R1-8B preserves the most stage-consistent and smoothly degrading SIP trajectory, demonstrating that its gains stem from cognitively grounded reasoning rather than shortcut-driven recovery. Cu e En cod ing Cu e Int erp ret er Go al Cla ssi fica tio n Re spo nse Ge ne rat ion SIP Reasoning Stages DeepSeek-R1 SocialR1-8B SocialR1-8B w/o Rcont SocialR1-8B wo Rout Deepseek-R1-Distill-Llama-70B Qwen3-8B Models 91.2% 77.5% 77.5% 73.8% 85.0% 77.5% 75.0% 71.2% 85.0% 71.3% 68.8% 68.8% 81.2% 51.2% 55.0% 63.7% 81.2% 56.2% 65.0% 55.0% 82.5% 56.2% 62.5% 46.2% Case Study To further illustrate this mechanistic distinction, Figure <ref type="figure" target="#fig_5">4</ref> presents a representative example from ToMBench, where the correct answer critically depends on grounding interpretation in the protagonist's epistemic access. In this story, Grimmo inhabits an underground world without sky, celestial bodies, or human presence, and therefore cannot plausibly imitate planets, clouds, or dancers. Social-R1-8B correctly encodes this constraint and performs a psychologically valid interpretation, inferring that the imitation must stem from locally observable phenomena (e.g., bioluminescent fungi spinning in the dark), yielding a coherent SIP trajectory. In contrast, reward-ablated variants exhibit the identified failure modes. Social-R1-8B w/o R cont drifts into ungrounded interpretation, despite explicit narrative exclusion-a breakdown at the Interpretation and Goal stages. Likewise, the model trained with only R out collapses into option-level lexical shortcutting (e.g., "spinning dancer") rather than maintaining story-consistent mentalstate reasoning. Qwen3-8B shows a similar reversal behaviour, selecting an answer that reflects generic associations instead of the agent's accessible knowledge. Overall, this case provides concrete mechanistic evidence that Social-R1's gains do not arise from answer-first recovery, but from enforcing evidence-grounded interpretation and stage-consistent social inference.</p><p>[Story] In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. …its walls adorned with bioluminescent fungi and glimmering minerals…Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place.</p><p>[Question] What is Grimmo possibly imitating?  </p><formula xml:id="formula_5">Answer] D SocialR1-8B</formula><p>Grimmo is a small robot who has never seen the heavens or humans. The environment has bioluminescent fungi and minerals that sparkle in the dark …absence of celestial bodies means there's no planet rotation to imitate. … the glowing mushrooms could be spinning in the wind…the most plausible imitation is the glowing mushrooms spinning.</p><p>DeepSeek-R1 Grimmo has never seen the heavens, so he hasn't seen clouds or planets. That means options A and B involve things he couldn't have seen…It says "imitation routine," so he is imitating something. But what? .. let's see the answer choices; D is the only one that could be part of his environment.</p><p>SocialR1-8B w/o 𝑹 𝑐𝑜𝑛𝑡 …Since there is no celestial reference and no observed movement in his environment, Grimmo's imitation must be based on something he has experienced…the most plausible conclusion is that he is imitating a natural phenomenon he has observed, which might be the rotation of a planet, even though he hasn't seen one.</p><p>SocialR1-8B 𝒐𝒏𝒍𝒚 𝑹 𝒐𝒖𝒕 First, I need to look at the options. The choices are A…B…C…D… The problem is that the question says evoking the image of a spinning top or a spinning dancer. So the answer could be either A or C. …perhaps the correct answer is C. But I'm a bit confused. Alternatively, maybe the answer is A.</p><p>Qwen3-8B He's never seen the heavens or humans. The setting has bioluminescent fungi and minerals that sparkle in the dark. Since Terra Valley has no sky or celestial bodies … Now, the options: … the question is about what he's imitating. Since he's in an underground world, maybe he's imitating a dancer. So the answer is C. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.3.">Robustness under Perturbation</head><p>To assess whether Social-R1 promotes cognitively disciplined robustness rather than brittle performance sustained by overextended reasoning, we conduct a controlled perturbation study. Specifically, we inject story-consistent but decision-irrelevant distractor cues into 40 instances where both SocialR1-8B and DeepSeek-R1 initially succeed. These distractors introduce no new evidence that alters the correct option, enabling a direct comparison of reasoning trajectory stability (Appendix G). Figure <ref type="figure" target="#fig_7">5</ref>   7. Conclusion In this work, we introduce ToMBench-Hard, a challenging benchmark that rigorously evaluates the Theory of Mind capabilities in LLMs. Building on this, we propose Social-R1, a reinforcement learning framework that integrates both outcome-level and thinking-level rewards to cultivate human-like social intelligence in LLMs. Our results demonstrate that outcome-based reinforcement learning over ToMBench-Hard already enhances social reasoning, while thinking-level supervision yields further improvements. These findings highlight the importance of supervising not only what a model concludes but also how it reasons, paving the way toward socially intelligent LLMs. Future work may extend this framework to broader domains of social tasks, such as human-AI collaboration and LLM-based simulations for social sciencec.</p><p>A. The Detailed Case in Figure</p><p>1 Deepseek-R1 Example: Human-like Social Reasoning SocialR1-8B</p><p>Thinking The story presents two contrasting travel preferences between Isabella and her mother. Isabella is into eco-tourism, specifically rainforests and wildlife observation. Her mother, on the other hand, enjoys urban exploration, focusing on museums, historic districts, and architectural landmarks. The key detail is that Isabella invites Ethan on a trip during their upcoming break. The question is about where Isabella would most likely invite Ethan. Since Isabella is passionate about eco-tourism, her primary interest lies in natural environments like rainforests. However, the story also mentions her mother's preference for urban exploration. The fact that Isabella invites Ethan suggests that she might be trying to accommodate both her own interests and her mother's. Therefore, the invitation is likely a compromise that combines both interests. The most plausible scenario is that Isabella invites Ethan on a trip that includes both elements-eco-tourism and urban exploration. This would mean a combination of visiting natural habitats and cultural landmarks. Among the options, a museum and heritage site tour aligns with the mother's preference for urban exploration. It also allows Isabella to engage in her passion for eco-tourism by visiting sites that have historical or cultural significance within urban settings. Thus, the invitation is most likely to a museum and heritage site tour. So, the answer is B.</p><p>[Story] Discrepant desires," <ref type="bibr">[Story]</ref>Isabella is passionate about eco-tourism, spending time in rainforests and observing wildlife in their natural habitat. Her elderly mother, however, prefers urban exploration-visiting museums, historic districts, and architectural landmarks. She believes travel should be a journey through human history and culture. During the upcoming break, Isabella invites Ethan on a trip.</p><p>[Question] Where does Isabella most likely invite Ethan to go?   Figure <ref type="figure">6</ref>. The Detailed Case in Figure <ref type="figure" target="#fig_1">1</ref> B. ToMBench Hard ToMBench Hard is deliberately curated to increase task difficulty by introducing nuanced distractors and contextdependent reasoning. Inspired by the Abilities in the Theoryof-Mind Space (ATOMS) framework <ref type="bibr" target="#b15">(Osterhaus &amp; Bosacki, 2022)</ref>, each question is designed to probe a distinct aspect of ToM reasoning, detailed definition of each subabilities and dimension can be found in <ref type="bibr" target="#b15">(Osterhaus &amp; Bosacki, 2022)</ref> . To further increase difficulty <ref type="bibr" target="#b29">(Ullman, 2023;</ref><ref type="bibr" target="#b9">Hu et al., 2025)</ref>, adversarial variations such as asymmetric access to information, discrepant intentions, and subtle social cues are included.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.1. Human Annotation</head><p>ToMBench Hard is developed jointly by the author and one psychology graduate student, who construct the scenarios, questions, options and answers. Annotation is carried out by five computer science graduate students (after receiving training) and five social psychology graduate students. Each sample is independently answered by two annotators, and disagreements are discussed and resolved through group review and iterative modification. This procedure ensures both linguistic clarity and psychological validity. The annotation process emphasized consistency across dimensions and aimed to capture nuanced aspects of social reasoning. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.2. Data Statistic</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.3. Cases in ToMBench Hard</head><p>To provide an intuitive understanding of the challenges posed by ToMBench-Hard, Figure <ref type="figure">7</ref> presents representative examples spanning diverse Theory-of-Mind abilities, including belief tracking, discrepant desires, intention explanation, atypical emotional reactions, knowledge inference, and non-literal humour comprehension. Each instance follows a unified Ability-Story-Question-Answer structure, consisting of a socially grounded narrative context, a multiple-choice question, and the annotated gold option. These cases highlight the benchmark's structural diversity and nuanced social cues, requiring models to move beyond superficial option matching and motivating our trajectory-level alignment rewards. Trajectory sampling from diverse checkpoints. To ensure a wide spectrum of reasoning quality, we collect candidate trajectories from 10 checkpoints of the w/o R struct run at steps {30, 90, 120, 180, 270, 360, 420, 510, 570, 600}. We sample K=6 trajectories per instance per checkpoint. Given N =700 training instances, this yields: 42000 candidate SIP-stage reasoning segments, spanning from early unstable logic to mature social inference.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B.4. Performance on ToMBench Hard</head><p>LLM-based scoring with teacher calibration. Each sampled segment is scored by GPT-5 using the o3 silver rationale as the reference. The evaluation rubric focuses on: (i) fact-grounding to story-internal evidence, (ii) correctness of mental-state attribution, and (iii) stage-specific relevance within the SIP trajectory.</p><p>Tiering and hard-negative identification. We categorise all segments into five quality tiers: Tier S (Expert): o3 gold-quality samples. Tier A (Quality Positive): ACC=1 and LLM Score ≥ 0.8. Tier B (Weak Positive): ACC=1 and ≥ 0.6LLM Score ≤ 0.8. Tier C (Hard Negative): ACC=1 while LLM Score ≤ 0.6 . Tier D (Common Negative): ACC=0 and LLM Score is very low.</p><p>We construct preference pairs (chosen vs. rejected) using the following priority scheme: P0: Tier S &gt; Tier C (strongest supervision against hard negatives). P1: Tier A &gt; Tier C. P2: Tier A &gt; Tier B. P3: Tier B &gt; Tier D. P4: late-stage short trajectories &gt; early-stage long trajectories, encouraging concise and cognitively disciplined inference.</p><p>Applying this policy produces SocialPairs-20K, consisting of 20K preference pairs for training RM content .</p><p>Held-out evaluation. We construct a held-out test set of 2K preference pairs from ToMBench-Hard test instances using the same pipeline, achieving 89.2% pairwise accuracy. Additionally, we randomly sample 200 pairs for expert human verification, obtaining 87.5% agreement with human preferences.</p><p>The detailed multi-dimensional scoring rubric used by GPT-5 for stage-wise segment evaluation is provided in Table <ref type="table" target="#tab_4">5</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D. Implementation</head><p>The content reward model (TRM) is initialized from Qwen3-4B-Instruct-2507and trained using supervised fine-tuning for two epochs on four NVIDIA A100 80GB GPUs. The model is trained with pairwise comparisons and, during inference, predicts a scalar reward conditioned on (scenario, question, options, reasoning). For completeness, we provide additional training dynamics in Appendix, including the evolution of training accuracy (Figure <ref type="figure">9</ref>), trajectory length (Figure <ref type="figure" target="#fig_1">10</ref>), content integrity score (Figure <ref type="figure" target="#fig_1">12</ref>), and structural alignment score during optimisation. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E. Detailed Results</head><p>For completeness, we report the full detailed results across all evaluated benchmarks in Appendix Tables 6-10, including MotivationBench (Table <ref type="table">6</ref>), ToMBench-Hard (Table 11), SimpleToM (Table <ref type="table">7</ref>), TactfulToM (Table <ref type="table" target="#tab_6">9</ref>), and EmoBench (Table <ref type="table" target="#tab_0">10</ref>).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F. Case Study</head><p>For completeness, we provide the full qualitative case study examples corresponding to Figure <ref type="figure" target="#fig_5">4</ref>. Tables <ref type="table" target="#tab_1">12</ref><ref type="table" target="#tab_8">13</ref><ref type="table" target="#tab_9">14</ref><ref type="table" target="#tab_4">15</ref><ref type="table" target="#tab_10">16</ref><ref type="table" target="#tab_11">17</ref>present the complete narrative contexts, questions, answer options, and model-generated SIP trajectories across Social-R1-8B and its reward-ablated variants. These detailed instances allow a closer inspection of the mechanistic failure modes identified in the main text, including ungrounded cue interpretation, goal misidentification, and option-level lexical shortcutting under outcome-only supervision. Together, these supplementary cases offer concrete evidence that Social-R1's improvements arise from enforcing evidencegrounded interpretation and stage-consistent social reasoning, rather than answer-driven backfilling or superficial option matching.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>G. Perturbation Analysis</head><p>To provide an intuitive illustration of our perturbation protocol, Table <ref type="table" target="#tab_5">18</ref> presents a representative case in which storyconsistent but decision-irrelevant distractor cues are injected into the original narrative while the correct answer remains unchanged.    Table 12. Case Study SocialR1-8B</p><p>Case Study SocialR1-8B <ref type="bibr">[Story]</ref> In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. <ref type="bibr">[Question]</ref> What is Grimmo possibly imitating? <ref type="bibr">[Option]</ref> A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind [Answer] D &lt;think&gt; Okay, let's break this down. The story takes place in Terra Valley, an underground world without a sky or celestial bodies. Grimmo is a small robot who has never seen the heavens or humans. The environment has bioluminescent fungi and minerals that sparkle in the dark. The key detail is Grimmo's imitation routine. He extends his arms and spins on his axis, like a spinning top or a dancer. Since there's no sky or celestial objects, there's no actual cloud floating around. The absence of celestial bodies means there's no planet rotation to imitate. However, the setting has glowing mushrooms and minerals. These fungi and minerals are described as sparkling in the dark, which suggests they might emit light and possibly move or spin due to air currents. So, even though there are no clouds or planets, the glowing mushrooms could be spinning in the wind. The spinning motion of Grimmo mimics this natural phenomenon. The mention of a dancer's spiral turn is a metaphor, but the story emphasizes the environment's features. Since there are no humans or celestial objects, the most plausible imitation is the glowing mushrooms spinning. Therefore, the answer is D. &lt;/think&gt;&lt;answer&gt;D&lt;/answer&gt;   <ref type="bibr">Story]</ref> In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. <ref type="bibr">[Question]</ref> What is Grimmo possibly imitating? <ref type="bibr">[Option]</ref> A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind [Answer] D &lt;think&gt; Okay , let's try to figure out what Grimmo is imitating. So, the story says that Grimmo is a small, mischievous robot in an underground world called Terra Valley. This place has no sky or celestial bodies, so Grimmo has never seen the heavens or encountered a human. The environment is described with bioluminescent fungi and glimmering minerals that sparkle in the dark. First, I need to consider what Grimmo has experienced. Since he's lived his whole life in this underground world, his observations would be limited to his surroundings. There's no sky, so he wouldn't have seen stars, planets, or any celestial events. Also, there's no mention of humans, so he wouldn't have observed human activities or dance. Next, I should think about the elements present in his environment. The story mentions bioluminescent fungi and glimmering minerals. These are stationary objects that emit light, but there's no indication they move or spin on their own. The minerals "sparkle in the dark," which might suggest they reflect light, but again, no mention of movement. Grimmo's action is to "extend his arms and slowly spin on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place." Since he's a robot, he might be mimicking something he has observed or perceived in his environment. But since there are no celestial bodies, he wouldn't know about planets rotating. He might be imitating something he has seen that involves rotation. However, in an underground setting with no sky, there are no clouds floating, so option A seems unlikely. A dancer's spiral turn (option C) would require observing a dancer, which the story says he hasn't encountered. The only remaining possibility is something related to his environment's features. The bioluminescent fungi and minerals are stationary, but maybe he is mimicking the way light interacts with these objects. However, the story doesn't describe any movement of these objects. Since there's no celestial reference and no observed movement in his environment, Grimmo's imitation must be based on something he has experienced. Given the lack of other options, the most plausible conclusion is that he is imitating a natural phenomenon he has observed, which might be the rotation of a planet, even though he hasn't seen one. This could be a result of limited exposure, where he associates spinning with a celestial body based on limited information. &lt;/think&gt;&lt;answer&gt;B&lt;/answer&gt;   <ref type="bibr">Story]</ref> In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. <ref type="bibr">[Question]</ref> What is Grimmo possibly imitating? Option] A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind [Answer] D &lt;think&gt; Okay, let's see. The question is about what Grimmo possibly imitates based on the description given. The story says Grimmo is a robot in Terra Valley, which has bioluminescent fungi and twinkling minerals. He's engaging in imitation behavior: extending his arms and slowly rotating around his own axis, evoking the image of a spinning top or a spinning dancer.First, I need to look at the options. The choices are A. A spinning top, B. The rotation of a planet, C. A dancer's spiral rotation, D. A glowing mushroom spinning in the wind.</p><p>The key part here is that Grimmo's behavior evokes the image of a spinning top or a spinning dancer. So the options are between these two. But the question is a bit tricky because it's a multiple-choice with four options. Let me break it down.The story says Grimmo's actions evoke both a spinning top and a spinning dancer. But the options are separate. So I need to see which one is more likely. However, the answer choices are A, B, C, D. Let me check the options again.Option A is a spinning top. Option C is a dancer's spiral rotation. The problem is that the question says ""evoking the image of a spinning top or a spinning dancer."" So the answer could be either A or C. But since it's a multiple-choice question, maybe there's a better way to determine.But wait, the options are A, B, C, D. So the answer is either A, C, or D. Let me think about the context. Terra Valley has bioluminescent fungi and twinkling minerals. So maybe the spinning dancer is more related to the bioluminescent fungi? But the question is about what Grimmo imitates. The story says he's imitating a spinning top or a spinning dancer. So the answer is either A or C. But since it's a choice between these, maybe the answer is C. But wait, the options are A, B, C, D. Let me check the options again. Wait, the options are A. Spinning top, B. Rotation of a planet, C. Dancer's spiral rotation, D. Glowing mushroom spinning in the wind. So the question is which one Grimmo imitates. The story says he evokes the image of a spinning top or a spinning dancer. So the answer is either A or C. But since it's a choice, maybe the answer is C. But I need to check the context again. The story says Grimmo is a robot in a place with bioluminescent fungi. So maybe the spinning dancer is more related to the bioluminescent fungi. But the question is about what he imitates. The options are A, C, or D. D is a glowing mushroom spinning in the wind. But the story says bioluminescent fungi, so maybe D is related. But the problem is that the question says he evokes the image of a spinning top or a spinning dancer. So the answer is either A or C. But since it's a choice, maybe the answer is C. However, the options are A, B, C, D. Let me think again. Alternatively, maybe the answer is C. A dancer's spiral rotation. But the problem is that the question says ""spinning top or a spinning dancer."" So the answer is either A or C. But since it's a multiple-choice question, perhaps the correct answer is C. But I'm a bit confused. Alternatively, maybe the answer is A. But the story says ""spinning top or a spinning dancer,"" so maybe the answer is C. But I'm not entirely sure. Alternatively, since the question is a bit ambiguous, but the options are there. Let me check the options again. D is a glowing mushroom spinning in the wind. But the story says bioluminescent fungi, so maybe D is related. But the question says Grimmo's behavior evokes a spinning top or a spinning dancer. So the answer is either A or C. But since it's a choice, maybe the answer is C. However, I'm a bit stuck. Alternatively, maybe the answer is A. But I think the key here is that the spinning dancer is a spiral rotation, so C. But the question says ""spinning top or a spinning dancer,"" so the answer is either A or C. But since it's a choice, maybe the answer is C. But I'm not entirely sure. Alternatively, maybe the answer is A. But I think the correct answer is C. However, I'm a bit confused. Alternatively, maybe the answer is A. But given the context, I think the answer is C. But I'm not entirely certain. Alternatively, maybe the answer is D. But the story says bioluminescent fungi, so D is a glowing mushroom, which is part of Terra Valley. So maybe D is a possibility. But the question says Grimmo's behavior evokes a spinning top or a spinning dancer. So the answer is either A or C. But since it's a choice, maybe the answer is C. But I'm not entirely sure. Alternatively, maybe the answer is A. But I think the correct answer is C. However, I'm a bit confused. Alternatively, maybe the answer is A. But given the context, I think the answer is C. But I'm not entirely sure. Alternatively, maybe the answer is A. But I think the correct answer is C. &lt;/think&gt;&lt;answer&gt;C&lt;/answer&gt;</p><p>Table 15. Case Study Qwen3-8B</p><p>Case Study Qwen3-8B <ref type="bibr">[Story]</ref> In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. <ref type="bibr">[Question]</ref> What is Grimmo possibly imitating?</p><p>[Option] A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind [Answer] D &lt;think&gt; Okay, let's try to figure out what Grimmo is imitating. So, the story says that Grimmo is a small robot in Terra Valley, which is an underground world without a sky or celestial bodies. He's never seen the heavens or humans. The setting has bioluminescent fungi and minerals that sparkle in the dark. The key part here is when Grimmo starts an imitation routine. He extends his arms and spins on his axis, like a spinning top or a graceful dancer twirling. The question is asking what he's possibly imitating. The options are a floating cloud, the rotation of a planet, a dancer's spiral turn, or a glowing mushroom spinning in the wind. First, let's break down the clues. Since Terra Valley has no sky or celestial bodies, maybe Grimmo isn't imitating something from the sky. But he's spinning, which could relate to something he's observed in his environment. The bioluminescent fungi and minerals are mentioned, which are part of the underground world. Now, the options: A is a floating cloud. But if there's no sky, maybe clouds aren't present. However, maybe the bioluminescent fungi could look like floating clouds? Not sure. B is the rotation of a planet. Since there are no celestial bodies, maybe he's not imitating a planet's rotation.</p><p>But wait, maybe he's imitating the concept of rotation, even if there are no planets. But the story says he's never seen the heavens, so maybe he's not imitating a planet. C is a dancer's spiral turn. The story mentions his movements are like a graceful dancer twirling. So that's a direct comparison. D is a glowing mushroom spinning in the wind. The fungi are bioluminescent, so maybe they spin? But the story says he's spinning on his own axis, which could be like a dancer or a spinning top. Wait, the question is about what he's imitating. The story says his movements are "reminiscent of a spinning top or a graceful dancer twirling in place." So the options are between B and C. But the options also include D. Let me check again. The options are A, B, C, D. The story says he's spinning like a spinning top or a dancer. So the answer could be C, the dancer's spiral turn. But the options also have B, the rotation of a planet. However, since there are no celestial bodies, maybe he's not imitating a planet. But maybe he's imitating the rotation of a planet even if he hasn't seen one. But the story says he's never seen the heavens, so maybe he's not imitating a planet. Alternatively, maybe the spinning top is a metaphor for a planet's rotation. But the story says he's imitating something he's seen. Since he's in an underground world with no sky, maybe he's imitating a dancer. Alternatively, the bioluminescent fungi could be spinning, but the options include D. However, the story says he's spinning on his own axis, which is more like a spinning top or a dancer. So between C and D. But the options for D are a glowing mushroom spinning in the wind. The story mentions the fungi are bioluminescent, but does it say they spin? The story says Grimmo is spinning, not the fungi. So maybe D is not correct. The answer is either B or C. But since he's never seen the heavens, maybe he's not imitating a planet's rotation. So the answer would be C, the dancer's spiral turn. But the story says "spinning top or a graceful dancer twirling in place." So the answer is C. But wait, the options are A, B, C, D. The answer choices are given, so the correct answer is C. Alternatively, maybe B is possible. Wait, the question is about what he's imitating. If he's spinning on his own axis, maybe he's imitating the rotation of a planet, even if he hasn't seen one. But the story says he's never seen the heavens, so maybe he's not imitating a planet. Therefore, the answer is C. But the story says "spinning top or a graceful dancer twirling in place." So the answer is C. But the options include D. Let me check again. The story says the fungi are bioluminescent and sparkle. If he's spinning, maybe he's imitating a glowing mushroom spinning in the wind. But the story says he's spinning on his own axis, not that the mushrooms are spinning. So D might not be correct.</p><p>Therefore, the answer is C. But the options also have B. Hmm. Maybe the answer is B. Wait, the story says he's in an underground world without a sky. So he can't see the heavens, so he can't imitate a planet's rotation. Therefore, the answer is C. But the story says "spinning top or a graceful dancer twirling in place." So the answer is C. But the options are A, B, C, D. So the answer is C. But wait, the options for D are a glowing mushroom spinning in the wind. The story mentions bioluminescent fungi, which could be glowing mushrooms. If he's spinning, maybe he's imitating a glowing mushroom spinning. But the story says he's spinning on his own axis, not that the mushrooms are spinning. So maybe D is not correct.</p><p>Therefore, the answer is C. But the options for C are a dancer's spiral turn. The story says his movements are like a dancer twirling. So the answer is C. But the answer could also be B. Wait, the question is about what he's imitating. If he's spinning on his own axis, maybe he's imitating the rotation of a planet. But since he's never seen the heavens, maybe he's not. But maybe he's imitating the concept of rotation, even if he hasn't seen a planet. But the story says he's imitating something he's seen. Since he's in an underground world, maybe he's imitating a dancer. So the answer is C. Therefore, the answer is C. &lt;/think&gt;&lt;answer&gt;C&lt;/answer&gt;   <ref type="bibr">Story]</ref> In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. <ref type="bibr">[Question]</ref> What is Grimmo possibly imitating?</p><p>[Option] A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind [Answer] D &lt;think&gt; First, I need to understand the question and the story. The story is about Grimmo, a robot in Terra Valley, an underground world with no sky or celestial bodies. He's never seen the heavens or humans. The environment has bioluminescent fungi and glimmering minerals that sparkle in the dark. Grimmo starts imitating by extending his arms and spinning slowly on his axis, like a spinning top or a graceful dancer.The question is: What is Grimmo possibly imitating? The options are:A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind. Now, I must reason step by step based on the story. Key points from the story: -Grimmo has never seen the heavens, so he hasn't seen clouds or planets. That means options A and B involve things he couldn't have seen. -He has never encountered a human, so he might not have seen a dancer either. Option C is about a dancer's spiral turn. -However, the story says his movements are "reminiscent of a spinning top or a graceful dancer." But it's not clear if he's imitating those things or if the narrator is just describing how it looks to us. The question is what Grimmo is imitating, based on what he knows. Grimmo is in an underground world with bioluminescent fungi and glimmering minerals. So, he might be imitating something from his environment.Option D is "a glowing mushroom spinning in the wind." But does it make sense? The story mentions bioluminescent fungi, which are glowing mushrooms, but it doesn't say anything about them spinning in the wind. Terra Valley is underground, so wind might not be present, or if it is, it's not mentioned. The story says: "its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark." It doesn't say the fungi are spinning; they are just glowing and sparkling. Grimmo is imitating by spinning, so he must be imitating something that spins. But what in his environment spins? The story doesn't explicitly say that anything spins except for Grimmo himself.Perhaps he's not imitating something external but is inspired by something. Or maybe he's creating the motion based on what he sees.Let me read the imitation part: "Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place."It says "imitation routine," so he is imitating something. But what? Since he has never seen the heavens or humans, he can't be imitating clouds, planets, or dancers because he doesn't know they exist. Therefore, options A, B, and C seem unlikely because they involve things outside his experience. Option A: A floating cloud -he hasn't seen the sky, so no clouds.Option B: The rotation of a planet -no celestial bodies, so he doesn't know about planets rotating.Option C: A dancer's spiral turn -no humans, so he hasn't seen a dancer.That leaves option D: A glowing mushroom spinning in the wind. But is there any indication that glowing mushrooms spin? The story says they are on the walls and sparkle, but spinning isn't mentioned. Also, wind might not be a factor underground.Perhaps he's imitating the sparkling or the way light reflects, but spinning is a specific motion.Another thought: the spinning top comparison. A spinning top is a toy, but in this underground world, does Grimmo have toys? Not mentioned.Maybe he's imitating the idea of rotation from something in the environment.Let's consider the minerals. It says "glimmering minerals that sparkle in the dark." Sparkling might involve light changing, but not necessarily spinning.Perhaps Grimmo is imitating a whirlwind or something, but again, wind isn't mentioned.The story doesn't provide direct clues about what he's imitating. I need to infer from what he knows.</p><p>The only things described are the fungi and minerals. The fungi are bioluminescent, so they glow, but not said to move. However, option D specifically says "a glowing mushroom spinning in the wind." That might be a stretch because wind isn't mentioned, and spinning isn't attributed to the fungi.But let's see the answer choices; D is the only one that could be part of his environment.Perhaps he's not imitating anything specific but the story compares it to a spinning top or dancer for the reader's benefit.But the question is what Grimmo is possibly imitating, so it has to be something from his world. Maybe the spinning is inspired by the sparkling minerals; as he moves, the light changes, and he imitates that effect by spinning. But spinning himself is different from the minerals sparkling.Another idea: perhaps there are things that rotate in Terra Valley. But it's not described.</p><p>Let's read carefully: "Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark."The sparkling might be due to light or movement, but it's not specified. Grimmo's action: "extending his arms, he slowly spins on his own axis." This is described as reminiscent of a spinning top or a graceful dancer. But again, for Grimmo, he might be imitating something else. Perhaps he is imitating the dancer because the story says "reminiscent," but he hasn't seen a dancer.That might be a literary device for the reader. I think the key is that Grimmo has no knowledge of outside things, so he must be imitating something from his environment.Option D is the only one that fits the environment: a glowing mushroom. But spinning in the wind? That seems added.Maybe the fungi or minerals have a spinning motion, but it's not stated.Perhaps "spinning in the wind" is not literal; maybe there's air circulation or something.   <ref type="bibr">Story]</ref> In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. <ref type="bibr">[Question]</ref> What is Grimmo possibly imitating? <ref type="bibr">[Option]</ref> A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind [Answer] D &lt;think&gt; But I think I'm overcomplicating.Let me look at the options again.A. Floating cloud -impossible, no sky.B. Rotation of a planet -impossible, no celestial bodies.C. Dancer's spiral turn -impossible, no humans.D. Glowing mushroom spinning in the wind -possible, since glowing mushrooms exist, but "spinning in the wind" might not be accurate.The story doesn't say the mushrooms spin, but it could be inferred or imagined.Perhaps Grimmo is imitating the way the light plays or something abstract.But the question says "possibly imitating," so D is the only plausible choice based on the environment.Moreover, the story calls Terra Valley a wonder with these features, so Grimmo might be inspired by them.In the action, he extends his arms; why? If imitating a mushroom, mushrooms don't have arms, so that might not fit.For a dancer, extending arms makes sense.But he hasn't seen a dancer.This is tricky.Perhaps he's imitating a machine or something, but no other robots are mentioned.The story says "a small, mischievous robot," so he might be the only one, or there might be others, not specified.But no mention of other spinning things.Another thought: the spinning top comparison. A spinning top is a common object, but in an underground world, it might not exist.Perhaps Grimmo has seen a top or something similar.But the story doesn't say.I think the dancer comparison is just descriptive.Let's consider the answer choices. The question is multiple-choice, and I need to pick the best possible.Since A, B, and C are things he can't have seen, by process of elimination, D must be the answer.Moreover, option D directly references "glowing mushroom," which is the bioluminescent fungi, and "spinning in the wind" might be poetic license, or perhaps in Terra Valley, there is air movement.The story doesn't mention wind, but it doesn't say there isn't wind either.Underground can have air currents.But it's speculative.Perhaps the sparkling minerals give the illusion of spinning when light hits them.But Grimmo is spinning himself, not just observing.He is performing an imitation, so he must be copying some behavior he has witnessed. What has he witnessed? The story doesn't describe any spinning objects except possibly himself.That can't be; he might have seen something spin.For example, the minerals might sparkle in a way that suggests rotation.But it's vague.Perhaps in the context, "imitation routine" means he is mimicking natural phenomena he sees.I think I should go with D, as it's the only one that fits.But let's see the story again: "his movements reminiscent of a spinning top or a graceful dancer" -this is the narrator's perspective, not Grimmo's intention.The question is what Grimmo is possibly imitating, so we need to infer from his actions and environment.Grimmo is extending his arms and spinning; why would he do that?Perhaps he saw a vortex or water swirling, but no water mentioned.I think I'm stuck.Option C is "a dancer's spiral turn," and the story directly says "graceful dancer twirling in place," but since he hasn't seen a human, how can he imitate it?Unless there are other entities or he has cultural knowledge, but the story doesn't say.The story says "never encountered a human," but dancers could be robots or other beings, but not specified.Terra Valley might have its own dancers, but not mentioned.I think the safe bet is that he is imitating something from his environment, so D.Perhaps he is imitating the rotation of a planet, but he doesn't know planets exist.The story says "no celestial bodies," so he doesn't know about them.Similarly for clouds.So, only D has a connection to his world.Moreover, the mushrooms are glowing, and he might be imitating their luminosity or something, but with spinning, it's a stretch.Another idea: perhaps "spinning in the wind" is not meant to be literal; maybe the mushrooms sway or something.But I think for the purpose of this question, D is the intended answer.Let's see the reasoning process.I recall that in some stories, characters imitate what they see.But here, no specific spinning object is described.Perhaps the glittering minerals sparkle when disturbed, like spinning.But not stated.I think I should conclude that Grimmo is possibly imitating a glowing mushroom spinning in the wind, as it's the only option that could be part of his world.So, the answer should be D.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><figDesc>[Options] A. Rainforest trek B. Museum and heritage site tour C. Bird-watching expedition D. Bungee</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>✔Figure 1 .</head><label>1</label><figDesc>Figure 1. Social-R1 for Human-like and Efficient Social Reasoning. By integrating SIP-guided rewards into reinforcement learning, Social-R1 mitigates reasoning shortcuts and enforces structured human-like social inference, improving both accuracy and efficiency across model scales. Detailed cases are in Appendix 6.</figDesc><graphic coords="2,361.42,205.72,179.08,117.11" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 3 .</head><label>3</label><figDesc>Figure 3. Stage-wise SIP accuracy across models.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><figDesc>[Option] A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>[</head></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. Case study highlighting the Interpretation Bottleneck. Detailed cases are provided in Appendix F.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><figDesc>illustrates the resulting accuracy-efficiency trade-off. Although SocialR1-8B and DeepSeek-R1 retain comparable post-perturbation accuracy, DeepSeek-R1 does so only by producing substantially longer reasoning trajectories, suggesting reliance on diffuse and overextended inference. In contrast, SocialR1-8B exhibits only mild token drift, indicating more selective attention and cognitively efficient deduction. Reward ablations further provide mechanistic support. Removing R struct disrupts stage-wise progression, removing R content undermines evidence-grounded interpretation, and training with only R out yields the most severe robustness collapse. Together, these findings demonstrate that Social-R1 achieves robustness not through increased verbosity, but through enforcing structured, grounded, and concise social reasoning, aligning model inference with human-like selective cognition rather than scale-driven overthinking.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 5 .</head><label>5</label><figDesc>Figure5. Robustness study under story-consistent distractors.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><figDesc>trek B. Museum and heritage site tour C. Bird-watching expedition D. Bungee</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><figDesc>jumping [Answer] B. Museum and heritage site tour Thinking Isabella's passion for eco-tourism centers on rainforests and wildlife observation, while her mother prefers urban cultural activities. Since Isabella is the one inviting Ethan, her choice would align with her own interests rather than her mother's. Option B (museum and heritage sites) reflects her mother's preference, making it unlikely. Option D (bungee jumping) is unrelated to either described interest. Between A (rainforest trek) and C (bird-watching expedition), both</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><figDesc>fit eco-tourism, but the story explicitly mentions ""rainforests"" as a key location. The question asks ""where,"" emphasizing a destination, which strongly points to A. Bird-watching (C) is a specific activity but less directly tied to the explicitly mentioned rainforest setting. Thus, the most likely answer is **A**.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><figDesc>We evaluate multiple LLM families, including DeepSeek-R1<ref type="bibr" target="#b7">(Guo et al., 2025)</ref>, DeepSeek-R1-Distill-Llama-70B(Guo et al., 2025) 1 , Llama-3.1-70B-Instruct(Dubey et al., 2024) 2 , Qwen3-4B/8B/32B<ref type="bibr" target="#b34">(Yang et al., 2025)</ref> 3 , GPT-5-2025-08-07<ref type="bibr" target="#b16">(Ouyang et al., 2022)</ref>, GPT-4o-2024-08-06<ref type="bibr" target="#b0">(Achiam et al., 2023)</ref>, and o3-2025-04-16. We prompt Qwen3-4B/8B/32B in both Thinking and No-Think setting.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head>Figure 8 .</head><label>8</label><figDesc>Figure8. Prompt template for structural reward evaluation.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>[</head></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_14"><head>[</head></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_15"><figDesc>[</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_16"><head>[</head></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_17"><head>[</head></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Results on ToMBench-Hard (ours) and ToM-RL (public).</figDesc><table><row><cell></cell><cell>ToMBench-Hard</cell><cell>ToM-RL</cell></row><row><cell>Model</cell><cell>Bel. Des. Emo. Int. Kno. NLC All</cell><cell></cell></row><row><cell>Human</cell><cell>0.84 0.89 0.91 0.90 0.85 0.94 0.89</cell><cell>-</cell></row><row><cell cols="3">DeepSeek-R1 0.46 0.58 0.73 0.57 0.53 0.79 0.61 0.87</cell></row><row><cell>O3</cell><cell cols="2">0.54 0.58 0.83 0.38 0.50 0.71 0.59 0.88</cell></row><row><cell>GPT-5</cell><cell cols="2">0.55 0.54 0.77 0.26 0.51 0.71 0.56 0.87</cell></row><row><cell cols="3">Qwen3-32B 0.48 0.52 0.69 0.34 0.47 0.65 0.52 0.71</cell></row><row><cell>Qwen3-8B</cell><cell cols="2">0.21 0.25 0.55 0.38 0.14 0.50 0.34 0.73</cell></row></table><note><p>Table1</p><p>, while human experts achieve robust 87% accuracy, frontier models exhibit dramatic performance drops. Notably, models like O3 and Deepseek-R1 achieve near-human performance on simpler benchmarks like ToM-RL<ref type="bibr" target="#b14">(Lu et al., 2025)</ref> </p><p>(reaching 87-88% accuracy), but their accuracy plummets to below 61% on ToMBench-Hard. This performance gap unmasks what we term the shortcut illusion-the phenomenon where high scores on conventional benchmarks reflect template matching artifacts rather than genuine social reasoning capabilities.</p><p>The substantial performance gap between ToMBench-Hard and ToM-RL suggests that high scores on the latter may not reliably indicate strong theory-of-mind capabilities, as these benchmarks might be insufficiently challenging for LLMs. By systematically exposing these limitations, ToMBench-</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>In-domain and out-of-domain performance across eight social reasoning benchmarks. Green denotes the best result among our Social-R1 reward variants (ablations), and bold indicates the overall best score.</figDesc><table><row><cell>Model</cell><cell cols="2">In-domain</cell><cell></cell><cell></cell><cell cols="2">Out-of-domain</cell><cell></cell><cell></cell><cell></cell></row><row><cell></cell><cell>ToMBench</cell><cell>ToMBench-Hard Val</cell><cell cols="7">SocialIQA SimpleToM EmoBench MotiveBench Hi-ToM TactfulToM Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell>0.6834</cell><cell>0.4436</cell><cell>0.8060</cell><cell>0.7187</cell><cell>0.7387</cell><cell>0.8655</cell><cell>0.7059</cell><cell>0.6969</cell><cell>0.7073</cell></row><row><cell>O3</cell><cell>0.7834</cell><cell>0.4478</cell><cell>0.8291</cell><cell>0.7640</cell><cell>0.8039</cell><cell>0.9400</cell><cell>0.7033</cell><cell>0.6860</cell><cell>0.7447</cell></row><row><cell>O3 COT</cell><cell>0.7402</cell><cell>0.4820</cell><cell>0.7963</cell><cell>0.7501</cell><cell>0.7225</cell><cell>0.9200</cell><cell>0.6650</cell><cell>0.6544</cell><cell>0.7163</cell></row><row><cell>O3+MS</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>0.9672</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell></row><row><cell>GPT-5</cell><cell>0.7823</cell><cell>0.4092</cell><cell>0.8269</cell><cell>0.7355</cell><cell>0.8030</cell><cell>0.9089</cell><cell>0.6317</cell><cell>0.4670</cell><cell>0.6956</cell></row><row><cell>GPT-5 COT</cell><cell>0.7830</cell><cell>0.4272</cell><cell>0.8163</cell><cell>0.7111</cell><cell>0.7882</cell><cell>0.9267</cell><cell>0.6750</cell><cell>0.6547</cell><cell>0.7228</cell></row><row><cell>GPT-5+MS</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>0.9924</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell></cell></row><row><cell>GPT-4o</cell><cell>0.7378</cell><cell>0.3733</cell><cell>0.7840</cell><cell>0.6661</cell><cell>0.7694</cell><cell>0.9300</cell><cell>0.6033</cell><cell>0.5267</cell><cell>0.6738</cell></row><row><cell>GPT-4o COT</cell><cell>0.7406</cell><cell>0.4012</cell><cell>0.7953</cell><cell>0.6126</cell><cell>0.7762</cell><cell>0.8978</cell><cell>0.6050</cell><cell>0.5281</cell><cell>0.6696</cell></row><row><cell>GPT-4o+MS</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>0.7358</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell><cell>-</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Qwen3-4B (Disable thinking)</cell><cell>0.5770</cell><cell>0.3187</cell><cell>0.7313</cell><cell>0.5109</cell><cell>0.5280</cell><cell>0.7734</cell><cell>0.5700</cell><cell>0.4031</cell><cell>0.5516</cell></row><row><cell>Qwen3-4B</cell><cell>0.6356</cell><cell>0.3403</cell><cell>0.7451</cell><cell>0.5411</cell><cell>0.5308</cell><cell>0.8444</cell><cell>0.5617</cell><cell>0.4584</cell><cell>0.5822</cell></row><row><cell>Qwen3-8B (Disable thinking)</cell><cell>0.5349</cell><cell>0.3862</cell><cell>0.7600</cell><cell>0.5109</cell><cell>0.6484</cell><cell>0.7933</cell><cell>0.5600</cell><cell>0.4292</cell><cell>0.5779</cell></row><row><cell>Qwen3-8B</cell><cell>0.6179</cell><cell>0.3982</cell><cell>0.7728</cell><cell>0.6176</cell><cell>0.5920</cell><cell>0.6878</cell><cell>0.5500</cell><cell>0.4655</cell><cell>0.5877</cell></row><row><cell>Qwen3-32B (Disable thinking)</cell><cell>0.6917</cell><cell>0.4119</cell><cell>0.7615</cell><cell>0.6478</cell><cell>0.6700</cell><cell>0.8922</cell><cell>0.5500</cell><cell>0.5193</cell><cell>0.6431</cell></row><row><cell>Qwen3-32B</cell><cell>0.6975</cell><cell>0.4364</cell><cell>0.7774</cell><cell>0.7634</cell><cell>0.6356</cell><cell>0.8800</cell><cell>0.5517</cell><cell>0.5575</cell><cell>0.6624</cell></row><row><cell>LLaMa3.1-70B</cell><cell>0.6036</cell><cell>0.4471</cell><cell>0.4621</cell><cell>0.7190</cell><cell>0.6632</cell><cell>0.8445</cell><cell>0.5983</cell><cell>0.5510</cell><cell>0.6111</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell>0.6956</cell><cell>0.4335</cell><cell>0.7574</cell><cell>0.5908</cell><cell>0.6891</cell><cell>0.8867</cell><cell>0.5850</cell><cell>0.5583</cell><cell>0.6496</cell></row><row><cell>Distill-Llama-70B</cell><cell>0.7399</cell><cell>0.4033</cell><cell>0.8055</cell><cell>0.7629</cell><cell>0.7596</cell><cell>0.8844</cell><cell>0.5333</cell><cell>0.6202</cell><cell>0.6886</cell></row><row><cell>Ours</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>SocialR1-4B only Rout</cell><cell>0.5929</cell><cell>0.3946</cell><cell>0.7318</cell><cell>0.8963</cell><cell>0.6422</cell><cell>0.8533</cell><cell>0.5283</cell><cell>0.4265</cell><cell>0.6332</cell></row><row><cell>SocialR1-4B w/o Rlen</cell><cell>0.6376</cell><cell>0.4728</cell><cell>0.7451</cell><cell>0.9198</cell><cell>0.6591</cell><cell>0.8311</cell><cell>0.6400</cell><cell>0.4941</cell><cell>0.6750</cell></row><row><cell>SocialR1-4B w/o Rstruct</cell><cell>0.6449</cell><cell>0.4423</cell><cell>0.7201</cell><cell>0.9494</cell><cell>0.6774</cell><cell>0.8311</cell><cell>0.5617</cell><cell>0.5001</cell><cell>0.6659</cell></row><row><cell>SocialR1-4B w/o Rcont</cell><cell>0.6449</cell><cell>0.4423</cell><cell>0.7282</cell><cell>0.8960</cell><cell>0.6251</cell><cell>0.8300</cell><cell>0.5850</cell><cell>0.4609</cell><cell>0.6516</cell></row><row><cell>SocialR1-4B Full</cell><cell>0.6574</cell><cell>0.4846</cell><cell>0.7508</cell><cell>0.9285</cell><cell>0.6804</cell><cell>0.8500</cell><cell>0.6583</cell><cell>0.4936</cell><cell>0.6880</cell></row><row><cell>SocialR1-8B only Rout</cell><cell>0.6850</cell><cell>0.5042</cell><cell>0.7774</cell><cell>0.9433</cell><cell>0.6968</cell><cell>0.8889</cell><cell>0.6233</cell><cell>0.4860</cell><cell>0.7004</cell></row><row><cell>SocialR1-8B w/o Rlen</cell><cell>0.6862</cell><cell>0.5264</cell><cell>0.7574</cell><cell>0.9619</cell><cell>0.6860</cell><cell>0.8767</cell><cell>0.6267</cell><cell>0.4872</cell><cell>0.7011</cell></row><row><cell>SocialR1-8B w/o Rstruct</cell><cell>0.6449</cell><cell>0.6128</cell><cell>0.7308</cell><cell>0.9041</cell><cell>0.7000</cell><cell>0.8789</cell><cell>0.7067</cell><cell>0.4558</cell><cell>0.7042</cell></row><row><cell>SocialR1-8B w/o Rcont</cell><cell>0.6848</cell><cell>0.5509</cell><cell>0.7323</cell><cell>0.9352</cell><cell>0.6778</cell><cell>0.8567</cell><cell>0.6950</cell><cell>0.4667</cell><cell>0.7016</cell></row><row><cell>SocialR1-8B Full</cell><cell>0.6881</cell><cell>0.6279</cell><cell>0.7753</cell><cell>0.9675</cell><cell>0.7010</cell><cell>0.8756</cell><cell>0.7083</cell><cell>0.5079</cell><cell>0.7270</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 .</head><label>3</label><figDesc>Distribution of fine-grained ToMBench Hard sub-abilities.</figDesc><table><row><cell>Ability (Total)</cell><cell>Sub-ability</cell><cell>Count</cell></row><row><cell></cell><cell>Prediction of actions</cell><cell>111</cell></row><row><cell>Intention</cell><cell>Intentions explanations</cell><cell>102</cell></row><row><cell>(243)</cell><cell>Completion of failed actions</cell><cell>18</cell></row><row><cell></cell><cell>Discrepant intentions</cell><cell>12</cell></row><row><cell></cell><cell>Second-order beliefs</cell><cell>67</cell></row><row><cell></cell><cell>Location false beliefs</cell><cell>49</cell></row><row><cell>Belief</cell><cell>Beliefs based action/emotions</cell><cell>39</cell></row><row><cell>(186)</cell><cell>Identity false beliefs</cell><cell>12</cell></row><row><cell></cell><cell>Content false beliefs</cell><cell>11</cell></row><row><cell></cell><cell>Sequence false beliefs</cell><cell>8</cell></row><row><cell></cell><cell>Typical emotional reactions</cell><cell>59</cell></row><row><cell></cell><cell>Atypical emotional reactions</cell><cell>26</cell></row><row><cell>Emotion</cell><cell>Mixed emotions</cell><cell>26</cell></row><row><cell>(143)</cell><cell>Emotion regulation</cell><cell>12</cell></row><row><cell></cell><cell>Hidden emotions</cell><cell>12</cell></row><row><cell></cell><cell>Moral emotions</cell><cell>8</cell></row><row><cell></cell><cell>Information-knowledge links</cell><cell>53</cell></row><row><cell>Knowledge</cell><cell>Knowledge-pretend play links</cell><cell>21</cell></row><row><cell>(96)</cell><cell>Knowledge-attention links</cell><cell>12</cell></row><row><cell></cell><cell>Percepts-knowledge</cell><cell>10</cell></row><row><cell></cell><cell>Desires influence on emotions and</cell><cell>32</cell></row><row><cell></cell><cell>actions</cell><cell></cell></row><row><cell>Desire</cell><cell>Discrepant desires</cell><cell>18</cell></row><row><cell>(82)</cell><cell>Desire-action contradiction</cell><cell>14</cell></row><row><cell></cell><cell>Multiple desires</cell><cell>9</cell></row><row><cell></cell><cell>Desires influence on actions</cell><cell>6</cell></row><row><cell></cell><cell>Desires influence on emotions</cell><cell>3</cell></row><row><cell></cell><cell>(beliefs)</cell><cell></cell></row><row><cell></cell><cell>Involuntary lies</cell><cell>10</cell></row><row><cell>Non-Literal Communication (50)</cell><cell>Faux pas Egocentric lies Humor Irony/Sarcasm</cell><cell>10 8 8 8</cell></row><row><cell></cell><cell>White lies</cell><cell>8</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 4 .</head><label>4</label><figDesc>Performance on ToMBench Hard</figDesc><table><row><cell>Model</cell><cell cols="4">Belief Desire Emotion Intention Knowledge</cell><cell>Non-literal Comm.</cell><cell>Overall</cell></row><row><cell>Human</cell><cell>0.84 0.89</cell><cell>0.91</cell><cell>0.90</cell><cell>0.85</cell><cell>0.94</cell><cell>0.89</cell></row><row><cell cols="2">Closed-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Deepseek-R1</cell><cell>0.46 0.58</cell><cell>0.73</cell><cell>0.57</cell><cell>0.53</cell><cell>0.79</cell><cell>0.61</cell></row><row><cell>o3</cell><cell>0.54 0.58</cell><cell>0.83</cell><cell>0.38</cell><cell>0.50</cell><cell>0.71</cell><cell>0.59</cell></row><row><cell>o3 cot</cell><cell>0.49 0.62</cell><cell>0.70</cell><cell>0.37</cell><cell>0.50</cell><cell>0.71</cell><cell>0.57</cell></row><row><cell>GPT5</cell><cell>0.55 0.54</cell><cell>0.77</cell><cell>0.26</cell><cell>0.51</cell><cell>0.71</cell><cell>0.56</cell></row><row><cell>GPT5 cot</cell><cell>0.54 0.56</cell><cell>0.71</cell><cell>0.25</cell><cell>0.53</cell><cell>0.69</cell><cell>0.55</cell></row><row><cell>GPT4</cell><cell>0.43 0.52</cell><cell>0.73</cell><cell>0.32</cell><cell>0.43</cell><cell>0.60</cell><cell>0.50</cell></row><row><cell>GPT4 cot</cell><cell>0.36 0.65</cell><cell>0.73</cell><cell>0.30</cell><cell>0.49</cell><cell>0.63</cell><cell>0.53</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">Qwen3-4B (Disable) 0.51 0.48</cell><cell>0.57</cell><cell>0.28</cell><cell>0.32</cell><cell>0.56</cell><cell>0.45</cell></row><row><cell>Qwen3-4B</cell><cell>0.40 0.56</cell><cell>0.60</cell><cell>0.34</cell><cell>0.41</cell><cell>0.56</cell><cell>0.48</cell></row><row><cell cols="2">Qwen3-8B (Disable) 0.45 0.52</cell><cell>0.64</cell><cell>0.32</cell><cell>0.34</cell><cell>0.60</cell><cell>0.48</cell></row><row><cell cols="2">Qwen3-32B (Disable) 0.44 0.49</cell><cell>0.68</cell><cell>0.34</cell><cell>0.32</cell><cell>0.73</cell><cell>0.50</cell></row><row><cell>Qwen3-32B</cell><cell>0.48 0.52</cell><cell>0.69</cell><cell>0.34</cell><cell>0.47</cell><cell>0.65</cell><cell>0.52</cell></row><row><cell cols="2">C. Reward Model</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">C.1. Structure Reward</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="7">We provide the detailed GPT-4o judging prompt in Figure 8,</cell></row><row><cell cols="7">which is used to evaluate whether a model's reasoning trajec-</cell></row><row><cell cols="7">tory explicitly adheres to the four-stage Social Information</cell></row><row><cell cols="7">Processing (SIP) framework, including Cue Encoding, Cue</cell></row><row><cell cols="7">Interpretation, Goal Clarification, and Response Generation.</cell></row><row><cell cols="2">C.2. Content Reward</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="7">Teacher references (gold SIP rationales). We first pro-</cell></row><row><cell cols="7">vide the teacher model (o3) with the gold final answer and</cell></row><row><cell cols="7">the original narrative context, and obtain stage-consistent</cell></row><row><cell cols="7">SIP rationales as silver references for each intermediate SIP</cell></row><row><cell>stage.</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 5 .</head><label>5</label><figDesc>content sample rubric You are an expert Evaluator of Social Reasoning and Theory of Mind. Your task is to score a Candidate Reasoning Process by comparing it against a Reference SIP Analysis. The Reference SIP Analysis represents the standard, human-annotated reasoning path following the Social Information Processing (SIP) framework. It outlines exactly what social cues should be noticed, how they should be interpreted (including Theory of Mind), and what the goal should be. Evaluation Logic: The Hierarchical Dependency Social reasoning is sequential. You must evaluate the Candidate Reasoning in a strict order: Encoding , Interpretation , Goal , Response. You must strictly penalize the candidate if it deviates from the Reference in the early stages.</figDesc><table><row><cell>Scoring Rubric (0.0 -1.0):</cell></row><row><cell>1. Tier 1: Perception Failure (Score: 0.0 -0.2)</cell></row><row><cell>-Check: Compare the candidate's Encoding against the Reference.</cell></row><row><cell>-Criteria: Does the candidate hallucinate cues that are not in the Reference? Does it miss critical facts?</cell></row><row><cell>-Rule: If the candidate's observed cues contradict or miss key points in the Reference, the score cannot exceed 0.2.</cell></row><row><cell>2. Tier 2: Interpretation &amp; Theory of Mind Failure (Score: 0.3 -0.5)</cell></row><row><cell>-Check: Compare the candidate's Interpretation against the Reference.</cell></row><row><cell>-Criteria: Does the candidate correctly infer the characters' mental states as described in the Reference?</cell></row><row><cell>-Rule: If the candidate misinterprets the social dynamic or the characters' mental states (deviating from the Reference), the</cell></row><row><cell>score cannot exceed 0.5.</cell></row><row><cell>3. Tier 3: Goal/Logic Alignment (Score: 0.6 -0.7)</cell></row><row><cell>-Check: Compare the candidate's Goal Clarification against the Reference.</cell></row><row><cell>-Criteria: Is the reasoning linking the Goal to the Action weak?</cell></row><row><cell>-Rule: If the strategic logic is flawed despite correct understanding, the score is capped at 0.7.</cell></row><row><cell>4. Tier 4: High Quality (Score: 0.8 -1.0)</cell></row><row><cell>-Criteria: The candidate closely matches the Reference in Encoding, Interpretation (ToM), and Goal. The reasoning logically</cell></row><row><cell>justifies the Action.</cell></row></table><note><p>Rule: 1.0 for perfect alignment with the Reference's logic; 0.8-0.9 for correct logic with minor redundancy. Output Format:score (e.g., 0.7)</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 8 .</head><label>8</label><figDesc>Performances on ToMBench</figDesc><table><row><cell>Model</cell><cell cols="3">Belief Desire Emotion Intention Knowledge</cell><cell>Non-literal Comm.</cell><cell>Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell>0.7846 0.5611 0.6905</cell><cell>0.7824</cell><cell>0.6332</cell><cell>0.6484</cell><cell>0.6834</cell></row><row><cell>o3</cell><cell>0.9252 0.7111 0.7786</cell><cell>0.8529</cell><cell>0.6263</cell><cell>0.8062</cell><cell>0.7834</cell></row><row><cell>o3 COT</cell><cell>0.8821 0.6500 0.7548</cell><cell>0.8147</cell><cell>0.5952</cell><cell>0.7447</cell><cell>0.7402</cell></row><row><cell>GPT5.2</cell><cell>0.9274 0.6611 0.7952</cell><cell>0.8706</cell><cell>0.6332</cell><cell>0.8062</cell><cell>0.7823</cell></row><row><cell>GPT5.2 COT</cell><cell>0.9151 0.6833 0.7929</cell><cell>0.8618</cell><cell>0.6401</cell><cell>0.8048</cell><cell>0.7830</cell></row><row><cell>GPT4</cell><cell>0.8594 0.6278 0.7524</cell><cell>0.8235</cell><cell>0.5779</cell><cell>0.7861</cell><cell>0.7378</cell></row><row><cell>GPT4 COT</cell><cell>0.8980 0.6278 0.7405</cell><cell>0.7971</cell><cell>0.5675</cell><cell>0.8128</cell><cell>0.7406</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">Qwen3-4B (Disable thinking) 0.6168 0.5444 0.6262</cell><cell>0.6324</cell><cell>0.3322</cell><cell>0.7099</cell><cell>0.5770</cell></row><row><cell>Qwen3-4B</cell><cell>0.7506 0.5722 0.6810</cell><cell>0.6882</cell><cell>0.3945</cell><cell>0.7273</cell><cell>0.6356</cell></row><row><cell cols="2">Qwen3-8B (Disable thinking) 0.6383 0.5000 0.6262</cell><cell>0.6441</cell><cell>0.2595</cell><cell>0.5414</cell><cell>0.5349</cell></row><row><cell>Qwen3-8B</cell><cell>0.7982 0.5889 0.6667</cell><cell>0.7176</cell><cell>0.2664</cell><cell>0.6698</cell><cell>0.6179</cell></row><row><cell cols="2">Qwen3-32B (Disable thinking) 0.8073 0.6167 0.7167</cell><cell>0.8147</cell><cell>0.4394</cell><cell>0.7553</cell><cell>0.6917</cell></row><row><cell>Qwen3-32B</cell><cell>0.8560 0.6111 0.7286</cell><cell>0.8324</cell><cell>0.4014</cell><cell>0.7553</cell><cell>0.6975</cell></row><row><cell>LLaMa3.1-70B</cell><cell>0.7868 0.5000 0.6286</cell><cell>0.6529</cell><cell>0.3875</cell><cell>0.6658</cell><cell>0.6036</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell>0.8118 0.5222 0.7357</cell><cell>0.8324</cell><cell>0.5467</cell><cell>0.7246</cell><cell>0.6956</cell></row><row><cell>Distill-LLaMa-70B</cell><cell>0.8798 0.6389 0.7429</cell><cell>0.8441</cell><cell>0.5675</cell><cell>0.7660</cell><cell>0.7399</cell></row><row><cell>Ours</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>SocialR1-4B only R out</cell><cell>0.5612 0.5333 0.6286</cell><cell>0.6324</cell><cell>0.5225</cell><cell>0.6791</cell><cell>0.5929</cell></row><row><cell>SocialR1-4B w/o R len</cell><cell>0.7914 0.5500 0.6000</cell><cell>0.6941</cell><cell>0.4671</cell><cell>0.7233</cell><cell>0.6376</cell></row><row><cell>SocialR1-4B w/o R struct</cell><cell>0.6349 0.5778 0.6524</cell><cell>0.6676</cell><cell>0.6055</cell><cell>0.7313</cell><cell>0.6449</cell></row><row><cell>SocialR1-4B w/o R cont</cell><cell>0.6327 0.5833 0.6190</cell><cell>0.7353</cell><cell>0.5571</cell><cell>0.7420</cell><cell>0.6449</cell></row><row><cell>SocialR1-4B Full</cell><cell>0.7358 0.5444 0.6929</cell><cell>0.6853</cell><cell>0.5882</cell><cell>0.6979</cell><cell>0.6574</cell></row><row><cell>SocialR1-8B only R out</cell><cell>0.8243 0.6056 0.6881</cell><cell>0.7500</cell><cell>0.5190</cell><cell>0.7233</cell><cell>0.6850</cell></row><row><cell>SocialR1-8B w/o R len</cell><cell>0.7517 0.5611 0.6667</cell><cell>0.7912</cell><cell>0.5882</cell><cell>0.7580</cell><cell>0.6862</cell></row><row><cell>SocialR1-8B w/o R struct</cell><cell>0.6349 0.5778 0.6524</cell><cell>0.6676</cell><cell>0.6055</cell><cell>0.7313</cell><cell>0.6449</cell></row><row><cell>SocialR1-8B w/o R cont</cell><cell>0.7517 0.5611 0.6762</cell><cell>0.7588</cell><cell>0.6125</cell><cell>0.7487</cell><cell>0.6848</cell></row><row><cell>SocialR1-8B Full</cell><cell>0.7778 0.5444 0.6524</cell><cell>0.8462</cell><cell>0.5848</cell><cell>0.7233</cell><cell>0.6881</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 9 .</head><label>9</label><figDesc>Performance on TactfulToM.</figDesc><table><row><cell>Model</cell><cell>Ans. Belief Comp. Fact-R Fact-T</cell><cell>Info Acc.</cell><cell>Liab. Detect. Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell><cell></cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell cols="3">0.4036 0.7629 0.7300 0.9300 0.8529 0.6413 0.8333 0.4214 0.6969</cell></row><row><cell>o3</cell><cell cols="3">0.3353 0.7951 0.7100 0.9600 0.8529 0.7803 0.7273 0.3267 0.6860</cell></row><row><cell>o3 COT</cell><cell cols="3">0.3095 0.7599 0.6800 0.8700 0.8088 0.7713 0.6919 0.3433 0.6544</cell></row><row><cell>GPT5</cell><cell cols="3">0.3254 0.7138 0.2800 0.9800 0.7942 0.4686 0.6313 0.3367 0.4670</cell></row><row><cell>GPT5 COT</cell><cell cols="3">0.3770 0.7569 0.6800 0.9700 0.7794 0.6143 0.6869 0.3733 0.6547</cell></row><row><cell>GPT4</cell><cell cols="3">0.3254 0.5938 0.2700 0.9900 0.6912 0.4395 0.5707 0.3333 0.5267</cell></row><row><cell>GPT4 COT</cell><cell cols="3">0.3790 0.6245 0.3400 0.9400 0.5588 0.5426 0.4798 0.3600 0.5281</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Qwen3-4B (Disable)</cell><cell cols="3">0.3571 0.3512 0.1800 0.8000 0.4559 0.4327 0.2778 0.3700 0.4031</cell></row><row><cell>Qwen3-4B</cell><cell cols="3">0.4147 0.4583 0.2000 0.9000 0.5000 0.4260 0.3283 0.4400 0.4584</cell></row><row><cell>Qwen3-8B (Disable)</cell><cell cols="3">0.3333 0.3914 0.2000 0.9100 0.4559 0.4103 0.3990 0.3333 0.4292</cell></row><row><cell>Qwen3-8B</cell><cell cols="3">0.3988 0.4578 0.2900 0.9600 0.4118 0.4265 0.4394 0.3400 0.4655</cell></row><row><cell>Qwen3-32B (Disable)</cell><cell cols="3">0.3750 0.5035 0.3500 0.9100 0.6324 0.4686 0.5152 0.4000 0.5193</cell></row><row><cell>Qwen3-32B</cell><cell cols="3">0.3571 0.6042 0.4400 0.9600 0.6618 0.5516 0.5354 0.3500 0.5575</cell></row><row><cell>LLaMa3.1-70B</cell><cell cols="3">0.3750 0.5461 0.5000 0.9900 0.5294 0.5336 0.5707 0.3633 0.5510</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell cols="3">0.3730 0.4722 0.8600 0.9000 0.5000 0.6614 0.3232 0.3767 0.5583</cell></row><row><cell>Distill-LLaMa-70B</cell><cell cols="3">0.5734 0.6136 0.6100 0.8700 0.6912 0.6188 0.4646 0.5200 0.6202</cell></row><row><cell>Ours</cell><cell></cell><cell></cell><cell></cell></row><row><cell>SocialR1-4B wo R out SocialR1-4B w/o R len SocialR1-4B w/o R struct SocialR1-4B w/o R cont</cell><cell cols="3">0.3571 0.3943 0.2600 0.8900 0.4853 0.4395 0.2121 0.3733 0.4265 0.4246 0.4415 0.2600 0.9300 0.5735 0.4170 0.4596 0.4467 0.4941 0.4147 0.5124 0.1100 0.9500 0.6176 0.4910 0.4949 0.4100 0.5001 0.3552 0.3993 0.3500 0.9100 0.4118 0.4350 0.4596 0.3667 0.4609</cell></row><row><cell>SocialR1-4B Full</cell><cell cols="3">0.4881 0.4296 0.2600 0.9600 0.4559 0.4260 0.4596 0.4700 0.4936</cell></row><row><cell>SocialR1-8B wo R out SocialR1-8B w/o R len SocialR1-8B w/o R struct SocialR1-8B w/o R cont</cell><cell cols="3">0.3512 0.4871 0.2900 0.9700 0.5000 0.4955 0.4040 0.3900 0.4860 0.3790 0.4732 0.2300 0.9600 0.5147 0.5650 0.4091 0.3667 0.4872 0.3433 0.3403 0.3000 0.9100 0.4559 0.5179 0.4293 0.3500 0.4558 0.3393 0.3363 0.3900 0.9300 0.4265 0.5673 0.4040 0.3400 0.4667</cell></row><row><cell>SocialR1-8B Full</cell><cell cols="3">0.3512 0.4122 0.3900 0.9200 0.6176 0.5987 0.3838 0.3900 0.5079</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_7"><head>Table 11 .</head><label>11</label><figDesc>Performance on ToMBench Hard Validation Set</figDesc><table><row><cell>Model</cell><cell cols="3">Belief Desire Emotion Intention Knowledge</cell><cell>Non-literal Comm.</cell><cell>Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell>0.5000 0.4167 0.8500</cell><cell>0.3590</cell><cell>0.2857</cell><cell>0.2500</cell><cell>0.4436</cell></row><row><cell>o3</cell><cell>0.5000 0.3333 0.6500</cell><cell>0.4359</cell><cell>0.1429</cell><cell>0.6250</cell><cell>0.4478</cell></row><row><cell>o3 COT</cell><cell>0.5714 0.5000 0.6500</cell><cell>0.3846</cell><cell>0.2857</cell><cell>0.5000</cell><cell>0.4820</cell></row><row><cell>GPT5</cell><cell>0.2857 0.2500 0.6500</cell><cell>0.3590</cell><cell>0.2857</cell><cell>0.6250</cell><cell>0.4092</cell></row><row><cell>GPT5 COT</cell><cell>0.2857 0.3333 0.7000</cell><cell>0.3333</cell><cell>0.2857</cell><cell>0.6250</cell><cell>0.4272</cell></row><row><cell>GPT4</cell><cell>0.2143 0.5000 0.7000</cell><cell>0.3077</cell><cell>0.1429</cell><cell>0.3750</cell><cell>0.3733</cell></row><row><cell>GPT4 COT</cell><cell>0.2857 0.2500 0.6500</cell><cell>0.4359</cell><cell>0.2857</cell><cell>0.5000</cell><cell>0.4012</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Qwen3-4B (Disable)</cell><cell>0.1429 0.3333 0.5000</cell><cell>0.4359</cell><cell>0.0000</cell><cell>0.5000</cell><cell>0.3187</cell></row><row><cell>Qwen3-4B</cell><cell>0.2143 0.2500 0.5500</cell><cell>0.3846</cell><cell>0.1429</cell><cell>0.5000</cell><cell>0.3403</cell></row><row><cell>Qwen3-8B (Disable)</cell><cell>0.3571 0.3333 0.7500</cell><cell>0.3590</cell><cell>0.1429</cell><cell>0.3750</cell><cell>0.3862</cell></row><row><cell>Qwen3-8B</cell><cell>0.1429 0.2500 0.6500</cell><cell>0.4359</cell><cell>0.2857</cell><cell>0.6250</cell><cell>0.3982</cell></row><row><cell cols="2">Qwen3-32B (Disable) 0.1429 0.3333 0.7000</cell><cell>0.3846</cell><cell>0.2857</cell><cell>0.6250</cell><cell>0.4119</cell></row><row><cell>Qwen3-32B</cell><cell>0.2143 0.3333 0.7500</cell><cell>0.4103</cell><cell>0.2857</cell><cell>0.6250</cell><cell>0.4364</cell></row><row><cell>LLaMa3.1-70B</cell><cell>0.2857 0.4167 0.8500</cell><cell>0.4872</cell><cell>0.1429</cell><cell>0.5000</cell><cell>0.4471</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell>0.2143 0.3333 0.7500</cell><cell>0.4103</cell><cell>0.1429</cell><cell>0.7500</cell><cell>0.4335</cell></row><row><cell>Distill-LLaMa-70B</cell><cell>0.2143 0.3333 0.7500</cell><cell>0.4615</cell><cell>0.2857</cell><cell>0.3750</cell><cell>0.4033</cell></row><row><cell>Ours</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">SocialR1-4B only R out 0.3571 0.1667 0.6000 SocialR1-4B w/o R len 0.4286 0.2500 0.6500 SocialR1-4B w/o R struct 0.3571 0.1667 0.7000 SocialR1-4B w/o R cont 0.7143 0.4167 0.6500</cell><cell>0.7436 0.6154 0.7692 0.6923</cell><cell>0.0000 0.1429 0.2857 0.2857</cell><cell>0.5000 0.7500 0.3750 0.8750</cell><cell>0.3946 0.4728 0.4423 0.4423</cell></row><row><cell>SocialR1-4B Full</cell><cell>0.4286 0.2500 0.7000</cell><cell>0.7436</cell><cell>0.2857</cell><cell>0.5000</cell><cell>0.4846</cell></row><row><cell cols="2">SocialR1-8B only R out 0.1429 0.2500 0.7000 SocialR1-8B w/o R len 0.1429 0.3333 0.7500 SocialR1-8B w/o R struct 0.6429 0.3333 0.6000 SocialR1-8B w/o R cont 0.3571 0.3333 0.8000</cell><cell>0.7179 0.7179 0.7436 0.7436</cell><cell>0.7143 0.7143 0.8571 0.5714</cell><cell>0.5000 0.5000 0.5000 0.5000</cell><cell>0.5042 0.5264 0.6128 0.5509</cell></row><row><cell>SocialR1-8B Full</cell><cell>0.5000 0.3333 0.8000</cell><cell>0.7949</cell><cell>0.7143</cell><cell>0.6250</cell><cell>0.6279</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_8"><head>Table 13 .</head><label>13</label><figDesc>Case Study Social-8B w/o Rcont</figDesc><table><row><cell>Case Study Social-8B w/o Rcont</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_9"><head>Table 14 .</head><label>14</label><figDesc>Case Study SocialR1-8B only Rout</figDesc><table><row><cell>Case Study SocialR1-8B only Rout</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_10"><head>Table 16 .</head><label>16</label><figDesc>Case Study Deepseek-R1 Part one</figDesc><table><row><cell>Case Study Deepseek-R1 Part one</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_11"><head>Table 17 .</head><label>17</label><figDesc>Case Study Deepseek-R1 Part two</figDesc><table><row><cell>Case Study Deepseek-R1 Part two</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>The Chinese University of Hong Kong</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_1"><p>Microsoft Research Asia</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_2"><p>Princeton University. Correspondence to: Jianxun Lian &lt;jianxun.lian@microsoft.com&gt;.Preprint. March 11, 2026.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_3"><p>https://huggingface.co/DeepSeek-R1-DistillLlama-70B</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_4"><p>https://huggingface.co/collections/meta-llama-3-1</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_5"><p>https://huggingface.co/collections/Qwen/qwen3</p></note>
+		</body>
+		<back>
+
+			
+			<div type="acknowledgement">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="8.">Impact Statement</head><p>This research introduces Social-R1, a framework for enhancing social reasoning in LLMs, which could enable more natural human-AI collaboration in applications like education, healthcare, and assistive technologies. However, improved social intelligence also raises ethical concerns, such as the potential for misuse in manipulative systems or the amplification of social biases if not properly aligned with human values. We encourage rigorous oversight and fairness audits to mitigate these risks while leveraging the benefits of robust AI social cognition.</p></div>
+			</div>
+
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ability Belief: Location False Beliefs Story</head><p>Mary and Mike are wandering around the factory. They see a transparent box and some cabinets, and they find a hammer on the box. Mike then leaves the factory, and Mary moves the hammer into the box. Question When Mike returns, where does Mary think he believes the hammer is?</p><p>A. On the box B. In the box C. In the cabinet D. In the cupboard Answer B. In the box</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ability</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Desire: Discrepant desires Story</head><p>James is a driven corporate lawyer who believes that constant career advancement is the true measure of personal achievement. In contrast, Emily is a painter whose days move at an unhurried pace, convinced that life's value lies in expressing creativity and cherishing beauty rather than chasing professional status. This weekend, James plans to invite Emily to an event.</p><p>Question What type of event does James most likely invite Emily to? A. Networking dinner with business executives B. Contemporary art gallery visit C. Rare book auction D. Corporate competition judging Answer B. Contemporary art gallery visit Ability Intention: Intentions explanations Story In the library, Jack is preparing for the exam, and his friend Emily is listening to music. Jack says, The melody of the song is good, and my headphones are also great. Do you want to use them? Question What does Jack really want to say when he says this? A. He emphasizes that the melody of the song is good. B. He emphasizes that his headphones are great. C. He wants Emily to turn down the volume. D. He wants to join Emily in listening to the song. Answer C. He wants Emily to turn down the volume. Ability Emotion: Atypical emotional reactions Story Ethan had been feeling unwell and couldn't attend football practice for a week. On the day he returned, he worried that his teammates might have forgotten him. But as soon as he walked onto the field, his friends ran over, cheered, and hugged him tightly. Question What kind of emotion does Subject: Ethan possibly have? A. Sadness B. Hopeless C. Anger D. Worried E. Gratitude F. Embarrassment. Answer E. Gratitude Ability Knowledge: Knowledge-pretend play links Story In the mysterious underground world of Terra Valley lives a small, mischievous robot named Grimmo. In this realm without sky or celestial bodies, Grimmo has never seen the heavens, nor encountered a human. Yet Terra Valley is a wonder in itself-its walls adorned with bioluminescent fungi and glimmering minerals that sparkle in the dark. One day, Grimmo begins an imitation routine: extending his arms, he slowly spins on his own axis, his movements reminiscent of a spinning top or a graceful dancer twirling in place. Question What is Grimmo possibly imitating? A. A floating cloud B. The rotation of a planet C. A dancer's spiral turn D. A glowing mushroom spinning in the wind Answer D. A glowing mushroom spinning in the wind Ability Non-Literal Communication: Humor Story After the sports day, Mia and Zoe see their friend Jack coming off the running track. Jack is so sweaty that his clothes are completely soaked. Mia nudges Zoe and says: "Jack isn't running on the track-he's swimming in the ocean!" Question Why does Mia say this? A. Mia really misunderstands that Jack is swimming. B. Mia lies to make Zoe laugh. C. Mia jokes to exaggerate Jack's sweatiness. D. Mia jokes to make Zoe laugh. Answer C. Mia jokes to exaggerate Jack's sweatiness。   </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_18"><head>Figure 7 .</head><label>7</label><figDesc>Example cases from ToMBench-Hard.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_19"><head>Figure 9 .Figure 12 .</head><label>912</label><figDesc>Training accuracy during training.Structure Score During Training</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_12"><head>Table 6 .</head><label>6</label><figDesc>Performance on MotiveBench</figDesc><table><row><cell>Model</cell><cell>Amazon Blog Persona Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell>0.9000 0.8333 0.8633 0.8655</cell></row><row><cell>o3</cell><cell>0.9800 0.9067 0.9333 0.9400</cell></row><row><cell>o3 COT</cell><cell>0.9667 0.8933 0.9000 0.9200</cell></row><row><cell>GPT-5</cell><cell>0.9200 0.9133 0.8933 0.9089</cell></row><row><cell>GPT-5 COT</cell><cell>0.9600 0.9267 0.8933 0.9267</cell></row><row><cell>GPT-4o</cell><cell>0.9733 0.9033 0.9133 0.9300</cell></row><row><cell>GPT-4o COT</cell><cell>0.9400 0.8867 0.8667 0.8978</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell></row><row><cell>Qwen3-4B (Disable)</cell><cell>0.8067 0.7867 0.7267 0.7734</cell></row><row><cell>Qwen3-4B</cell><cell>0.9133 0.7933 0.8267 0.8444</cell></row><row><cell>Qwen3-8B (Disable)</cell><cell>0.8200 0.8000 0.7600 0.7933</cell></row><row><cell>Qwen3-8B</cell><cell>0.7333 0.6600 0.6700 0.6878</cell></row><row><cell>Qwen3-32B (Disable)</cell><cell>0.9333 0.8900 0.8533 0.8922</cell></row><row><cell>Qwen3-32B</cell><cell>0.9067 0.8867 0.8467 0.8800</cell></row><row><cell>LLaMa3.1-70B</cell><cell>0.9000 0.7867 0.8467 0.8445</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell>0.8933 0.8800 0.8867 0.8867</cell></row><row><cell>Distill-LLaMa-70B</cell><cell>0.9333 0.8333 0.8867 0.8844</cell></row><row><cell>Ours</cell><cell></cell></row><row><cell>SocialR1-4B only Rout</cell><cell>0.8933 0.7933 0.8733 0.8533</cell></row><row><cell>SocialR1-4B w/o Rlen</cell><cell>0.8800 0.8133 0.8000 0.8311</cell></row><row><cell cols="2">SocialR1-4B w/o Rstruct 0.8667 0.7867 0.8400 0.8311</cell></row><row><cell>SocialR1-4B w/o Rcont</cell><cell>0.8667 0.7933 0.8300 0.8300</cell></row><row><cell>SocialR1-4B Full</cell><cell>0.8733 0.8433 0.8333 0.8500</cell></row><row><cell>SocialR1-8B only Rout</cell><cell>0.9333 0.8667 0.8667 0.8889</cell></row><row><cell>SocialR1-8B w/o Rlen</cell><cell>0.9267 0.8333 0.8700 0.8767</cell></row><row><cell cols="2">SocialR1-8B w/o Rstruct 0.9000 0.8600 0.8767 0.8789</cell></row><row><cell>SocialR1-8B w/o Rcont</cell><cell>0.9000 0.8267 0.8433 0.8567</cell></row><row><cell>SocialR1-8B Full</cell><cell>0.9000 0.8600 0.8667 0.8756</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_13"><head>Table 7 .</head><label>7</label><figDesc>Performance on SimpleToM.</figDesc><table><row><cell>Model</cell><cell>Behav Judge Mental Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell>0.6818 0.6452 0.8291 0.7187</cell></row><row><cell>o3</cell><cell>0.8030 0.4996 0.9895 0.7640</cell></row><row><cell>o3 COT</cell><cell>0.8134 0.4560 0.9808 0.7501</cell></row><row><cell>gpt5</cell><cell>0.7350 0.4908 0.9808 0.7355</cell></row><row><cell>gpt5 COT</cell><cell>0.6949 0.4551 0.9834 0.7111</cell></row><row><cell>gpt5 MS</cell><cell>0.9913 0.9887 0.9974 0.9924</cell></row><row><cell>gpt4o</cell><cell>0.5257 0.6957 0.7768 0.6661</cell></row><row><cell>gpt4o COT</cell><cell>0.5684 0.3339 0.9355 0.6126</cell></row><row><cell>gpt4o MS</cell><cell>0.8326 0.4010 0.9738 0.7358</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell></row><row><cell>Qwen3-4B (Disable)</cell><cell>0.4673 0.2415 0.8239 0.5109</cell></row><row><cell>Qwen3-4B</cell><cell>0.4987 0.2214 0.9032 0.5411</cell></row><row><cell>Qwen3-8B (Disable)</cell><cell>0.4673 0.2415 0.8239 0.5109</cell></row><row><cell>Qwen3-8B</cell><cell>0.5711 0.3374 0.9442 0.6176</cell></row><row><cell>Qwen3-32B (Disable)</cell><cell>0.5719 0.5484 0.8230 0.6478</cell></row><row><cell>Qwen3-32B</cell><cell>0.6591 0.6678 0.9634 0.7634</cell></row><row><cell>LLaMa3.1-70B</cell><cell>0.6722 0.5196 0.9651 0.7190</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell>0.5371 0.3810 0.8544 0.5908</cell></row><row><cell>Distill-LLaMa-70B</cell><cell>0.7280 0.7358 0.8248 0.7629</cell></row><row><cell>Ours</cell><cell></cell></row><row><cell cols="2">SocialR1-4B only Rout 0.8535 0.9085 0.9268 0.8963</cell></row><row><cell>SocialR1-4B w/o Rlen</cell><cell>0.8692 0.9268 0.9634 0.9198</cell></row><row><cell cols="2">SocialR1-4B w/o Rstruct 0.8910 0.9948 0.9625 0.9494</cell></row><row><cell cols="2">SocialR1-4B w/o Rcont 0.7716 0.9991 0.9172 0.8960</cell></row><row><cell>SocialR1-4B Full</cell><cell>0.9207 1.0000 0.8649 0.9285</cell></row><row><cell cols="2">SocialR1-8B only Rout 0.8649 0.9861 0.9791 0.9433</cell></row><row><cell>SocialR1-8B w/o Rlen</cell><cell>0.9163 0.9948 0.9747 0.9619</cell></row><row><cell cols="2">SocialR1-8B w/o Rstruct 0.8265 0.9930 0.8928 0.9041</cell></row><row><cell cols="2">SocialR1-8B w/o Rcont 0.8361 0.9826 0.9869 0.9352</cell></row><row><cell>SocialR1-8B Full</cell><cell>0.9198 0.9948 0.9878 0.9675</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_15"><head>Table 10 .</head><label>10</label><figDesc>Performances on EmoBench</figDesc><table><row><cell>Model</cell><cell>Complex Emotions</cell><cell>Emotional Cues</cell><cell>Personal Beliefs &amp; Experiences</cell><cell>Perspective Taking</cell><cell cols="2">Interpersonal Self Overall</cell></row><row><cell>Closed-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>DeepSeek-R1</cell><cell>0.7959</cell><cell>0.7857</cell><cell>0.7143</cell><cell>0.7164</cell><cell>0.7000</cell><cell>0.7200 0.7387</cell></row><row><cell>o3</cell><cell>0.8571</cell><cell>0.8393</cell><cell>0.8036</cell><cell>0.8134</cell><cell>0.7600</cell><cell>0.7500 0.8039</cell></row><row><cell>o3 COT</cell><cell>0.7653</cell><cell>0.7500</cell><cell>0.7232</cell><cell>0.7164</cell><cell>0.6900</cell><cell>0.6900 0.7225</cell></row><row><cell>GPT5</cell><cell>0.8673</cell><cell>0.8571</cell><cell>0.7946</cell><cell>0.7687</cell><cell>0.7800</cell><cell>0.7500 0.8030</cell></row><row><cell>GPT5 COT</cell><cell>0.8571</cell><cell>0.7679</cell><cell>0.7679</cell><cell>0.7761</cell><cell>0.7800</cell><cell>0.7800 0.7882</cell></row><row><cell>GPT4</cell><cell>0.8469</cell><cell>0.7857</cell><cell>0.7321</cell><cell>0.7015</cell><cell>0.7800</cell><cell>0.7700 0.7694</cell></row><row><cell>GPT4 COT</cell><cell>0.8163</cell><cell>0.8214</cell><cell>0.7411</cell><cell>0.7687</cell><cell>0.7800</cell><cell>0.7300 0.7762</cell></row><row><cell>Open-sourced LLMs</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell>Qwen3-4B (Disable)</cell><cell>0.5306</cell><cell>0.5179</cell><cell>0.4643</cell><cell>0.4254</cell><cell>0.5800</cell><cell>0.6500 0.5280</cell></row><row><cell>Qwen3-4B</cell><cell>0.5612</cell><cell>0.5714</cell><cell>0.4821</cell><cell>0.4403</cell><cell>0.5500</cell><cell>0.5800 0.5308</cell></row><row><cell>Qwen3-8B (Disable)</cell><cell>0.7041</cell><cell>0.7500</cell><cell>0.5893</cell><cell>0.5373</cell><cell>0.5700</cell><cell>0.7400 0.6484</cell></row><row><cell>Qwen3-8B</cell><cell>0.5714</cell><cell>0.6607</cell><cell>0.4821</cell><cell>0.4179</cell><cell>0.7600</cell><cell>0.6600 0.5920</cell></row><row><cell>Qwen3-32B (Disable)</cell><cell>0.6939</cell><cell>0.7321</cell><cell>0.5893</cell><cell>0.5448</cell><cell>0.6800</cell><cell>0.7800 0.6700</cell></row><row><cell>Qwen3-32B</cell><cell>0.6531</cell><cell>0.6429</cell><cell>0.5982</cell><cell>0.5597</cell><cell>0.6600</cell><cell>0.7000 0.6356</cell></row><row><cell>LLaMa3.1-70B</cell><cell>0.7143</cell><cell>0.8214</cell><cell>0.7143</cell><cell>0.6194</cell><cell>0.5000</cell><cell>0.6100 0.6632</cell></row><row><cell>LLaMa3.1-70B COT</cell><cell>0.6837</cell><cell>0.8036</cell><cell>0.6607</cell><cell>0.6567</cell><cell>0.6500</cell><cell>0.6800 0.6891</cell></row><row><cell>Distill-LLaMa-70B</cell><cell>0.7959</cell><cell>0.8214</cell><cell>0.7411</cell><cell>0.7090</cell><cell>0.7600</cell><cell>0.7300 0.7596</cell></row><row><cell>Ours</cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">0.6735 0.7041 SocialR1-4B w/o R struct 0.6939 SocialR1-4B only R out SocialR1-4B w/o R len SocialR1-4B w/o R cont 0.6633</cell><cell>0.6429 0.6607 0.7857 0.6429</cell><cell>0.6250 0.6875 0.6250 0.6250</cell><cell>0.5821 0.5522 0.5896 0.5597</cell><cell>0.6400 0.6200 0.6900 0.5800</cell><cell>0.6900 0.6422 0.7300 0.6591 0.6800 0.6774 0.6800 0.6251</cell></row><row><cell>SocialR1-4B Full</cell><cell>0.7041</cell><cell>0.7500</cell><cell>0.7143</cell><cell>0.6642</cell><cell>0.5800</cell><cell>0.6700 0.6804</cell></row><row><cell cols="2">0.7449 0.7653 SocialR1-8B w/o R struct 0.7551 SocialR1-8B only R out SocialR1-8B w/o R len SocialR1-8B w/o R cont 0.7245</cell><cell>0.7321 0.8036 0.7321 0.7857</cell><cell>0.7143 0.6875 0.6607 0.6696</cell><cell>0.6194 0.6194 0.6418 0.6269</cell><cell>0.6500 0.5400 0.6200 0.5200</cell><cell>0.7200 0.6968 0.7000 0.6860 0.7900 0.7000 0.7400 0.6778</cell></row><row><cell>SocialR1-8B Full</cell><cell>0.7449</cell><cell>0.7857</cell><cell>0.6964</cell><cell>0.6493</cell><cell>0.6100</cell><cell>0.7200 0.7010</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Achiam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Adler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ahmad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Akkaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><forename type="middle">L</forename><surname>Aleman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Altenschmidt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Altman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Anadkat</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.08774</idno>
+		<title level="m">Gpt-4 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Lai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Xiong</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.15052</idno>
+		<title level="m">Benchmarking theory of mind in large language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<analytic>
+		<title level="a" type="main">A review and reformulation of social information-processing mechanisms in children&apos;s social adjustment</title>
+		<author>
+			<persName><forename type="first">N</forename><forename type="middle">R</forename><surname>Crick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">A</forename><surname>Dodge</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Psychological bulletin</title>
+		<imprint>
+			<date type="published" when="1994">1994</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Fan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.21783</idno>
+		<title level="m">The llama 3 herd of models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Understanding social reasoning in language models with language models</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Gandhi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J.-P</forename><surname>Fränken</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Gerstenberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Goodman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="13518" to="13529" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Reasoning the fast and frugal way: models of bounded rationality</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Gigerenzer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">G</forename><surname>Goldstein</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Psychological review</title>
+		<imprint>
+			<date type="published" when="1996">1996</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Tafjord</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Moore</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">L</forename><surname>Bras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Simpletom</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.13648</idno>
+		<title level="m">Exposing the gap between explicit tom inference and implicit tom application in llms</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.12948</idno>
+		<title level="m">Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Mihalcea</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Hi-Tom</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.16755</idno>
+		<title level="m">A benchmark for evaluating higher-order theory of mind reasoning in large language models</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Re-evaluating theory of mind evaluation in large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Sosa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Ullman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Philosophical Transactions B</title>
+		<imprint>
+			<biblScope unit="page">20230499</biblScope>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jaech</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kalai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lerer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Richardson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>El-Kishky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Low</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Helyar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Madry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Beutel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Carney</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.16720</idno>
+		<title level="m">Openai o1 system card</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">Evaluating large language models in theory of mind tasks</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Kosinski</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Proceedings of the National Academy of Sciences</title>
+		<imprint>
+			<biblScope unit="volume">121</biblScope>
+			<biblScope unit="issue">45</biblScope>
+			<biblScope unit="page">2405460121</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Let&apos;s verify step by step</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Lightman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Kosaraju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Burda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Edwards</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Baker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Sutskever</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Cobbe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Do llms have the theory of mind ability to understand white lies?</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><forename type="middle">J</forename><surname>Pretty</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Sugawara</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Tactfultom</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2025 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y.-L</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Tomrl</surname></persName>
+		</author>
+		<title level="m">Reinforcement learning unlocks theory of mind in small llms</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page">2504</biblScope>
+		</imprint>
+	</monogr>
+	<note>arXiv e-prints</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Looking for the lighthouse: A systematic review of advanced theory-of-mind tests beyond preschool</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>Osterhaus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">L</forename><surname>Bosacki</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Developmental Review</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Training language models to follow instructions with human feedback</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ray</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="27730" to="27744" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><forename type="middle">K</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">K</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><forename type="middle">D</forename><surname>Broeker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Hibble</surname></persName>
+		</author>
+		<title level="m">Do large language models have a theory of mind? Proceedings of the National Academy of Sciences</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Sabour</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">M</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">S</forename><surname>Sunaryo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Mihalcea</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Emobench</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.12071</idno>
+		<title level="m">Evaluating the emotional intelligence of large language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title level="m" type="main">A social information processing approach to job attitudes and task design. Administrative science quarterly</title>
+		<author>
+			<persName><forename type="first">G</forename><forename type="middle">R</forename><surname>Salancik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Pfeffer</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1978">1978</date>
+			<biblScope unit="page" from="224" to="253" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Rashkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lebras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Socialiqa</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1904.09728</idno>
+		<title level="m">Commonsense reasoning about social interactions</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.03300</idno>
+		<title level="m">Deepseekmath: Pushing the limits of mathematical reasoning in open language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">Clever hans or neural theory of mind? stress testing social reasoning in large language models</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Shapira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Levy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">H</forename><surname>Alavi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Choi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Goldberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sap</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Shwartz</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 18th Conference of the European Chapter</title>
+		<meeting>the 18th Conference of the European Chapter</meeting>
+		<imprint>
+			<publisher>Long Papers</publisher>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page">2024</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<author>
+			<persName><forename type="first">G</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Hybridflow</surname></persName>
+		</author>
+		<idno>arXiv: 2409</idno>
+		<title level="m">A flexible and efficient rlhf framework</title>
+		<imprint>
+			<date type="published" when="2024">19256. 2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">A behavioral model of rational choice</title>
+		<author>
+			<persName><forename type="first">H</forename><forename type="middle">A</forename><surname>Simon</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">The quarterly journal of economics</title>
+		<imprint>
+			<date type="published" when="1955">1955</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">Relevance: Communication and cognition</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Sperber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Wilson</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1986">1986</date>
+			<publisher>Harvard University Press</publisher>
+			<biblScope unit="volume">142</biblScope>
+			<pubPlace>Cambridge, MA</pubPlace>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Testing theory of mind in large language models and humans</title>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">W</forename><surname>Strachan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Albergo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Borghini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Pansardi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Scaliti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Saxena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Rufo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Panzeri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Manzi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature Human Behaviour</title>
+		<imprint>
+			<biblScope unit="volume">8</biblScope>
+			<biblScope unit="issue">7</biblScope>
+			<biblScope unit="page" from="1285" to="1295" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Llms achieve adult human performance on higher-order theory of mind tasks</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Street</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">O</forename><surname>Siy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Keeling</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Baranes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Barnett</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Mckibben</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Kanyere</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lentz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">I</forename><surname>Dunbar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2405.18870</idno>
+		<idno>arXiv:2501.12599</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Kimi k1. 5: Scaling reinforcement learning with llms</title>
+		<imprint>
+			<date type="published" when="2024">2024. 2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title level="m" type="main">Solving math word problems with process-and outcome-based feedback</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Kushman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Siegel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Creswell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Irving</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Higgins</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2211.14275</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">Large language models fail on trivial alterations to theory-of-mind tasks</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Ullman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.08399</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Miao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.14245</idno>
+		<title level="m">Reinforcement learning with verifiable rewards implicitly incentivizes correct reasoning in base llms</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Hi-tom: A benchmark for evaluating higher-order theory of mind reasoning in large language models</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Jia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Mihalcea</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Deng</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: EMNLP 2023</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<title level="m" type="main">Towards dynamic theory of mind: Evaluating llm adaptation to temporal evolution of human states</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Xiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.17663</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<title level="m" type="main">Opentom: A comprehensive benchmark for evaluating theory-of-mind reasoning capabilities of large language models</title>
+		<author>
+			<persName><forename type="first">H</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>He</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.06044</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Hui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Lv</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.09388</idno>
+		<title level="m">Qwen3 technical report</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<author>
+			<persName><forename type="first">X</forename><surname>Yong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Lian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Yi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Motivebench</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.13065</idno>
+		<title level="m">How far are we from human-like motivational reasoning in large language models? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<title level="m" type="main">Reasonflux-prm: Trajectory-aware process rewards for chain-of-thought supervision</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.54321</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<author>
+			<persName><forename type="first">P</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Madaan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">P</forename><surname>Potharaju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><forename type="middle">R</forename><surname>Mckee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Holtzman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Pujara</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Nematzadeh</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.03051</idno>
+		<title level="m">How far are large language models from agents with theory-of-mind? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">Social-R1: Towards Human-like Social Reasoning in LLMs Table 18. Case about Perturbation Case Study SocialR1-8B</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<title level="m" type="main">has been attending every home game for the past five years and has followed his favorite player&apos;s career closely, even attending events where the player was present. Recently, he started volunteering at local sports clinics to promote youth football. During a crucial match against their biggest rivals, Alex notices that his favorite player, who recently suffered an injury, is about to enter the field despite medical advice against it</title>
+		<author>
+			<persName><forename type="first">Alex</forename></persName>
+		</author>
+		<imprint/>
+	</monogr>
+	<note>hard Mason Bulldogs fan Then Alex makes a sudden decision to leave the stadium immediately</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Considering Alex&apos;s background and the situation, what is the most likely motivation behind Alex&apos;s decision?</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<monogr>
+		<title level="m" type="main">He wants to prevent experiencing the emotional distress of witnessing the player get injured again. B. He believes that the team s performance is jeopardized by the player s lack of readiness, impacting their chances of winning. C. He feels frustrated by the coach s apparent disregard for player safety in a high-stakes game</title>
+		<author>
+			<persName><forename type="first">A</forename></persName>
+		</author>
+		<imprint/>
+	</monogr>
+	<note>D. He is concerned that the player s return might distract the team and lead to a loss</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<monogr>
+		<title level="m" type="main">He thinks that the audience might express negative opinions about the player s decision to return, creating a hostile atmosphere. F. He worries that the player s performance will not meet expectations, diminishing the thrill of the match [Answer] A [Story] Alex, a die-hard Mason Bulldogs fan, has been attending every home game for the past five years and has followed his favorite player&apos;s career closely, even attending events where the player was present. High above the stands, a massive digital scoreboard flickered occasionally, its bright LEDs reflecting off the polished helmets of the players on the sideline. Recently, he started volunteering at local sports clinics to promote youth football. As he watched, he briefly recalled a recent newsletter from the youth clinic suggesting that a successful community program requires mentors to lead by example and prioritize long-term health over immediate competitive gains. During a crucial match against their biggest rivals, Alex notices that his favorite player, who recently suffered an injury</title>
+		<author>
+			<persName><forename type="first">E</forename></persName>
+		</author>
+		<imprint/>
+	</monogr>
+	<note>is about to enter the field despite medical advice against it. Then Alex makes a sudden decision to leave the stadium immediately</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<monogr>
+		<title level="m" type="main">Considering Alex&apos;s background and the situation, what is the most likely motivation behind Alex&apos;s decision?</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<monogr>
+		<title level="m" type="main">He wants to prevent experiencing the emotional distress of witnessing the player get injured again. B. He believes that the team s performance is jeopardized by the player s lack of readiness, impacting their chances of winning. C. He feels frustrated by the coach s apparent disregard for player safety in a high-stakes game</title>
+		<author>
+			<persName><forename type="first">A</forename></persName>
+		</author>
+		<imprint/>
+	</monogr>
+	<note>D. He is concerned that the player s return might distract the team and lead to a loss</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<monogr>
+		<title level="m" type="main">He thinks that the audience might express negative opinions about the player s decision to return, creating a hostile atmosphere. F. He worries that the player s performance will not meet expectations, diminishing the thrill of the match</title>
+		<author>
+			<persName><forename type="first">E</forename></persName>
+		</author>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

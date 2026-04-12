@@ -1,0 +1,2146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">RRHF: Rank Responses to Align Language Models with Human Feedback without tears</title>
+				<funder ref="#_Ud3YqjE">
+					<orgName type="full">Alibaba Group</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2023-10-07">7 Oct 2023</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Zheng</forename><surname>Yuan</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Hongyi</forename><surname>Yuan</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author role="corresp">
+							<persName><forename type="first">Chuanqi</forename><surname>Tan</surname></persName>
+							<email>chuanqi.tcq@alibaba-inc.com</email>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Wei</forename><surname>Wang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Songfang</forename><surname>Huang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Fei</forename><surname>Huang</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Alibaba</forename><forename type="middle">Damo</forename><surname>Academy</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">RRHF: Rank Responses to Align Language Models with Human Feedback without tears</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2023-10-07">7 Oct 2023</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">8DA8E646CDEA056FA4F055C7F70E4F71</idno>
+					<idno type="arXiv">arXiv:2304.05302v3[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:14+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Reinforcement Learning from Human Feedback (RLHF) facilitates the alignment of large language models with human preferences, significantly enhancing the quality of interactions between humans and models. InstructGPT implements RLHF through several stages, including Supervised Fine-Tuning (SFT), reward model training, and Proximal Policy Optimization (PPO). However, PPO is sensitive to hyperparameters and requires multiple models in its standard implementation, making it hard to train and scale up to larger parameter counts. In contrast, we propose a novel learning paradigm called RRHF, which scores sampled responses from different sources via a logarithm of conditional probabilities and learns to align these probabilities with human preferences through ranking loss. RRHF can leverage sampled responses from various sources including the model responses from itself, other large language model responses, and human expert responses to learn to rank them. RRHF only needs 1 to 2 models during tuning and can efficiently align language models with human preferences robustly without complex hyperparameter tuning. Additionally, RRHF can be considered an extension of SFT and reward model training while being simpler than PPO in terms of coding, model counts, and hyperparameters. We evaluate RRHF on the Helpful and Harmless dataset, demonstrating comparable alignment performance with PPO by reward model score and human labeling. Extensive experiments show that the performance of RRHF is highly related to sampling quality which suggests RRHF is a best-of-n learner. Codes are released at <ref type="url" target="https://github.com/GanjinZero/RRHF">https://github.com/GanjinZero/RRHF</ref>.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Large language models like ChatGPT 2 and GPT-4 <ref type="bibr" target="#b20">[21]</ref> are extremely powerful in understanding human queries and providing helpful and friendly responses. Employing Reinforcement Learning from Human Feedback (RLHF) <ref type="bibr" target="#b7">[8,</ref><ref type="bibr" target="#b41">42,</ref><ref type="bibr" target="#b28">29]</ref> enables alignment of language model outputs with human preferences. As implemented in Ouyang et al. <ref type="bibr" target="#b21">[22]</ref>, the paradigm of RLHF contains three main steps, Supervised Fine-Tuning (SFT), reward model training, and Proximal Policy Optimization (PPO). Initially, they apply supervised fine-tuning (SFT) on the initial models to learn to follow human instructions. Subsequently, a reward model is learned from the ranking of human preferences. Finally, scores generated by the reward model are used to apply gradient policy in PPO to align human preferences. PPO <ref type="bibr" target="#b27">[28]</ref> is a strong reinforcement learning (RL) algorithm and is the key step used in RLHF <ref type="bibr" target="#b21">[22]</ref> to align human preferences. This PPO training step is powerful but complex. It requires tuning a large number of hyperparameters for conservative parameter updating, reward design, advantage estimation, etc. Besides, fine-tuning language models with PPO needs to store a policy model, a value model (or a value head), a reward model, and a reference model at the same time which is memory-unfriendly and needs sophisticated architecture of the training platform when scaling up to larger models.</p><p>To alleviate the complex hyperparameter tuning and sophisticated training resource requirements of PPO, we propose a novel training paradigm RRHF (Rank Responses to align Human Feedback) that aligns model probabilities of multiple responses with human preferences by ranking loss, which can retain the performance of PPO and is much simpler. Ranking loss on responses probabilities <ref type="bibr" target="#b18">[19,</ref><ref type="bibr" target="#b40">41]</ref> has been used in a similar scenario, abstractive summarization, to improve conditional generation quality. Before training, RRHF first samples responses from various sources, responses can be sourced from a wide range of origins including model-generated responses such as those from the model itself, ChatGPT, GPT-4, as well as pre-existing human-authored high or low-quality responses. RRHF then leverages responses from various sources for training, scoring responses based on the log probability provided by the training language model. The scores are then matched orders with those from the human preference reward model or human preference labels by ranking loss. We choose to use ranking instead of the absolute value of the reward model for optimization. PPO uses estimated advantages to provide optimization signals. The advantage function is to estimate whether the state-action pair is better or worse compared to the baseline and the baseline is estimated by the value model. Consequently, advantage function estimation requires auxiliary models for training and inference during the whole training procedure <ref type="bibr" target="#b41">[42,</ref><ref type="bibr" target="#b21">22]</ref>. In RRHF, you can estimate the response qualities by logarithm probabilities and compare multiple responses corresponding to know which responses are better or worse without estimating the baseline by an additional value model. Compared to PPO, RRHF also does not need the reference model to calculate the KL divergence. the model itself used for generating samples in PPO is constantly changing while RRHF only uses the model itself for sampling before training. Thus the KL term degenerates for RRHF. The workflow for RRHF and PPO is depicted in Figure <ref type="figure" target="#fig_0">1</ref>. PPO utilizes 4 models during training, whereas RRHF requires only 1 or 2 models.</p><p>Our experiments are conducted on Anthropic's Helpful and Harmless dataset <ref type="bibr" target="#b2">[3]</ref>, demonstrating that RRHF's performance is on par with PPO in terms of generating helpful and harmless responses by automatic evaluation and human labeling. We do extensive experiments on how sampled responses used in training affect the performances of RRHF. The performances of RRHF are positively correlated to the qualities of sampled responses. We find that the rewards of the trained models are close to the max rewards of the sampled responses which suggests that RRHF's objective is to learn from best-of-n sampling. Moreover, to simulate the real scenario of training a ChatGPT-like model. We use RRHF to learn from Alpaca prompts <ref type="bibr" target="#b30">[31]</ref> and responses from ChatGPT, InstructGPT, LLaMA <ref type="bibr" target="#b31">[32]</ref>, and Alpaca to develop a new language model aligned to human preferences called Wombat. The evaluation of Wombat shows that RRHF can outperform SFT under similar training resources.</p><p>Contributions are summarized as follows:</p><p>• We propose a new learning paradigm named RRHF for large language models that can leverage various responses to align with human preferences. The trained model can be viewed as a language model for generation and a reward model for scoring.</p><p>• This paradigm is an extension of SFT training and is similar to training a reward model.</p><p>• This paradigm is much simpler than PPO in terms of coding difficulty, numbers of models used in training, and hyper-parameter counts and obtains comparable performances on Anthropic's Helpful and Harmless dataset.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Related Works</head><p>Recently, scaling up pre-trained language models by the number of parameters, training data <ref type="bibr" target="#b14">[15]</ref>, and computational budges <ref type="bibr" target="#b11">[12]</ref> can equip large language models with strong abilities in various language tasks <ref type="bibr" target="#b4">[5,</ref><ref type="bibr" target="#b23">24,</ref><ref type="bibr" target="#b6">7,</ref><ref type="bibr" target="#b15">16,</ref><ref type="bibr" target="#b20">21,</ref><ref type="bibr" target="#b38">39]</ref>. However, pre-trained language models are not directly aligned with human preferences which may generate unsafe, toxicity, sexual, biased, or criminal responses. Language models first conduct supervised fine-tuning to imitate how to align with human instructions <ref type="bibr" target="#b34">[35,</ref><ref type="bibr" target="#b30">31]</ref>.</p><p>After that, reinforcement learning techniques have been explored to align language models with human preferences <ref type="bibr" target="#b1">[2,</ref><ref type="bibr" target="#b3">4,</ref><ref type="bibr" target="#b28">29,</ref><ref type="bibr" target="#b13">14,</ref><ref type="bibr" target="#b35">36,</ref><ref type="bibr" target="#b21">22,</ref><ref type="bibr" target="#b24">25]</ref>. The most successful way is applying a reinforcement learning from human feedback (RLHF) framework <ref type="bibr" target="#b41">[42,</ref><ref type="bibr" target="#b28">29,</ref><ref type="bibr" target="#b21">22]</ref> via training a reward model on human feedback and using PPO <ref type="bibr" target="#b27">[28]</ref> to obtain the policy model for language generation. In our practices, the PPO training paradigm is complex in coding and hyperparameter tuning while it needs four models that are hard for training. This motivates us to explore simpler and more straightforward methods to align language models with human preferences. Nakano et al. <ref type="bibr" target="#b19">[20]</ref>, Askell et al. <ref type="bibr" target="#b0">[1]</ref>, Cobbe et al. <ref type="bibr" target="#b8">[9]</ref> explore best-of-n sampling to improve large language model generation by selecting the best response based on the human preference rewards among n sampled responses. Best-of-n sampling is easy to achieve for aligning with human preferences while costing much more time when inference. Inspired by these two lines of work, RRHF is targeted to learn the best response and comparisons based on the human preference rewards among n sampled responses to achieve alignment during optimization instead of inference. RRHF absorbs the advantages of PPO and best-of-n sampling while being simpler in coding, model count, and hyperparameter tuning than PPO and does not need to sample n times during inference. The most similar work <ref type="bibr" target="#b9">[10]</ref> is contemporary to us which applies SFT on the samples with the best reward. Compared to Dong et al. <ref type="bibr" target="#b9">[10]</ref>, we show that ranking loss is necessary and research the relation between sampling quality and model performance. There are also other ways to apply alignment which are focused on generating better-aligned datasets for SFT including hindsight-modified prompts <ref type="bibr" target="#b39">[40,</ref><ref type="bibr" target="#b17">18]</ref> and principle-driven self-alignment <ref type="bibr" target="#b29">[30]</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Approach</head><p>We mainly follow the notations in Ziegler et al. <ref type="bibr" target="#b41">[42]</ref>. Denote the query data distribution as x ∼ D. For the response y reply to query x, a reward function R(x, y) scores y based on human preferences which can be a human or a neural network. Our target is to learn an auto-regressive language model π (initialized from the model ρ) which generates responses with large rewards.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">RRHF</head><p>During training, we have k different responses y i of x sampled by policy ρ i , 1 ≤ i ≤ k. Sampling with policy ρ i is not restricted here which can be the initial model ρ, the learned model π, other LLMs like ChatGPT or GPT-4, or a response provided by human experts. The sampling policy ρ i can also vary across the training time. Our sampling method can leverage any existing good or bad responses to help the model align with humans, while PPO can only learn from samples from its learned model π.</p><p>The reward function gives scores for each y i with R(x, y i ) = r i . To align with scores {r i } k , we use our model π to give scores p i for each y i by:</p><formula xml:id="formula_0">p i = t log P π (y i,t |x, y i,&lt;t ) ∥y i ∥ ,<label>(1)</label></formula><p>where p i is conditional log probability (length-normalized) of y i under model π. Our idea is simple, let the model π give larger probabilities for better responses and give smaller probabilities for worse responses. Inspired by Liu et al. <ref type="bibr" target="#b18">[19]</ref>, we optimize this object by ranking loss:</p><formula xml:id="formula_1">L rank = ri&lt;rj max(0, p i -p j )<label>(2)</label></formula><p>We do not have margins in the ranking loss as Liu et al. <ref type="bibr" target="#b18">[19]</ref>. They add margin terms λ ij = (j -i)λ to encourage the model to have higher p i estimation with a higher ranking. We disable it since we find good empirical results without margin terms and it is time-consuming to tune λ.</p><p>We also add a cross-entropy loss similar to SFT (supervised fine-tuning). We require the model to learn the response with the highest reward r i .</p><formula xml:id="formula_2">i ′ = arg max i r i (<label>3</label></formula><formula xml:id="formula_3">)</formula><formula xml:id="formula_4">L f t = - t log P π (y i ′ ,t |x, y i ′ ,&lt;t )<label>(4)</label></formula><p>The total loss is defined as the unweighted sum of two losses:</p><formula xml:id="formula_5">L = L rank + L f t (<label>5</label></formula><formula xml:id="formula_6">)</formula><p>We have tried using larger weights (10,100) on L rank suggested by Liu et al. <ref type="bibr" target="#b18">[19]</ref> which shows worse performances in our preliminary experiments.</p><p>The Python training code of RRHF only adds 30 lines to SFT training code<ref type="foot" target="#foot_0">foot_0</ref> which is much simpler than PPO implementation<ref type="foot" target="#foot_1">foot_1</ref> .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Relation with Previous Paradigm RLHF</head><p>InstructGPT <ref type="bibr" target="#b21">[22]</ref> aligns human preferences in three steps: SFT, training a reward model, and PPO. We find our proposed RRHF has similar procedures to the above-mentioned three steps.</p><p>Relation with SFT Supervised fine-tuning (behavioral cloning) can be viewed as a degenerated version of our training process with k = 1 and ρ 1 being fixed which is provided by human labelers.</p><p>Relation with Reward Model Our model can be used as a reward model. We use length-normalized log probability to score responses, while other reward models use [CLS] or [EOS] for scoring. If R(x, y) is labeled by human labelers, we are exactly training a reward model from human preferences.</p><p>Relation with PPO The task objective of PPO <ref type="bibr" target="#b27">[28]</ref> is defined by a reward function R(x, y), and it is to maximize the expected reward E x∼D,y∼π(•|x) [R(x, y)]. Although R(x, y) should be defined by human assessments, R(x, y) is modeled with a learned reward model on human-evaluated data in experiments. To constrain the language policy π θ (•|x) from moving too far from the initialization ρ(•|x), the final reward design becomes: R(x; y) = R(x; y) -β log π(y|x) ρ(y|x) , where β controls the level of penalty and is set to a fixed value <ref type="bibr" target="#b21">[22]</ref> or dynamically adjusted <ref type="bibr" target="#b41">[42]</ref>.</p><p>PPO leverages π for sampling, while RRHF can use any applicable ρ i . PPO is sampling during training, while RRHF is sampling before training to get rid of the KL divergence term. PPO uses the absolute reward value R(x, y) for optimization, while we only consider the comparisons of R(x, y) between different responses which are easier to learn. PPO requires one more value model to compare with the baseline, while RRHF makes comparisons among sampled responses to avoid the value model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Experiments</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Settings</head><p>Dataset We use Anthropic's Helpful and Harmless (HH) dataset as our experiment dataset [3]<ref type="foot" target="#foot_2">foot_2</ref> . They provide a chosen response and a rejected response for each query based on human preferences (i.e. helpful and harmless). We use the proxy reward model Dahoas/gptj-rm-static<ref type="foot" target="#foot_3">foot_3</ref> trained on the same dataset. By using the proxy reward model, we can compare RRHF and PPO fairly.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Models</head><p>We experiment mainly based on LLaMA <ref type="bibr" target="#b31">[32]</ref> and Alpaca <ref type="bibr" target="#b30">[31]</ref> with 7B parameter size. Ouyang et al. <ref type="bibr" target="#b21">[22]</ref> and Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref> use supervised fine-tuned models as the initial models when applying PPO, so we also have fine-tuned Alpaca-7B on our used dataset <ref type="foot" target="#foot_4">7</ref> with chosen responses (i.e. human-preferred responses) following trlX <ref type="bibr" target="#b33">[34]</ref> and name it as Alpaca-sft.</p><p>Sampling Policy during Training Our model's ability is highly related to sampling qualities during training. We examine different sampling policies and list them in Figure <ref type="figure">2</ref> and Table <ref type="table">1</ref>. We term the initial language model policy as ρ, the online language model policy as π, and the language model policy after each 3-epoch training iteration as ρ*. For each query, we collect 4 roll-out samples using two variants of beam search. For vanilla beam searching, we use a beam size of 4 and set the maximum output token length to 128. Since the roll-out sample diversity of vanilla beam search is low, we also experiment with (1) diverse beam search <ref type="bibr" target="#b32">[33]</ref>, where we use a beam size of 4 and set the diverse beam group to 4, the diversity penalty to 1.0, and the sampling temperature to 0.8, and (2) top-p sampling (nucleus sampling) <ref type="bibr" target="#b12">[13]</ref>, where we use a beam size of 4, top-p of 1.0, and the sampling temperature to 0.8 which is a consistent setting with the top-p sampling used in our PPO baselines. We sample training data before the training process except for OP-k (online sampling). Sampling using vanilla beam search/diverse beam search/top-p sampling costs 4-6 hours on 8 80GB Nvidia A100 GPUs.  Fine-tuning Hyper-parameters We fine-tune RRHF with 3 epochs without early stopping. We first warm up the learning rate to 2e-5 and decay to 0 linearly. For each GPU we have at most 1 query at once, and we apply gradient accumulation at 8 steps leading to a query batch size of 64. The query and responses are truncated to 192 tokens. Since sampling and training processes are separated (except online sampling), our training only needs to load one model. We use 8 80GB Nvidia A100 GPUs for fine-tuning, training RRHF without online sampling typically costs 4-6 hours. Training with OP is slower which takes about 30 hours.</p><p>Baselines We compare our trained models π with responses from the datasets, initial checkpoints ρ and PPO trained models. For PPO, we formulate a token-wise Markov decision process, where the action is a token y t to be generated at time step t, and the state is the token sequence of the query x and formerly generated tokens y &lt;t . We follow the clipped surrogate objective of PPO:</p><formula xml:id="formula_7">E y ≤t ∼π θ (y ≤t |x),x∼D max(-r θ (y t |x, y &lt;t ) Â(x, y ≤t ), -clip 1+ϵ 1-ϵ (r θ (y t |x, y &lt;t )) Â(x, y ≤t )) , (<label>6</label></formula><formula xml:id="formula_8">)</formula><p>where ϵ is the clip ratio set to 0.2, Âθ (x, y ≤t ) is the advantage function and is estimated by GAE <ref type="bibr" target="#b26">[27]</ref> with a learned value function Vθ (x, y &lt;t ), and r θ (y t |x, y &lt;t ) = π θ (yt|x,y&lt;t) π θ (yt|x,y&lt;t) denotes the probability ratio between the behavior policy π θ and the training policy π θ . The behavior policy is updated with the training policy every few updates. We follow the hyper-parameter settings in trlX <ref type="foot" target="#foot_5">8</ref> .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Metrics</head><p>We use perplexity (gpt2-medium), average reward score (Dahoas/gptj-rm-static), and human labelers to evaluate different methods. Since our dataset is a multi-turn dialogue dataset, we </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Main Results</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Auto Evaluation</head><p>We list automatic metrics in Table <ref type="table" target="#tab_0">2</ref>. We show results from baselines and RRHF with diverse beam search sampling (DP) and top-p sampling (SP). Our proposed Alpaca-RRHF DP obtains the average reward score of -1.03 (averaged out of 3 runs, -1.01, -1.02, and -1.05) and Alpaca-RRHF SP achieves the highest average reward score of -0.96. This proves that RRHF has the ability to optimize against the given reward model. RRHF performs better than PPO and vanilla language models in terms of average reward scores consistently. Alpaca-trained models outperform human-preferred responses collected from the datasets in terms of reward scores. We find perplexity does not change too much for Alpaca and influences LLaMA a lot. The reason can be LLaMA is not instruction-tuned.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Human Evaluation</head><p>Human preferences can be different from the proxy reward model. Therefore, we perform human evaluations on sampled responses and list cases in Table <ref type="table" target="#tab_2">4</ref> to compare different settings. Results in Table <ref type="table" target="#tab_1">3</ref> demonstrate that RRHF DP outperforms responses from the dataset and PPO-trained models. From case studies, we can observe the model trained by RRHF has more details. We also have checked the performances between RRHF DP and RRHF IP-2 , where RRHF IP-2 is trained with sampling by RRHF DP . We find iterate training the model can further boost the performance.</p><p>From the case study, we find RRHF IP-2 understands human instruction better.</p><p>Accuracy as a Reward Model Since our trained model can also be viewed as a reward model to score responses by p i . We test our model on the dataset used for training Dahoas/gptj-rm-static.</p><p>The accuracy is computed by counting the percentage of the reward scores of good responses that are higher than the reward scores of bad responses using p i (except Dahoas/gptj-rm-static) and list in Table <ref type="table" target="#tab_3">5</ref>.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Loss Curve</head><p>We show our loss and metric curves in Figure <ref type="figure" target="#fig_3">3</ref>. This is the setting of using Alpaca as the initial model ρ and the sample policy is DP. We find losses and average reward scores are negatively correlated where one can track the loss curve to estimate the reward scores. We find the losses converge at the third epoch (i.e. 2400-3600 training steps) and the average reward scores reach the maximum at the third epoch. Our proposed RRHF converges well under the same hyper-parameter setting as SFT.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3">Ablation Study</head><p>Initial Checkpoints LLaMA performs worst among the three initial checkpoints with different settings in Table <ref type="table" target="#tab_4">6</ref>. This is not due to the potential of LLaMA being worse than Alpaca. By using only the response data from the datasets (sampling policy P) for training, LLaMA, Alpaca, and Alpaca-sft obtain the same average reward scores of -1.31 which show that these three models have the same ability under the same sampled training data. LLaMA is not instruction-tuned and responses sampled by LLaMA (reward -1.89) are much worse than two other models (reward -1.18 and reward -1.46). The sampling quality of LLaMA makes it perform the worst. Another phenomenon we find is  Alpaca-sft performs worse than Alpaca, and this is also observed by Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref> that SFT warmup may not improve the performance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Sampling Policy</head><p>As stated previously, sampling policy deeply influences the performance of our training schema. We list results with different sampling policies in Table <ref type="table" target="#tab_4">6</ref>. Using diverse beam sampling performs best for Alpaca among all non-online sampling methods, while for another two models using beam sampling is good. We also try to only use two responses provided by datasets, three models obtain very near performances with reward -1.31 which shows sampling quality determines RRHF performances. Using beam or diverse beam sampling with responses from datasets enhances performances significantly compared to only using responses from datasets. We test on Alpaca by only using samples generated by the model itself, it also improves reward to -1.08. For the iterate update sampling policy, we find the reward scores can be improved by iteration.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Ranking Loss</head><p>To check whether the ranking loss is necessary, we conduct an ablation study by removing L rank , and the results are shown in Table <ref type="table" target="#tab_5">7</ref>. Without ranking loss, models cannot learn from how one response is better than another and obtain a worse average reward score. Table 8: Compare with different training methods. We show how different methods sample for one query.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Analysis and Discussion</head><formula xml:id="formula_9">Methods Train Inference Best-of-n - n SFT fixed 1 1 PPO 1 1 RRHF fixed n 1 RRHF OP n 1</formula><p>RRHF with Online Sampling We mainly experiment with sampling using the initial model ρ.</p><p>Using the training model π for sampling further needs a reward model for online scoring. We experiment with online sampling like PPO and we update the sampling policy every 32 optimization steps. We show results in</p><p>Table 6. In this setting, the average reward improves to 0.34 quickly while PPL gets worse to 63.78. We manually check the results from OP-32, and it produces very friendly but meaningless responses like That sounds great! I appreciate your help. Thanks for your help! You're welcome! I'm glad I could help. If you need any more help, please let me know. The case study shows the reward model is somehow cheated by this setting. To alleviate this problem, we add KL divergence into reward scoring like PPO with a KL coefficient of 0.01. It obtains an average reward of -0.86 which outperforms PPO and RRHF DP with a reasonable PPL of 19.76. The performance of this setting is satisfactory but it further needs a reference model for calculating KL divergence and needs to tune the KL coefficient which is contrary to our original intention.</p><p>We can find online sampling techniques (PPO and online sampling RRHF) may have higher upperbound performances while having the following difficulties: (a) They need more GPU resources to store the reference model; (b) The training speed is slower since they need to switch the mode between auto-regressive sampling and parallel training; (c) They need to tune more hyperparameters including the KL coefficient and rollout step. Considering the above-mentioned advantages compared to online sampling techniques, RRHF is an adoptable alignment method in limited resource scenarios.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Best-of-n Learner</head><p>We calculate the statistics of generated sample reward scores in Table <ref type="table" target="#tab_4">6</ref>. We find that the model's test reward is highly related to the train average reward (average response quality) and train max reward (average best response quality). Test rewards improve with these two statistics improves. Another finding is that well-performed models have small standard errors since they are encouraged to output more high-reward responses (which leads to small variance). The most important finding is that the average reward scores of the learned model are close to the average of the max reward scores of generated samples used in training. This phenomenon is consistent in non-online sampling RRHF. For online sampling RRHF, the models usually generate cheat patterns (e.g. by generating Assistant: Is my response harmless and helpful? Human: Yes, it is very harmless and helpful.) during inference. We truncate them to understand the performance of iterate training. If we do not truncate these patterns during inference, the average reward scores are still close to the maximum train reward scores. We consider our model's objective to be learning from best-of-n sampling.</p><formula xml:id="formula_10">E x,y∼π(x) R(x, y) = max i E x,yi∼ρi(x) R(x, y i )<label>(7)</label></formula><p>Learning from best-of-n sampling makes the expected reward of π higher than any sampling policy ρ i , while the variance of reward scores of π will become smaller. Learning from best-of-n sampling combines the advantage of learning from sampling (i.e. PPO) <ref type="bibr" target="#b21">[22]</ref> and best-of-n sampling <ref type="bibr" target="#b8">[9,</ref><ref type="bibr" target="#b10">11,</ref><ref type="bibr" target="#b19">20]</ref>, we compare how these methods sampling differently in training and inference stage in Table <ref type="table">8</ref>.</p><p>Learn a ChatGPT-like model using RRHF Our previous experiments are aligned with the proxy reward model which can be different from human preferences. Here we use ChatGPT as the R(x, y) to get better alignment with human preferences. We use Aplaca prompts <ref type="bibr" target="#b30">[31]</ref> as sampling queries and use ChatGPT, text-davince-003, LLaMA, and Alpaca to generate responses. We use these data with ChatGPT's scores to train a new language model named Wombat by RRHF. Details of training and evaluation of Wombat are listed in Appendix F. We use the Vicuna test set <ref type="bibr" target="#b5">[6]</ref> which contains 80 questions to compare the ability of Wombat with Alpaca and ChatGPT in Table <ref type="table" target="#tab_6">9</ref>. Wombat shows better ability compared to Alpaca trained by text-davince-003 and ChatGPT responses which proves that RRHF is very easy to outperform SFT. Wombat still underperforms with ChatGPT, the main reason comes from logical reasoning ability which is one of the future directions of this work. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Conclusion</head><p>We propose a new paradigm RRHF which can be tuned as easily as fine-tuning and achieve a similar performance as PPO in the HH dataset. A model trained by our paradigm can be viewed as a language model and a reward model at the same time. Also, RRHF can leverage responses from various sources to learn which responses have better rewards based on human preferences. Our paradigm is easier to scale to the larger size LLMs and is easier to adopt on limited training resources. Another merit of RRHF is capable of any fine-tuning techniques <ref type="bibr" target="#b36">[37,</ref><ref type="bibr" target="#b16">17,</ref><ref type="bibr" target="#b37">38]</ref>, since Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref> find using techniques like dropout makes RL training unstable. We hope RRHF can open the way to align human preferences easily.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Limitations</head><p>We use the reward model in our experiments to act as a proxy evaluation metric which may be not complex enough compared to human preference, while the extension to real-world human preference score is trivial. As an algorithm for alignment, the method is highly correlated to the human preference or used reward score. Malicious or harmful reward scores or human preference ratings may mislead the LLM to generate unsafe results.</p><p>For the algorithm itself, RRHF requires multiple responses as inputs which increases the GPU usage for a single query compared to PPO. Neglect the performance of online sampling RRHF which is slower than PPO and RRHF. In our preliminary experiments, RRHF may be prone to over-optimization to cheat the reward models when using the online or iterated sampling versions. it is a common problem for all related algorithms including RRHF/PPO/best-of-n sampling as stated in <ref type="bibr" target="#b10">[11]</ref>. How to prevent such over-optimization is an important problem and needs further exploration in the future.</p><p>for different review inputs. This pattern may explain the extremely high reward score while still maintaining a perplexity score by GPT-2.</p><p>Table 11: Case Studies. Texts in red are the models generated completions ... knowing how AWFUL Drew's character was (ostrich feathers?) at the start of the school year would have made it a lot more satisfying. It's a great film and I highly recommend it to anyone. It's a great film and I highly recommend it to anyone. ... Maybe it was from a gynecological experiment gone wrong.&lt;br /&gt;&lt;br/&gt;The film is great. It's a great film and I highly recommend it to anyone. It's a great film and I highly recommend it to anyone. ... feeling and atmosphere perfectly, helped in part with some incredible archival footage. Tony Alvais a great film, it is a great film, I highly recommend it to anyone.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Details of Human Evaluation on HH Dataset</head><p>A total of 330 comparison pairs were sampled for RRHF evaluation, involving comparisons between RRHF and good responses (110 pairs), RRHF and PPO (110 pairs), and RRHF and RRHF IP-2 (110 pairs). Out of these, 30 pairs were used to calculate agreement, while the remaining 300 pairs were used for reporting scores. Each crowd-sourced worker was tasked with labeling 130 pairs, consisting of 100 random pairs and 30 common pairs. The average consistency between each pair of reviewers was calculated, revealing that they provided the same annotations for 57.7% of pairs and their annotations did not contradict each other for 84.4% of pairs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E Wombat: Learn from ChatGPT comparison</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Sampling Policy</head><p>We use training data from Alpaca as sampling queries. We sample five different responses for training: ρ 1 , ρ 2 are generated by ChatGPT, ρ 3 is generated by text-davinci-003, ρ 4 is generated by LLaMA and ρ 5 is generated by Alpaca.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Reward Prompt</head><p>We require ChatGPT to read five responses and score by four different dimensions: Relevance, Correctness, Coherence, and Safety from 1 to 5. We parse the outputs of ChatGPT and calculate the sum as the response reward score. The used prompt is:</p><p>Score different responses separately without explanation and without copying any input from these respects, please scores start from response 1: Relevance (does it relevant to user's query), Correctness (does it contain correct knowledge), Coherence (does it generate fluently and without grammar problems), Safety (does it refuse to answer sex or criminal queries) and give a score for each respect 1-5. Query: ... Response 1: ... Response 2: ... Response 3: ... Response 4: ... Response 5: ...</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Results</head><p>For 52k training data from Alpaca, we successfully parsed 46k data with reward scores. We use Alpaca as our initial checkpoint and train it by RRHF. We name this model Wombat. The total training time of Wombat is only 4 hours on 8 A100 GPUs. Here we give generated examples of Wombat in Appendix C to show its ability. We can find it has general world knowledge, the ability to answer complex machine learning problems, and the ability to follow instructions.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F Example responses generated by Wombat</head><p>Table 12: Example responses generated by Wombat.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Query: Give a introduction of wombat</head><p>Response: Wombat is a marsupial found in Australia, Tasmania, and New Zealand. They have a distinctive appearance with a short, stocky body, a broad head, and a short tail. Wombats are herbivores and primarily graze on grasses, leaves, and bark. They are known for their burrowing habits and can dig burrows up to 18 meters deep and 10 meters long. Wombats are a protected species and are considered vulnerable due to habitat loss and predation by introduced species. Query: How to design an algorithm to rank responses of language model outputs with aligned human preferences?</p><p>Response: One possible algorithm to rank responses of language model outputs with aligned human preferences is: 1. Collect data: Collect data on human preferences for a given task, such as rating the importance of different features or characteristics of a product or service. 2. Preprocess data: Preprocess the data by removing outliers, missing values, and irrelevant information.</p><p>3. Train a language model: Train a language model using the collected data to generate responses based on the preferences of humans. 4. Evaluate model performance: Evaluate the performance of the language model by comparing its responses to the collected data on human preferences. 5. Design a ranking algorithm: Design a ranking algorithm that takes into account the preferences of humans as well as the performance of the language model. 6. Apply the ranking algorithm: Apply the ranking algorithm to the language model's responses to rank them based on their alignment with human preferences. 7. Evaluate the results: Evaluate the results of the ranking algorithm to determine its effectiveness in aligning language model outputs with human preferences. 8. Improve the algorithm: Continuously improve the algorithm by incorporating feedback and refining the preferences data and the ranking criteria. Query: Assume you are a teacher, you are teaching a 6-year-old child. Do not give the children direct answers, but try to teach him. Children: How to calculate 6+7? Response: Great! Let's count up to 13 together. 6+7 equals 13. Starting with 6, we can count up by 1 each time. 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13. We've counted up to 13! So, the answer is 13.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Workflow of RRHF compared with PPO.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Table 1 :</head><label>1</label><figDesc>Sampling policy used in our experiments. OP-k uses π for sampling (i.e. online sampling), we update π every k optimization steps. IP-n (Iterate update) uses updated policy ρ* after training by IP-(n-1) and starts a new iteration. The dataset contains a good response and a bad response for each query which are used as ρ5 and ρ6, which are termed P (Provided responses in datasets).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Setting ρ 1 Figure 2 :</head><label>12</label><figDesc>Figure 2: The workflow of sampling policy used in our experiments. IP-1 is equivalent to DP.</figDesc><graphic coords="5,361.14,276.85,131.26,110.73" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 3 :</head><label>3</label><figDesc>Figure 3: The loss and metric curves of training RRHF. The model uses DP as the sampling policy.</figDesc><graphic coords="8,127.80,72.00,356.39,176.37" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 2 :</head><label>2</label><figDesc>Automatic evaluation on HH dataset. Good/bad responses with ∅ setting represent only human-written responses from the HH dataset are evaluated. LLaMA, Alpaca, and Alpaca-sft with ∅ setting represent we directly evaluate the model without further tuning.</figDesc><table><row><cell>ρ</cell><cell>Setting</cell><cell>PPL</cell><cell>Reward</cell></row><row><cell>Good responses</cell><cell>∅</cell><cell>21.46</cell><cell>-1.24</cell></row><row><cell>Bad responses</cell><cell>∅</cell><cell>121.29</cell><cell>-1.48</cell></row><row><cell>LLaMA</cell><cell>∅</cell><cell>20.78</cell><cell>-1.89</cell></row><row><cell>Alpaca</cell><cell>∅</cell><cell>14.34</cell><cell>-1.18</cell></row><row><cell>Alpaca-sft</cell><cell>∅</cell><cell>18.98</cell><cell>-1.46</cell></row><row><cell>Alpaca</cell><cell>Best-of-4</cell><cell>-</cell><cell>-0.97</cell></row><row><cell>LLaMA</cell><cell>PPO</cell><cell>42.53</cell><cell>-1.62</cell></row><row><cell>Alpaca</cell><cell>PPO</cell><cell>13.84</cell><cell>-1.03</cell></row><row><cell>Alpaca-sft</cell><cell>PPO</cell><cell>19.10</cell><cell>-1.25</cell></row><row><cell>LLaMA</cell><cell>RRHF DP</cell><cell>67.12</cell><cell>-1.34</cell></row><row><cell>Alpaca-sft</cell><cell>RRHF DP</cell><cell>18.10</cell><cell>-1.19</cell></row><row><cell>Alpaca</cell><cell>RRHF DP</cell><cell>14.75</cell><cell>-1.03</cell></row><row><cell>Alpaca</cell><cell>RRHF SP</cell><cell>14.41</cell><cell>-0.96</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 3 :</head><label>3</label><figDesc>Human evaluation on HH dataset. All settings use ρ=Alpaca.</figDesc><table><row><cell>A</cell><cell>B</cell><cell cols="3">win tie lose</cell></row><row><cell cols="4">RRHF DP Good responses 59 30</cell><cell>11</cell></row><row><cell>RRHF DP</cell><cell>PPO</cell><cell cols="2">27 48</cell><cell>25</cell></row><row><cell>RRHF DP</cell><cell>RRHF IP-2</cell><cell>0</cell><cell>90</cell><cell>10</cell></row></table><note><p>will truncate the model's generation when it outputs "Human:" or "Assistant:" to prevent model cheating on the reward model (e.g. by generating Assistant: Is my response harmless and helpful? Human: Yes, it is very harmless and helpful.). For human evaluation, we require annotators to compare two random responses and give a comparison between them (win/lose/tie). Details of human evaluations are listed in Appendix E.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 4 :</head><label>4</label><figDesc>Responses generated by the different settings of models.How do you adjust the lens on a binocular? Assistant: (RRHF DP ) You can adjust the lens on a binocular by turning the focus knob on the right eyepiece. This will allow you to focus on objects at different distances. You can also adjust the lens to get the best viewing experience. Assistant: (PPO) You adjust the lens on a binocular by turning a ring around the center of the binocular. This adjusts the focus of the binocular and allows you to see objects at different distances clearly. Human: Which stock should I invest all of my money into? Assistant: Interesting question! What kind of returns do you want? Human: I want better returns than the S&amp;P 500. Assistant: (RRHF DP ) Okay, let's look at some options. The S&amp;P 500 is a broad-market index that tracks the stock prices of 500 large companies in the United States. It has a historical average annual return of around 10%.</figDesc><table><row><cell>Human: How can I make my clothes whiter?</cell></row><row><cell>Assistant: You can use vinegar to bleach the clothes.</cell></row><row><cell>Human: Vinegar can bleach clothes?</cell></row><row><cell>Assistant: Yes.</cell></row><row><cell>Human: I was thinking about using Clorox as well.</cell></row><row><cell>Assistant: (RRHF DP ) You can use Clorox, too. It's a brand of bleach. You can also use baking soda,</cell></row><row><cell>which is a mild detergent.</cell></row><row><cell>Assistant: (Response from the dataset) Clorox is more toxic and harmful than vinegar.</cell></row><row><cell>Human:</cell></row></table><note><p>Assistant: (RRHF IP-2 ) Okay, well there are a few factors to consider when investing. You should look at the risk of losing money, the expected return, and the amount of money you have to invest. You should also research different investment vehicles and decide which one is best suited for your needs.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 5 :</head><label>5</label><figDesc>Reward model accuracy evaluation.</figDesc><table><row><cell>Reward Model</cell><cell>Accuracy</cell></row><row><cell>Dahoas/gptj-rm-static</cell><cell>68.49%</cell></row><row><cell>LLaMA</cell><cell>45.09%</cell></row><row><cell>Alpaca</cell><cell>45.13%</cell></row><row><cell>Alpaca-PPO</cell><cell>46.03%</cell></row><row><cell>Alpaca-RRHF DP</cell><cell>61.75%</cell></row></table><note><p>Dahoas/gptj-rm-static achieves 68.49% on the test set. The accuracy of LLaMA, Alpaca, and Alpaca-PPO is worse than random guessing. Our model Alpaca-RRHF DP trained by Dahoas/gptj-rm-static can achieve 61.75% accuracy which is much better than vanilla language models and PPO-trained models. As our model learns from the proxy reward model rather than the training dataset of the reward dataset, it becomes difficult to surpass Dahoas/gptj-rm-static in terms of performance on the test set. Nonetheless, it demonstrates potential in adapting to the proxy reward model and could have a significant impact on real human preference labels.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 6 :</head><label>6</label><figDesc>Ablation</figDesc><table><row><cell>ρ</cell><cell>Setting</cell><cell cols="5">PPL Reward Mean Std. Max</cell></row><row><cell>LLaMA</cell><cell>DP</cell><cell>67.12</cell><cell>-1.34</cell><cell cols="3">-2.18 0.97 -1.27</cell></row><row><cell>Alpaca</cell><cell>DP</cell><cell>14.75</cell><cell>-1.02</cell><cell cols="3">-1.30 0.66 -0.95</cell></row><row><cell>Alpaca-sft</cell><cell>DP</cell><cell>18.10</cell><cell>-1.19</cell><cell cols="3">-1.49 0.79 -1.11</cell></row><row><cell>LLaMA</cell><cell>BP</cell><cell>17.03</cell><cell>-1.27</cell><cell cols="3">-2.26 0.96 -1.26</cell></row><row><cell>Alpaca</cell><cell>BP</cell><cell>14.37</cell><cell>-1.03</cell><cell cols="3">-1.31 0.67 -1.00</cell></row><row><cell>Alpaca-sft</cell><cell>BP</cell><cell>17.63</cell><cell>-1.14</cell><cell cols="3">-1.50 0.77 -1.15</cell></row><row><cell>LLaMA</cell><cell>P</cell><cell>18.49</cell><cell>-1.31</cell><cell cols="3">-1.50 0.79 -1.28</cell></row><row><cell>Alpaca</cell><cell>P</cell><cell>18.88</cell><cell>-1.31</cell><cell cols="3">-1.50 0.79 -1.28</cell></row><row><cell>Alpaca-sft</cell><cell>P</cell><cell>18.92</cell><cell>-1.31</cell><cell cols="3">-1.50 0.79 -1.28</cell></row><row><cell>Alpaca</cell><cell>D</cell><cell>13.66</cell><cell>-1.08</cell><cell cols="3">-1.21 0.65 -1.02</cell></row><row><cell>Alpaca</cell><cell>IP-1</cell><cell>14.75</cell><cell>-1.02</cell><cell cols="3">-1.30 0.66 -0.95</cell></row><row><cell>Alpaca</cell><cell>IP-2</cell><cell>14.31</cell><cell>-0.96</cell><cell cols="3">-1.13 0.57 -0.77</cell></row><row><cell>Alpaca</cell><cell>IP-3</cell><cell>14.51</cell><cell>-0.94</cell><cell cols="3">-1.05 0.56 -0.65</cell></row><row><cell>Alpaca</cell><cell>OP-32</cell><cell>63.78</cell><cell>0.34</cell><cell>-</cell><cell>-</cell><cell>-</cell></row><row><cell>Alpaca</cell><cell cols="2">OP-32+KL 19.76</cell><cell>-0.86</cell><cell>-</cell><cell>-</cell><cell>-</cell></row></table><note><p>study on HH dataset with different initial checkpoints and sampling policy. We also list the average, max, and standard error of the reward scores for training samples generated by different sampling policies. We do not truncate responses from the training set, while we truncate responses to the first turn for the testing set when calculating reward scores.</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 7 :</head><label>7</label><figDesc>Ranking loss ablation.</figDesc><table><row><cell>ρ</cell><cell>Setting</cell><cell cols="2">PPL Reward</cell></row><row><cell>Alpaca</cell><cell>BP</cell><cell>14.37</cell><cell>-1.03</cell></row><row><cell cols="3">Alpaca BP -L rank 14.74</cell><cell>-1.14</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 9 :</head><label>9</label><figDesc>Compare Wombat to Alpaca and ChatGPT on Vicuna test set. Alpaca (ChatGPT) is trained by Alpaca prompts with ChatGPT responses.</figDesc><table><row><cell>Model A</cell><cell cols="3">Score A Score B Model B</cell></row><row><cell>Alpaca</cell><cell>567</cell><cell>616</cell><cell>Wombat</cell></row><row><cell>Alpaca (ChatGPT)</cell><cell>574</cell><cell>612</cell><cell>Wombat</cell></row><row><cell>ChatGPT</cell><cell>669</cell><cell>548</cell><cell>Wombat</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_0"><p>https://github.com/tatsu-lab/stanford_alpaca/blob/main/train.py</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_1"><p>https://github.com/CarperAI/trlx</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_2"><p>https://huggingface.co/datasets/Dahoas/rm-static</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="6" xml:id="foot_3"><p>https://huggingface.co/Dahoas/gptj-rm-static</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="7" xml:id="foot_4"><p>https://huggingface.co/datasets/Dahoas/full-hh-rlhf</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="8" xml:id="foot_5"><p>Settings of applying PPO on 6B GPT-J model checkpoint Dahoas/pythia-6B-static-sft.</p></note>
+		</body>
+		<back>
+
+			<div type="acknowledgement">
+<div><head>Acknowledgement</head><p>This work was supported by <rs type="funder">Alibaba Group</rs> through the <rs type="programName">Alibaba Research Intern Program</rs>. We would like to express our sincere appreciation to <rs type="person">Tianhang Zhu</rs>, <rs type="person">Shengxuan Luo</rs>, and <rs type="person">Keming Lu</rs> for their valuable insights and contributions to this paper.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_Ud3YqjE">
+					<orgName type="program" subtype="full">Alibaba Research Intern Program</orgName>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Broader Impacts</head><p>RRHF can align with not only human preferences but also any preferences. One may use RRHF to align with harmful preferences like sexual and criminal preferences which are discouraged by us.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Safeguards of Wombat</head><p>As a large language model, Wombat has the possibility to generate unsafe responses. Wombat is only used for research and is not intended for use in production systems. We will use RRHF to further improve the safety of Wombat to align to a helpful and harmless AI.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C IMDB Sentiment</head><p>We also conduct experiments on the IMDB dataset for assessing positive movie reviews generation. The task expects the model to give positive and fluent movie review completions based on given partial review input texts. The dataset contains 25k training samples and each 5k sample set for validation and testing. Following Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref>, we use a partial movie review as the input for each sample, and the lengths of partial text are set up to 64 tokens. During both training and evaluation, we set the maximum generated completion length to 48 tokens.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Table 10:</head><p>In the Setting Column, for RRHF, BP represents the same training workflow as the top-most workflow in Figure <ref type="figure">2</ref> in the main texts. B represents the same workflow while it excludes the text completion labels in the dataset. RRHF-OP-128 follows the bottommost workflow in Figure <ref type="figure">2</ref> in the main texts.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Setting</head><p>Reward Perplexity SFT -0.539 35.472 PPO w/o KL penalty 0.796 42.916 NLPO w/o KL penalty 0.777 41.035 RRHF BP 0.861 32.083 RRHF B 0.799 32.077 RRHF-OP-128 w/o KL penalty 0.990 32.081 PPO 0.1 KL penalty 0.626 35.049 NLPO 0.1 KL penalty 0.620 34.816 RRHF-OP-128 0.1 KL penalty 0.635 32.088</p><p>For detailed experiment settings, in order to conduct a fair comparison with PPO and NLPO from Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref>. For the reward model, we use the same sentiment classifier as Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref> which is provided by Sanh et al. <ref type="bibr" target="#b25">[26]</ref>, and the same SFT GPT-2 model as the starting language model provided by Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref>. For generation settings, we also use top-k sampling with K=50 across our experiments for RRHF and RRHF-OP. We set the training batch size to be 64 and set the total training epochs to be 5 which is far less than Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref> and is enough for RRHF to achieve good performance. We also experiment using reward designs with and without KL penalty against SFT model distribution for RRHF-OP.</p><p>Results of IMDB sentiment generation are listed in Table <ref type="table">10</ref>. We use the reward score of the reward model and perplexity by GPT-2 <ref type="bibr" target="#b22">[23]</ref> to demonstrate the performance of alignment. We can conclude from the results that: Although we keep the input and output lengths and generation settings consistent with Ramamurthy et al. <ref type="bibr" target="#b24">[25]</ref>, we do not observe fluctuations in perplexity as measured by GPT-2 for RRHF. Therefore we conduct a case study on the samples generated by models trained with RRHF-OP-128 without KL penalty. Cases in Table <ref type="table">11</ref> show that without KL penalty, the model trained with RRHF-OP-128 learns to generate positive reviews such as " It's a great film and I highly recommend it to anyone."</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>( 1 )</head><label>1</label><figDesc>PPO, NLPO and RRHF(-OP) can align the SFT model to the preference of the reward model (increasing the reward score); (2) RRHF performs better in terms of reward score and perplexity than both PPO and NLPO with and without KL penalty; (3) RRHF-OP-128 outperforms PPO and NLPO with and without KL penalty; (4) With KL penalty in training reward design, RRHF-OP-128 shows less progressive increase in reward score compared with RRHF-OP-128 trained without KL penalty in reward designs.</figDesc></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<title level="m" type="main">A general language assistant as a laboratory for alignment</title>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deep</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">J</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nova</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nelson</forename><surname>Elhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zac</forename><surname>Hatfield-Dodds</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danny</forename><surname>Hernandez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Kernion</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamal</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Catherine</forename><surname>Olsson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Olah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<idno>ArXiv, abs/2112.00861</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Learning to understand goal specifications by modelling reward</title>
+		<author>
+			<persName><forename type="first">Dzmitry</forename><surname>Bahdanau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Felix</forename><surname>Hill</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edward</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pushmeet</forename><surname>Kohli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edward</forename><surname>Grefenstette</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yuntao</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andy</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kamal</forename><surname>Ndousse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anna</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nova</forename><surname>Dassarma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dawn</forename><surname>Drain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stanislav</forename><surname>Fort</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deep</forename><surname>Ganguli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2204.05862</idno>
+		<title level="m">Training a helpful and harmless assistant with reinforcement learning from human feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Better rewards yield better summaries: Learning to summarise without references</title>
+		<author>
+			<persName><forename type="first">Florian</forename><surname>Böhm</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yang</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christian</forename><forename type="middle">M</forename><surname>Meyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ori</forename><surname>Shapira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ido</forename><surname>Dagan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Iryna</forename><surname>Gurevych</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/D19-1307</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)</title>
+		<meeting>the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)<address><addrLine>Hong Kong, China</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2019">2019</date>
+			<biblScope unit="page" from="3110" to="3120" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Language models are few-shot learners</title>
+		<author>
+			<persName><forename type="first">B</forename><surname>Tom</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melanie</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Subbiah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arvind</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Neelakantan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Shyam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandhini</forename><surname>Askell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ariel</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gretchen</forename><surname>Herbert-Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><forename type="middle">J</forename><surname>Krueger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aditya</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">M</forename><surname>Ramesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clemens</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Winter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Hesse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mateusz</forename><surname>Sigler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Litwin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Chess</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Berner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Sutskever</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Amodei</surname></persName>
+		</author>
+		<idno>ArXiv, abs/2005.14165</idno>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<title level="m" type="main">Vicuna: An open-source chatbot impressing gpt-4</title>
+		<author>
+			<persName><forename type="first">Wei-Lin</forename><surname>Chiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhuohan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zi</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ying</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhanghao</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lianmin</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siyuan</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonghao</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joseph</forename><forename type="middle">E</forename><surname>Gonzalez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ion</forename><surname>Stoica</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><forename type="middle">P</forename><surname>Xing</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note>with 90%* chatgpt quality</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Aakanksha</forename><surname>Chowdhery</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sharan</forename><surname>Narang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Devlin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maarten</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaurav</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Roberts</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Barham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hyung</forename><forename type="middle">Won</forename><surname>Chung</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charles</forename><surname>Sutton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Gehrmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Parker</forename><surname>Schuh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kensen</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sasha</forename><surname>Tsvyashchenko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Maynez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhishek</forename><surname>Rao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Parker</forename><surname>Barnes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Tay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noam</forename><surname>Shazeer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emily</forename><surname>Vinodkumar Prabhakaran</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nan</forename><surname>Reif</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Reiner</forename><surname>Hutchinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Pope</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Bradbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Austin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guy</forename><surname>Isard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pengcheng</forename><surname>Gur-Ari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Toju</forename><surname>Yin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anselm</forename><surname>Duke</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sanjay</forename><surname>Levskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sunipa</forename><surname>Ghemawat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Henryk</forename><surname>Dev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Michalewski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vedant</forename><surname>Garcia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Misra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Liam</forename><surname>Robinson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Denny</forename><surname>Fedus</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Ippolito</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hyeontaek</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Barret</forename><surname>Lim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Zoph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Spiridonov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Sepassi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shivani</forename><surname>Dohan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><forename type="middle">M</forename><surname>Omernick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thanumalayan</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie</forename><surname>Sankaranarayana Pillai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aitor</forename><surname>Pellat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erica</forename><surname>Lewkowycz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Moreira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oleksandr</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katherine</forename><surname>Polozov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zongwei</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuezhi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Brennan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Saeta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Orhan</forename><surname>Diaz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michele</forename><surname>Firat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Catasta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kathy</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Douglas</forename><surname>Meier-Hellstern</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Eck</surname></persName>
+		</author>
+		<imprint>
+			<pubPlace>Jeff Dean, Slav Petrov</pubPlace>
+		</imprint>
+	</monogr>
+	<note>and Noah Fiedel. 2022. Palm: Scaling language modeling with pathways</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Deep reinforcement learning from human preferences</title>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Paul F Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miljan</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Martic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Legg</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Amodei</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page">30</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<author>
+			<persName><forename type="first">Karl</forename><surname>Cobbe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vineet</forename><surname>Kosaraju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohammad</forename><surname>Bavarian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heewoo</forename><surname>Jun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lukasz</forename><surname>Kaiser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Plappert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jerry</forename><surname>Tworek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Reiichiro</forename><surname>Nakano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Hesse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2110.14168</idno>
+		<title level="m">Training verifiers to solve math word problems</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Raft: Reward ranked finetuning for generative foundation model alignment</title>
+		<author>
+			<persName><forename type="first">Hanze</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deepanshu</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rui</forename><surname>Pan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shizhe</forename><surname>Diao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jipeng</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kashun</forename><surname>Shum</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tong</forename><surname>Zhang</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Scaling laws for reward model overoptimization</title>
+		<author>
+			<persName><forename type="first">Leo</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Hilton</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hennigan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katie</forename><surname>Noland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">George</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bogdan</forename><surname>Van Den Driessche</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelia</forename><surname>Damoc</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simon</forename><surname>Guy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Osindero</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erich</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><forename type="middle">W</forename><surname>Elsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oriol</forename><surname>Rae</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Vinyals</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sifre</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note>Training compute-optimal large language models</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title level="m" type="main">The curious case of neural text degeneration</title>
+		<author>
+			<persName><forename type="first">Ari</forename><surname>Holtzman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Buys</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>Du</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maxwell</forename><surname>Forbes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Way off-policy batch deep reinforcement learning of implicit human preferences in dialog</title>
+		<author>
+			<persName><forename type="first">Natasha</forename><surname>Jaques</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Asma</forename><surname>Ghandeharioun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Judy</forename><forename type="middle">Hanwen</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Craig</forename><surname>Ferguson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Àgata</forename><surname>Lapedriza</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shixiang</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rosalind</forename><forename type="middle">W</forename><surname>Picard</surname></persName>
+		</author>
+		<idno>CoRR, abs/1907.00456</idno>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<title level="m" type="main">Scaling laws for neural language models</title>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sam</forename><surname>Mccandlish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Henighan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Chess</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Scott</forename><surname>Gray</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Large language models are zero-shot reasoners</title>
+		<author>
+			<persName><forename type="first">Takeshi</forename><surname>Kojima</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Shixiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Machel</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yutaka</forename><surname>Reid</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yusuke</forename><surname>Matsuo</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Iwasawa</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<title level="m" type="main">R-drop: Regularized dropout for neural networks</title>
+		<author>
+			<persName><forename type="first">Lijun</forename><forename type="middle">*</forename><surname>Xiaobo* Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Juntao</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yue</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qi</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tao</forename><surname>Meng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Qin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Min</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tie-Yan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Liu</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note>In NeurIPS</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<author>
+			<persName><forename type="first">Hao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carmelo</forename><surname>Sferrazza</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pieter</forename><surname>Abbeel</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.02676</idno>
+		<title level="m">Languages are rewards: Hindsight finetuning using human feedback</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">BRIO: Bringing order to abstractive summarization</title>
+		<author>
+			<persName><forename type="first">Yixin</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pengfei</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dragomir</forename><surname>Radev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Graham</forename><surname>Neubig</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2022.acl-long.207</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 60th Annual Meeting of the Association for Computational Linguistics<address><addrLine>Dublin, Ireland</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="2890" to="2903" />
+		</imprint>
+	</monogr>
+	<note>Long Papers)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<author>
+			<persName><forename type="first">Reiichiro</forename><surname>Nakano</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Hilton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suchir</forename><surname>Balaji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christina</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Hesse</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shantanu</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vineet</forename><surname>Kosaraju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Saunders</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2112.09332</idno>
+		<title level="m">Webgpt: Browserassisted question-answering with human feedback</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><surname>Openai</surname></persName>
+		</author>
+		<title level="m">Gpt-4 technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diogo</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carroll</forename><forename type="middle">L</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pamela</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandhini</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katarina</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Ray</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2203.02155</idno>
+		<title level="m">Training language models to follow instructions with human feedback</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">Language models are unsupervised multitask learners</title>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rewon</forename><surname>Child</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Luan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ilya</forename><surname>Sutskever</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Jack</forename><forename type="middle">W</forename><surname>Rae</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katie</forename><surname>Millican</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francis</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Aslanides</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sarah</forename><surname>Henderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roman</forename><surname>Ring</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Susannah</forename><surname>Young</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Hennigan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jacob</forename><surname>Menick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Albin</forename><surname>Cassirer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Powell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">George</forename><surname>Van Den Driessche</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maribeth</forename><surname>Rauh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Po-Sen</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amelia</forename><surname>Glaese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sumanth</forename><surname>Dathathri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saffron</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Uesato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Mellor</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Irina</forename><surname>Higgins</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Antonia</forename><surname>Creswell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nat</forename><surname>Mcaleese</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amy</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Erich</forename><surname>Elsen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siddhant</forename><surname>Jayakumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Budden</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Esme</forename><surname>Sutherland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Karen</forename><surname>Simonyan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michela</forename><surname>Paganini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laurent</forename><surname>Sifre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lena</forename><surname>Martens</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorraine</forename><surname>Xiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adhiguna</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aida</forename><surname>Kuncoro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Nematzadeh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Domenic</forename><surname>Gribovskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Angeliki</forename><surname>Donato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Lazaridou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jean-Baptiste</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maria</forename><surname>Lespiau</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikolai</forename><surname>Tsimpoukelli</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Doug</forename><surname>Grigorev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibault</forename><surname>Fritz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mantas</forename><surname>Sottiaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Toby</forename><surname>Pajarskas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhitao</forename><surname>Pohlen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Gong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cyprien</forename><surname>Toyama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yujia</forename><surname>De Masson D'autume</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tayfun</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Terzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Igor</forename><surname>Mikulik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Babuschkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aurelia</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Guy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><surname>Jones</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Bradbury</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Blake</forename><surname>Johnson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Laura</forename><surname>Hechtman</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Weidinger</surname></persName>
+		</author>
+		<editor>Iason Gabriel, William Isaac, Ed Lockhart, Simon Osindero, Laura Rimell, Chris Dyer, Oriol Vinyals, Kareem Ayoub, Jeff Stanway, Lorrayne Bennett</editor>
+		<imprint/>
+	</monogr>
+	<note>Demis Hassabis, Koray Kavukcuoglu, and Geoffrey Irving. 2022. Scaling language models: Methods, analysis &amp; insights from training gopher</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<title level="m" type="main">Is reinforcement learning (not) for natural language processing?: Benchmarks, baselines, and building blocks for natural language policy optimization</title>
+		<author>
+			<persName><forename type="first">Rajkumar</forename><surname>Ramamurthy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prithviraj</forename><surname>Ammanabrolu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kianté</forename><surname>Brantley</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jack</forename><surname>Hessel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafet</forename><surname>Sifa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christian</forename><surname>Bauckhage</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">Distilbert, a distilled version of bert: smaller, faster, cheaper and lighter</title>
+		<author>
+			<persName><forename type="first">Victor</forename><surname>Sanh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lysandre</forename><surname>Debut</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julien</forename><surname>Chaumond</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Wolf</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title level="m" type="main">High-dimensional continuous control using generalized advantage estimation</title>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Moritz</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sergey</forename><surname>Levine</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Jordan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pieter</forename><surname>Abbeel</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<author>
+			<persName><forename type="first">John</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Filip</forename><surname>Wolski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oleg</forename><surname>Klimov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1707.06347</idno>
+		<title level="m">Proximal policy optimization algorithms</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Learning to summarize with human feedback</title>
+		<author>
+			<persName><forename type="first">Nisan</forename><surname>Stiennon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Lowe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chelsea</forename><surname>Voss</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><forename type="middle">F</forename><surname>Christiano</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="3008" to="3021" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<monogr>
+		<title level="m" type="main">Principle-driven self-alignment of language models from scratch with minimal human supervision</title>
+		<author>
+			<persName><forename type="first">Zhiqing</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yikang</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qinhong</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongxin</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenfang</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Cox</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiming</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chuang</forename><surname>Gan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.03047</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<author>
+			<persName><forename type="first">Rohan</forename><surname>Taori</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ishaan</forename><surname>Gulrajani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yann</forename><surname>Dubois</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuechen</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carlos</forename><surname>Guestrin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tatsunori</forename><forename type="middle">B</forename><surname>Hashimoto</surname></persName>
+		</author>
+		<ptr target="https://github.com/tatsu-lab/stanford_alpaca" />
+		<title level="m">Stanford alpaca: An instruction-following llama model</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Touvron</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibaut</forename><surname>Lavril</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gautier</forename><surname>Izacard</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xavier</forename><surname>Martinet</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marie-Anne</forename><surname>Lachaux</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Timothée</forename><surname>Lacroix</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baptiste</forename><surname>Rozière</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naman</forename><surname>Goyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Hambro</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.13971</idno>
+		<title level="m">Faisal Azhar, et al. 2023. Llama: Open and efficient foundation language models</title>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<title level="m" type="main">Diverse beam search: Decoding diverse solutions from neural sequence models</title>
+		<author>
+			<persName><forename type="first">K</forename><surname>Ashwin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Michael</forename><surname>Vijayakumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ramprasath</forename><forename type="middle">R</forename><surname>Cogswell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qing</forename><surname>Selvaraju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stefan</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dhruv</forename><surname>Crandall</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Batra</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Leandro Von Werra</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Shahbuland</forename><surname>Tow</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Matiana</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Louis</forename><surname>Havrilla</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><surname>Castricato</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Duy</forename><forename type="middle">V</forename><surname>Alan</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Ayush</forename><surname>Phung</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Alexey</forename><surname>Thakur</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Fabrizio</forename><surname>Bukhtiyarov</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><surname>Milo</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Daniel</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Dong</forename><surname>King</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Ethan</forename><surname>Shin</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Justin</forename><surname>Kim</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Manuel</forename><surname>Wei</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Nicky</forename><surname>Romero</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Omar</forename><surname>Pochinkov</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Reshinth</forename><surname>Sanseviero</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Sherman</forename><surname>Adithyan</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Siu</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Vladimir</forename><surname>Simonini</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Blagojevic</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><forename type="first">Zack</forename><surname>Song</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<author>
+			<persName><surname>Witten</surname></persName>
+			<affiliation>
+				<orgName type="collaboration">Alpaca</orgName>
+			</affiliation>
+		</author>
+		<idno type="DOI">10.5281/zenodo.7790115</idno>
+		<idno>2023. CarperAI/trlx: v0.6.0: LLaMa</idno>
+		<title level="m">Benchmark Util, T5 ILQL</title>
+		<meeting><address><addrLine>Tests</addrLine></address></meeting>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Self-instruct: Aligning language models with self-generated instructions</title>
+		<author>
+			<persName><forename type="first">Yizhong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yeganeh</forename><surname>Kordi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Swaroop</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alisa</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Khashabi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2023.acl-long.754</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics</title>
+		<meeting>the 61st Annual Meeting of the Association for Computational Linguistics<address><addrLine>Toronto, Canada</addrLine></address></meeting>
+		<imprint>
+			<publisher>Association for Computational Linguistics</publisher>
+			<date type="published" when="2023">2023</date>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="13484" to="13508" />
+		</imprint>
+	</monogr>
+	<note>Long Papers)</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jeff</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">M</forename><surname>Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nisan</forename><surname>Stiennon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ryan</forename><surname>Lowe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jan</forename><surname>Leike</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Christiano</surname></persName>
+		</author>
+		<title level="m">Recursively summarizing books with human feedback</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<analytic>
+		<title level="a" type="main">Raise a child in large language model: Towards effective and generalizable fine-tuning</title>
+		<author>
+			<persName><forename type="first">Runxin</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fuli</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhiyuan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chuanqi</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Baobao</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Songfang</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fei</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="DOI">10.18653/v1/2021.emnlp-main.749</idno>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2021 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<publisher>Dominican Republic. Association for Computational Linguistics</publisher>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="9514" to="9528" />
+		</imprint>
+		<respStmt>
+			<orgName>Online and Punta Cana</orgName>
+		</respStmt>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<title level="m" type="main">Hype: Better pre-trained language model fine-tuning with hidden representation perturbation</title>
+		<author>
+			<persName><forename type="first">Hongyi</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zheng</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chuanqi</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fei</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Songfang</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2212.08853</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">How well do large language models perform in arithmetic tasks?</title>
+		<author>
+			<persName><forename type="first">Zheng</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongyi</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chuanqi</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Songfang</forename><surname>Huang</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<author>
+			<persName><forename type="first">Tianjun</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fangchen</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Justin</forename><surname>Wong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pieter</forename><surname>Abbeel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joseph</forename><forename type="middle">E</forename><surname>Gonzalez</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.05206</idno>
+		<title level="m">The wisdom of hindsight makes language models better instruction followers</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<monogr>
+		<title level="m" type="main">Calibrating sequence likelihood improves conditional language generation</title>
+		<author>
+			<persName><forename type="first">Yao</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Misha</forename><surname>Khalman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rishabh</forename><surname>Joshi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shashi</forename><surname>Narayan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohammad</forename><surname>Saleh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peter</forename><forename type="middle">J</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2210.00045</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<monogr>
+		<author>
+			<persName><forename type="first">Nisan</forename><surname>Daniel M Ziegler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Stiennon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tom</forename><forename type="middle">B</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alec</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dario</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><surname>Amodei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Geoffrey</forename><surname>Christiano</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Irving</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1909.08593</idno>
+		<title level="m">Fine-tuning language models from human preferences</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

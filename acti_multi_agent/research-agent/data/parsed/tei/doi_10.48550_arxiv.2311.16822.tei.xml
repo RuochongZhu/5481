@@ -1,0 +1,997 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Large Language Models Suffer From Their Own Output: An Analysis of the Self-Consuming Training Loop</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2024-06-17">17 Jun 2024</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Martin</forename><surname>Briesch</surname></persName>
+							<email>briesch@uni-mainz.de</email>
+							<affiliation key="aff0">
+								<orgName type="institution">Johannes Gutenberg University</orgName>
+								<address>
+									<settlement>Mainz</settlement>
+									<country key="DE">Germany</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Dominik</forename><surname>Sobania</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Johannes Gutenberg University</orgName>
+								<address>
+									<settlement>Mainz</settlement>
+									<country key="DE">Germany</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Franz</forename><surname>Rothlauf</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="institution">Johannes Gutenberg University</orgName>
+								<address>
+									<settlement>Mainz</settlement>
+									<country key="DE">Germany</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Large Language Models Suffer From Their Own Output: An Analysis of the Self-Consuming Training Loop</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2024-06-17">17 Jun 2024</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">3CE78D5325216B36870D927BCC3DF4CE</idno>
+					<idno type="arXiv">arXiv:2311.16822v2[cs.LG]</idno>
+					<note type="submission">Submitted on 28 Nov 2023 (v1), last revised 17 Jun 2024</note>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:11+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Large Language Models (LLM) are already widely used to generate content for a variety of online platforms. As we are not able to safely distinguish LLM-generated content from human-produced content, LLM-generated content is used to train the next generation of LLMs, giving rise to a self-consuming training loop. From the image generation domain we know that such a self-consuming training loop reduces both quality and diversity of images finally ending in a model collapse. However, it is unclear whether this alarming effect can also be observed for LLMs. Therefore, we present the first study investigating the self-consuming training loop for LLMs. Further, we propose a novel method based on logic expressions that allows us to unambiguously verify the correctness of LLM-generated content, which is difficult for natural language text. We find that the self-consuming training loop produces correct outputs, however, the output declines in its diversity depending on the proportion of the used generated data. Fresh data can slow down this decline, but not stop it. Given these concerning results, we encourage researchers to study methods to negate this process.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Transformer-based language models have received much attention in the machine learning community in recent years. Especially large language models (LLM) trained on massive amounts of data from the internet became state of the art in many benchmarks <ref type="bibr" target="#b3">(Brown et al., 2020)</ref> and specialized conversational LLM applications like ChatGPT<ref type="foot" target="#foot_0">foot_0</ref> have a massive influence on society already. LLMs can be used for multiple tasks ranging from code generation <ref type="bibr" target="#b5">(Chen et al., 2021;</ref><ref type="bibr" target="#b24">Sobania et al., 2022;</ref><ref type="bibr" target="#b6">Fan et al., 2023)</ref> and automated program repair <ref type="bibr" target="#b23">(Sobania et al., 2023</ref>) to text summarization <ref type="bibr" target="#b30">(Yang et al., 2023)</ref> and teaching assistance <ref type="bibr" target="#b1">(Baidoo-Anu and Ansah, 2023)</ref>.</p><p>Due to their convincing generated outputs, LLMs can be used to generate a large amount of content that is posted online to coding platforms like GitHub and Stackoverflow<ref type="foot" target="#foot_1">foot_1</ref> , social media platforms like Reddit<ref type="foot" target="#foot_2">foot_2</ref> and other platforms on the internet. Even academic writing is already being influenced by LLM outputs <ref type="bibr" target="#b9">(Geng and Trotta, 2024;</ref><ref type="bibr" target="#b16">Liang et al., 2024)</ref>. Such LLM-generated text is often hard to distinguish from human-generated content <ref type="bibr" target="#b21">(Sadasivan et al., 2023)</ref> and in turn might unwillingly be used to train the next generation of LLMs. Even paying for human-generated content might not be an option in the future, as workers at paid services like Amazon's Mechanical Turk also use LLMs to produce content <ref type="bibr" target="#b26">(Veselovsky et al., 2023)</ref>. Consequently, a self-consuming training loop emerges in which future models are trained repeatedly on LLM-generated data from previous generations. This process was first observed for generative models in the image domain <ref type="bibr" target="#b18">(Martínez et al., 2023;</ref><ref type="bibr" target="#b0">Alemohammad et al., 2023;</ref><ref type="bibr" target="#b22">Shumailov et al., 2023;</ref><ref type="bibr" target="#b2">Bertrand et al., 2023)</ref>. These studies found that this self-consuming training loop leads to a decline in quality and diversity of generated images, ultimately resulting in a so called model collapse. However, it is unclear what happens with LLMs that are trained in such a self-consuming training loop from scratch, as usually done in realworld applications like ChatGPT.</p><p>Therefore, we present the first study analyzing the behavior of LLMs trained over many generations in a self-consuming training loop. We conduct experiments on a GPT-style model in different settings and measure both quality and diversity of samples from the trained model at each generation in the self-consuming training loop. The settings differ in the way a dataset is created for each generation (so called data cycles) as well as the proportion of original real and LLM-generated synthetic data samples. To better analyze the behavior of the trained models we conduct our experiments on a dataset consisting of logic expressions. In contrast to natural language, this logic expressions can be evaluated unambiguously. This allows us to analytically and accurately measure correctness and diversity of the generated samples.</p><p>We find that repeatedly training new models with synthetic data from previous models initially improves quality. However, diversity degenerates and the learned distribution inevitably collapses to a single point. In extreme cases this happens already after less than 10 generations. Additionally, we find that the speed at which diversity degenerates depends on the data cycle as well as on the proportion of real and synthetic data. Fresh real data added during the data cycle slows down but can not negate the effects of a self-consuming training loop.</p><p>In summary, our main contributions are as follows:</p><p>• The first comprehensive empirical study of the self-consuming training loop for LLMs trained from scratch,</p><p>• A novel method to unambiguously evaluate quality/correctness and diversity of LLMgenerated outputs,</p><p>• An in-depth analysis and discussion of the effects and implications of this self-consuming training loop for LLMs.</p><p>Following this introduction, Sect. 2 describes the self-consuming training loop and gives an overview of related work. In Sect. 3, we describe our experimental setting. Section 4 presents the experimental results, followed by a discussion in Section 5. Section 6 concludes the paper.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">The Self-Consuming Training Loop</head><p>Current generations of LLMs are usually trained on large amounts of unstructured data like text and code gathered from the Internet <ref type="bibr" target="#b3">(Brown et al., 2020)</ref>. Due to their generative nature and capacity those models can in turn be used to generate new synthetic data, often indistinguishable from the original real data <ref type="bibr" target="#b21">(Sadasivan et al., 2023)</ref>. This Algorithm 1 Self-Consuming Training Loop Input: number of generations T , data cycle Initialize: Sample D 0 from P X for t = 1 to t = T do Train Model M t with D t-1 Sample S t from M t Create D t from D 0 and S 1...t according to data cycle end for</p><p>synthetic data ends up back on the internet and thus in the next large dataset, which is used to train the next generation of LLMs. These LLMs in turn produce new content and data, setting in motion a repetitive cycle in which new generations of models are trained each time with a higher proportion of synthetic data from previous generations. We call this process a self-consuming training loop, depicted in Figure <ref type="figure" target="#fig_0">1</ref>.</p><p>More specifically, consider a dataset D 0 consisting of real data points x ∈ X sampled from the original distribution P X . A generative model M t is trained on this original dataset D 0 until the data is sufficiently fitted, producing the first generation t = 1 of generative models. In a self-consuming training loop, a new set of m synthetic data points S t is now sampled from the previous generation of generative models M t . The next generation of generative models M t+1 is then trained from scratch on the new dataset D t . This self-consuming training loop is repeated until the maximum number of generations t = T is reached. Algorithm 1 presents a pseudo-code describing this self-consuming training loop.</p><p>Related Work Current research has analyzed the self-consuming training loop mostly in the context of image generating models. <ref type="bibr" target="#b18">Martínez et al. (2023)</ref> first studied the self-consuming training loop for diffusion models and find that the self-consuming training loop leads to a collapse in diversity of the generated images. Other work have given theoretical frameworks for this phenomenon and look at more complex data cycles in the context of image generation <ref type="bibr" target="#b0">(Alemohammad et al., 2023;</ref><ref type="bibr" target="#b22">Shumailov et al., 2023;</ref><ref type="bibr" target="#b2">Bertrand et al., 2023)</ref>. Both Alemo- <ref type="formula">hammad et al. (2023) and Bertrand et al. (2023)</ref>find that fresh real data can lead to stability within the self-consuming training loop. <ref type="bibr" target="#b22">Shumailov et al. (2023)</ref> observe a degeneration of diversity for Variational Autoencoders and Gaussian Mixture Models if some of the output is used again as input. Additionally, the authors perform experiments for iteratively fine-tuning LLMs in a self-consuming way and observe a degradation in quality. They find that degradation is less strong than in the imagine generation context and that keeping some original data helps mitigating this phenomenon. Other contemporary work also analyzed repeated fine-tuning of LLMs in a selfconsuming way and observed a decrease in lexical diversity <ref type="bibr">(Guo et al., 2023)</ref>.</p><p>However, new generations of LLMs are usually trained from scratch with web scraped datasets while fine-tuning is mainly done with curated datasets. So the analysis of the self-consuming training loop when training from scratch is of pressing concern. To the best of our knowledge, we are the first to study the behavior of LLMs trained in a self-consuming loop from scratch. Furthermore, self-consuming loops in LLMs have not yet been analyzed with a method that allows to unambiguously evaluate the quality and diversity of generated model output.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Experimental Setup</head><p>We present our logic expression dataset, which is the foundation for the verification of the language model's output. Furthermore, we explain the data cycles we analyze in our experiments and describe the used model architecture in detail.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Verification with a Logic Expression Dataset</head><p>LLMs usually generate natural language texts and their performance is typically measured by using similarity metrics like the BLEU score <ref type="bibr" target="#b19">(Papineni et al., 2002)</ref>, ROUGE score <ref type="bibr" target="#b17">(Lin, 2004)</ref> and BERT score <ref type="bibr" target="#b32">(Zhang et al., 2019)</ref> as well as perplexity <ref type="bibr" target="#b13">(Jurafsky and Martin, 2009)</ref>. However, those metrics rely on measuring similarity of outputs with expected reference data, which can only serve as a proxy for quality of a language model <ref type="bibr" target="#b4">(Callison-Burch et al., 2006;</ref><ref type="bibr" target="#b8">Gehrmann et al., 2023)</ref>. Consequently, we propose using a dataset consisting of logic expressions. Those expressions can be represented as a sequence making them a good fit for language modeling. In contrast to natural language text, we can easily and systematically evaluate the quality of logic expressions by verifying their correctness. An expression is defined to be syntactically correct, if it can be parsed without an error. The semantic correctness can be evaluated if an expression is either True or False. If the original dataset only consists of True expressions, then a high-quality trained model should also only generate True expressions. We build a logic expression as a tree in a recursive way specified in the function GenLogicExpr(d), where d is the desired depth of a logic expression tree. If the desired tree depth is reached when calling the function, a random Boolean is returned (either True or False). Otherwise, a logic operator (not,and,or) is selected and the function is called again recursively with d -1. To build the entire original dataset we use this recursive function to sample new random logic expression trees with a random depth between d min and d max until we have a dataset with m unique expressions that evaluate in a True Boolean expression. The complexity of the dataset can be easily controlled by adjusting d max . For our experiments we chose a initial dataset size of m = 10, 000 with expressions of minimum depth d min = 1 and maximum depth d max = 5. Algorithm 2 in Appendix A describes the generation of our logic expression dataset in pseudo-code.</p><p>The resulting logic expression trees can then be saved as strings, e.g., not ( True and False ). This allows us to evaluate them in Python using the eval() function to test whether they are correct or trigger an error and whether they evaluate to a True or False Boolean. Additionally, we can en- code those strings to a sequence of tokens (True, False, not, and, or, (, ), &lt;eos&gt;, where &lt;eos&gt; is a stop token and indicates the end of an expression) and use these sequences to train a language model.</p><formula xml:id="formula_0">𝒮 1 𝒟 0 𝒮 2 𝒮 3 (a) Full Synthetic Data Cycle 𝒮 1 𝒟 0 𝒮 3 𝒟 0 𝒟 0 𝒮 1 𝒮 2 𝒟 0 𝒮 1 𝒮 2 (b) Balanced Data Cycle 𝒮 1 𝒟 0 𝒮 2 𝒮 3 𝒟 0 𝒟 0 𝒟 0 𝒟 1 𝒟 2 (c) Incremental Data Cycle 𝒮 2 ℱ 2 𝒮 1 ℱ 1 𝒮 1 ℱ 1 𝒟 0 𝒟 0 𝒮 1 𝒟 0 𝒮 2 𝒮 3 𝒟 0 ℱ 1 ℱ 2 ℱ 3 (d) Expanding Data Cycle</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Measuring the Diversity of the Model's Output</head><p>A generative model does not only need to generate correct outputs but also a diverse set of outputs.</p><p>To measure the diversity of a sample from a LLM we use the Levenshtein diversity <ref type="bibr" target="#b29">(Wittenberg et al., 2023)</ref> in our experiments. This metric calculates the pairwise Levenshtein distance between each expression in the sample normalized by the number of tokens of the longer expression of each pairwise comparison and averaged over the number of pairwise comparisons. If the average pairwise normalized Levenshtein distance is close to zero the diversity within a sample is low. A value closer to one suggests a stronger diversity within a sample. The Levenshtein distance itself is a metric for measuring the distance between two strings and is defined as the number of edits (deletion, addition, substitution) required to change one string to another <ref type="bibr" target="#b15">(Levenshtein et al., 1966)</ref>. Normally, this edit distance is calculated on a character basis, however, we calculate it on the tokens from our encoding of the logic expressions to accommodate for the different length each token has in character representation.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3">Data Cycles</head><p>We define a data cycle as the way a dataset D t is constructed in generation t from the original data D 0 , potential fresh data F t from the original distribution, and the generated data from the current and previous generations S 1...t . This way of constructing a new dataset may vary and different data cycles are possible. In the image generation domain, previous work suggests that the self-consuming training loop is influenced by the data cycle being used <ref type="bibr" target="#b0">(Alemohammad et al., 2023)</ref>. Therefore, inspired by their work we conduct our experiments with the following four different data cycles (also depicted in Fig. <ref type="figure" target="#fig_1">2</ref>): Full Synthetic Data Cycle: In the most extreme case of a self-consuming training loop a new model M t is only trained on the generated data from the last generation so that D t-1 = S t-1 . We call this a full synthetic data cycle. Normally, new datasets would still contain the original data when they are collected in practice. However, we can use this data cycle to study the most extreme changes in behavior of models from generation to generation.</p><p>Balanced Data Cycle: We refer to the second data cycle as the balanced data cycle. In this data cycle, we construct the new dataset D t from equal parts of all the previous samples </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Incremental Data Cycle:</head><p>The third data cycle we study is called the incremental data cycle. In this data cycle, the new dataset is created by a portion (1 -λ) of the last dataset D t-1 and a portion λ of new sampled data S t so that D t = (1 -λ) * D t-1 + λ * S t while holding the size m of the dataset constant each generation. A λ = 1 would result in a full synthetic data cycle. We chose λ = 0.1 for our initial experiments and later used different values of λ to study the influence of this parameter on diversity.</p><p>Expanding Data Cycle: The first three data cycles create a dataset of equal size in each generation. In practice, however, the dataset would grow each generation by adding new generated data to the already existing dataset. Additionally, fresh data samples F t from the original distribution (e.g. human generated) would also be added at each generation. Consequently, the last data cycle we study is an expanding data cycle. At each generation the new dataset is created so that D t = D t-1 + (1 -λ) * F t + λ * S t , where λ is the portion of generated data we add each generation and (1 -λ) is the portion of fresh real data added at each generation. For this data cycle, we chose λ = 0.9 for our initial experiments and later used different values of λ to study the influence of fresh data in an expanding data cycle on diversity.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.4">Model Architecture and Training</head><p>We employ a GPT-style LLM using the opensource implementation nanoGPT<ref type="foot" target="#foot_3">foot_3</ref> (MIT license) in our experiments. The model accepts a context of up to 256 tokens and consists of 6 attention layers with 6 attention heads each and an embedding dimensionality of 384, resulting in roughly 10.6 million parameters.</p><p>During training we use a batch size of 64 and a dropout rate of 0.2, training for 5000 iterations minimizing cross entropy loss, starting with a learning rate of 10 -3 decaying to 10 -4 , to achieve a sufficient fitting of the training data. We split the dataset in 90% training and 10% validation data. During training we calculate the validation error every 250 iterations and use the model parameters with the lowest validation error as our final model M t for each generation t in the self-consuming training loop.</p><p>We use the trained model at each generation to sample m = 10, 000 logic expressions. During sampling, we auto-regressively generate new tokens with temperature 0.8 and feed them back into the model until a stop token &lt;eos&gt; is sampled up to a maximum of 200 tokens per expression. We run the self-consuming training loop for T = 50 generations in each experiment.</p><p>All experiments are performed on a workstation using a NVIDIA Turing architecture graphics card.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Results</head><p>We present our experimental results. First, we describe our results on the performance in terms of correctness of models trained in a self-consuming training loop. Afterwards, we present our results in terms of diversity for those models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Correctness of Generated Content</head><p>We first study the correctness of the expressions within a generated sample S t from a model M t at each generation t. As described in Sec. 3.1, we consider an expression to be syntactically correct if it can be parsed without error. Since the original dataset D 0 only consists of True expressions, we consider a generated expression to be semantically correct if it also evaluates to True. A semantically correct expression is also syntactically correct.</p><p>Figure <ref type="figure" target="#fig_3">3</ref> displays the composition of samples S t generated during a self-consuming training loop. Each subplot presents the results for a different data cycle: a) full synthetic, b) balanced, c) incremental, and d) expanding. Every bar in a subplot displays the composition of S t generated from model M t at generation t, except for the first bar in each subplot which displays D 0 . The green portion of a bar indicates the number of syntactically correct expressions that evaluate to True in that sample. The yellow part of a bar represents the number of syntactically correct expressions that evaluate to False, and the red part of a bar displays the number of syntactically incorrect expressions that result in an error when being parsed.</p><p>Overall, we see that only very few expressions are syntactically incorrect. This indicates that the models are sufficiently trained and can correctly learn the syntactic rules of a logic expression. We see a drop of around 20% in the number of semantically correct expressions from the original data D 0 to the first sample S 1 in every data cycle. Interestingly, the number of semantically correct expressions increases afterwards over the course of the self-consuming training loop. The speed at which this number increases depends on the data cycle. We can see the fastest increase for the full synthetic data cycle in which the whole sample consists of True expressions by generation t = 6. The incremental data cycle takes consistently longer but also nearly reaches this point by generation t = 36. While the balanced data cycle has an initially steeper increase in semantically correct expressions, it does not reach the point of a completely semantically correct sample by the end of 50 generations but comes very close to it. Lastly, the expanding data cycle shows this trend as well.</p><p>Overall, we see that the self-consuming training loop seems to help with generating more semantically correct expressions in our experiments and the rate at which this happens differs by data cycle.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Diversity of Generated Content</head><p>While we can see an increase in correctness over generations in our experiments, contemporary work in the image generation domain suggests, that this comes with a loss of diversity <ref type="bibr" target="#b18">(Martínez et al., 2023;</ref><ref type="bibr" target="#b0">Alemohammad et al., 2023;</ref><ref type="bibr" target="#b2">Bertrand et al., 2023)</ref>. Therefore, in this section we study the diversity within a sample S t of model M t for each generation t.</p><p>Figure <ref type="figure" target="#fig_4">4</ref> displays the average pairwise normalized Levenshtein distance over generations of a selfconsuming training loop for different data cycles. For each data cycle, we observe a decrease in diversity over the course of generations, with the degree of decrease varying depending on the data cycle. For the full synthetic data cycle we see a steep decline in diversity with a collapse into a single point by generation t = 39. The incremental data cycle is initially stable, but decreases in diversity from the 10th generation onwards, with a decrease of 68% in diversity by the end of the 50 generations. The balanced and expanding data cycle also decrease in diversity, however, this decrease is way slower, with a 30% decrease in diversity for the balanced data cycle and a 22% decrease for the expanding data cycle. While not all data cycles fully collapse in diversity by generation 50, ultimately, we expect all of them to eventually reach zero diversity if the self-consuming training loop is run for enough generations.</p><p>To get further insight into the decline in diversity, we also inspect the number of unique expressions sampled per generation for the full synthetic data cycle. We find that the number of unique expressions is stable at first while the diversity already declines and then rapidly decreases within 5 generations to very few unique expressions (see <ref type="bibr">Appendix B)</ref>.</p><p>To better understand the influence of the amount of generated data in each generation on the diversity, we also study the incremental data cycle in more detail with different portions λ of new sampled data. Figure <ref type="figure" target="#fig_5">5</ref> displays the average pairwise normalized Levenshtein distance over generations in a self-consuming training loop for the incremen- tal data cycle with different values of λ. We observe, that the loss in diversity is stronger for a higher share of generated data added in each generation of the self-consuming training loop. Even with as little as λ = 0.25, we reach the complete loss of diversity within 50 generations. Only for our experimental run with λ = 0.10 the diversity does not drop to zero, but to a value around 0.17 after 50 generations. However, we see that the speed at which diversity decreases does not scale linear with the amount of generated data. Instead we observe a more exponential increase in speed where larger amounts of generated data lead to an even quicker decay in diversity.</p><p>Lastly, we study the expanding data cycle in more detail with regard to the proportion between generated data and fresh data added to the training data at each generation. Figure <ref type="figure" target="#fig_6">6</ref> displays the average pairwise normalized Levenshtein distance over generations in a self-consuming training loop for the expanding data cycle with different portions λ of generated data and (1 -λ) fresh real data. We observe, that while each configuration declines in diversity, the rate of this decline depends on the proportion between generated and fresh data. The more fresh data is added at each generation, the slower diversity decreases. With no fresh data or only 1% of fresh data the diversity decreases by approximately 36%. If the portion of fresh data is 25% we only observe a decrease in diversity of approximately 11%. This indicates that fresh data cannot stop the self-consuming training loop but enough fresh data can slow down the rate of the decline in diversity.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Discussion</head><p>In our experiments we found that iteratively retraining LLMs from scratch might help with correctness of model output. This is sometimes already done in practice where the output of LLMs is used to improve their performance <ref type="bibr" target="#b11">(Huang et al., 2022;</ref><ref type="bibr" target="#b28">Wang et al., 2022)</ref> or generate new training data <ref type="bibr" target="#b31">(Yu et al., 2023)</ref>. However, this trend is concerning as we also found that this self-consuming training loop eventually leads to a drastic loss of diversity of a model's output. Our results confirm the findings on the self-consuming training loop in the field of image generation <ref type="bibr" target="#b18">(Martínez et al., 2023;</ref><ref type="bibr" target="#b0">Alemohammad et al., 2023;</ref><ref type="bibr" target="#b22">Shumailov et al., 2023;</ref><ref type="bibr" target="#b2">Bertrand et al., 2023)</ref>, further highlighting the importance of this issue for generative models and LLMs in particular. These LLMs have an even greater impact on society than image generation models, leading to more LLM-generated data being produced and potentially having a greater impact on society as a whole, as many people already rely on good model performance.</p><p>Consequently, as we expect that a self-consuming training loop will harm model performance in the future, researchers and practitioners should carefully choose their data when training their models and test those models sufficiently for diversity. Additionally, the machine learning community at large needs to find ways to deal with this problem as generated text data is already present in new internet scraped datasets. While our results indicate that fresh real data can slow down the selfconsuming training loop, other studies suggest that this is not an option as we will run out of real data eventually and have to rely on generated data for future models <ref type="bibr" target="#b27">(Villalobos et al., 2022)</ref>. Additionally, LLM-generated data has already found its way onto the internet, even infecting academic publications <ref type="bibr" target="#b9">(Geng and Trotta, 2024;</ref><ref type="bibr" target="#b16">Liang et al., 2024)</ref>, and LLM-generated data may soon overtake real data on the internet. Furthermore, this LLM-generated data is hard to differentiate from real data <ref type="bibr" target="#b14">(Kreps et al., 2022;</ref><ref type="bibr" target="#b21">Sadasivan et al., 2023;</ref><ref type="bibr" target="#b12">Huschens et al., 2023)</ref>, making it difficult to curate datasets scraped from the web. This makes the self-consuming training loop inevitable in the future. Therefore, we advise to further study ways to maintain diversity of generative model outputs like quality diversity methods <ref type="bibr" target="#b20">(Pugh et al., 2015;</ref><ref type="bibr" target="#b7">Fontaine and Nikolaidis, 2021)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Conclusion</head><p>In this paper we studied the behavior of LLMs trained in a self-consuming training loop and found that iteratively training LLMs from scratch with self generated data can initially help with correctness of model outputs. However, this comes at a price, as the diversity of generated data eventually degenerates and collapses into a single point. The rate of this decline in diversity depends on the data cycle creating the training data at each generation. Furthermore, we found that fresh data can slow down this process and preserve diversity of a model output for longer. This should encourage researches to carefully look at their datasets and models to mitigate such a harmful self-consuming training loop in the future.</p><p>In future work, we will study how fine-tuning can influence the self-consuming training loop for LLMs. Additionally, we plan to further investigate how the effects of a self-consuming training loop can be slowed down or completely negated.</p><p>One major cause for limitations of our work are limited computational resources. First, we ran our experiments with a smaller GPT-style model than for example GPT-4. Even though we expect that larger models with billions of parameters still suffer from the same loss of diversity if trained in a selfconsuming training loop, we note that the behavior may vary for those larger models. However, a study for models of those size is not feasible with current compute options nor is it responsible in terms of the expected CO 2 emissions <ref type="bibr" target="#b25">(Strubell et al., 2019)</ref>.</p><p>Second, another limitation imposed by our computational resources is that the main results of this work consist of only one run per experimental configuration. With more runs per experiment the results would be more robust, but conducting more runs for our experiments was simply not feasible with our available computing resources. As all our experiments point towards the same direction, however, we do not believe that this limitation is crucial. Nevertheless, to further mitigate this limitation we performed additional experiments for the full synthetic data cycle with fewer generations over multiple runs and with different initializations in Appendix C. These results show that the trend of a decline in diversity still holds true over multiple runs.</p><p>Another limitation is that our work focuses on repeatedly training foundation models from scratch in a self-consuming way. However, in practice those models are normally fine-tuned after the initial training. It is unclear from our work if this fine-tuning process can slow down or negate the effects of a self-consuming training loop when performed with fresh real data. However, we plan to investigate this in future work.</p><p>Lastly, one may argue that real text has a way larger vocabulary and more complex structures. Therefore, our results might be slightly different when performed on a real text corpus. However, measuring both quality and diversity of generated text is not trivial and can only achieved by using a proxy <ref type="bibr" target="#b4">(Callison-Burch et al., 2006;</ref><ref type="bibr" target="#b8">Gehrmann et al., 2023)</ref>. Consequently, we intentionally performed our study on a logic expression dataset to ensure a controlled experimental setting in which we can measure both quality and diversity of a trained model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Generation of the Logic Expression Dataset</head><p>Algorithm 2 describes the generation of our logic expression dataset in detail.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Algorithm 2 Generate Logic Expression Dataset</head><p>Input: number of unique expressions m, minimum tree depth d min , maximum tree depth d max Initialize:</p><formula xml:id="formula_1">D 0 = {} function GenLogicExpr(d) : if d = 0 then return RandomBool() else op ← RandomLogicOperator() if op = 'not' then return op + GenLogicExpr(d -1) else lef tExpr ← GenLogicExpr(d -1) rightExpr ← GenLogicExpr(d -1) return lef tExpr + op + rightExpr end if end if end function while |D 0 | &lt; m do i ← RandomIntegerInRange(d min , d max ) expr ← GenLogicExpr(d = i) if EvalBoolExpr(expr) = True then D 0 ← D 0 ∪ {expr} end if end while</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Unique Expressions Generated</head><p>To better understand the decline of diversity, we inspect the number of unique expressions sampled at each generation. We focus on the full synthetic data cycle, as this data cycle fully collapses to a single point within 50 generations.</p><p>Figure <ref type="figure" target="#fig_7">7</ref> displays the number of unique expressions (right y-axis) generated at each generation of a self-consuming training loop in comparison to the diversity measured as the average pairwise normalized Levenshtein distance (left y-axis). We observe that in the beginning the number of unique expressions stays stable while the diversity is already in a steep decline. Only by generation t = 10 the number of unique individuals starts to decline rapidly and by generation t = 15 only around 400 unique expressions are sampled while the decline in diversity slows down. In generation t = 21 the number of unique individuals is below 10 and in generation t = 39 only a single individual is sampled at each generation. Consequently, the diversity is collapsed to zero.</p><p>This shows that it is not enough to only track unique outputs of a model, but that diversity needs to be tracked as well. By the time a decrease in unique results is noticeable, the diversity already decreased significantly.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Impact of Initialization</head><p>So far we only looked at the self-consuming training loop starting from an initial dataset consisting only of True expressions. To check whether our findings also hold for different initializations of data across multiple runs, we conduct further experiments. Specifically, we analyze the full synthetic data cycle with the original dataset D 0 only consisting of (1) True expressions, (2) False expressions, and (3) an equal mixture of both. The results from Sect. 4 indicate that the effect of the self-consuming training loop for the full synthetic data cycle are already clearly visible in the first 10 generations. Therefore, we conduct experiments with only 10 generations. With this saved computing time, we conduct 5 independent runs for each initialization.</p><p>Figure <ref type="figure" target="#fig_8">8</ref> displays the composition of samples S t generated during a self-consuming training loop.  Each subplot presents the composition for a different initialization for the full synthetic data cycle averaged over 5 independent runs: a) only True expressions, b) only False expressions, and c) half True expressions and half False expressions. Every bar in a subplot displays the composition of S t generated from model M t at generation t, except for the first bar in each subplot which displays D 0 .</p><p>The green portion of a bar indicates the number of syntactically correct expressions that evaluate to True in that sample. The yellow part of a bar represents the number of syntactically correct expressions that evaluate to False, and the red part of a bar displays the number of syntactically incorrect expressions that result in an error when being parsed.</p><p>Similar to our results in Sect. 4.1, we observe an initial drop of True expressions by 20% in favor of False expressions for the initialization with only True expressions in the first generation. Afterwards, the number of True expressions in a sample increases again over the course of generations. For the initialization with only False expressions, we observe a similar effect, only in the opposite direction. The number of False expression first drops by around 20% and then increases again until the whole sample consists of only False expressions. When initialized with an equal amount of True and False expressions, we can observe that the proportion of both expression types first stays stable and then by generation t = 6 starts to slightly shift towards True expressions. Upon further inspection of the 5 runs, we find that one run quickly shifts towards only True expressions, one run shifts quickly to only False expression, one run shifts slowly to True expressions, and two runs maintain equal proportions between True and False expressions across the 10 generations.</p><p>Figure <ref type="figure" target="#fig_9">9</ref> displays the diversity measured in the average pairwise normalized Levenshtein distance for the three different initializations. Displayed is the mean and standard deviation of five runs over the number of generations. We observe that the diversity declines for all three types of initialization, further confirming our results from Sect. 4.2. The initializations with only True and only False expressions decline at around the same speed. The initialization with equal proportions of True and False expressions declines a bit slower but shows the same effect.</p><p>Overall these findings indicate that the effects of the self-consuming training loop apply to different initializations across multiple runs, partially mitigating the limitations mentioned in Sect. 7.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Self-consuming training loop: In the first generation t = 1 a model M t is initially trained on a real dataset D 0 . From this model M t a sample S t is drawn to build a new dataset D t . The new dataset D t is in turn used to train a new model M t+1 from scratch for the next generation t + 1. This process is repeated iteratively until the maximum number of generations T is reached.</figDesc><graphic coords="2,328.60,107.01,173.28,78.96" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 2 :</head><label>2</label><figDesc>Figure 2: Each sub figure represents a different data cycle exemplary for four generations. The first row in each sub figure is the original dataset D 0 . The second, third and fourth row depict the dataset D 1 , D 2 , and D 3 respectively.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>S 1...t and the original dataset D 0 so that every previous generation contributes m * 1 t+1 logic expressions to the new dataset D t of size m.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>[Figure 3 :</head><label>3</label><figDesc>Figure3: The composition of each sample S t from model M t at generation t (the first bar displays the composition of D 0 ) with regards to the number of syntactically and semantically correct expressions. Green indicates syntactically correct expressions that evaluate to True, yellow indicates syntactically correct expressions that evaluate to False, and red indicates syntactically incorrect expressions that result in an error when being parsed. Each subplot displays the results for a different data cycle.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 4 :</head><label>4</label><figDesc>Figure4: Average pairwise normalized Levenshtein distance over generations of a self-consuming training loop for different data cycles. Line markers added every 5 generations for better display.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Average pairwise normalized Levenshtein distance over the course of a self-consuming training loop for the incremental data cycle with different portions λ of new sampled data. Line markers added every 5 generations for better display.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 6 :</head><label>6</label><figDesc>Figure6: Average pairwise normalized Levenshtein distance over the course of a self-consuming training loop for the expanding data cycle for different portions λ of generated data and (1 -λ) of fresh data. Line markers added every 5 generations for better display.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><head>Figure 7 :</head><label>7</label><figDesc>Figure7: Average pairwise normalized Levenshtein distance (left y-axis) and number of unique expressions in a sample (right y-axis) over generations of a selfconsuming training loop for the full synthetic data cycle. Line markers added every 5 generations for better display.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>Figure 8 :</head><label>8</label><figDesc>Figure8: The composition of each sample S t from model M t at generation t (the first bar displays the composition of D 0 ) with regards to the number of syntactically and semantically correct expressions averaged over 5 runs. Green indicates syntactically correct expressions that evaluate to True, yellow indicates syntactically correct expressions that evaluate to False, and red indicates syntactically incorrect expressions that result in an error when being parsed. Each subplot displays the results for the full synthetic data cycle with different initializations (True, False, Mixed).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 9 :</head><label>9</label><figDesc>Figure9: Average pairwise normalized Levenshtein distance over generations of a self-consuming training loop for the full synthetic data cycle with different initializations. Displayed is the mean and standard deviation at each generation for each initialization over 5 runs.</figDesc></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>https://openai.com/blog/chatgpt</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_1"><p>https://www.microsoft.com/en-us/Investor/events/FY-2023/Morgan-Stanley-TMT-Conference</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_2"><p>https://www.vice.com/en/article/jg5qy8/redditmoderators-brace-for-a-chatgpt-spam-apocalypse</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_3"><p>https://github.com/karpathy/nanoGPT</p></note>
+		</body>
+		<back>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">Sina</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josue</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorenzo</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmed</forename><surname>Imtiaz Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hossein</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><forename type="middle">G</forename><surname>Baraniuk</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2307.01850</idno>
+		<title level="m">Self-consuming generative models go mad</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Education in the era of generative artificial intelligence (ai): Understanding the potential benefits of chatgpt in promoting teaching and learning</title>
+		<author>
+			<persName><forename type="first">David</forename><surname>Baidoo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">-Anu</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leticia</forename><surname>Owusu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ansah</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of AI</title>
+		<imprint>
+			<biblScope unit="volume">7</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="52" to="62" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">On the stability of iterative retraining of generative models on their own data</title>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joey</forename><surname>Avishek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexandre</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marco</forename><surname>Duplessis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gauthier</forename><surname>Jiralerspong</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Gidel</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.00429</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Language models are few-shot learners</title>
+		<author>
+			<persName><forename type="first">Tom</forename><surname>Brown</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Benjamin</forename><surname>Mann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nick</forename><surname>Ryder</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Melanie</forename><surname>Subbiah</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><forename type="middle">D</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Prafulla</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arvind</forename><surname>Neelakantan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pranav</forename><surname>Shyam</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Girish</forename><surname>Sastry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amanda</forename><surname>Askell</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="1877" to="1901" />
+			<date type="published" when="2020">2020</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">Re-evaluating the role of bleu in machine translation research</title>
+		<author>
+			<persName><forename type="first">Chris</forename><surname>Callison-Burch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miles</forename><surname>Osborne</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philipp</forename><surname>Koehn</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2006">2006</date>
+			<biblScope unit="page" from="249" to="256" />
+		</imprint>
+	</monogr>
+	<note>In 11th conference of the european chapter of the association for computational linguistics</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jerry</forename><surname>Tworek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Heewoo</forename><surname>Jun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qiming</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Henrique</forename><surname>Ponde De Oliveira Pinto</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jared</forename><surname>Kaplan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Harri</forename><surname>Edwards</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuri</forename><surname>Burda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicholas</forename><surname>Joseph</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Greg</forename><surname>Brockman</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2107.03374</idno>
+		<title level="m">Evaluating large language models trained on code</title>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<author>
+			<persName><forename type="first">Angela</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Beliz</forename><surname>Gokkaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Harman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mitya</forename><surname>Lyubarskiy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shubho</forename><surname>Sengupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shin</forename><surname>Yoo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jie</forename><forename type="middle">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2310.03533</idno>
+		<title level="m">Large language models for software engineering: Survey and open problems</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">Differentiable quality diversity</title>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Fontaine</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stefanos</forename><surname>Nikolaidis</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">34</biblScope>
+			<biblScope unit="page" from="10040" to="10052" />
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<analytic>
+		<title level="a" type="main">Repairing the cracked foundation: A survey of obstacles in evaluation practices for generated text</title>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Gehrmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elizabeth</forename><surname>Clark</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thibault</forename><surname>Sellam</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of Artificial Intelligence Research</title>
+		<imprint>
+			<biblScope unit="volume">77</biblScope>
+			<biblScope unit="page" from="103" to="166" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<author>
+			<persName><forename type="first">Mingmeng</forename><surname>Geng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roberto</forename><surname>Trotta</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.08627</idno>
+		<title level="m">Is chatgpt transforming academics&apos; writing style?</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yanzhu</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guokan</forename><surname>Shang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2311.09807</idno>
+		<title level="m">Michalis Vazirgiannis, and Chloé Clavel. 2023. The curious decline of linguistic diversity: Training language models on synthetic text</title>
+		<imprint/>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jiaxin</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shixiang</forename><forename type="middle">Shane</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Le</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuexin</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuezhi</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hongkun</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiawei</forename><surname>Han</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2210.11610</idno>
+		<title level="m">Large language models can self-improve</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Huschens</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Briesch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Sobania</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Franz</forename><surname>Rothlauf</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.02524</idno>
+		<title level="m">Do you trust chatgpt?perceived credibility of human and ai-generated content</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<monogr>
+		<title level="m" type="main">Speech and language processing: An introduction to natural language processing, computational linguistics, and speech recognition</title>
+		<author>
+			<persName><forename type="first">Dan</forename><surname>Jurafsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">James</forename><forename type="middle">H</forename><surname>Martin</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2009">2009</date>
+			<publisher>Pearson Education</publisher>
+			<pubPlace>Upper Saddle River, NJ, USA</pubPlace>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">All the news that&apos;s fit to fabricate: Aigenerated text as a tool of media misinformation</title>
+		<author>
+			<persName><forename type="first">Sarah</forename><surname>Kreps</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Miles Mccain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Miles</forename><surname>Brundage</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Journal of experimental political science</title>
+		<imprint>
+			<biblScope unit="volume">9</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page" from="104" to="117" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Binary codes capable of correcting deletions, insertions, and reversals</title>
+		<author>
+			<persName><surname>Vladimir I Levenshtein</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Soviet physics doklady</title>
+		<meeting><address><addrLine>Soviet Union</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="1966">1966</date>
+			<biblScope unit="volume">10</biblScope>
+			<biblScope unit="page" from="707" to="710" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<monogr>
+		<author>
+			<persName><forename type="first">Weixin</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yaohui</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhengxuan</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haley</forename><surname>Lepp</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenlong</forename><surname>Ji</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuandong</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hancheng</forename><surname>Cao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sheng</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siyu</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhi</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2404.01268</idno>
+		<title level="m">Mapping the increasing use of llms in scientific papers</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">Rouge: A package for automatic evaluation of summaries</title>
+		<author>
+			<persName><forename type="first">Chin-Yew</forename><surname>Lin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Text summarization branches out</title>
+		<imprint>
+			<date type="published" when="2004">2004</date>
+			<biblScope unit="page" from="74" to="81" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<author>
+			<persName><forename type="first">Gonzalo</forename><surname>Martínez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lauren</forename><surname>Watson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pedro</forename><surname>Reviriego</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alberto</forename><surname>José</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marc</forename><surname>Hernández</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rik</forename><surname>Juarez</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Sarkar</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.06130</idno>
+		<title level="m">Towards understanding the interplay of generative artificial intelligence and the internet</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Bleu: a method for automatic evaluation of machine translation</title>
+		<author>
+			<persName><forename type="first">Kishore</forename><surname>Papineni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Salim</forename><surname>Roukos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Todd</forename><surname>Ward</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei-Jing</forename><surname>Zhu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 40th annual meeting of the Association for Computational Linguistics</title>
+		<meeting>the 40th annual meeting of the Association for Computational Linguistics</meeting>
+		<imprint>
+			<date type="published" when="2002">2002</date>
+			<biblScope unit="page" from="311" to="318" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title level="a" type="main">Confronting the challenge of quality diversity</title>
+		<author>
+			<persName><forename type="first">Justin</forename><forename type="middle">K</forename><surname>Pugh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">B</forename><surname>Soros</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Paul</forename><forename type="middle">A</forename><surname>Szerlip</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kenneth</forename><forename type="middle">O</forename><surname>Stanley</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2015 Annual Conference on Genetic and Evolutionary Computation</title>
+		<meeting>the 2015 Annual Conference on Genetic and Evolutionary Computation</meeting>
+		<imprint>
+			<date type="published" when="2015">2015</date>
+			<biblScope unit="page" from="967" to="974" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<author>
+			<persName><forename type="first">Aounon</forename><surname>Vinu Sankar Sadasivan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sriram</forename><surname>Kumar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenxiao</forename><surname>Balasubramanian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Soheil</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Feizi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2303.11156</idno>
+		<title level="m">Can ai-generated text be reliably detected? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<monogr>
+		<title level="m" type="main">The curse of recursion: Training on generated data makes models forget</title>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zakhar</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yarin</forename><surname>Gal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Anderson</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.17493</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">An analysis of the automatic bug fixing performance of chatgpt</title>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Sobania</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Briesch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carol</forename><surname>Hanna</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Justyna</forename><surname>Petke</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">IEEE/ACM International Workshop on Automated Program Repair (APR)</title>
+		<imprint>
+			<biblScope unit="page" from="23" to="30" />
+			<date type="published" when="2023">2023. 2023</date>
+			<publisher>IEEE Computer Society</publisher>
+			<pubPlace>Los Alamitos, CA, USA</pubPlace>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<analytic>
+		<title level="a" type="main">Choose your programming copilot: A comparison of the program synthesis performance of github copilot and genetic programming</title>
+		<author>
+			<persName><forename type="first">Dominik</forename><surname>Sobania</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Briesch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Franz</forename><surname>Rothlauf</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the genetic and evolutionary computation conference</title>
+		<meeting>the genetic and evolutionary computation conference</meeting>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+			<biblScope unit="page" from="1019" to="1027" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<author>
+			<persName><forename type="first">Emma</forename><surname>Strubell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ananya</forename><surname>Ganesh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Mccallum</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1906.02243</idno>
+		<title level="m">Energy and policy considerations for deep learning in nlp</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<title level="m" type="main">Artificial artificial artificial intelligence: Crowd workers widely use large language models for text production tasks</title>
+		<author>
+			<persName><forename type="first">Veniamin</forename><surname>Veselovsky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Manoel</forename><surname>Horta Ribeiro</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>West</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.07899</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<monogr>
+		<author>
+			<persName><forename type="first">Pablo</forename><surname>Villalobos</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jaime</forename><surname>Sevilla</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lennart</forename><surname>Heim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tamay</forename><surname>Besiroglu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marius</forename><surname>Hobbhahn</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anson</forename><surname>Ho</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2211.04325</idno>
+		<title level="m">Will we run out of data? an analysis of the limits of scaling datasets in machine learning</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<title level="m" type="main">Self-instruct: Aligning language model with self generated instructions</title>
+		<author>
+			<persName><forename type="first">Yizhong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yeganeh</forename><surname>Kordi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Swaroop</forename><surname>Mishra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alisa</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><forename type="middle">A</forename><surname>Smith</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Khashabi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hannaneh</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2212.10560</idno>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Denoising autoencoder genetic programming: strategies to control exploration and exploitation in search</title>
+		<author>
+			<persName><forename type="first">David</forename><surname>Wittenberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Franz</forename><surname>Rothlauf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christian</forename><surname>Gagné</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Genetic Programming and Evolvable Machines</title>
+		<imprint>
+			<biblScope unit="volume">24</biblScope>
+			<biblScope unit="issue">2</biblScope>
+			<biblScope unit="page">17</biblScope>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Exploring the limits of chatgpt for query or aspect-based text summarization</title>
+		<author>
+			<persName><forename type="first">Xianjun</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinlu</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haifeng</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Cheng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2302.08081</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<author>
+			<persName><forename type="first">Yue</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuchen</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jieyu</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Meng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Ratner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ranjay</forename><surname>Krishna</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jiaming</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chao</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.15895</idno>
+		<title level="m">Large language model as attributed training data generator: A tale of diversity and bias</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<author>
+			<persName><forename type="first">Tianyi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Varsha</forename><surname>Kishore</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Felix</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kilian</forename><forename type="middle">Q</forename><surname>Weinberger</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yoav</forename><surname>Artzi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1904.09675</idno>
+		<title level="m">Bertscore: Evaluating text generation with bert</title>
+		<imprint>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

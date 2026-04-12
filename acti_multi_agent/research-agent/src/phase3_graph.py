@@ -14,6 +14,7 @@ from .api_client import (
     BRAIN_PHASE3_GAP,
     BRAIN_PHASE3_RELATIONSHIP,
     OpenCitationsClient,
+    agent_run,
     agent_run_json,
 )
 from .knowledge_base import export_research_knowledge_base
@@ -23,11 +24,65 @@ from .paper_identity import (
     extract_source_ids,
     get_s2_lookup_id,
 )
+from .phase_contracts import ensure_gap_analysis_valid, ensure_relationship_analysis_valid
 from .prompts import RELATIONSHIP_ANALYST, GAP_SYNTHESIZER
 from .state_manager import complete_step, is_step_complete, save_state
 from .utils import atomic_write_json, load_json
 
 log = logging.getLogger("research_agent")
+
+BEAT_REQUIREMENTS = {
+    1: {
+        "name": "Crisis Exists",
+        "categories": ["A", "B", "C"],
+        "pairs": ["A-B", "B-C"],
+        "missing_titles": [
+            "web-scale contamination measurement anchor",
+            "detector fragility / reactive filtering limit anchor",
+            "post-2022 AI-content prevalence anchor",
+        ],
+    },
+    2: {
+        "name": "Partial Measurement Of Web Drift",
+        "categories": ["D", "H"],
+        "pairs": ["D-H"],
+        "missing_titles": [
+            "post-2022 Common Crawl drift measurement anchor",
+            "entropy / diversity longitudinal web-quality anchor",
+            "direct contamination-over-time benchmark anchor",
+        ],
+    },
+    3: {
+        "name": "Grounded Ingredients For L_auth",
+        "categories": ["D"],
+        "pairs": [],
+        "missing_titles": [
+            "metric grounding anchor for entropy / divergence",
+            "formal bridge from metric ingredients to L_auth",
+            "scope-limit anchor showing what the metric cannot claim",
+        ],
+    },
+    4: {
+        "name": "Verified Human Data For Social Tasks",
+        "categories": ["E", "F", "I", "J"],
+        "pairs": ["F-I", "I-J"],
+        "missing_titles": [
+            "social-reasoning human-vs-synthetic comparison anchor",
+            "fine-tune composition ablation anchor for social tasks",
+            "bounded-success synthetic-data counterexample anchor",
+        ],
+    },
+    5: {
+        "name": "CampusGo As Design Proposal",
+        "categories": ["A", "G"],
+        "pairs": ["A-G"],
+        "missing_titles": [
+            "platform / provenance precedent for authentic data capture",
+            "accumulation / contamination motivation bridge",
+            "proposal-scope anchor showing feasibility limits",
+        ],
+    },
+}
 
 
 def run_phase3(state: dict, state_path: str, base_dir: str, client,
@@ -94,6 +149,7 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
         log.info("=== Phase 3.4: Relationship Analyst agent ===")
         refined = _run_relationship_analyst(client, papers, G)
         atomic_write_json(os.path.join(analysis_dir, "relationship_analysis.json"), refined)
+        ensure_relationship_analysis_valid(refined)
         # Merge refined edges back into graph
         if refined and "edges" in refined:
             alias_lookup = build_alias_lookup(papers)
@@ -119,14 +175,18 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
         log.info("=== Phase 3.5: Gap Synthesizer agent ===")
         gaps = _run_gap_synthesizer(client, papers, metrics, matrix, cat_stats)
         atomic_write_json(os.path.join(analysis_dir, "gaps_ranked.json"), gaps)
+        ensure_gap_analysis_valid(gaps)
         state = complete_step(state, state_path, 3, "gap_synthesis")
 
-        # Quality check
-        qc = {"passed": bool(gaps and gaps.get("gaps"))}
-        state["phases"]["3"]["quality_check"] = qc
-        save_state(state_path, state)
     else:
         log.info("Gap synthesis already done")
+        gaps = load_json(os.path.join(analysis_dir, "gaps_ranked.json"))
+        ensure_gap_analysis_valid(gaps)
+
+    # Quality check: this step is now beat-level evidence assessment, not
+    # open-ended gap discovery.
+    state["phases"]["3"]["quality_check"] = _gap_quality_check(gaps)
+    save_state(state_path, state)
 
     summary = export_research_knowledge_base(papers, G, proc_dir, analysis_dir, output_dir)
     log.info(
@@ -136,6 +196,18 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
     )
 
     return state
+
+
+def _gap_quality_check(gaps: dict) -> dict:
+    beats = gaps.get("beats", []) if isinstance(gaps, dict) else []
+    return {
+        "passed": isinstance(beats, list) and len(beats) == 5,
+        "beat_statuses": dict(Counter(
+            b.get("status", "unknown")
+            for b in beats
+            if isinstance(b, dict)
+        )),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -332,8 +404,8 @@ def category_statistics(papers: list[dict]) -> dict:
 
 def _run_relationship_analyst(client, papers: list[dict], G: nx.DiGraph) -> dict:
     """Send top papers to Relationship Analyst for edge refinement."""
-    # Select top 50 papers by citation count for deeper analysis
-    top_papers = sorted(papers, key=lambda p: p.get("citationCount", 0), reverse=True)[:50]
+    # Keep the prompt compact enough for stable reasoning responses.
+    top_papers = sorted(papers, key=lambda p: p.get("citationCount", 0), reverse=True)[:25]
     batch_input = _format_papers_for_analyst(top_papers)
 
     try:
@@ -347,7 +419,7 @@ def _run_relationship_analyst(client, papers: list[dict], G: nx.DiGraph) -> dict
                 f"Identify additional builds_on, contradicts, and extends relationships.\n\n"
                 f"{batch_input}"
             ),
-            max_tokens=4096,
+            max_tokens=8192,
         )
         edges_found = len(result.get("edges", [])) if isinstance(result, dict) else 0
         log.info(f"Relationship Analyst found {edges_found} additional edges")
@@ -364,19 +436,290 @@ def _run_gap_synthesizer(client, papers: list[dict], metrics: dict,
     summary = _build_gap_synthesis_input(papers, metrics, matrix, cat_stats)
 
     try:
-        result = agent_run_json(
+        raw = agent_run(
             client,
             role=GAP_SYNTHESIZER,
             model=BRAIN_PHASE3_GAP,
             task=summary,
-            max_tokens=4096,
+            max_tokens=8192,
         )
+        result = _parse_json_object(raw)
+        ensure_gap_analysis_valid(result)
+        _log_gap_synthesizer_summary(result)
+        return result
+    except Exception as first_error:
+        log.warning(f"Gap Synthesizer retrying with compact context: {first_error}")
+        retry_role = (
+            GAP_SYNTHESIZER
+            + "\nReturn minified JSON only. No prose, no markdown, no trailing commentary. "
+              "The JSON must contain exactly 5 beats plus a non-empty overall_assessment."
+        )
+        retry_task = _build_compact_gap_synthesis_input(metrics, matrix, cat_stats)
+        try:
+            raw = agent_run(
+                client,
+                role=retry_role,
+                model=BRAIN_PHASE3_GAP,
+                task=retry_task,
+                max_tokens=4096,
+            )
+            result = _parse_json_object(raw)
+            ensure_gap_analysis_valid(result)
+            log.info("Gap Synthesizer generated valid JSON after compact retry")
+            _log_gap_synthesizer_summary(result)
+            return result
+        except Exception as second_error:
+            log.error(f"Gap Synthesizer failed after retry: {second_error}")
+            return _fallback_gap_synthesis(metrics, matrix, cat_stats, second_error)
+
+
+def _log_gap_synthesizer_summary(result: dict):
+    if isinstance(result, dict) and isinstance(result.get("beats"), list):
+        statuses = Counter(
+            b.get("status", "unknown")
+            for b in result["beats"]
+            if isinstance(b, dict)
+        )
+        log.info(
+            "Gap Synthesizer produced %s beat assessments: %s",
+            len(result["beats"]),
+            dict(statuses),
+        )
+    else:
         gap_count = len(result.get("gaps", [])) if isinstance(result, dict) else 0
         log.info(f"Gap Synthesizer identified {gap_count} research gaps")
-        return result
-    except Exception as e:
-        log.error(f"Gap Synthesizer failed: {e}")
-        return {"gaps": [], "field_observations": {"error": str(e)}}
+
+
+def _build_compact_gap_synthesis_input(metrics: dict, matrix: dict, cat_stats: dict) -> str:
+    cat_summary = {
+        cat: {
+            "count": stats.get("count", 0),
+            "median_year": stats.get("median_year", 0),
+            "median_citations": stats.get("median_citations", 0),
+        }
+        for cat, stats in sorted(cat_stats.items())
+        if cat != "X" and stats.get("count", 0) > 0
+    }
+    sparse_pairs = {
+        pair: {
+            "edge_count": data.get("edge_count", 0),
+            "bridging_papers": data.get("bridging_papers", 0),
+        }
+        for pair, data in sorted(matrix.items())
+        if data.get("edge_count", 0) <= 1 or data.get("bridging_papers", 0) <= 1
+    }
+    beat_requirements = {
+        beat: {
+            "name": info["name"],
+            "categories": info["categories"],
+            "pairs": info["pairs"],
+        }
+        for beat, info in BEAT_REQUIREMENTS.items()
+    }
+    return (
+        "Assess evidence sufficiency for exactly 5 beats.\n"
+        f"Beat requirements: {json.dumps(beat_requirements, ensure_ascii=False)}\n"
+        f"Category counts: {json.dumps(cat_summary, ensure_ascii=False)}\n"
+        f"Sparse category pairs: {json.dumps(sparse_pairs, ensure_ascii=False)[:1800]}\n"
+        f"Graph summary: nodes={metrics.get('total_nodes', 0)}, edges={metrics.get('total_edges', 0)}, "
+        f"components={metrics.get('num_components', 0)}, isolated={metrics.get('isolated_count', 0)}\n"
+        "Return a conservative beat-by-beat assessment with explicit weaknesses and missing-paper suggestions."
+    )
+
+
+def _fallback_gap_synthesis(metrics: dict, matrix: dict, cat_stats: dict, error: Exception) -> dict:
+    category_counts = {
+        cat: stats.get("count", 0)
+        for cat, stats in cat_stats.items()
+        if cat != "X"
+    }
+    beats = []
+    weakest = []
+    for beat, info in BEAT_REQUIREMENTS.items():
+        counts = {cat: category_counts.get(cat, 0) for cat in info["categories"]}
+        total = sum(counts.values())
+        sparse_pairs = [
+            pair for pair in info["pairs"]
+            if matrix.get(pair, {}).get("edge_count", 0) <= 1
+            and matrix.get(pair, {}).get("bridging_papers", 0) <= 1
+        ]
+        weak_categories = [cat for cat, count in counts.items() if count < 8]
+
+        if any(count == 0 for count in counts.values()) or total < 8:
+            status = "critical_gap"
+        elif total < 14 or len(weak_categories) >= 2:
+            status = "weak"
+        elif sparse_pairs or weak_categories:
+            status = "adequate"
+        else:
+            status = "strong"
+
+        if status in {"critical_gap", "weak"}:
+            weakest.append(f"Beat {beat} ({info['name']})")
+
+        weakness_parts = []
+        if weak_categories:
+            weakness_parts.append(
+                "thin categories: " + ", ".join(f"{cat}={counts[cat]}" for cat in weak_categories)
+            )
+        if sparse_pairs:
+            weakness_parts.append("broken bridges: " + ", ".join(sparse_pairs))
+        if not weakness_parts:
+            weakness_parts.append("no major structural weakness detected in fallback heuristic")
+
+        beats.append({
+            "beat": beat,
+            "name": info["name"],
+            "status": status,
+            "supporting_papers": total,
+            "key_papers_present": [f"{cat}={counts[cat]}" for cat in info["categories"] if counts[cat] > 0],
+            "key_papers_missing": info["missing_titles"][:2] if status != "strong" else [],
+            "weakness": "; ".join(weakness_parts),
+            "evidence_chain": [
+                f"Category support counts: {', '.join(f'{cat}={counts[cat]}' for cat in info['categories'])}",
+                (
+                    "Sparse cross-category links: " + ", ".join(sparse_pairs)
+                    if sparse_pairs
+                    else "Cross-category links are not the main blocker in fallback analysis"
+                ),
+                "Fallback heuristic generated this assessment because model JSON could not be validated",
+            ],
+        })
+
+    overall = (
+        "Fallback gap synthesis generated from category counts and graph sparsity because the "
+        f"model response could not be validated ({error}). "
+        + (
+            "The weakest beats remain " + ", ".join(weakest) + "."
+            if weakest else
+            "No beat looks structurally broken under the heuristic, but a successful model rerun is still preferred."
+        )
+    )
+    missing = []
+    for beat, info in BEAT_REQUIREMENTS.items():
+        if len(missing) >= 3:
+            break
+        counts = [category_counts.get(cat, 0) for cat in info["categories"]]
+        if any(count < 8 for count in counts):
+            missing.append({
+                "title": info["missing_titles"][0],
+                "why_needed": f"Beat {beat} lacks dense coverage in categories {', '.join(info['categories'])}.",
+                "search_suggestion": f"targeted search for {' / '.join(info['categories'])} anchors supporting Beat {beat}",
+            })
+
+    return {
+        "beats": beats,
+        "overall_assessment": overall,
+        "missing_papers": missing,
+        "strongest_narrative_thread": [],
+        "field_observations": {
+            "fallback_warning": f"Gap synthesis retry failed: {error}",
+            "graph_components": metrics.get("num_components", 0),
+            "isolated_nodes": metrics.get("isolated_count", 0),
+        },
+    }
+
+
+def _parse_json_object(raw: str) -> dict:
+    text = raw.strip()
+    match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+    if match:
+        text = match.group(1).strip()
+
+    first_brace = min(
+        [idx for idx in (text.find("{"), text.find("[")) if idx != -1],
+        default=-1,
+    )
+    if first_brace != -1:
+        text = text[first_brace:]
+
+    candidates = []
+    for candidate in (text, _extract_balanced_json(text), _trim_to_last_json_closer(text)):
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    last_error = None
+    for candidate in candidates:
+        for repaired in (candidate, _close_unbalanced_json(candidate)):
+            if not repaired:
+                continue
+            try:
+                parsed = json.loads(repaired)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception as e:
+                last_error = e
+
+    raise last_error or ValueError("Model output did not contain a valid JSON object")
+
+
+def _extract_balanced_json(text: str) -> str:
+    if not text:
+        return ""
+    start = next((i for i, ch in enumerate(text) if ch in "[{"), -1)
+    if start == -1:
+        return ""
+
+    stack = []
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start):
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            stack.append("]" if ch == "[" else "}")
+        elif ch in "]}":
+            if not stack or ch != stack[-1]:
+                return ""
+            stack.pop()
+            if not stack:
+                return text[start:i + 1]
+    return ""
+
+
+def _trim_to_last_json_closer(text: str) -> str:
+    last = max(text.rfind("}"), text.rfind("]"))
+    return text[:last + 1] if last != -1 else ""
+
+
+def _close_unbalanced_json(text: str) -> str:
+    if not text:
+        return ""
+
+    stack = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            stack.append("]" if ch == "[" else "}")
+        elif ch in "]}":
+            if stack and ch == stack[-1]:
+                stack.pop()
+
+    repaired = text
+    if in_string:
+        repaired += '"'
+    if stack:
+        repaired += "".join(reversed(stack))
+    return repaired
 
 
 def _format_papers_for_analyst(papers: list[dict]) -> str:
@@ -388,7 +731,7 @@ def _format_papers_for_analyst(papers: list[dict]) -> str:
             f"title: {p.get('title', 'N/A')}\n"
             f"category: {p.get('primary_category', 'X')}\n"
             f"year: {p.get('year', 'N/A')}\n"
-            f"abstract: {(p.get('abstract') or '')[:300]}\n"
+            f"abstract: {(p.get('abstract') or '')[:180]}\n"
             f"---"
         )
     return "\n".join(lines)

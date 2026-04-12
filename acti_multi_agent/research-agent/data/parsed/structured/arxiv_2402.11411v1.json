@@ -1,0 +1,863 @@
+{
+  "paperId": "arxiv:2402.11411v1",
+  "title": "Aligning Modalities in Vision Large Language Models via Preference Fine-tuning",
+  "year": 2024,
+  "source": "arxiv",
+  "source_pdf_url": "https://arxiv.org/pdf/2402.11411v1.pdf",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2402.11411v1.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2402.11411v1.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2402.11411v1.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Instruction-following Vision Large Language Models (VLLMs) have achieved significant progress recently on a variety of tasks. These approaches merge strong pre-trained vision models and large language models (LLMs). Since these components are trained separately, the learned representations need to be aligned with joint training on additional image-language pairs. This procedure is not perfect and can cause the model to hallucinate -provide answers that do not accurately reflect the image, even when the core LLM is highly factual and the vision backbone has sufficiently complete representations. In this work, we frame the hallucination problem as an alignment issue, tackle it with preference tuning. Specifically, we propose POVID to generate feedback data with AI models. We use ground-truth instructions as the preferred response and a two-stage approach to generate dispreferred data. First, we prompt GPT-4V to inject plausible hallucinations into the correct answer. Second, we distort the image to trigger the inherent hallucination behavior of the VLLM. This is an automated approach, which does not rely on human data generation or require a perfect expert, which makes it easily scalable. Finally, both of these generation strategies are integrated into an RLHF pipeline via Direct Preference Optimization. In experiments across broad benchmarks, we show that we can not only reduce hallucinations, but improve model performance across standard benchmarks, outperforming prior approaches. Our data and code are available at https://github.com/ YiyangZhou/POVID .",
+      "word_count": 228
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Vision Large Language Models (VLLMs) have achieved significant success in various vision understanding tasks, such as image captioning (Vinyals et al., 2015; Li et al., 2022; 2023c) and vision question answering (Ye et al., 2023; Antol et al., 2015) . These VLLM models fuse larger-scale pre-trained vision models into the representation space of a large language models (LLM), allowing the LLM access to the visual representations. However, such VLLMs are not perfect and even suffer from \"hallucinations\", a phenomenon in which the language model generates content that is not grounded in the image, such as imagined objects and even scenes, wrong spatial relationships or categories, etc. Such artifacts are present even when both the vision backbone produces high-quality visual features and the language model itself is factual and accurate. These issues can pose significant risks when VLLMs are deployed in high-stakes scenarios, such as medical domains (Li et al., 2023b) or autonomous driving (Dewangan et al., 2023) .\n\nAs discussed by Cui et al. (2023) , the potential reason for hallucinations in VLLMs lies in their tendency to prioritize common sense or stereotypes present in the training language data, often disregarding the actual visual input information. In this paper, we attribute this issue to the lack of alignment between the image and text modalities, resulting in a reduced focus on input image information. Recent research efforts have sought to enhance the alignment between modalities through preference fine-tuning techniques, such as reinforcement learning from human feedback (RLHF) (Sun et al., 2023) . Concurrent works (Li et al., 2023d; Zhao et al., 2023) also use the Direct Preference Optimization (DPO) framework, but they rely on the traditional preference data generation process in LLMs, where both preferred and dispreferred responses may potentially be incorrect. However, in VLLMs, the produced responses are centered around the image data rather than being generated freely like in LLMs. When comparing two responses, both of which may be incorrect for the given task, the model may struggle to accurately align the image with the correct generated response. In (Yu et al., 2023a) the authors propose to solve this issue by collection corrective feedback, which shows strong results, but relies on costly human data gathering.\n\nUnlike prior works that generate both preferred and dispreferred data, we propose Preference Optimization in VLLM with AI-Generated Dispreferences (POVID) framework, aiming to exclusively generate dispreferred feedback data using AI models. In POVID we employ a high-quality ground truth multi-modal instruction as the preferred answer and employ two strategies to generate dispreferred responses. First, we utilize GPT-4V to introduce plausible hallucinations into the answer, which we then use as the dispreferred response. Second, we aim to provoke inherent hallucination patterns and subsequently correct them within the target VLLM that requires fine-tuning. We achieve this goal by introducing noise, triggering inherent hallucination patterns within the VLLMs. The introduction of noise disrupts the VLLM's comprehension of the image, leading it to generate uncertain responses that rely more on textual context or the knowledge it has acquired from the training data. Given that the inherent hallucination patterns of the target VLLM evolve during the training process, the response generation with the noisy image occurs in real-time during training, and this is treated as dispreference. Finally, we integrate both forms of dispreference into the DPO optimization framework, specifically targeting the alignment of language generation with the image.\n\nThe primary contribution of this paper is POVID, which utilizes AI-generated dispreference to align the image and text modalities in VLLMs. This approach explicitly contrasts a hallucinatory answer with a truthful one, eliminating the need for gathering human feedback and making it easily deployable at scale. Our empirical results demonstrate the promise of our framework in reducing hallucinations and enhancing other VLLM-related tasks. In particular, as shown in Figure 1 , our approach significantly improves performance compared to other preference tuning methods in VLLMs, achieving an average improvement of 12.4% improvements on average. Additionally, we demonstrate that POVID can redirect the attention of VLLMs towards the image modality, resulting in better modality alignment.",
+      "word_count": 672
+    },
+    {
+      "index": 3,
+      "title": "Preliminaries",
+      "kind": "body",
+      "text": "Our approach aims to fine-tune VLLMs for better aligning the image and text modalities uses the framework of prefer-ence tuning from preferences over responses. In this section, we will provide some notations of VLLMs and an overview of direct preference optimization (Rafailov et al., 2023) .",
+      "word_count": 46
+    },
+    {
+      "index": 4,
+      "title": "Vision Large Language Models.",
+      "kind": "body",
+      "text": "VLLMs is an multimodal extension of large language models, which can generate sentences in an autoregressive manner, aiming to progressively predict the probability distribution of the next token. Here, the input prompt x contains both images and text prompts, and the output contains text response y. A typical application scenario for VLLMs is image captioning and Vision Question Answering (VQA).",
+      "word_count": 60
+    },
+    {
+      "index": 5,
+      "title": "Direct Preference Optimization.",
+      "kind": "body",
+      "text": "Reinforcement learning (RL) has shown its effectiveness in fine-tuning LLMs and align the LLMs behavior with human behavior. Typically, give an input x and an output text response y, a language model policy π θ can produce a conditional distribution π θ (y | x). RL aims to maximize the average reward of outputs generated by the policy, where the reward function is defined as r(x, y). To further avoid overoptimization (Gao et al., 2023) happens when directly optimizing the reward function, the objective loss typically contains a KL-divergence term to control the divergence between the language model policy and its reference policy π ref (y | x) (e.g., the result after performing some supervised fine-tuning on LLMs). Thus, the overall objective is formulated as:\n\nmax π θ E x∼D,y∼π θ (y|x) r(x, y) -α log π θ (y | x) π ref (y | x) ( 1\n\n)\n\nwhere D is a dataset of prompts and β is a coefficient to control both terms. However, optimizing the above loss term with common strategies like proximal policy optimization (PPO) (Schulman et al., 2017) is complex to tune.\n\nRecently, direct preference optimization (DPO) (Rafailov et al., 2023) simplifies the above process by leveraging preference data for optimization. Here, the preference data is defined as D = {x (i) , y\n\nw , y\n\nl } N i=1 , where y\n\nw and y (i) l represent preferred and dispreferred responses given an input prompt x. Following a Bradley-Terry model (Bradley & Terry, 1952) , the probably of obtaining each preference pair is:\n\np(y w ≻ y l ) = σ(r(x, y w ) -r(x, y l )), (2)\n\nwhere we omit the superscript (i) for simplicity and σ(•) is defined as a sigmoid function. In DPO, the optimization of Eqn. (1) can be formulated as classification loss over the preference data as:\n\nL DPO (π θ ; π ref ) = -E (x,yw,y l )∼D log σ α log π θ (y w |x) π ref (y w |x) -α log π θ (y l |x) π ref (y l |x) . (3)\n\nDPO enables learning π θ from a fixed dataset of preferences, which is lightweight. However, the key challenge lies in gen-\n\nPrompt: Describe this image. Answer: The picture shows a table with ….. The sun is shining in from outside and everything is peaceful. Prompt: Describe this image. Answer: The picture shows a table with a fruit knife (hallucinatory entity) …twenty oranges (entity attributes)... The moon (logical relationship) is shining in from outside and everything is peaceful.\n\nPreferred data Injected dis-preferred response 𝑦 ! \" Image Distorted image Hallucination Injection Step 1: Hallucinating Textual Responses Step 2: Mitigating Inherent Hallucination Patterns 𝑦 ! \" Triggered dis-preferred response A fruit knife, apples (internal hallucination). … Real-time triggering process 𝑦 ! \" 𝑦 𝑤 > 𝑦 ! # LLaVA-1.5 Preference optimization erating effective preference data for fine-tuning and aligning image and text modalities in VLLMs.",
+      "word_count": 495
+    },
+    {
+      "index": 6,
+      "title": "Constructing Preferences to Aligning Modalities in VLLMs",
+      "kind": "body",
+      "text": "While preference learning approaches (e.g., DPO) facilitate the lightweight and stable training of VLLMs, they require data in the form of preferences. In contrast to LLMs, which support more freestyle generation in many scenarios, VLLMs used in various applications, such as VQA or image captioning, produce responses linked to input images. This inherent image-centricity presents distinct challenges in the preference data generation process for VLLMs, setting it apart from the process in LLMs. Specifically, in VLLMs, when comparing two responses, neither of which is correct for the required task (e.g., image captioning), the model may not be able to accurately align the image with the response.\n\nTo address this challenge, we propose Preference Optimization in VLLM with AI-Generated Dispreferences (POVID), a novel approach aimed at better aligning image and text modalities. As illustrated in Figure 2 , POVID leverages AI models to generate dispreferred responses without the need for human labeling efforts. These generated dispreferred responses, when combined with groundtruth image descriptions (treated as preferred responses), form the preference data pairs. Specifically, we employ two strategies to generate the dispreferred response: (1) Firstly, we manipulate the groundtruth text response by transforming the groundtruth response into hallucinated response, which serves as the dispreferred response;\n\n(2) Secondly, we in-troduce distortion to the image input during the training process, intending to trigger inherent hallucination patterns within the VLLMs. These patterns are then formalized as the dispreferred response, motivating the model to correct its inherent dispreferred patterns. In the remainder of this section, we will provide detailed explanations of both strategies and demonstrate how to integrate them into the preference training framework.",
+      "word_count": 268
+    },
+    {
+      "index": 7,
+      "title": "Hallucinating Textual Responses",
+      "kind": "body",
+      "text": "In our first strategy, we aim to generate dispreferred hallucinatory responses by hallucinating the groundtruth correct response. We construct the hallucinatory response based on a subset with 17K examples that are randomly sampled from LLaVA-Instruct-150K (Liu et al., 2023b) dataset. Here, the LLaVA-Instruct-150K datasets is used to train LLaVA LLaVA with supervised fine-tuning. The 17K examples includes various task types, including image captioning, simple VQA and logical reasoning.\n\nTo construct the preferences, we treat the original answers in the 17K examples as preferred responses. In terms of constructing dispreferred responses, we hallucinate the original answers using GPT-4V (OpenAI, 2023). Here, we adopt two hallucinating approaches tailored to different tasks: I. Hallucinating Image Captioning Tasks. First, we hallucinate the image captioning tasks by considering three fundamental causes of hallucination in VLLMs: (1) Object Co-occurrence: This phenomenon arises when the training data contains spurious co-occurring patterns between objects, leading VLLMs to generate objects based on these\n\nThe image shows two men in a small boat on the water. One man is standing near the center of the boat, while the other is seated and rowing. The man wearing a headscarf is watching television, which is placed on the boat, adding an interesting element to the scene. There are a few other boats visible in the background, indicating that they might be in a city river or a busy waterway. The presence of the television in the boat adds a unique touch to their leisurely activity.\n\nThe image shows two men in a small boat on the water, equipped with fishing poles (hallucinatory entity) for their leisurely activity. One man is sitting near the center of the boat (entity attributes), fishing with his fishing pole (hallucinatory entity) , while the other is seated and rowing. They are both watching a television (logical relationship), which is placed on the boat, adding an interesting element to the scene. There are a few other boats visible in the background, indicating that they might be in a city river or a busy waterway. The presence of the fishing poles and the television in the boat adds a unique touch to their relaxing day on the water.",
+      "word_count": 359
+    },
+    {
+      "index": 8,
+      "title": "Preferred response Dis-preferred response",
+      "kind": "body",
+      "text": "Prompt: Describe this image.\n\nReasoning: The picture depicts a sunset scene in which I see a lake and open sky. Answer: Yes, there is a person standing next to some blue water in the image.\n\nReasoning: The image depicts a sunset scene with a man standing on an open ice field (false reasoning, hallucinatory entities) with what appears to be a few buildings visible in the distance.\n\nAnswer: No, the person is standing next to a vast snowy field, not water (incorrect answer).\n\nPrompt: Is there a person standing next to water in the image? learned spurious correlations. In this context, we aim to leverage GPT-4V to deduce object co-occurrence within the given image and subsequently revise the original responses accordingly; (2) Logical Relationships Between Entities: This involves using GPT-4V to modify the relationships between the original objects; (3) Incorrect Attributes: In this case, we employ GPT-4V to alter the attributes of various objects, such as changing their colors. We illustrate these three distinct hallucination scenarios with an example provided in Figure 3(a) . In addition, the prompt we used to generate the dispreferred response is in Appendix A.2. II. Hallucinating Reasoning Tasks. Secondly, when dealing with tasks involving reasoning, such as VQA and logical reasoning, we task GPT-4V with modifying the reasoning process. This entails introducing errors related to logical relationships, entity information, entity attributes, and more. Additionally, we recommend that GPT-4V attempts to make subtle changes to the reasoning process, ensuring it remains independent of factual reasoning results, meaning that an incorrect reasoning process may still yield correct results. However, if the introduction of errors necessitates alterations to the reasoning results, we instruct GPT-4V to adjust the results accordingly. Likewise, in Figure 3 (b), we provide an example to demonstrate both the original and the generated dispreferred responses. The prompt we used is detailed in Appendix A.2.",
+      "word_count": 309
+    },
+    {
+      "index": 9,
+      "title": "Mitigating Inherent Hallucination Patterns",
+      "kind": "body",
+      "text": "In addition to generating the dispreferred response using powerful external AI models like GPT-4V, we also aim to provoke inherent hallucination patterns within the VLLM to be finetuned. Our second strategy introduces noise into the image to trigger inherent hallucination patterns in the VLLMs. This noise disrupts the VLLM's understanding of the image, leading it to produce uncertain responses that rely more on textual context or acquired knowledge from the training data. This occurs because, in the presence of noisy images, the model tends to prioritize inherent object associations over visual information. Notably, the noise step should remain within a reasonable range, ensuring that the image remains easily recognizable by humans. For example, as depicted in Figure 4 , when presented with the context \"There are a knife and \", under specific noisy conditions, the likelihood of \"fork\" surpasses that of \"plate\" (ground truth). This may occur because \"plate\" is more likely to co-occur with \"fork\" in the training data. With an increase in noise steps, the term \"pixel\" becomes predominant, owing to the noticeable noise patterns within the image. Consequently, establishing an appropriate noise step to activate inherent hallucination patterns is a reasonable approach.\n\nTo achieve this goal, we introduce diffusion noise into the original image. We define the noise step as k, and the noised image with step k can be expressed as follows:\n\nx(k) = ξk • x + 1 -ξk • ϵ, (4)\n\nwhere ξt = k i=0 ξ i and ξ k ∈ (0, 1) is a hyperparameter chosen prior to model training. Detailed settings can be found in Appendix A.1. After obtaining the noised image, in order to more effectively capture changes in inherent hallucination patterns during the fine-tuning process of the VLLM, we integrate the image noising process into the DPO fine-tuning process. Specifically, for each input prompt x, we take into account the dispreferred responses from both the hallucinated text responses discussed in Section 3.1 and the responses triggered by distorted images. We then reformulate the DPO loss as follows:\n\nLPOVID(π θ ; πref) = -E (x,yw ,y l )∼D log σ α log π θ (yw|x) πref(yw|x) -β1 log π θ (y t l |x) πref(y t l |x) + β2 log π θ (y n l |x n ) πref(y n l |x n ) , (5)\n\nwhere α, β 1 and β 2 are coefficients that balance preferred and dispreferred terms. y g l represents the dispreferred response generated using the approach outlined in Section 3.1. Additionally, x n represents the noisy image, which triggers the generation of the dispreferred response y n l . It's important to note that for each token i in the sequence y n l , the value of y n l,i is determined by selecting the maximum probability from the set π θ (• | x n , y w,<i ). Here, each generated token in the dispreferred response y n l,i is conditioned on the prior tokens from the preferred response y w,<i . This conditioning allows us to control the reliability of the triggered dispreferred response. As a result, we aim to capture the most significant changes between the preferred and dispre-ferred responses, since a substantial portion of dispreferred response overlaps with preferred response. The training process of our method is detailed in Algorithm 1. for k = 0 to T do 7:\n\nx(k) ← AddNoiseToImage(x, k)\n\n8: end for 9: Update π θ through Eqn. (5) 10: end for 11: end for",
+      "word_count": 582
+    },
+    {
+      "index": 10,
+      "title": "Experiment",
+      "kind": "body",
+      "text": "In this section, we empirically investigate the effectiveness of POVID in aligning image and text modalities in VLLMs and reducing hallucination. We aim to answer the following questions: (1) Can POVID effectively reduce hallucination in VLLMs compared to other preference fine-tuning strategies? (2) Does POVID improve performance compared to other benchmarks and tasks like VQA? (3) Can hallucinating textual responses and image distortion benefit performance? (4) How does POVID change attention weights to align image and text modalities?",
+      "word_count": 78
+    },
+    {
+      "index": 11,
+      "title": "Experimental Setups",
+      "kind": "methods",
+      "text": "In this section, we briefly introduce the implementation details, baselines, and evaluation settings.\n\nImplementation Details. Following concurrent VLLM preference tuning studies (Yu et al., 2023b; Li et al., 2023d) , we have chosen LLaVA-1.5 (7B) as our backbone model for all experiments and have applied POVID to fine-tune LLaVA-1.5 (7B). The overall training process is divided into two stages. In the first stage, we exclusively utilize the preferences generated through the hallucinating textual responses, as discussed in Section 3.1, to fine-tune LLaVA-1.5 using DPO. In the second stage, we employ image distortion to rectify the model's inherent hallucinatory behaviors using the loss defined in Eqn. (5). The first stage involves training for 3 epochs, and the second stage for 1 epoch. The entire training process requires a single A100 80GB GPU and takes approximately 6 hours. For a more detailed description, please refer to Appendix A.1.\n\nBaseline Approaches. We first compare the proposed approach with other VLLM preference tuning methods, which include Silkie (Li et al., 2023d) , LLaVA-RLHF (Sun et al., 2023) , and RLHF-V (Yu et al., 2023b) . These methods share a common goal of enhancing model performance by creating curated datasets and subsequently applying preference tuning techniques to fine-tune the model based on these datasets. To ensure a fair and equitable comparison, we utilize the same curated datasets employed by these approaches and apply DPO to fine-tune LLaVA-1.5 (7B).\n\nFurthermore, we compare the performance with other open source VLLMs, including InstructBLIP (Dai et al., 2023) , Qwen-VL-Chat (Bai et al., 2023) and mPLUG-Owl2 (Ye et al., 2023) .",
+      "word_count": 262
+    },
+    {
+      "index": 12,
+      "title": "Evaluation Benchmark.",
+      "kind": "results",
+      "text": "To evaluate the performance of POVID and other baselines, we first adopt VLLM hallucination evaluation benchmarks, including CHAIR (Rohrbach et al., 2018) , POPE (Li et al., 2023f) , and MMHal (Sun et al., 2023) . Here, CHAIR, including CHAIR S and CHAIR I , is a metric used in image captioning tasks to evaluate the accuracy of object descriptions in captions. It compares the objects mentioned in a caption with those present in the image. MMHal (Sun et al., 2023) assesses hallucinations and response informativeness by utilizing GPT-4V to compare model output with human responses and various object labels, determining the scores accordingly. POPE (Li et al., 2023f) uses a set of binary classification tasks, prompting VLLMs with simple Yes-or-No questions about the existence of certain objects in images.\n\nWe further evaluate all approaches on comprehensive VLLM evaluation benchmarks, including SciQA-IMG (Lu et al., 2022) , MME (Fu et al., 2023) , MMbench (Liu et al., 2023c) , MM-Vet (Yu et al., 2023c) and LLaVA-bench (Liu et al., 2023b) . Each benchmark contains tasks to evaluate perception, cognition, and reasoning abilities of VLLMs. More detailed descriptions of these baselines are in Appendix B.",
+      "word_count": 194
+    },
+    {
+      "index": 13,
+      "title": "Comparison with Different Preferences in VLLMs.",
+      "kind": "body",
+      "text": "In Table 1 , we present the results of a comparison between various VLLM preferences, evaluating both hallucination and comprehensive benchmarks. Firstly, in the hallucination benchmarks, POVID effectively enhances performance by creating dispreferred preferences through textual data manipulation and image distortion. We achieve a significant improvement of 31.78% across all hallucination bench- marks, effectively reducing hallucinations in the generated responses. This outcome aligns with our expectations, as constructing dispreferences from the ground-truth correct responses maximally enables the model to discern differences between correct and incorrect responses while optimizing alignment between the image and text modalities within the model. Moreover, in more comprehensive evaluation benchmarks, which encompass not only factuality and hallucination assessment but also other aspects, POVID continues to demonstrate superior performance when compared to other preference data collection methods. This further indicates our model's capacity to enhance VLLM performance through improved modality alignment.\n\nComparison with Open-Sourced VLLMs Models. We present a comparison between POVID and other opensourced VLLMs in Table 2 . Although various approaches utilize different image and text encoders, POVID outperforms other popular VLLMs in five out of eight benchmarks. In contrast, the second-best baseline, Qwen-VL-Chat, achieves the best performance in only two out of eight benchmarks. This underscores the superiority of POVID and further corroborates its effectiveness in aligning image and text modalities to improve the performance of VLLMs.",
+      "word_count": 223
+    },
+    {
+      "index": 14,
+      "title": "Analysis",
+      "kind": "results",
+      "text": "In this section, we provide a comprehensive analysis to demonstrate how different components contribute to the performance of POVID and illustrate how POVID enhances overall performance.",
+      "word_count": 26
+    },
+    {
+      "index": 15,
+      "title": "Ablation Studies.",
+      "kind": "body",
+      "text": "To further demonstrate the essential role of the key components of POVID in contributing to performance improvement, we conducted ablation experiments on both hallucination and comprehensive benchmarks, and present the results in Table 3 . In this ablation study, we evaluate the effectiveness of two aspects: (1) hallucinating groundtruth responses and (2) image distortion. According to the results, we initially observe that image distortion can enhance performance across all benchmarks. This indicates its effectiveness in aligning multimodalities by compelling the model to rectify inherent hallucination patterns. Additionally, generating dispreference from groundtruth responses significantly enhances performance, underscoring the effectiveness of the AI-generated dispreference strategy.\n\nFinally, when combining both strategies, POVID achieves the best performance, further affirming its effectiveness in enhancing VLLMs through improved modality alignment.\n\nFine-grained Performance Analysis.\n\nTable 4 presents a fine-grained performance analysis of different preference collection strategies on the LLaVA-Bench benchmark. This analysis encompasses a spectrum of multi-modal reasoning and perception dimensions, such as Conversation, Detail Description, and Complex Reasoning. According to Table 4, it is evident that, when compared with other preference data collection approaches, POVID excels in image captioning and providing detailed descriptions for a given image. This outcome aligns with our expectations, as our training data includes various long-form captions, and such comprehensive preference comparisons result in improved alignment and stronger image captioning results. Moreover, across other categories, our approach consistently outperforms alternative preference collection strategies, underscoring its effectiveness across various tasks. Modality Alignment Analysis. We assess the impact of POVID on modality alignment by comparing the attention maps generated by POVID with those of the original LLaVA-1.5 model, with a specific focus on image captioning and VQA tasks. We illustrate two cases in Figure 5 , where these attention maps reveal the distribution of attention scores assigned to generated textual tokens within the input imagetext sequence throughout the VLLM's output generation phase. Our findings reveal that the original LLaVA-1.5 model tends to overemphasize the context of the text, which can result in hallucinations. In contrast, POVID increasingly prioritizes attention towards the image, indicating a strong alignment between image and text modalities. One potential explanation for this phenomenon is that, through\n\nThe image shows a man sitting down and brushing the teeth of a cat with his fingers. The cat appears to be reacting to or accepting the tooth brushing process. The man and the cat are the main focus of the scene.\n\nThe setting appears to be indoors, as there is a person visible in the image along with the close interaction between the man and the cat. The cat is located near the center of the scene, while the man is positioned on the left side of the image.",
+      "word_count": 446
+    },
+    {
+      "index": 16,
+      "title": "Visual tokens Textual tokens Textual tokens",
+      "kind": "body",
+      "text": "LLaVA-1.5 POVID (Ours)\n\nLLaVA 1.5\n\nPrompt: Describe this image.",
+      "word_count": 9
+    },
+    {
+      "index": 17,
+      "title": "Visual tokens",
+      "kind": "body",
+      "text": "The image features a person brushing an open mouth cat's teeth with a small electric toothbrush. They are in a kitchen (hallucinatory entity) setting, focused on maintaining good oral hygiene. An oven (hallucinatory entity) is visible in the background, adding to the cozy kitchen environment entity attributes.\n\nThere is also a tie (hallucinatory entity) in the scene, likely placed on or hung up nearby, possibly indicating that someone's clothing is being attended to or is hanging out to be worn.\n\nNo, there is no fruit knife in the picture. There are oranges and a glass of orange juice in the image.\n\nYes (incorrect answer), there is a fruit knife(hallucinatory entities) in the picture. a comparison between the ground truth and the generated dispreferred data, along with the mitigation of internal hallucination patterns, POVID redirects the VLLM's attention, leading to a greater focus on the image tokens.",
+      "word_count": 146
+    },
+    {
+      "index": 18,
+      "title": "Related Work",
+      "kind": "related_work",
+      "text": "VLLMs and VLLM Hallucination. The advent of autoregressive large-scale language models (LLMs), highlighted in works by (Touvron et al., 2023a; b; Taori et al., 2023) , has led to the development of Vision-Large Language Models (VLLMs). To align the image and text modalities, recent research has concentrated on instruction tuning (Li et al., 2023a) , scaling up training dataset (Jia et al., 2021) , and better alignment between image and text with local feature enhancement (Cha et al., 2023) . These advancements have successfully combined LLMs with image inputs and excel in image comprehension. However, such VLLMs are not perfect and even suffer from \"hallucinations\", generating outputs that may not accurately or faithfully represent the content of a user-provided image. There are various sources of hallucinations in VLLMs, including biased data (Chuang et al., 2023; Tu et al., 2023) , insufficient training (Chen et al., 2023) , and imperfect inference (Huang et al., 2023) . Recently, addressing hallucination in LVLMs is primarily achieved through various techniques such as decoding approaches (Leng et al., 2023; Huang et al., 2023) , post-processing (Zhou et al., 2023; Yin et al., 2023) and the construction of higher-quality dataset (Liu et al., 2023a; Li et al., 2023e) . While these approaches can mitigate hallucination to some extent, they often fail to directly guide VLLMs to align image and text modalities.\n\nPreference Alignment Aligning with human preferences for large models has emerged as a critical issue due to the limitations imposed by safety and ethical considerations in real-world applications. Preference alignment can be broadly categorized into two main approaches: alignment through feedback, which encompasses both human (Bai et al., 2022; Rafailov et al., 2023) and AI-generated feedback (Lee et al., 2023) and alignment via prompt guidance (Wei et al., 2022) . Initial investigations into preference alignment for VLLMs have recently been conducted. Sun et al. (2023) introduced LLaVA-RLHF, which utilizes a preference dataset annotated by humans to decrease hallucinations in LLaVA. Li et al. (2023d) proposed a method for distilling preferences into VLLMs to enhance their ability to generate relevant and accurate responses based on visual context. Yu et al. (2023b) collected human preferences in the form of segment-level corrections to hallucinatory content and optimizing the model's behavior based on dense, direct feedback. While these initial results are promising, these works heavily rely on the traditional preference data generation process in LLMs, which generate both preferred and dispreferred responses, but none of them are guaranteed to be correct. In VLLMs, when both responses prove incorrect for the given task, accurately aligning the image with the correct generated response becomes challenging. In contrast, POVID directly generates dispreferred responses, effectively addressing this challenge.",
+      "word_count": 445
+    },
+    {
+      "index": 19,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this work, we introduce a novel approach, Preference Optimization in VLLM with AI-Generated Dispreferences (POVID) to address the challenges in modality alignment for large vision-language models. In POVID, we adopt two strategies to generate disprefered responses: first, we use synthetic data from GPT-4V to inject plausible hallucinations into the correct answer. Second, we use distorted images to trigger the inherent hallucination behavior of the VLLM. Then both of these answers are integrated into an RLHF framework via Direct Preference Optimization. Empirical evaluations across multiple benchmarks reveal that POVID not only mitigates hallucination effectively but boosts the overall performance of model.",
+      "word_count": 101
+    },
+    {
+      "index": 20,
+      "title": "Broader Impact Statement",
+      "kind": "body",
+      "text": "This paper presents work whose goal is to advance the field of machine learning and multimodal learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here.",
+      "word_count": 35
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Vqa: Visual question answering",
+      "doi": "",
+      "year": "2015",
+      "authors": [
+        "S Antol",
+        "A Agrawal",
+        "J Lu",
+        "M Mitchell",
+        "D Batra",
+        "C L Zitnick",
+        "D Parikh"
+      ],
+      "raw_text": "Vqa: Visual question answering S Antol A Agrawal J Lu M Mitchell D Batra C L Zitnick D Parikh Proceedings of the IEEE international conference on computer vision the IEEE international conference on computer vision 2015"
+    },
+    {
+      "index": 2,
+      "title": "Qwen-vl: A frontier large visionlanguage model with versatile abilities",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "J Bai",
+        "S Bai",
+        "S Yang",
+        "S Wang",
+        "S Tan",
+        "P Wang",
+        "J Lin",
+        "C Zhou"
+      ],
+      "raw_text": "J Bai S Bai S Yang S Wang S Tan P Wang J Lin C Zhou J Zhou arXiv:2308.12966 Qwen-vl: A frontier large visionlanguage model with versatile abilities 2023 arXiv preprint"
+    },
+    {
+      "index": 3,
+      "title": "Training a helpful and harmless assistant with reinforcement learning from human feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Y Bai",
+        "A Jones",
+        "K Ndousse",
+        "A Askell",
+        "A Chen",
+        "N Das-Sarma",
+        "D Drain",
+        "S Fort"
+      ],
+      "raw_text": "Training a helpful and harmless assistant with reinforcement learning from human feedback Y Bai A Jones K Ndousse A Askell A Chen N Das-Sarma D Drain S Fort D Ganguli T Henighan arXiv:2204.05862 2022 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "Rank analysis of incomplete block designs: I. the method of paired comparisons",
+      "doi": "",
+      "year": "1952",
+      "authors": [
+        "R A Bradley",
+        "M E Terry"
+      ],
+      "raw_text": "Rank analysis of incomplete block designs: I. the method of paired comparisons R A Bradley M E Terry Biometrika 39 3/4 1952"
+    },
+    {
+      "index": 5,
+      "title": "Localityenhanced projector for multimodal llm",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "J Cha",
+        "W Kang",
+        "J Mun",
+        "B Roh",
+        "Honeybee"
+      ],
+      "raw_text": "J Cha W Kang J Mun B Roh Honeybee arXiv:2312.06742 Localityenhanced projector for multimodal llm 2023 arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "Empowering multimodal large language model with duallevel visual knowledge",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "G Chen",
+        "L Shen",
+        "R Shao",
+        "X Deng",
+        "L Nie",
+        "Lion"
+      ],
+      "raw_text": "G Chen L Shen R Shao X Deng L Nie Lion arXiv:2311.11860 Empowering multimodal large language model with duallevel visual knowledge 2023 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "Debiasing vision-language models via biased prompts",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C.-Y Chuang",
+        "V Jampani",
+        "Y Li",
+        "A Torralba",
+        "S Jegelka"
+      ],
+      "raw_text": "Debiasing vision-language models via biased prompts C.-Y Chuang V Jampani Y Li A Torralba S Jegelka arXiv:2302.00070 2023 arXiv preprint"
+    },
+    {
+      "index": 8,
+      "title": "Holistic analysis of hallucination in gpt-4v (ision): Bias and interference challenges",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C Cui",
+        "Y Zhou",
+        "X Yang",
+        "S Wu",
+        "L Zhang",
+        "J Zou",
+        "H Yao"
+      ],
+      "raw_text": "C Cui Y Zhou X Yang S Wu L Zhang J Zou H Yao arXiv:2311.03287 Holistic analysis of hallucination in gpt-4v (ision): Bias and interference challenges 2023 arXiv preprint"
+    },
+    {
+      "index": 9,
+      "title": "Instructblip: Towards general-purpose vision-language models with instruction tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "W Dai",
+        "J Li",
+        "D Li",
+        "A M H Tiong",
+        "J Zhao",
+        "W Wang",
+        "B Li",
+        "P Fung"
+      ],
+      "raw_text": "Instructblip: Towards general-purpose vision-language models with instruction tuning W Dai J Li D Li A M H Tiong J Zhao W Wang B Li P Fung S Hoi 2023"
+    },
+    {
+      "index": 10,
+      "title": "Talk2bev: Language-enhanced bird's-eye view maps for autonomous driving",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "V Dewangan",
+        "T Choudhary",
+        "S Chandhok",
+        "S Priyadarshan",
+        "A Jain",
+        "A K Singh",
+        "S Srivastava",
+        "K M Jatavallabhula"
+      ],
+      "raw_text": "Talk2bev: Language-enhanced bird's-eye view maps for autonomous driving V Dewangan T Choudhary S Chandhok S Priyadarshan A Jain A K Singh S Srivastava K M Jatavallabhula K M Krishna arXiv:2310.02251 2023 arXiv preprint"
+    },
+    {
+      "index": 11,
+      "title": "A comprehensive evaluation benchmark for multimodal large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C Fu",
+        "P Chen",
+        "Y Shen",
+        "Y Qin",
+        "M Zhang",
+        "X Lin",
+        "J Yang",
+        "X Zheng"
+      ],
+      "raw_text": "C Fu P Chen Y Shen Y Qin M Zhang X Lin J Yang X Zheng K Li X Sun arXiv:2306.13394 A comprehensive evaluation benchmark for multimodal large language models 2023 arXiv preprint"
+    },
+    {
+      "index": 12,
+      "title": "Scaling laws for reward model overoptimization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "L Gao",
+        "J Schulman",
+        "J Hilton"
+      ],
+      "raw_text": "Scaling laws for reward model overoptimization L Gao J Schulman J Hilton 2023"
+    },
+    {
+      "index": 13,
+      "title": "Alleviating hallucination in multi-modal large language models via over-trust penalty and retrospection-allocation",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Q Huang",
+        "X Dong",
+        "P Zhang",
+        "B Wang",
+        "C He",
+        "J Wang",
+        "D Lin",
+        "W Zhang"
+      ],
+      "raw_text": "Alleviating hallucination in multi-modal large language models via over-trust penalty and retrospection-allocation Q Huang X Dong P Zhang B Wang C He J Wang D Lin W Zhang N Yu Opera arXiv:2311.17911 2023 arXiv preprint"
+    },
+    {
+      "index": 14,
+      "title": "Scaling up visual and vision-language representation learning with noisy text supervision",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "C Jia",
+        "Y Yang",
+        "Y Xia",
+        "Y.-T Chen",
+        "Z Parekh",
+        "H Pham",
+        "Q Le",
+        "Y.-H Sung"
+      ],
+      "raw_text": "Scaling up visual and vision-language representation learning with noisy text supervision C Jia Y Yang Y Xia Y.-T Chen Z Parekh H Pham Q Le Y.-H Sung Z Li T Duerig International conference on machine learning PMLR 2021"
+    },
+    {
+      "index": 15,
+      "title": "Scaling reinforcement learning from human feedback with ai feedback",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Lee",
+        "S Phatale",
+        "H Mansoor",
+        "K Lu",
+        "T Mesnard",
+        "C Bishop",
+        "V Carbune",
+        "A Rastogi"
+      ],
+      "raw_text": "H Lee S Phatale H Mansoor K Lu T Mesnard C Bishop V Carbune A Rastogi Rlaif arXiv:2309.00267 Scaling reinforcement learning from human feedback with ai feedback 2023 arXiv preprint"
+    },
+    {
+      "index": 16,
+      "title": "Mitigating object hallucinations in large visionlanguage models through visual contrastive decoding",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "S Leng",
+        "H Zhang",
+        "G Chen",
+        "X Li",
+        "S Lu",
+        "C Miao",
+        "Bing",
+        "L"
+      ],
+      "raw_text": "Mitigating object hallucinations in large visionlanguage models through visual contrastive decoding S Leng H Zhang G Chen X Li S Lu C Miao Bing L arXiv:2311.16922 2023 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "Vision-language instruction tuning: A review and analysis",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C Li",
+        "Y Ge",
+        "D Li",
+        "Y Shan"
+      ],
+      "raw_text": "Vision-language instruction tuning: A review and analysis C Li Y Ge D Li Y Shan 2023"
+    },
+    {
+      "index": 18,
+      "title": "Llava-med: Training a large language-and-vision assistant for biomedicine in one day",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C Li",
+        "C Wong",
+        "S Zhang",
+        "N Usuyama",
+        "H Liu",
+        "J Yang",
+        "T Naumann",
+        "H Poon"
+      ],
+      "raw_text": "C Li C Wong S Zhang N Usuyama H Liu J Yang T Naumann H Poon J Gao arXiv:2306.00890 Llava-med: Training a large language-and-vision assistant for biomedicine in one day 2023 arXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "Bootstrapping language-image pre-training for unified vision-language understanding and generation",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "J Li",
+        "D Li",
+        "C Xiong",
+        "S Hoi",
+        "Blip"
+      ],
+      "raw_text": "Bootstrapping language-image pre-training for unified vision-language understanding and generation J Li D Li C Xiong S Hoi Blip PMLR International Conference on Machine Learning 2022"
+    },
+    {
+      "index": 20,
+      "title": "Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "J Li",
+        "D Li",
+        "S Savarese",
+        "S Hoi"
+      ],
+      "raw_text": "Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models J Li D Li S Savarese S Hoi arXiv:2301.12597 2023 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Preference distillation for large visual language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "L Li",
+        "Z Xie",
+        "M Li",
+        "S Chen",
+        "P Wang",
+        "L Chen",
+        "Y Yang",
+        "B Wang"
+      ],
+      "raw_text": "L Li Z Xie M Li S Chen P Wang L Chen Y Yang B Wang L Kong Silkie arXiv:2312.10665 Preference distillation for large visual language models 2023 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "M 3 it: A large-scale dataset towards multi-modal multilingual instruction tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "L Li",
+        "Y Yin",
+        "S Li",
+        "L Chen",
+        "P Wang",
+        "S Ren",
+        "M Li",
+        "Y Yang"
+      ],
+      "raw_text": "L Li Y Yin S Li L Chen P Wang S Ren M Li Y Yang J Xu X Sun arXiv:2306.04387 M 3 it: A large-scale dataset towards multi-modal multilingual instruction tuning 2023 arXiv preprint"
+    },
+    {
+      "index": 23,
+      "title": "Evaluating object hallucination in large visionlanguage models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Y Li",
+        "Y Du",
+        "K Zhou",
+        "J Wang",
+        "W X Zhao",
+        "J.-R Wen"
+      ],
+      "raw_text": "Y Li Y Du K Zhou J Wang W X Zhao J.-R Wen arXiv:2305.10355 Evaluating object hallucination in large visionlanguage models 2023 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "Aligning large multi-modal model with robust instruction tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "F Liu",
+        "K Lin",
+        "L Li",
+        "J Wang",
+        "Y Yacoob",
+        "L Wang"
+      ],
+      "raw_text": "Aligning large multi-modal model with robust instruction tuning F Liu K Lin L Li J Wang Y Yacoob L Wang arXiv:2306.14565 2023 arXiv preprint"
+    },
+    {
+      "index": 25,
+      "title": "Visual instruction tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Liu",
+        "C Li",
+        "Q Wu",
+        "Y J Lee"
+      ],
+      "raw_text": "H Liu C Li Q Wu Y J Lee arXiv:2304.08485 Visual instruction tuning 2023 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Is your multi-modal model an all-around player? arXiv preprint",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Y Liu",
+        "H Duan",
+        "Y Zhang",
+        "B Li",
+        "S Zhang",
+        "W Zhao",
+        "Y Yuan",
+        "J Wang"
+      ],
+      "raw_text": "Y Liu H Duan Y Zhang B Li S Zhang W Zhao Y Yuan J Wang C He Z Liu arXiv:2307.06281 Is your multi-modal model an all-around player? arXiv preprint 2023"
+    },
+    {
+      "index": 27,
+      "title": "Learn to explain: Multimodal reasoning via thought chains for science question answering",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "P Lu",
+        "S Mishra",
+        "T Xia",
+        "L Qiu",
+        "K.-W Chang",
+        "S.-C Zhu",
+        "O Tafjord",
+        "P Clark"
+      ],
+      "raw_text": "Learn to explain: Multimodal reasoning via thought chains for science question answering P Lu S Mishra T Xia L Qiu K.-W Chang S.-C Zhu O Tafjord P Clark A Kalyan The 36th Conference on Neural Information Processing Systems (NeurIPS) 2022"
+    },
+    {
+      "index": 28,
+      "title": "Gpt-4 technical report",
+      "doi": "",
+      "year": "2023",
+      "authors": [],
+      "raw_text": "Gpt-4 technical report ArXiv, abs/2303.08774 2023 OpenAI"
+    },
+    {
+      "index": 29,
+      "title": "Direct preference optimization: Your language model is secretly a reward model",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "R Rafailov",
+        "A Sharma",
+        "E Mitchell",
+        "C D Manning",
+        "S Ermon",
+        "C Finn"
+      ],
+      "raw_text": "Direct preference optimization: Your language model is secretly a reward model R Rafailov A Sharma E Mitchell C D Manning S Ermon C Finn Thirtyseventh Conference on Neural Information Processing Systems 2023"
+    },
+    {
+      "index": 30,
+      "title": "Object hallucination in image captioning",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "A Rohrbach",
+        "L A Hendricks",
+        "K Burns",
+        "T Darrell",
+        "K Saenko"
+      ],
+      "raw_text": "A Rohrbach L A Hendricks K Burns T Darrell K Saenko arXiv:1809.02156 Object hallucination in image captioning 2018 arXiv preprint"
+    },
+    {
+      "index": 31,
+      "title": "Proximal policy optimization algorithms",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "J Schulman",
+        "F Wolski",
+        "P Dhariwal",
+        "A Radford",
+        "O Klimov"
+      ],
+      "raw_text": "J Schulman F Wolski P Dhariwal A Radford O Klimov Proximal policy optimization algorithms 2017"
+    },
+    {
+      "index": 32,
+      "title": "Aligning large multimodal models with factually augmented rlhf",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Z Sun",
+        "S Shen",
+        "S Cao",
+        "H Liu",
+        "C Li",
+        "Y Shen",
+        "C Gan",
+        "L.-Y Gui"
+      ],
+      "raw_text": "Aligning large multimodal models with factually augmented rlhf Z Sun S Shen S Cao H Liu C Li Y Shen C Gan L.-Y Gui Y.-X Wang Y Yang arXiv:2309.14525 2023 arXiv preprint"
+    },
+    {
+      "index": 33,
+      "title": "Stanford alpaca: An instruction-following llama model",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "R Taori",
+        "I Gulrajani",
+        "T Zhang",
+        "Y Dubois",
+        "X Li",
+        "C Guestrin",
+        "P Liang",
+        "T B Hashimoto"
+      ],
+      "raw_text": "R Taori I Gulrajani T Zhang Y Dubois X Li C Guestrin P Liang T B Hashimoto Stanford alpaca: An instruction-following llama model 2023"
+    },
+    {
+      "index": 34,
+      "title": "Open and efficient foundation language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Touvron",
+        "T Lavril",
+        "G Izacard",
+        "X Martinet",
+        "M.-A Lachaux",
+        "T Lacroix",
+        "B Rozière",
+        "N Goyal"
+      ],
+      "raw_text": "H Touvron T Lavril G Izacard X Martinet M.-A Lachaux T Lacroix B Rozière N Goyal E Hambro F Azhar arXiv:2302.13971 Open and efficient foundation language models 2023 arXiv preprint"
+    },
+    {
+      "index": 35,
+      "title": "Llama 2: Open foundation and finetuned chat models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Touvron",
+        "L Martin",
+        "K Stone",
+        "P Albert",
+        "A Almahairi",
+        "Y Babaei",
+        "N Bashlykov",
+        "S Batra"
+      ],
+      "raw_text": "Llama 2: Open foundation and finetuned chat models H Touvron L Martin K Stone P Albert A Almahairi Y Babaei N Bashlykov S Batra P Bhargava S Bhosale arXiv:2307.09288 2023 arXiv preprint"
+    },
+    {
+      "index": 36,
+      "title": "How many unicorns are in this image? a safety evaluation benchmark for vision llms",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Tu",
+        "C Cui",
+        "Z Wang",
+        "Y Zhou",
+        "B Zhao",
+        "J Han",
+        "W Zhou",
+        "H Yao"
+      ],
+      "raw_text": "How many unicorns are in this image? a safety evaluation benchmark for vision llms H Tu C Cui Z Wang Y Zhou B Zhao J Han W Zhou H Yao C Xie arXiv:2311.16101 2023 arXiv preprint"
+    },
+    {
+      "index": 37,
+      "title": "Show and tell: A neural image caption generator",
+      "doi": "",
+      "year": "2015",
+      "authors": [
+        "O Vinyals",
+        "A Toshev",
+        "S Bengio",
+        "D Erhan"
+      ],
+      "raw_text": "Show and tell: A neural image caption generator O Vinyals A Toshev S Bengio D Erhan Proceedings of the IEEE conference on computer vision and pattern recognition the IEEE conference on computer vision and pattern recognition 2015"
+    },
+    {
+      "index": 38,
+      "title": "Chain-of-thought prompting elicits reasoning in large language models",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "J Wei",
+        "X Wang",
+        "D Schuurmans",
+        "M Bosma",
+        "F Xia",
+        "E Chi",
+        "Q V Le",
+        "D Zhou"
+      ],
+      "raw_text": "Chain-of-thought prompting elicits reasoning in large language models J Wei X Wang D Schuurmans M Bosma F Xia E Chi Q V Le D Zhou Advances in Neural Information Processing Systems 35 2022"
+    },
+    {
+      "index": 39,
+      "title": "mplug-owl: Modularization empowers large language models with multimodality",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Q Ye",
+        "H Xu",
+        "G Xu",
+        "J Ye",
+        "M Yan",
+        "Y Zhou",
+        "J Wang",
+        "A Hu"
+      ],
+      "raw_text": "Q Ye H Xu G Xu J Ye M Yan Y Zhou J Wang A Hu P Shi Y Shi arXiv:2304.14178 mplug-owl: Modularization empowers large language models with multimodality 2023 arXiv preprint"
+    },
+    {
+      "index": 40,
+      "title": "Hallucination correction for multimodal large language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "S Yin",
+        "C Fu",
+        "S Zhao",
+        "T Xu",
+        "H Wang",
+        "D Sui",
+        "Y Shen",
+        "K Li"
+      ],
+      "raw_text": "S Yin C Fu S Zhao T Xu H Wang D Sui Y Shen K Li X Sun E Chen Woodpecker arXiv:2310.16045 Hallucination correction for multimodal large language models 2023 arXiv preprint"
+    },
+    {
+      "index": 41,
+      "title": "Rlhf-v: Towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "T Yu",
+        "Y Yao",
+        "H Zhang",
+        "T He",
+        "Y Han",
+        "G Cui",
+        "J Hu",
+        "Z Liu"
+      ],
+      "raw_text": "Rlhf-v: Towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback T Yu Y Yao H Zhang T He Y Han G Cui J Hu Z Liu H.-T Zheng M Sun T.-S Chua arxiv 2023"
+    },
+    {
+      "index": 42,
+      "title": "Rlhf-v: Towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "T Yu",
+        "Y Yao",
+        "H Zhang",
+        "T He",
+        "Y Han",
+        "G Cui",
+        "J Hu",
+        "Z Liu"
+      ],
+      "raw_text": "Rlhf-v: Towards trustworthy mllms via behavior alignment from fine-grained correctional human feedback T Yu Y Yao H Zhang T He Y Han G Cui J Hu Z Liu H.-T Zheng M Sun arXiv:2312.00849 2023 arXiv preprint"
+    },
+    {
+      "index": 43,
+      "title": "Mm-vet: Evaluating large multimodal models for integrated capabilities",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "W Yu",
+        "Z Yang",
+        "L Li",
+        "J Wang",
+        "K Lin",
+        "Z Liu",
+        "X Wang",
+        "L Wang"
+      ],
+      "raw_text": "W Yu Z Yang L Li J Wang K Lin Z Liu X Wang L Wang arXiv:2308.02490 Mm-vet: Evaluating large multimodal models for integrated capabilities 2023 arXiv preprint"
+    },
+    {
+      "index": 44,
+      "title": "Beyond hallucinations: Enhancing lvlms through hallucination-aware direct preference optimization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Z Zhao",
+        "B Wang",
+        "L Ouyang",
+        "X Dong",
+        "J Wang",
+        "C He"
+      ],
+      "raw_text": "Beyond hallucinations: Enhancing lvlms through hallucination-aware direct preference optimization Z Zhao B Wang L Ouyang X Dong J Wang C He arXiv:2311.16839 2023 arXiv preprint"
+    },
+    {
+      "index": 45,
+      "title": "Analyzing and mitigating object hallucination in large vision-language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Y Zhou",
+        "C Cui",
+        "J Yoon",
+        "L Zhang",
+        "Z Deng",
+        "C Finn",
+        "M Bansal",
+        "H Yao"
+      ],
+      "raw_text": "Y Zhou C Cui J Yoon L Zhang Z Deng C Finn M Bansal H Yao arXiv:2310.00754 Analyzing and mitigating object hallucination in large vision-language models 2023 arXiv preprint"
+    }
+  ],
+  "section_count": 20,
+  "reference_count": 45,
+  "error": "",
+  "updated_at": "2026-04-12T03:14:57.785342+00:00"
+}

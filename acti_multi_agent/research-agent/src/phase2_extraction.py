@@ -8,7 +8,7 @@ import os
 from .api_client import agent_run_json, BRAIN_PHASE2_CLASSIFIER
 from .prompts import LITERATURE_SCANNER
 from .state_manager import complete_step, is_step_complete, update_step, save_state
-from .utils import atomic_write_json, load_json
+from .utils import atomic_write_json, load_json, stable_fingerprint
 
 log = logging.getLogger("research_agent")
 
@@ -18,6 +18,8 @@ BATCH_SIZE = 10  # Papers per API call
 def run_phase2(state: dict, state_path: str, base_dir: str, client) -> dict:
     """Orchestrate Phase 2. Resumable from last classified paper index."""
     proc_dir = os.path.join(base_dir, "data", "processed")
+    config_dir = os.path.join(base_dir, "config")
+    manual_overrides = _load_manual_category_overrides(config_dir)
     # Prefer filtered corpus_200.json if available, else fall back to full corpus
     corpus_path = os.path.join(proc_dir, "corpus_200.json")
     if not os.path.exists(corpus_path):
@@ -33,7 +35,7 @@ def run_phase2(state: dict, state_path: str, base_dir: str, client) -> dict:
 
     # Step 1: Classification
     if not is_step_complete(state, 2, "classification"):
-        classified = _run_classification(state, state_path, client, corpus, proc_dir)
+        classified = _run_classification(state, state_path, client, corpus, proc_dir, manual_overrides)
         state = complete_step(state, state_path, 2, "classification", {
             "papers_classified": len(classified),
             "total_papers": total,
@@ -65,17 +67,34 @@ def run_phase2(state: dict, state_path: str, base_dir: str, client) -> dict:
 
 
 def _run_classification(state: dict, state_path: str, client, corpus: list[dict],
-                        proc_dir: str) -> list[dict]:
+                        proc_dir: str, manual_overrides: dict[str, dict]) -> list[dict]:
     """Classify papers in batches via Literature Scanner agent."""
     classified_path = os.path.join(proc_dir, "classified.json")
+    corpus_fingerprint = _corpus_fingerprint(corpus)
+    step_state = state["phases"]["2"]["steps"]["classification"]
+    stored_fingerprint = step_state.get("corpus_fingerprint")
 
     # Resume from last batch index
-    start_idx = state["phases"]["2"]["steps"]["classification"].get("last_batch_index", 0)
-    if start_idx > 0 and os.path.exists(classified_path):
+    start_idx = step_state.get("last_batch_index", 0)
+    if (
+        start_idx > 0
+        and os.path.exists(classified_path)
+        and stored_fingerprint == corpus_fingerprint
+    ):
         classified = load_json(classified_path)
         log.info(f"Resuming classification from index {start_idx} ({len(classified)} already done)")
     else:
         classified = []
+        if start_idx > 0 or os.path.exists(classified_path):
+            if stored_fingerprint and stored_fingerprint != corpus_fingerprint:
+                log.info("Corpus changed since previous classification run — restarting from scratch")
+            else:
+                log.info("Starting fresh classification run")
+        update_step(state, 2, "classification", {
+            "last_batch_index": 0,
+            "corpus_fingerprint": corpus_fingerprint,
+        })
+        save_state(state_path, state)
 
     total = len(corpus)
     for i in range(start_idx, total, BATCH_SIZE):
@@ -118,13 +137,82 @@ def _run_classification(state: dict, state_path: str, client, corpus: list[dict]
                 paper["confidence"] = "error"
             classified.extend(batch)
 
+        _apply_manual_category_overrides(batch, manual_overrides)
+
         # Save progress after each batch
         atomic_write_json(classified_path, classified)
-        update_step(state, 2, "classification", {"last_batch_index": i + BATCH_SIZE})
+        update_step(state, 2, "classification", {
+            "last_batch_index": i + BATCH_SIZE,
+            "corpus_fingerprint": corpus_fingerprint,
+        })
         save_state(state_path, state)
 
     log.info(f"Classification complete: {len(classified)} papers")
     return classified
+
+
+def _load_manual_category_overrides(config_dir: str) -> dict[str, dict]:
+    cfg_path = os.path.join(config_dir, "manual_category_overrides.json")
+    if not os.path.exists(cfg_path):
+        return {}
+
+    cfg = load_json(cfg_path)
+    overrides = {}
+    for item in cfg.get("papers", []):
+        pid = (item.get("paperId") or "").strip()
+        category = (item.get("primary_category") or "").strip()
+        if pid and category:
+            overrides[pid] = {
+                "primary_category": category,
+                "reason": item.get("reason", "").strip(),
+            }
+    return overrides
+
+
+def _apply_manual_category_overrides(papers: list[dict], overrides: dict[str, dict]):
+    if not overrides:
+        return
+
+    applied = 0
+    for paper in papers:
+        pid = paper.get("paperId")
+        if pid not in overrides:
+            continue
+        override = overrides[pid]
+        original_primary = paper.get("primary_category")
+        original_confidence = paper.get("confidence")
+        paper["model_primary_category"] = original_primary
+        paper["model_confidence"] = original_confidence
+        paper["primary_category"] = override["primary_category"]
+        paper["confidence"] = "manual"
+        paper["manual_category_override"] = True
+        paper["manual_override_reason"] = override.get("reason", "")
+        secondary = paper.get("secondary_categories") or []
+        if original_primary and original_primary != paper["primary_category"] and original_primary != "X":
+            if original_primary not in secondary:
+                secondary = [original_primary] + secondary
+        paper["secondary_categories"] = secondary
+        applied += 1
+
+    if applied:
+        log.info(f"  Applied {applied} manual category overrides")
+
+
+def _corpus_fingerprint(corpus: list[dict]) -> str:
+    """Fingerprint the current classification input to detect stale resumes."""
+    signature = [
+        {
+            "paperId": p.get("paperId", ""),
+            "canonical_id": p.get("canonical_id", ""),
+            "title": p.get("title", ""),
+            "abstract": p.get("abstract", ""),
+            "year": p.get("year", 0),
+            "venue": p.get("venue", ""),
+            "query_category": p.get("query_category", ""),
+        }
+        for p in corpus
+    ]
+    return stable_fingerprint(signature)
 
 
 def _format_batch_for_agent(papers: list[dict]) -> str:
@@ -135,6 +223,9 @@ def _format_batch_for_agent(papers: list[dict]) -> str:
         lines.append(
             f"--- Paper {i} ---\n"
             f"paperId: {p['paperId']}\n"
+            f"retrieval_prior_category: {p.get('query_category', 'N/A')}\n"
+            f"retrieval_score: {p.get('selection_score', 'N/A')}\n"
+            f"matched_query: {(p.get('matched_query') or '')[:180]}\n"
             f"title: {p.get('title', 'N/A')}\n"
             f"year: {p.get('year', 'N/A')}\n"
             f"venue: {p.get('venue', 'N/A')}\n"

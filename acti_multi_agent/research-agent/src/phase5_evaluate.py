@@ -8,6 +8,11 @@ from .scoring import (
     run_all_reviewers, aggregate_reviews, decide_action,
     append_results_tsv, compute_data_scores,
 )
+from .consensus_verify import run_consensus_claim_checks
+from .phase_contracts import (
+    ensure_evaluation_result_valid,
+    ensure_reviewer_results_valid,
+)
 from .state_manager import complete_step, is_step_complete
 from .utils import atomic_write_json, load_json
 
@@ -34,9 +39,11 @@ def run_phase5(state: dict, state_path: str, base_dir: str, client,
         data_scores = compute_data_scores(classified)
         atomic_write_json(os.path.join(analysis_dir, "data_scores.json"), data_scores)
         log.info(f"  Evidence coverage: {data_scores['evidence_coverage']}/5 beats")
-        log.info(f"  Empty categories: {data_scores['category_balance']}")
+        log.info(f"  Beat support counts: {data_scores.get('beat_support_counts', {})}")
+        log.info(f"  Empty categories: {data_scores.get('empty_categories', data_scores['category_balance'])}")
         log.info(f"  Avg fill rate: {data_scores['avg_fill_rate']}")
         log.info(f"  Total papers: {data_scores['total_papers']}")
+        log.info(f"  X ratio: {data_scores.get('x_ratio', 0)}")
         state = complete_step(state, state_path, "5", "data_scores")
     else:
         data_scores = load_json(os.path.join(analysis_dir, "data_scores.json"))
@@ -44,11 +51,16 @@ def run_phase5(state: dict, state_path: str, base_dir: str, client,
     # Step 2: Run 5 LLM reviewers
     if not is_step_complete(state, "5", "reviewer_eval"):
         log.info("=== Phase 5.2: Running 5 reviewers ===")
+        if os.environ.get("CONSENSUS_API_KEY", "").strip():
+            log.info("  Building Consensus claim-check context")
+            run_consensus_claim_checks(base_dir)
         reviews = run_all_reviewers(client, base_dir)
         atomic_write_json(os.path.join(analysis_dir, "reviewer_results.json"), reviews)
+        ensure_reviewer_results_valid(reviews)
         state = complete_step(state, state_path, "5", "reviewer_eval")
     else:
         reviews = load_json(os.path.join(analysis_dir, "reviewer_results.json"))
+        ensure_reviewer_results_valid(reviews)
 
     # Step 3: Aggregate + decide
     if not is_step_complete(state, "5", "aggregate"):
@@ -63,12 +75,14 @@ def run_phase5(state: dict, state_path: str, base_dir: str, client,
             "action": action,
         }
         atomic_write_json(os.path.join(analysis_dir, "evaluation_result.json"), result)
+        ensure_evaluation_result_valid(result)
         append_results_tsv(base_dir, iteration, aggregated, action)
 
         _print_evaluation(aggregated, action)
         state = complete_step(state, state_path, "5", "aggregate")
     else:
         result = load_json(os.path.join(analysis_dir, "evaluation_result.json"))
+        ensure_evaluation_result_valid(result)
         action = result.get("action", {})
         aggregated = result.get("aggregated", {})
         _print_evaluation(aggregated, action)
@@ -116,7 +130,7 @@ def _generate_eval_report(result: dict, base_dir: str):
     output_dir = os.path.join(base_dir, "output")
     os.makedirs(output_dir, exist_ok=True)
 
-    agg = result.get("aggregated", )
+    agg = result.get("aggregated", {})
     action = result.get("action", {})
     data = result.get("data_scores", {})
     scores = agg.get("individual_scores", {})
@@ -138,8 +152,11 @@ def _generate_eval_report(result: dict, base_dir: str):
     lines.append(f"\n## Data Metrics\n")
     lines.append(f"- Total papers: {data.get('total_papers', '?')}")
     lines.append(f"- Evidence coverage: {data.get('evidence_coverage', '?')}/5 beats")
-    lines.append(f"- Empty categories: {data.get('category_balance', '?')}")
+    lines.append(f"- Beat support counts: {data.get('beat_support_counts', {})}")
+    lines.append(f"- Empty categories: {data.get('empty_categories', data.get('category_balance', '?'))}")
     lines.append(f"- Avg fill rate: {data.get('avg_fill_rate', '?')}")
+    lines.append(f"- X papers: {data.get('x_papers', '?')}")
+    lines.append(f"- X ratio: {data.get('x_ratio', '?')}")
 
     if agg.get("disagreements"):
         lines.append(f"\n## ⚠ Reviewer Disagreements\n")

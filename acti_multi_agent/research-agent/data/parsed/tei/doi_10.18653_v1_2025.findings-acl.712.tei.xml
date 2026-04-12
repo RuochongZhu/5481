@@ -1,0 +1,943 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">CRAW4LLM: Efficient Web Crawling for LLM Pretraining</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2025-06-23">23 Jun 2025</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Shi</forename><surname>Yu</surname></persName>
+						</author>
+						<author>
+							<persName><forename type="first">Zhiyuan</forename><surname>Liu</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="department">Department of Computer Science and Technology</orgName>
+								<orgName type="institution">Tsinghua University</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Chenyan</forename><surname>Xiong</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="department">Language Technologies Institute</orgName>
+								<orgName type="institution">Carnegie Mellon University</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">CRAW4LLM: Efficient Web Crawling for LLM Pretraining</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2025-06-23">23 Jun 2025</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">D7B797C64218ABC6874354701FCE9380</idno>
+					<idno type="arXiv">arXiv:2502.13347v3[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:13+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Web crawl is a main source of large language models' (LLMs) pretraining data, but the majority of crawled web pages are discarded in pretraining due to low data quality. This paper presents CRAW4LLM, an efficient web crawling method that explores the web graph based on the preference of LLM pretraining. Specifically, it leverages the influence of a webpage in LLM pretraining as the priority score of the web crawler's scheduler, replacing the standard graph-connectivity-based priority. Our experiments on a web graph containing 900 million webpages from a commercial search engine's index demonstrate the efficiency of CRAW4LLM in obtaining highquality pretraining data. With just 21% URLs crawled, LLMs pretrained on CRAW4LLM data reach the same downstream performances of previous crawls, significantly reducing the crawling waste and alleviating the burdens on websites. Our code is publicly available at <ref type="url" target="https://github.com/cxcscmu/Craw4LLM">https://github.com/cxcscmu/Craw4LLM</ref>.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>Massive in size and diverse in topics, web data usually serve as the primary source of pretraining data for large language models (LLMs), providing an extensive and heterogeneous corpus that captures a wide spectrum of human knowledge and real-world information <ref type="bibr" target="#b0">(Baack, 2024;</ref><ref type="bibr" target="#b7">Dubey et al., 2024;</ref><ref type="bibr" target="#b16">Penedo et al., 2024)</ref>. Pretraining datasets are typically built from large-scale web crawls such as Common Crawl <ref type="bibr" target="#b6">(CommonCrawl, 2007)</ref>, which may contain TBs of data spanning billions of webpages <ref type="bibr" target="#b16">(Penedo et al., 2024;</ref><ref type="bibr" target="#b19">Weber et al., 2024)</ref>.</p><p>Despite their vast scale, most of the data collected from web crawls are not used in the pretraining of LLMs. Existing work often discards over 90% of the raw data collected from the web <ref type="bibr" target="#b17">(Li et al., 2024;</ref><ref type="bibr" target="#b16">Penedo et al., 2024;</ref><ref type="bibr" target="#b17">Tang et al</ref>., * Work done while visiting Carnegie Mellon University. 2024), highlighting the inefficiency of current web crawlers in collecting LLM pretraining data. Common web crawlers like Common Crawl prioritize pages based on graph connectivity metrics like PageRank <ref type="bibr" target="#b15">(Page et al., 1999;</ref><ref type="bibr" target="#b5">Cho et al., 1998)</ref> or harmonic centrality <ref type="bibr" target="#b1">(Boldi and Vigna, 2014;</ref><ref type="bibr" target="#b0">Baack, 2024)</ref>, which favor documents with a high number of inlinks (indegree) <ref type="bibr" target="#b8">(Fortunato et al., 2008)</ref> rather than those most relevant for pretraining. This misalignment not only leads to waste in computational resources during excessive data processing for LLM developers, but also incentivizes overcrawling, which burdens website operators with redundant traffic and increases ethical and legal risks related to fair use of data and copyright <ref type="bibr" target="#b12">(Longpre et al., 2024;</ref><ref type="bibr">New York Times, 2023)</ref>.</p><p>To bridge this gap, we propose Web Crawling for LLM Pretraining (CRAW4LLM). Instead of relying on traditional graph-connectivity-based signals, CRAW4LLM improves crawling efficiency by prioritizing webpages based on their influence on LLM pretraining. Specifically, during each crawling iteration, all newly discovered documents are scored with a pretraining influence scorer derived from data-filtering pipelines for pretraining <ref type="bibr" target="#b17">(Li et al., 2024;</ref><ref type="bibr" target="#b16">Penedo et al., 2024)</ref>, and docu-</p><p>0 100 200 Indegree 0.000 0.005 0.010 0.015 0.020 Pretraining Influence Score (a) Pretraining (-0.11). 10 0 10 1 10 2 Indegree 10 8 10 7 10 6 PageRank (b) PageRank (0.88).</p><p>Figure <ref type="figure">2</ref>: Correlations between pretraining influence scores from DCLM fastText <ref type="bibr" target="#b17">(Li et al., 2024)</ref> and PageRank to indegrees, on randomly sampled ClueWeb22-B documents <ref type="bibr" target="#b14">(Overwijk et al., 2022)</ref>. Spearman correlation coefficients are reported in parentheses.</p><p>ments with the highest scores are used to discover new documents. By prioritizing webpages with high influence scores, as illustrated in Figure <ref type="figure" target="#fig_0">1</ref>, CRAW4LLM explores the web graph in a fundamentally different manner from traditional graphconnectivity-based crawlers, uncovering a distinct subset of the web more useful for pretraining. We conduct large-scale crawling simulations on ClueWeb22-A <ref type="bibr" target="#b14">(Overwijk et al., 2022)</ref>, a snapshot of the web containing 900 million English webpages obtained from the central index of a commercial search engine. Results show that, by crawling only 1× of the pretraining dataset size, CRAW4LLM can outperform traditional crawlers which collect 1×, 2×, and 4× data followed by data selection. Compared to the baseline crawler that achieves the same performance, CRAW4LLM crawls only 21% of the webpages. Further analysis reveals that during crawling, CRAW4LLM quickly discovers documents that align with the oracle selection, which selects from the full web graph. As a result, it achieves over 95% of the oracle performance while crawling only 2.2% of the data.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2">Methodology</head><p>In this section, we introduce Web Data Crawling for LLM Pretraining (CRAW4LLM), an efficient crawling method that integrates LLM pretraining preference into the crawler. The algorithm of CRAW4LLM is presented in Algorithm 1.</p><p>Similar to traditional crawlers <ref type="bibr" target="#b5">(Cho et al., 1998)</ref>, CRAW4LLM starts with a set of seed URLs. For each unvisited outlink of them, CRAW4LLM assigns a score using a pretraining-oriented URL scoring function SCORE_URL(•; M), where M is a pretraining influence scorer which rates a docu-</p><p>Algorithm 1 CRAW4LLM Algorithm Input: Seed URLs U seed , number of pages to be crawled N , number of pages to be crawled in each iteration n, pretraining influence scorer M(•) Output: Crawled page set P 1: Initialize URL and score priority queue Q ← ∅ 2: Initialize crawled page set P ← ∅ 3: Initialize visited URL set V ← U seed 4: Uc ← U seed 5: while |P| ≤ N do 6: Pc ← FETCHPAGES(Uc) 7: Merge Pc into P 8: Uout ← EXTRACTURLS(Pc) 9:</p><p>for all v ∈ Uout do 10:</p><p>if v / ∈ V then 11: ENQUEUE(Q, v, SCORE_URL(v; M)) 12: ADD(V, v) 13:</p><p>end if 14:</p><p>end for 15:</p><p>Uc ← DEQUEUE(Q, n) 16: end while 17: return P ment's influence for pretraining. M can be derived from data classification models for pretraining data, which have been used to decide whether a document should be retained in or filtered out from the raw dataset <ref type="bibr" target="#b17">(Li et al., 2024;</ref><ref type="bibr" target="#b16">Penedo et al., 2024)</ref>. Formally, given a pretraining influence scorer M, the score s of a URL u is calculated as</p><formula xml:id="formula_0">s ← SCORE_URL(u; M) = M(FETCHPAGE(u)), (1)</formula><p>where FETCHPAGE(u) gets the page content of u and M(•) returns the score. Once all outlinks have been scored, following the standard procedures of existing crawlers, they are inserted into a priority queue, which automatically orders them based on their scores. The top n highest-scoring URLs are then dequeued for pretraining and serve as the sources for the next round of crawling. This process repeats until N documents have been collected, forming the final pretraining dataset P.</p><p>In contrast, traditional crawlers typically rely on graph connectivity metrics, such as PageRank <ref type="bibr" target="#b5">(Cho et al., 1998)</ref> and harmonic centrality <ref type="bibr" target="#b0">(Baack, 2024)</ref>, which basically assign higher priority to pages with higher indegrees <ref type="bibr" target="#b8">(Fortunato et al., 2008)</ref>. As shown in Figure <ref type="figure">2</ref>(a), the indegrees of webpages exhibit a poor correlation with the scores assigned by the DCLM fastText classifier, a pretraining influence scorer for identifying high-quality pretraining data <ref type="bibr" target="#b17">(Li et al., 2024)</ref>. This confirms that graph connectivity-based crawlers are inefficient in crawling pretraining data.</p><p>By incorporating a pretraining influence scorer, CRAW4LLM traverses the web graph in a way  <ref type="bibr" target="#b16">(Penedo et al., 2024)</ref> (down) is used as the pretraining influence scorer for CRAW4LLM, and to select documents for oracle and crawl-then-select runs (Section 3). All models are pretrained on 1× data (20M documents, 32.9B tokens). The evaluation metric is centered accuracy (0 = random guess) <ref type="bibr" target="#b17">(Li et al., 2024)</ref>. Best/2nd best in the last two groups are bolded/underlined. See Appendix D for detailed results.</p><p>that prioritizes high-quality pretraining documents. This makes the crawling more efficient and enables the discovery of documents dramatically different with connectivity-based crawlers.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">Experimental Methodology</head><p>In this section, we introduce our experimental setup, with details on the crawler implementation and LLM training provided in Appendix A and B.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>CRAW4LLM.</head><p>To run experiments in our limited computational budget, we run a simulation of CRAW4LLM on the ClueWeb22 dataset <ref type="bibr" target="#b14">(Overwijk et al., 2022)</ref>, a snapshot of the web with graph information from a commercial crawler. We use the English subset of ClueWeb22-A, which is a web graph containing 900M webpages with links. We randomly sampled 10K URLs as our seed URLs. We set the number of total crawled documents N to 20M and crawled documents each iteration n to 10K. In our experiments, we consider using the DCLM fastText classifier <ref type="bibr" target="#b17">(Li et al., 2024)</ref> or the FineWeb-Edu classifier <ref type="bibr" target="#b16">(Penedo et al., 2024)</ref> as the pretraining influence scorer M(•), whose details can be found in Appendix C.</p><p>Baselines. We emulate traditional graphconnectivity-based crawlers by replacing the LLM-oriented URL scoring function (Eq. 1) with a function that returns the indegree for a given URL, since a node's indegree closely correlates with PageRank, a common graph connectivity metric, as shown in Figure <ref type="figure">2</ref>(b) and previous findings <ref type="bibr" target="#b8">(Fortunato et al., 2008)</ref>. We also introduce a random crawling baseline, where the scorer assigns random scores. We run both of them in a crawl-then-select setting, first crawling 1× or 2× documents and then selecting the top 1× (20M) documents based on scores assigned by the DCLM fastText classifier or the FineWeb-Edu classifier. This process mimics existing data-filtering pipelines, which begin with crawled documents and then apply filtering <ref type="bibr" target="#b17">(Li et al., 2024;</ref><ref type="bibr" target="#b16">Penedo et al., 2024)</ref>.</p><p>Oracle. We introduce an oracle selection run in which we directly apply the pretraining influence scorer to the ClueWeb22-A dataset and randomly sample 20M documents which are scored as the 10% for pretraining, serving as the upper bound.</p><p>LLM Training and Evaluation. For all runs, we use the final set of 20M crawled or selected documents to pretrain a 411M Transformer on 4× Chinchilla-optimal tokens <ref type="bibr" target="#b9">(Hoffmann et al., 2022)</ref>, totaling 32.9B tokens. The pretraining is conducted using the DCLM codebase <ref type="bibr" target="#b17">(Li et al., 2024)</ref>. To evaluate the pretrained LLMs, we follow the DCLM evaluation recipe, assessing performance on 23 (22 unique) core tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Evaluation Results</head><p>In this section, we first present the overall performance of CRAW4LLM (Section 4.1), followed by further analysis (Section 4.2).</p><p>2 0 2 1 2 2 2 3 Pool Size (×) 0.125 0.150 0.175 0.200 0.225 Core Centered Accuracy Craw4LLM Indegree Random (a) Extended crawling. Craw4LLM Crawled ( ) Craw4LLM Visited ( ) Indegree Crawled (estimated) Document Sets 0.0 0.2 0.4 0.6 0.8 1.0 # of Documents</p><p>1e8 2.0e+07 4.6e+07 9.6e+07 (b) Visited documents. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1">Overall Performance</head><p>In this experiment, we compare the performance of CRAW4LLM with baseline crawlers by evaluating LLMs trained on their respective crawled data. As shown in Table <ref type="table" target="#tab_0">1</ref>, when all methods crawl the same amount of training data (1×), CRAW4LLM significantly outperforms random crawling and indegree crawling using either DCLM fastText or FineWeb-Edu classifier as the pretraining influence scorer. In the crawl-then-select setting, where traditional crawlers are allowed to collect twice as much data (2×) for later selection, they still underperform compared to CRAW4LLM. This suggests that incorporating pretraining-oriented signals early in the crawling process is more beneficial than relying on post-selection. With only 1× of the data, CRAW4LLM retains 95.3% and 95.6% of the performance achieved by the DCLM fastText and FineWeb-Edu oracle run, respectively, which directly selects from the entire ClueWeb22-A dataset, a substantially larger 45× data pool.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.2">Analysis</head><p>In this subsection, we further analyze the efficiency of CRAW4LLM compared to traditional crawlers and explore the reasons behind it. We utilize the DCLM fastText classifier in the experiments presented in this subsection.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Crawling Efficiency.</head><p>We evaluate the efficiency of CRAW4LLM by comparing the number of documents it crawls or visits against baseline crawlers. As shown in Figure <ref type="figure" target="#fig_1">3(a)</ref>, even when the baselines crawl 4× the required pretraining data for selection, they still underperform compared to CRAW4LLM. 0.00 0.02 0.04 Own Score 0.00 0.01 0.02 0.03 0.04 Avg. Outlink Score (a) 1-hop (0.61). 0.00 0.02 0.04 Own Score 0.00 0.01 0.02 0.03 0.04 Avg. 2-hop Outlink Score (b) 2-hop (0.60). Extrapolation suggests that the indegree-based crawler would need to crawl 4.8× documents (96M) to match CRAW4LLM's performance. Figure <ref type="figure" target="#fig_1">3(b)</ref> further illustrates that CRAW4LLM achieves the same performance while crawling only 21% of the documents required by the indegree-based crawler, or 48% when considering all visited documents. These results highlight the efficiency of CRAW4LLM, demonstrating its potential to reduce website burdens and mitigate over-crawling.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Document Coverage.</head><p>In this experiment, we plot the precision and recall of the oracle-selected documents among those crawled by CRAW4LLM and baseline crawlers throughout the crawling process.</p><p>As shown in Figure <ref type="figure" target="#fig_2">4</ref>, the precision quickly reaches 1.0, while the recall increases linearly, aligning with the theoretical upper bound. The saturated performance remains until 13 million documents have been crawled, after which the performance starts to decline, likely due to the lack of connectivity of the ClueWeb22 subgraph. In contrast, baseline crawlers exhibit minimal overlap with oracleselected data, verifying that most of their crawled content is misaligned with pretraining needs and should be filtered <ref type="bibr" target="#b17">(Li et al., 2024;</ref><ref type="bibr" target="#b16">Penedo et al., 2024)</ref>. These results emphasize the importance of targeted crawling strategies for pretraining.</p><p>Score Correlations Across Links. CRAW4LLM tracks the outlinks of the highest-scored documents in the current iteration to enrich the queue for future crawls. As shown in Figure <ref type="figure" target="#fig_3">5</ref>, we plot the correlations between the pretraining influence scores of current documents and their 1-and 2-hop outlinks.</p><p>The results indicate a correlation in influence scores across link hops, suggesting that highly-rated documents are interconnected and can be discovered through previously crawled documents.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Conclusion</head><p>This paper presents CRAW4LLM, a step toward more efficient and responsible web crawling for LLM pretraining. By prioritizing documents based on the pretraining needs, our method improves crawling efficiency and reduces unnecessary crawling, easing the burden on web hosts. While fair use of web data remains a critical challenge, we hope that CRAW4LLM can help mitigate these concerns and promote more compliant and sustainable practices in obtaining pretraining data for LLMs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Limitations</head><p>Web crawling raises important concerns regarding copyright and the fair use of web data <ref type="bibr" target="#b12">(Longpre et al., 2024)</ref>, necessitating a better solution from the entire LLM community, such as sharing benefits with website owners. In this paper, we propose a more efficient crawling method that mitigates these challenges by reducing crawling, though it does not fully resolve them. Our experiments are conducted on a web graph dataset ClueWeb22 <ref type="bibr" target="#b14">(Overwijk et al., 2022)</ref>, thereby avoiding issues associated with actual web crawling. We hope that future advancements in web crawling will better align with ethical and legal standards. While our crawling simulation is a sufficient research setup, further validation is required to assess the effectiveness of CRAW4LLM in realworld crawling scenarios. Our CRAW4LLM and baseline crawlers implement only the selection policy <ref type="bibr" target="#b5">(Cho et al., 1998)</ref> of a crawler, which determines which pages to crawl. Although we try to mimic real-world crawling procedures used in systems like Apache Nutch<ref type="foot" target="#foot_0">foot_0</ref> , we do not implement other web crawling policies in industriallevel crawlers, such as the re-visit policy <ref type="bibr">(Cho and Garcia-Molina, 2003a)</ref>, politeness policy <ref type="bibr">(Cho and Garcia-Molina, 2003b)</ref>, and parallelization policy <ref type="bibr" target="#b2">(Cho and Garcia-Molina, 2002)</ref>. We leave the integration of CRAW4LLM into real-world crawling engines like Nutch and a comprehensive comparison between CRAW4LLM and traditional crawling methods in real-world crawling scenarios for future work.</p><p>Hyper-parameter Value n layers 24 n heads 8 d model 1,024 d head 128 Warmup 2,000 Learning Rate 3e-3 Weight Decay 0.033 z-loss 1e-4 Global Batch Size 512 Sequence Length 2048</p><p>Table 2: Model and training hyper-parameters. n layers , n layers , d model , and d head denote the number of layers, attention heads, width, and width per attention head, respectively.</p><p>recipe <ref type="bibr" target="#b17">(Li et al., 2024)</ref> 3 . The hyper-parameters are presented in Tabel 2. To enhance training stability, we extend the original 411M-1x setting to 411M-4x, meaning the model is trained on 4 times the Chinchilla-optimal number of tokens <ref type="bibr" target="#b9">(Hoffmann et al., 2022)</ref>, which amounts to 32.9B tokens. The training process takes 1 day and 12 hours on 8 NVIDIA L40S GPUs. For further details, please refer to the DCLM paper <ref type="bibr" target="#b17">(Li et al., 2024)</ref>. Due to computational constraints, each pretraining experiment is conducted only once.</p><p>We use the DCLM evaluation recipe <ref type="bibr" target="#b17">(Li et al., 2024)</ref> to evaluate model performance on 23 (22 unique) core tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Details on the Pretraining Influence Scorers</head><p>DCLM fastText Classifier <ref type="bibr" target="#b17">(Li et al., 2024)</ref> is a quality filter based on fastText <ref type="bibr" target="#b10">(Joulin et al., 2017)</ref>, trained to distinguish between high-and lowquality pretraining data. A dataset size of 400K examples (200K positive, 200K negative) is used for training. Negative samples are random documents from an earlier version of the RefinedWeb reproduction from the DCLM team. Positive samples come from OpenHermes 2.5 <ref type="bibr" target="#b18">(Teknium, 2023)</ref> and high-scoring posts from the r/ExplainLikeImFive (ELI5) subreddit. The final DCLM-baseline dataset is created by selecting only the top 10% of documents ranked by the classifier.</p><p>FineWeb-Edu Classifier <ref type="bibr" target="#b16">(Penedo et al., 2024)</ref> is a model designed to identify and filter ed-3 <ref type="url" target="https://github.com/mlfoundations/dclm">https://github.com/mlfoundations/dclm</ref> ucational content within FineWeb. Based on the Snowflake-arctic-embed-m<ref type="foot" target="#foot_2">foot_2</ref> text embedding model, it is trained on 450,000 annotations generated by Llama-3-70B-Instruct, which assigned an educational quality score from 0 to 5 to every document. FineWeb-Edu is built by filtering out samples from FineWeb with scores lower than 3 with the trained classifier.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Detailed Results</head><p>The raw (uncentered) accuracy of all evaluation tasks is presented in Table <ref type="table" target="#tab_1">3</ref>, 4, 5, 6, and 7. Please refer to <ref type="bibr" target="#b17">Li et al. (2024)</ref> for more details on the evaluation tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>E The ClueWeb22 Dataset</head><p>ClueWeb22 <ref type="bibr" target="#b14">(Overwijk et al., 2022)</ref> is distributed under a "TREC-style" license for research purpose.</p><p>The dataset can be obtained by signing a data license agreement with Carnegie Mellon University<ref type="foot" target="#foot_3">foot_3</ref> . We use ClueWeb22 only for research purpose.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>F Use of AI Assistants</head><p>We use GitHub Copilot<ref type="foot" target="#foot_4">foot_4</ref> to assist with coding and ChatGPT<ref type="foot" target="#foot_5">foot_5</ref> (powered by GPT-4o) to enhance the writing of this paper. Table 5: Results for reading comprehension tasks.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure1: Graph traverse process of a traditional graphconnectivity-based crawler (green) and CRAW4LLM (red) starting from a same seed URL (star).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><head>Figure 3 :</head><label>3</label><figDesc>Figure 3: Efficiency of crawlers. (a) shows the performance of LLMs trained on selected data crawled by CRAW4LLM and extended baseline crawlers. (b) presents the number of crawled (P) and visited (V) documents for CRAW4LLM, along with the estimated number of crawled documents required for indegreebased crawler to match CRAW4LLM's performance.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>Figure 4 :</head><label>4</label><figDesc>Figure 4: Precision (left) and recall (right) of the oracle documents among the documents crawled by CRAW4LLM, indegree, and random crawler. The upper bound represents always crawling the oracle documents.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: Correlations between the pretraining influence scores of the documents themselves and the average scores of their 1-and 2-hop outlink documents. Spearman correlation coefficients are reported in parentheses.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 :</head><label>1</label><figDesc>Downstream LLM performance. Either the DCLM fastText classifier(Li et al., 2024) (top)  or FineWeb-Edu classifier</figDesc><table><row><cell></cell><cell>Selection</cell><cell>Commonsense Reasoning</cell><cell>Language Understanding</cell><cell>Reading Comprehension</cell><cell>Symbolic Problem Solving</cell><cell>World Knowledge</cell><cell>Core</cell><cell>% of</cell></row><row><cell cols="2">Method Pool Size</cell><cell>(4 tasks)</cell><cell>(6 tasks)</cell><cell>(3 tasks)</cell><cell>(5 tasks)</cell><cell>(5 tasks)</cell><cell cols="2">(23 tasks) Oracle</cell></row><row><cell cols="6">Using the DCLM fastText (Li et al., 2024) classifier as the pretraining influence scorer</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">Oracle 45×</cell><cell>0.2438</cell><cell>0.2209</cell><cell>0.1483</cell><cell>0.2039</cell><cell>0.2403</cell><cell>0.2239</cell><cell>100%</cell></row><row><cell>Random</cell><cell>1× 2×</cell><cell>0.1906 0.1896</cell><cell>0.1890 0.1967</cell><cell>0.0244 0.1260</cell><cell>0.1834 0.2000</cell><cell>0.1930 0.2024</cell><cell>0.1748 0.1964</cell><cell>78.1% 87.7%</cell></row><row><cell>Indegree</cell><cell>1× 2×</cell><cell>0.1730 0.1845</cell><cell>0.1680 0.1856</cell><cell>0.0326 0.0970</cell><cell>0.1616 0.1958</cell><cell>0.1668 0.1953</cell><cell>0.1556 0.1865</cell><cell>69.5% 83.3%</cell></row><row><cell cols="2">CRAW4LLM 1×</cell><cell>0.2116</cell><cell>0.2311</cell><cell>0.0826</cell><cell>0.1979</cell><cell>0.2486</cell><cell>0.2133</cell><cell>95.3%</cell></row><row><cell cols="6">Using the FineWeb-Edu (Penedo et al., 2024) classifier as the pretraining influence scorer</cell><cell></cell><cell></cell><cell></cell></row><row><cell cols="2">Oracle 45×</cell><cell>0.1899</cell><cell>0.1973</cell><cell>0.1081</cell><cell>0.2117</cell><cell>0.2786</cell><cell>0.2133</cell><cell>100%</cell></row><row><cell>Random</cell><cell>1× 2×</cell><cell>0.1906 0.1797</cell><cell>0.1890 0.1888</cell><cell>0.0244 0.0931</cell><cell>0.1834 0.1586</cell><cell>0.1930 0.2100</cell><cell>0.1748 0.1807</cell><cell>82.0% 84.7%</cell></row><row><cell>Indegree</cell><cell>1× 2×</cell><cell>0.1730 0.1720</cell><cell>0.1680 0.1709</cell><cell>0.0326 0.0840</cell><cell>0.1616 0.1783</cell><cell>0.1668 0.1842</cell><cell>0.1556 0.1724</cell><cell>72.9% 80.8%</cell></row><row><cell cols="2">CRAW4LLM 1×</cell><cell>0.2122</cell><cell>0.1867</cell><cell>0.0368</cell><cell>0.2055</cell><cell>0.2837</cell><cell>0.2043</cell><cell>95.8%</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 3 :</head><label>3</label><figDesc>Results for commonsense reasoning tasks.Pool Size BIG-Bench Lang. Id. HellaSwag (zero-shot) HellaSwag LAMBADA Winograd Winogrande</figDesc><table><row><cell cols="2">Pretraining</cell><cell>Selection</cell><cell></cell><cell cols="3">Commonsense Reasoning</cell><cell></cell></row><row><cell cols="8">Method Influence Scorer Pool Size CommonsenseQA COPA OpenBookQA PIQA</cell></row><row><cell cols="2">Oracle DCLM fastText</cell><cell>45×</cell><cell>0.2850</cell><cell cols="2">0.7000</cell><cell>0.3300</cell><cell>0.6812</cell></row><row><cell cols="2">Oracle FineWeb-Edu</cell><cell>45×</cell><cell>0.2342</cell><cell cols="2">0.6200</cell><cell>0.3620</cell><cell>0.6638</cell></row><row><cell>Random -</cell><cell></cell><cell>1×</cell><cell>0.2072</cell><cell cols="2">0.6700</cell><cell>0.2980</cell><cell>0.6746</cell></row><row><cell cols="2">Random DCLM fastText</cell><cell>2×</cell><cell>0.2588</cell><cell cols="2">0.6200</cell><cell>0.3160</cell><cell>0.6785</cell></row><row><cell cols="2">Random FineWeb-Edu</cell><cell>2×</cell><cell>0.2301</cell><cell cols="2">0.6200</cell><cell>0.3140</cell><cell>0.6779</cell></row><row><cell cols="2">Random DCLM fastText</cell><cell>4×</cell><cell>0.2326</cell><cell cols="2">0.6400</cell><cell>0.3380</cell><cell>0.6757</cell></row><row><cell>Indegree -</cell><cell></cell><cell>1×</cell><cell>0.3219</cell><cell cols="2">0.6000</cell><cell>0.2780</cell><cell>0.6513</cell></row><row><cell cols="2">Indegree DCLM fastText</cell><cell>2×</cell><cell>0.1966</cell><cell cols="2">0.6600</cell><cell>0.3040</cell><cell>0.6752</cell></row><row><cell cols="2">Indegree FineWeb-Edu</cell><cell>2×</cell><cell>0.1974</cell><cell cols="2">0.6400</cell><cell>0.3160</cell><cell>0.6616</cell></row><row><cell cols="2">Indegree DCLM fastText</cell><cell>4×</cell><cell>0.2088</cell><cell cols="2">0.6400</cell><cell>0.3400</cell><cell>0.6817</cell></row><row><cell cols="2">CRAW4LLM DCLM fastText</cell><cell>1×</cell><cell>0.2277</cell><cell cols="2">0.6600</cell><cell>0.3300</cell><cell>0.6926</cell></row><row><cell cols="2">CRAW4LLM FineWeb-Edu</cell><cell>1×</cell><cell>0.3219</cell><cell cols="2">0.6200</cell><cell>0.3500</cell><cell>0.6616</cell></row><row><cell>Pretraining</cell><cell>Selection</cell><cell></cell><cell cols="2">Language Understanding</cell><cell></cell><cell></cell><cell></cell></row><row><cell>Method Influence Scorer Oracle DCLM fastText</cell><cell>45×</cell><cell>0.2515</cell><cell>0.3856</cell><cell>0.3905</cell><cell>0.4432</cell><cell>0.6557</cell><cell>0.5130</cell></row><row><cell>Oracle FineWeb-Edu</cell><cell>45×</cell><cell>0.2580</cell><cell>0.3831</cell><cell>0.3818</cell><cell>0.3643</cell><cell>0.6227</cell><cell>0.5185</cell></row><row><cell>Random -</cell><cell>1×</cell><cell>0.2490</cell><cell>0.3709</cell><cell>0.3716</cell><cell>0.3990</cell><cell>0.6044</cell><cell>0.5146</cell></row><row><cell>Random DCLM fastText</cell><cell>2×</cell><cell>0.2468</cell><cell>0.3882</cell><cell>0.3925</cell><cell>0.4073</cell><cell>0.6007</cell><cell>0.5130</cell></row><row><cell>Random FineWeb-Edu</cell><cell>2×</cell><cell>0.2485</cell><cell>0.3815</cell><cell>0.3800</cell><cell>0.3804</cell><cell>0.6007</cell><cell>0.5146</cell></row><row><cell>Random DCLM fastText</cell><cell>4×</cell><cell>0.2521</cell><cell>0.4011</cell><cell>0.4019</cell><cell>0.4390</cell><cell>0.6154</cell><cell>0.5130</cell></row><row><cell>Indegree -</cell><cell>1×</cell><cell>0.2566</cell><cell>0.3515</cell><cell>0.3519</cell><cell>0.3596</cell><cell>0.5971</cell><cell>0.5004</cell></row><row><cell>Indegree DCLM fastText</cell><cell>2×</cell><cell>0.2547</cell><cell>0.3749</cell><cell>0.3771</cell><cell>0.3773</cell><cell>0.5861</cell><cell>0.5241</cell></row><row><cell>Indegree FineWeb-Edu</cell><cell>2×</cell><cell>0.2528</cell><cell>0.3636</cell><cell>0.3658</cell><cell>0.3672</cell><cell>0.5678</cell><cell>0.5193</cell></row><row><cell>Indegree DCLM fastText</cell><cell>4×</cell><cell>0.2562</cell><cell>0.3994</cell><cell>0.4008</cell><cell>0.4159</cell><cell>0.6190</cell><cell>0.5178</cell></row><row><cell>CRAW4LLM DCLM fastText</cell><cell>1×</cell><cell>0.2544</cell><cell>0.4035</cell><cell>0.4048</cell><cell>0.4196</cell><cell>0.6593</cell><cell>0.5288</cell></row><row><cell>CRAW4LLM FineWeb-Edu</cell><cell>1×</cell><cell>0.2521</cell><cell>0.3726</cell><cell>0.3717</cell><cell>0.3478</cell><cell>0.6264</cell><cell>0.5083</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 4 :</head><label>4</label><figDesc>Results for language understanding tasks.</figDesc><table><row><cell>Pretraining</cell><cell cols="2">Selection Reading Comprehension</cell></row><row><cell cols="3">Method Influence Scorer Pool Size BoolQ CoQA SQuAD</cell></row><row><cell>Oracle DCLM fastText</cell><cell>45×</cell><cell>0.5755 0.2479 0.3139</cell></row><row><cell>Oracle FineWeb-Edu</cell><cell>45×</cell><cell>0.5367 0.2305 0.3130</cell></row><row><cell>Random -</cell><cell>1×</cell><cell>0.5080 0.1799 0.1882</cell></row><row><cell>Random DCLM fastText</cell><cell>2×</cell><cell>0.5807 0.2053 0.2759</cell></row><row><cell>Random FineWeb-Edu</cell><cell>2×</cell><cell>0.5627 0.1997 0.2304</cell></row><row><cell>Random DCLM fastText</cell><cell>4×</cell><cell>0.5911 0.2361 0.2951</cell></row><row><cell>Indegree -</cell><cell>1×</cell><cell>0.5324 0.1666 0.1616</cell></row><row><cell>Indegree DCLM fastText</cell><cell>2×</cell><cell>0.5697 0.1843 0.2390</cell></row><row><cell>Indegree FineWeb-Edu</cell><cell>2×</cell><cell>0.5670 0.1904 0.2011</cell></row><row><cell>Indegree DCLM fastText</cell><cell>4×</cell><cell>0.5765 0.2147 0.2736</cell></row><row><cell>CRAW4LLM DCLM fastText</cell><cell>1×</cell><cell>0.5440 0.2264 0.2215</cell></row><row><cell>CRAW4LLM FineWeb-Edu</cell><cell>1×</cell><cell>0.4654 0.2146 0.3026</cell></row></table></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_0"><p>https://nutch.apache.org/</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_1"><p>Sometimes referred to as 400M in the DCLM paper<ref type="bibr" target="#b17">(Li et al., 2024)</ref>.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_2"><p>https://huggingface.co/Snowflake/ snowflake-arctic-embed-m</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_3"><p>https://lemurproject.org/clueweb22/obtain.php</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="6" xml:id="foot_4"><p>https://github.com/features/copilot</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="7" xml:id="foot_5"><p>https://chatgpt.com/</p></note>
+		</body>
+		<back>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A Details on Crawling</head><p>Our implementation of the indegree-based crawler employs a static URL scoring function, which directly returns the indegree of a given URL based on the full ClueWeb22 graph (Sec. 3). For realworld crawlers, as the true indegree value of a URL cannot be known in advance, a local graph must be maintained to track the known inlinks of discovered URLs. This local graph is updated iteratively as the discovered portion of the web expands during the crawling process <ref type="bibr" target="#b5">(Cho et al., 1998)</ref>.</p><p>Maintaining such a local graph during crawling introduces significant computational overhead. For simplicity, we instead implement the static simulation, where we directly return the global indegree of each URL. We believe that this simplified implementation does not underperform compared to realworld implementations, as our approach leverages global information from the entire graph, which should be better than the partial information from the local graph.</p><p>We run our simulated crawlers on a Linux server equipped with two Intel(R) Xeon(R) E5-2630 v3 CPUs (8 cores per socket, 16 cores in total, 1 thread per core), 125GiB of memory, and an SSD. The crawling process of CRAW4LLM takes about 21 hours to finish. In comparison, the random and indegree-based crawlers take around 10.5 and 12.5 hours, respectively. Note that since these are simulated crawls on the snapshot, the reported times do not reflect real-world crawling performance.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B Details on LLM Training and Evaluation</head><p>We pretrain a 411M-parameter 2 decoder-only Transformer model using the DCLM training Table 7: Results for world knowledge tasks.</p></div><figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 6 :</head><label>6</label><figDesc>Results for symbolic problem solving tasks.</figDesc><table><row><cell>Pretraining</cell><cell>Selection</cell><cell></cell><cell></cell><cell>Symbolic Problem Solving</cell><cell></cell><cell></cell></row><row><cell cols="7">Method Influence Scorer Pool Size AGI Eval LSAT-AR BIG-Bench CS Algorithms BIG-Bench Dyck Lang. BIG-Bench Operators BIG-Bench Repeat Copy Logic</cell></row><row><cell>Oracle DCLM fastText</cell><cell>45×</cell><cell>0.2739</cell><cell>0.4341</cell><cell>0.2160</cell><cell>0.2143</cell><cell>0.0625</cell></row><row><cell>Oracle FineWeb-Edu</cell><cell>45×</cell><cell>0.2826</cell><cell>0.4606</cell><cell>0.2870</cell><cell>0.1762</cell><cell>0.0313</cell></row><row><cell>Random -</cell><cell>1×</cell><cell>0.2391</cell><cell>0.4568</cell><cell>0.1970</cell><cell>0.2143</cell><cell>0.0000</cell></row><row><cell>Random DCLM fastText</cell><cell>2×</cell><cell>0.2696</cell><cell>0.4538</cell><cell>0.2520</cell><cell>0.1762</cell><cell>0.0313</cell></row><row><cell>Random FineWeb-Edu</cell><cell>2×</cell><cell>0.2000</cell><cell>0.4091</cell><cell>0.2050</cell><cell>0.1476</cell><cell>0.0313</cell></row><row><cell>Random DCLM fastText</cell><cell>4×</cell><cell>0.1957</cell><cell>0.4568</cell><cell>0.2600</cell><cell>0.1857</cell><cell>0.0625</cell></row><row><cell>Indegree -</cell><cell>1×</cell><cell>0.2304</cell><cell>0.4371</cell><cell>0.1900</cell><cell>0.1429</cell><cell>0.0000</cell></row><row><cell>Indegree DCLM fastText</cell><cell>2×</cell><cell>0.2609</cell><cell>0.4235</cell><cell>0.2340</cell><cell>0.2143</cell><cell>0.0313</cell></row><row><cell>Indegree FineWeb-Edu</cell><cell>2×</cell><cell>0.2304</cell><cell>0.4545</cell><cell>0.2060</cell><cell>0.1619</cell><cell>0.0313</cell></row><row><cell>Indegree DCLM fastText</cell><cell>4×</cell><cell>0.2174</cell><cell>0.4538</cell><cell>0.2530</cell><cell>0.1667</cell><cell>0.0938</cell></row><row><cell>CRAW4LLM DCLM fastText</cell><cell>1×</cell><cell>0.2696</cell><cell>0.4371</cell><cell>0.1620</cell><cell>0.2095</cell><cell>0.0938</cell></row><row><cell>CRAW4LLM FineWeb-Edu</cell><cell>1×</cell><cell>0.2609</cell><cell>0.4750</cell><cell>0.1780</cell><cell>0.2048</cell><cell>0.0938</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">A critical analysis of the largest source for generative AI training data: Common crawl</title>
+		<author>
+			<persName><forename type="first">Stefan</forename><surname>Baack</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">FAccT</title>
+		<imprint>
+			<publisher>ACM</publisher>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="2199" to="2208" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<analytic>
+		<title level="a" type="main">Axioms for centrality</title>
+		<author>
+			<persName><forename type="first">Paolo</forename><surname>Boldi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastiano</forename><surname>Vigna</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Internet Math</title>
+		<imprint>
+			<biblScope unit="volume">10</biblScope>
+			<biblScope unit="issue">3-4</biblScope>
+			<biblScope unit="page" from="222" to="262" />
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">Parallel crawlers</title>
+		<author>
+			<persName><forename type="first">Junghoo</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hector</forename><surname>Garcia-Molina</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2002">2002. 2002</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Effective page refresh policies for web crawlers</title>
+		<author>
+			<persName><forename type="first">Junghoo</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hector</forename><surname>Garcia-Molina</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">ACM Trans. Database Syst</title>
+		<imprint>
+			<biblScope unit="volume">28</biblScope>
+			<biblScope unit="issue">4</biblScope>
+			<biblScope unit="page" from="390" to="426" />
+			<date type="published" when="2003">2003</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">Estimating frequency of change</title>
+		<author>
+			<persName><forename type="first">Junghoo</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hector</forename><surname>Garcia-Molina</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">ACM Trans. Internet Techn</title>
+		<imprint>
+			<biblScope unit="volume">3</biblScope>
+			<biblScope unit="issue">3</biblScope>
+			<biblScope unit="page" from="256" to="290" />
+			<date type="published" when="2003">2003</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">Efficient crawling through URL ordering</title>
+		<author>
+			<persName><forename type="first">Junghoo</forename><surname>Cho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hector</forename><surname>Garcia-Molina</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lawrence</forename><surname>Page</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Comput. Networks</title>
+		<imprint>
+			<biblScope unit="volume">30</biblScope>
+			<biblScope unit="issue">1-7</biblScope>
+			<biblScope unit="page" from="161" to="172" />
+			<date type="published" when="1998">1998</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<monogr>
+		<title level="m" type="main">Common crawl</title>
+		<author>
+			<persName><surname>Commoncrawl</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2007">2007</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<author>
+			<persName><forename type="first">Abhimanyu</forename><surname>Dubey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Jauhri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhinav</forename><surname>Pandey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Abhishek</forename><surname>Kadian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmad</forename><surname>Al-Dahle</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aiesha</forename><surname>Letman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Akhil</forename><surname>Mathur</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alan</forename><surname>Schelten</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amy</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Angela</forename><surname>Fan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.21783</idno>
+		<title level="m">The llama 3 herd of models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title level="m" type="main">Approximating pagerank from in-degree</title>
+		<author>
+			<persName><forename type="first">Santo</forename><surname>Fortunato</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marián</forename><surname>Boguñá</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alessandro</forename><surname>Flammini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Filippo</forename><surname>Menczer</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2006">2008. 2006</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Training computeoptimal large language models</title>
+		<author>
+			<persName><forename type="first">Jordan</forename><surname>Hoffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Borgeaud</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arthur</forename><surname>Mensch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elena</forename><surname>Buchatskaya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Trevor</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eliza</forename><surname>Rutherford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diego</forename><surname>De Las</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lisa</forename><forename type="middle">Anne</forename><surname>Casas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Johannes</forename><surname>Hendricks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aidan</forename><surname>Welbl</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Clark</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">NeurIPS</title>
+		<imprint>
+			<date type="published" when="2022">2022. 2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<title level="m" type="main">Bag of tricks for efficient text classification</title>
+		<author>
+			<persName><forename type="first">Armand</forename><surname>Joulin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Edouard</forename><surname>Grave</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piotr</forename><surname>Bojanowski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomas</forename><surname>Mikolov</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2017">2017. 2017</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Fang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Georgios</forename><surname>Smyrnis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maor</forename><surname>Ivgi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matt</forename><surname>Jordan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Samir</forename><surname>Yitzhak Gadre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hritik</forename><surname>Bansal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Etash</forename><surname>Guha</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sedrick</forename><surname>Scott Keh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kushal</forename><surname>Arora</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saurabh</forename><surname>Garg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rui</forename><surname>Xin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Reinhard</forename><surname>Heckel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jean</forename><surname>Mercat</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mayee</forename><forename type="middle">F</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suchin</forename><surname>Gururangan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mitchell</forename><surname>Wortsman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alon</forename><surname>Albalak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Bitton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marianna</forename><surname>Nezhurina</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Amro</forename><surname>Abbas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cheng-Yu</forename><surname>Hsieh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dhruba</forename><surname>Ghosh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josh</forename><surname>Gardner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maciej</forename><surname>Kilian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanlin</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rulin</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sarah</forename><forename type="middle">M</forename><surname>Pratt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sunny</forename><surname>Sanyal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gabriel</forename><surname>Ilharco</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Giannis</forename><surname>Daras</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kalyani</forename><surname>Marathe</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aaron</forename><surname>Gokaslan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jieyu</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Khyathi</forename><surname>Raghavi Chandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thao</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Igor</forename><surname>Vasiljevic</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Sham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuran</forename><surname>Kakade</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sujay</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Fartash</forename><surname>Sanghavi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sewoong</forename><surname>Faghri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luke</forename><surname>Oh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kyle</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alaaeldin</forename><surname>Lo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hadi</forename><surname>El-Nouby</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Pouransari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stephanie</forename><surname>Toshev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dirk</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luca</forename><surname>Groeneveld</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pang</forename><surname>Soldaini</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jenia</forename><surname>Wei Koh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Jitsev</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Kollar</surname></persName>
+		</author>
+		<imprint>
+			<pubPlace>Alex Dimakis, Yair Carmon, Achal Dave, Ludwig Schmidt</pubPlace>
+		</imprint>
+	</monogr>
+	<note>and Vaishaal Shankar. 2024. Datacomp-lm: In search of the next generation of training sets for language models. In NeurIPS 2024</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<title/>
+		<author>
+			<persName><forename type="first">Shayne</forename><surname>Longpre</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Robert</forename><surname>Mahari</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ariel</forename><surname>Lee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Campbell</forename><surname>Lund</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hamidah</forename><surname>Oderinwale</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">William</forename><surname>Brannon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nayan</forename><surname>Saxena</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Naana</forename><surname>Obeng-Marnu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tobin</forename><surname>South</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cole</forename><surname>Hunter</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kevin</forename><surname>Klyman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Klamm</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hailey</forename><surname>Schoelkopf</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikhil</forename><surname>Singh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Manuel</forename><surname>Cherep</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmad</forename><surname>Anis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">An</forename><surname>Dinh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caroline</forename><surname>Shamiso Chitongo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Da</forename><surname>Yin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Damien</forename><surname>Sileo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Deividas</forename><surname>Mataciunas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diganta</forename><surname>Misra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Emad</forename><forename type="middle">A</forename><surname>Alghamdi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Enrico</forename><surname>Shippole</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jianguo</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joanna</forename><surname>Materzynska</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kushagra</forename><surname>Kun Qian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lester</forename><surname>Tiwary</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>James</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Manan</forename><surname>Miranda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minnie</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohammed</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niklas</forename><surname>Hamdy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Seonghyeon</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Seungone</forename><surname>Ye</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shrestha</forename><surname>Kim</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vipul</forename><surname>Mohanty</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vivek</forename><surname>Gupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Minh</forename><forename type="middle">Chien</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuhui</forename><surname>Vu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yizhi</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caiming</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Luis</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Stella</forename><surname>Villa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hanlin</forename><surname>Biderman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daphne</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sara</forename><surname>Ippolito</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jad</forename><surname>Hooker</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Kabbara</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Pentland</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>Consent in crisis: The rapid decline of the AI data commons. In NeurIPS 2024</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Complaint, the new york times company v. microsoft corporation, openai, inc., openai lp, openai gp, llc, openai llc, openai opco llc, openai global llc, oai corporation, llc, and openai holdings</title>
+	</analytic>
+	<monogr>
+		<title level="j">New York Times</title>
+		<imprint>
+			<biblScope unit="volume">1</biblScope>
+			<biblScope unit="page" from="23" to="11195" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note>United States District Court, Southern District of New York</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">Arnold</forename><surname>Overwijk</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chenyan</forename><surname>Xiong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cameron</forename><surname>Vandenberg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jamie</forename><surname>Callan</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2211.15848</idno>
+		<title level="m">Clueweb22: 10 billion web documents with visual and semantic information</title>
+		<imprint>
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<monogr>
+		<title level="m" type="main">The pagerank citation ranking: Bringing order to the web</title>
+		<author>
+			<persName><forename type="first">Lawrence</forename><surname>Page</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sergey</forename><surname>Brin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rajeev</forename><surname>Motwani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Terry</forename><surname>Winograd</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1999">1999</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">Technical report</note>
+	<note>Stanford infolab</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Leandro von Werra, and Thomas Wolf. 2024. The fineweb datasets: Decanting the web for the finest text data at scale</title>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hynek</forename><surname>Kydlícek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Loubna</forename><surname>Ben Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Margaret</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><forename type="middle">A</forename><surname>Raffel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">NeurIPS</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">Liping</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nikhil</forename><surname>Ranjan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Omkar</forename><surname>Pangarkar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuezhi</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhen</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Li</forename><surname>An</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bhaskar</forename><surname>Rao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Linghao</forename><surname>Jin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huijuan</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhoujun</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Suqi</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cun</forename><surname>Mu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Victor</forename><surname>Miller</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuezhe</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yue</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhengzhong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><forename type="middle">P</forename><surname>Xing</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Txt</title>
+		<imprint>
+			<biblScope unit="volume">360</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note>A top-quality llm pre-training dataset requires the perfect blend</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<monogr>
+		<title level="m" type="main">Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants</title>
+		<author>
+			<persName><surname>Teknium</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<analytic>
+		<title level="a" type="main">Redpajama: an open dataset for training large language models</title>
+		<author>
+			<persName><forename type="first">Maurice</forename><surname>Weber</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><forename type="middle">Y</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Anthony</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonatan</forename><surname>Oren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shane</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Alexandrov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhong</forename><surname>Lyu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huu</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaozhe</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Virginia</forename><surname>Adams</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Athiwaratkun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rahul</forename><surname>Chalamala</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kezhen</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Ryabinin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tri</forename><surname>Dao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Percy</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Christopher</forename><surname>Ré</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Irina</forename><surname>Rish</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ce</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">NeurIPS</title>
+		<imprint>
+			<date type="published" when="2024">2024. 2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

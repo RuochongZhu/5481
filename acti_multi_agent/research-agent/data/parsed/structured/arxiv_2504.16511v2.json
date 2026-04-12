@@ -1,0 +1,1031 @@
+{
+  "paperId": "arxiv:2504.16511v2",
+  "title": "QuaDMix: Quality-Diversity Balanced Data Selection for Efficient LLM Pretraining",
+  "year": 2025,
+  "source": "arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/arxiv_2504.16511v2.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/arxiv_2504.16511v2.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/arxiv_2504.16511v2.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Quality and diversity are two critical metrics for the training data of large language models (LLMs), positively impacting performance. Existing studies often optimize these metrics separately, typically by first applying quality filtering and then adjusting data proportions. However, these approaches overlook the inherent trade-off between quality and diversity, necessitating their joint consideration. Given a fixed training quota, it's essential to evaluate both the quality of each data point and its complementary effect on the overall dataset. In this paper, we introduce a unified data selection framework called QuaDMix, which automatically optimizes the data distribution for LLM pretraining while balancing both quality and diversity. Specifically, we first propose multiple criteria to measure data quality and employ domain classification to distinguish data points, thereby measuring overall diversity. QuaDMix then employs a unified parameterized data sampling function that determines the sampling probability of each data point based on these quality and diversity related labels. To accelerate the search for the optimal parameters involved in the QuaDMix framework, we conduct simulated experiments on smaller models and use LightGBM for parameters searching, inspired by the RegMix method. Our experiments across diverse models and datasets demonstrate that QuaDMix achieves an average performance improvement of 7.2% across multiple benchmarks. These results outperform the independent strategies for quality and diversity, highlighting the necessity and the framework's ability to balance data quality and diversity.",
+      "word_count": 225
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "The efficiency and preference of pretraining large language models are significantly influenced by the characteristics of the training corpus (Brown et al., 2020; Chowdhery et al., 2023; Longpre et al., 2024) . There is evidence from existing research suggesting that the model performance can be improved through the curation of high-quality data (Wettig et al., 2024; Xie et al., 2023b; Sachdeva et al., 2024) , the application of data deduplication and diversification strategies (Abbas et al., 2023; Tirumala et al., 2023) , and the careful balancing of data distribution across various domains and topics (Liu et al., 2024; Xie et al., 2023a) . Nevertheless, identifying optimal configuration of combining those factors remains an open challenge, due to complex interplay between data quality and diversity, which has yet to be fully understood.\n\nThere remains two major challenges to identify the optimal data selection strategy. Firstly, the definition of quality and diversity is ambiguous. Previous research has proposed various definitions of quality criteria, including factors such as regular expression (Penedo et al., 2023; Wenzek et al., 2020) , educational value (Penedo et al., 2024) , similarity to instruction tuning data (Li et al., 2024) , etc, each emphasizing only a specific aspect of the data. On the other hand, approaches like (Liu et al., 2024; Abbas et al., 2023) optimize the data mixtures for more effective training, indicating that a better diversity is not necessarily uniform distribution. Secondly, there exists interplay between data quality and diversity. The choice of quality criteria affects the distribution of selected data as illustrated in Figure 1 , due to inherent biases in different criteria. Meanwhile, changing of data mixtures influences the data quality, as the quality level differs across different domains. Also, since the high quality data is limited, the trade-off between better quality or diversity is inevitable, which is not feasible by optimizing only for data quality or diversity. How to jointly optimize the data distribution together with the selection of quality criteria remains another unsolved issue.\n\nTo address these challenges, we propose a unified data selection framework, QuaDMix, which simultaneously manages data quality and diversity. Firstly, we apply several quality scorers and domain classification on each document in the training corpus, to measure the data quality and diversity. Then a parameterized function is designed to determine the sampling frequency for each document based on those quality and domain labels. Specifically, an aggregated quality score is first computed by weighted averaging the quality scores, where the weights are controlled by adjustable parameters. Then a parameterized sampling function takes the aggregated quality score as input and calculate the sampling frequency, where data with higher quality is assigned with more frequency and the parameters affect how the frequency decreases as the quality diminishes. Here we take the assumption that training samples with higher quality worth sampled for more times. We assign independent parameters for data across different domains to control the diversity via parameters. To find the optimal parameters among the numerous parameter space, we employ a two-step approach inspired by (Liu et al., 2024) . First, we train a set of small models on datasets sampled using QuaDMix with various parameter configurations, as an approximation for the performance of larger models. Next, we train a regression model to fit the performance results from this limited set of small models. This regression model is then used to predict the performance for unseen parameter configurations, providing an efficient way to explore the parameter space without exhaustive large-scale training.\n\nTo validate the effectiveness of QuaDMix, we train 3000 models with 1M parameters for 1B tokens, each using data sampled from RefinedWeb (Penedo et al., 2023) with various QuaDMix pa-rameters. The optimal parameter configuration is then determined by searching the input space of a trained LightGBM regressor (Ke et al., 2017) . We then evaluate different pretraining data selection methods on models with 530M parameters. The optimal configuration identified by QuaDMix achieves superior performance on an aggregated benchmark. Our results also reveal the following insights: (1) Different quality criteria exhibit tradeoffs across downstream tasks, but appropriately merging these criteria yields consistent improvements across tasks by leveraging complementary information.\n\n(2) The optimal data mixture varies under different quality criteria, indicating the importance of jointly optimizing both the quality and diversity. (3) The target of regression model can guide the preference for specific downstream tasks, enabling task-focused data selection.\n\n2 Related Work",
+      "word_count": 730
+    },
+    {
+      "index": 3,
+      "title": "Pretraining Data Selection",
+      "kind": "body",
+      "text": "Data quality, diversity, and coverage are critical factors for ensuring the efficiency and generalizability of large language models (Cheng et al., 2024; Touvron et al., 2023; Chowdhery et al., 2023) .\n\nTo improve data quality, rule-based filtering techniques are commonly employed (Laurençon et al., 2022; Weber et al., 2024; Penedo et al., 2023; Raffel et al., 2020) . These methods use handcrafted heuristics, such as removing terminal marks, detecting sentence repetitions, and enforcing length constraints, to exclude low-quality data. While these rules effectively filter out noisy data from the training corpus, they fail to capture semanticlevel information, which is crucial for more refined data selection. Alternative approaches aim to address this limitation. For instance, (Wenzek et al., 2020; Marion et al., 2023; Thrush et al., 2024) use model perplexity as a measure of data quality, while (Lin et al., 2025) apply token-level selection by reweighting the loss across tokens. (Xie et al., 2023b) utilize n-gram features to quantify data importance and sample accordingly. Discriminator-based methods (Brown et al., 2020; Du et al., 2022; Gao et al., 2020; Soldaini et al., 2024; Li et al., 2024) select data by comparing it to predefined high-quality datasets, such as Wikipedia or instruction-tuning datasets. However, how much these predefined datasets represent for high-quality relies on empirical judgement. More recently, approaches like (Gunasekar et al., 2023; Sachdeva et al., 2024 ; Wet-… Domain 1 Domain 2 Domain 3 Domain M Quality Scorer 1 Quality Scorer N … Web Data Domain Classification Domain 1 Quality Merger Domain 2 Quality Merger Domain 3 Quality Merger Domain M Quality Merger … Domain 1 Data Sampler Domain 2 Data Sampler Domain 3 Data Sampler Domain M Data Sampler … … … New Distribution Feature Extraction Quality Ranking Data Sampling\n\nFigure 2 : The overall design of QuaDMix. First we extract the data features using classifier and quality scores (QS). Then we calculate quality rank for each domain with the merging parameters. Finally the sampling functions controlled by sampling parameters are applied to generate the final output data.\n\ntig et al., 2024; Penedo et al., 2024) leverage large language models (e.g., GPT-4) to evaluate and filter data based on designed prompts that emphasize various dimensions of value, offering a more nuanced way to define and curate high-quality data.\n\nTo optimize data distribution, various methods leverage clustering and representativeness to achieve deduplication and diversification. For example, (Abbas et al., 2023; Shao et al., 2024; Tirumala et al., 2023) employ data clustering techniques to identify and select representative data points, ensuring both diversity and efficiency in the training corpus. Other approaches estimate optimal data mixtures through iterative modeling. (Xie et al., 2023a) first train a small reference model and subsequently optimize the worst-case loss across domains by training a proxy model to identify the optimal data mixture. Similarly, (Bai et al., 2024; Yu et al., 2024; Fan et al., 2024; Gu et al., 2024) calculate influence scores by tracking first-order gradients on an evaluation set, thereby identifying the most valuable data for training. Additionally, (Liu et al., 2024; Ye et al., 2024) simulate the performance of different data mixtures by training a series of proxy models, enabling the prediction of large-model performance with low compute cost.",
+      "word_count": 534
+    },
+    {
+      "index": 4,
+      "title": "Scaling Laws",
+      "kind": "body",
+      "text": "Neural Scaling Laws have been shown to effectively predict performance across varying training budgets, model sizes, and dataset scales in LLM pretraining (Kaplan et al., 2020; Rae et al., 2022) . However, in practical scenarios where dataset size is limited, or data mixtures vary, scaling laws exhibit significant variations (Hoffmann et al., 2022) . Several studies have extended scaling laws to account for these complexities. (Muennighoff et al., 2023; Hernandez et al., 2022) explore the impact of data repetition levels on scaling behaviors, while (Ge et al., 2024) investigate scaling dynamics under different domain proportions and dataset sizes. To optimize data compositions, (Liu et al., 2024) propose a regression model for predicting optimal mixtures, and (Kang et al., 2024) further analyze optimal compositions across varying scales. Additionally, (Que et al., 2024) focus on identifying the best data mixtures for the continued pretraining stage, providing insights into refining pretraining strategies under diverse constraints.",
+      "word_count": 152
+    },
+    {
+      "index": 5,
+      "title": "Methodology",
+      "kind": "methods",
+      "text": "Our approach can be illustrated in 4 parts: 1) We propose the QuaDMix framework, which utilizes a unified parameterized function to govern the data sampling process. 2) We conduct small-scale experiments to explore how different parameter settings within QuaDMix affect the performance of LLM.\n\n3) We train a regression model to capture these effects, using it to identify the optimal parameters. 4) With the optimal parameter settings, we sample large-scale data and train a large language model.",
+      "word_count": 77
+    },
+    {
+      "index": 6,
+      "title": "Design of QuaDMix",
+      "kind": "body",
+      "text": "We design QuaDMix as a sampling algorithm that simultaneously accounts for data quality and diversity, as shown in Figure 2 . Given a pretraining dataset X, we define a sampling function S(x, q x , d x ; θ), which determines the expected sampling times of each data point x based on its data feature q x and d x . Here q x represents the quality score vector, which includes multiple quality criteria, and d x denotes the domain to which x belongs. θ are the parameters to be optimized. The output of this function is fractional value, e.g. a.b, meaning the document will be sampled for a times plus another random sampling with probability b. Feature Extraction To measure a sample's contribution to diversity and its quality, we propose using domain classification and N quality scorers to label the pretraining data. Specifically, we use a domain classifier to divide the dataset into M domains, where x will be assigned a domain label d x . Then we use N quality scorers to compute the quality vector q x = (q 1,x , ..., q N,x ), and for each q n,x , a smaller value indicates a better quality on that dimension. For the sake of simplicity, we omit x in the subscript in the following discussion. Quality Ranking We first define a merging function that integrates the scores from various quality filters, aiming to incorporate complementary information provided by different criteria. Assuming there are N criteria, for any individual example x belonging to domain m, the merged quality score is calculated by\n\nq = N n=1 σ(q n )α n,m , (1)\n\nwhere α m are the merging parameters for domain m. We utilize separate merging parameters to balance the quality criteria across different domains, as the criteria exhibit varying preferences depending on the domain. σ is a normalization function to align the scales of quality criteria.\n\nWe then sort the data based on the merged quality score. The sorting is operated separately in each domain. The merged quality rank r is calculated by computing the percentile of the data within that domain. That is\n\nr = |{x|d x = m, qx <= q}| |{x|d x = m}| . (2)\n\nHere we calculate the size of the set by adding up the number of tokens for all sample within the set. For a given example in domain m with r = 0.05, this means that 95% of the tokens in that domain have a worse quality compared to this example. (Note that we use smaller quality scores to represent higher quality.)\n\nQuality Sampling Next, we define the sampling function. We take the assumption that higherquality data should be sampled more frequently in the final dataset. This assumption is supported by evidence (Penedo et al., 2024) , which demonstrates that applying a higher quality threshold improves downstream performance. For any example in domain m with merged quality rank r, the value of the sampling function is determined by\n\nS(r) = ( 2 1+e -λm(ωm-r) ) ηm + ϵ m , r <= ω m ϵ m , r > ω m (\n\n3) We denote β m = (λ m , ω m , η m , ϵ m ) as the sampling parameters for domain m. We use a format of sigmoid to ensure the sampling value is monotonically decreasing as the quality rank goes up (worse quality) and λ m is used to adjust how fast it decreases. ω m controls the quality percentile threshold, determining the minimum quality level we aim to retain. η m is a scaling parameter that adjusts the sampling values, while ϵ m introduces randomness to incorporate data from all quality ranges. By applying different sampling parameters across domains, we achieve flexible control over domain proportions.\n\nIn summary, by integrating (1),(2), and (3), we define the sampling function for individual domain m, with the parameters structured as θ m = (α m , β m ). The total number of parameters is (N + 4) × M , where N represents the number of used quality criteria and M denotes the total number of distinct domains.",
+      "word_count": 695
+    },
+    {
+      "index": 7,
+      "title": "Proxy Model Experiments",
+      "kind": "results",
+      "text": "We first sample a set of values for each parameter defined above, subsequently generating corresponding datasets using the QuaDMix sampling function. Following this, a series of small proxy models are trained on each dataset and evaluated on the validation set to compute the validation loss. Parameter Sampling The parameter space requires careful design to encompass valuable regions, while avoiding extreme conditions. We sample from the parameter space as following:\n\nAlgorithm 1 Parameter Sampling for QuaDMix Ensure: θ Require: N, M Sample (a 1 , ..., a N ) ∼ U (0, 1) ãn = an\n\ni a i for m = 1 to M do Sample (b 1,m , ..., b N,m ) ∼ U (0, 1) bn,m = ãnbn,m i ãi b i,m α m = ( bn,m ), n = 1, ..., N Sample (λ m , ω m , η m , ϵ m ) ∼ U (0, 1) λm = 10 3λm , ωm = 0.1ω m ηm = η m , εm = ϵ m /1000 β m = ( λm , ωm , ηm , εm ) θ m = (α m , β m ) end for θ = (θ 1 , ..., θ M )\n\nIn the algorithm above, we introduce a global weight for each quality criteria, with the final weight computed by multiplying the global weight by the domain-specific weight. Without this global weight, the expected average weight across domains for each quality criterion would always be 1/N , which fails to account for the scenario where one quality criterion may suppress another overall. For β m , we rescale them accordingly to ensure domain proportions and quality thresholds remain within a reasonable range. Using this process, we generate 3,000 sets of parameters θ i and then sample with QuaDMix from our training data, producing 3,000 proxy datasets, denoting as D i . Proxy Model Training Next we train the proxy models on each proxy datasets from scratch.\n\nf * i = arg min f L(f, D i )\n\nAfter training, we evaluate the proxy models by calculating the loss on the target evaluation datasets.\n\nL i = L(f * i , D eval )",
+      "word_count": 365
+    },
+    {
+      "index": 8,
+      "title": "Parameter Optimizing",
+      "kind": "body",
+      "text": "Regression Model Fitting The next step is to determine the correlation between the sampled QuaD-Mix parameters and model performance. We formulate this as a regression problem, as proposed in (Liu et al., 2024) , with the goal of learning a function that predicts the target value based on the input features. Specifically, we optimize a regressor R with\n\nR * = arg min R i ||R(θ i ) -L i || 2\n\nWe evaluate different types of regressors and select LightGBM (Ke et al., 2017) , which ensembles multiple decision trees, to predict the target value. Optimal Parameter Estimation Once the regressor is trained, we search the input space to find the optimal parameters that minimize the predicted loss. Rather than performing a random search across the entire space, we sample 100,000 data points using the algorithm outlined in Section 3.2 to mitigate the influence of outliers on the regressor. To further reduce the variance in the regression predictions, we sort the data points based on their predicted target values and calculate the average of the top 10 data points to determine the final output.",
+      "word_count": 185
+    },
+    {
+      "index": 9,
+      "title": "Large-scale Model Experiments",
+      "kind": "results",
+      "text": "We then use the optimal parameters to generate large-scale datasets for training large-scale models. In practice, since sorting the quality scores across the entire dataset is computationally expensive, we estimate the quality percentile by randomly selecting a subset of 10,000 documents. Within this subset, we calculate the mapping between the quality percentile and quality score, and then apply this mapping to the entire dataset.",
+      "word_count": 64
+    },
+    {
+      "index": 10,
+      "title": "Experiment Setup",
+      "kind": "body",
+      "text": "Datasets We conduct our experiment on Refined-Web (Penedo et al., 2023) . It is an English largescale dataset for the pretraining of large language models and consists of over 570B(billion) tokens. For the small proxy datasets, we sample it from a subset of RefinedWeb, each containing 1B tokens. Feature Extraction We generate the necessary data features including data quality and domain index with 3 individual quality filters, AskLLM (Sachdeva et al., 2024) , Fineweb-Edu (Penedo et al., 2024) , DCLM (Li et al., 2024) and 1 domain classifier (Jennings et al.) , which classify the data into 26 different domains with a Deberta V3 (He et al., 2023) architecture.\n\nTraining and evaluation For the proxy models, we train them on the proxy datasets for 1B tokens, taking 1 NVIDIA H100 GPU hour and calculate the loss on the validation datasets. (Teknium, 2023). As demonstrated in (Li et al., 2024) , this dataset is used to train a robust quality filter. To improve efficiency, we sampled 10k samples from it to form a validation subset, named openhermes-10k. Additionally, we test on the training data from the downstream tasks including Hel-laSwag, ARC-E, ARC-C, MMLU, and TriviaQA to demonstrate the model's ability to optimize for specific downstream tasks by altering the target evaluation datasets.\n\nFor the regression model, we split the data into 2800/200 for training and validation. We use Mean Absolute Error (MAE) as the evaluation metric, which calculates the average absolute differences between predicted and actual values.",
+      "word_count": 246
+    },
+    {
+      "index": 11,
+      "title": "Results",
+      "kind": "results",
+      "text": "We show the results of regression models in Figure 3 . The left figure shows strong correlation between the predicted loss and the real model loss (evaluated on OpenHermes) on the validation set, providing the evidence that there exists statistical pattern between the QuaDMix parameters and the model per-formance. We compare three regression models in the right figure. We can see LightGBM yields better accuracy in predicting the model performance than SVR (Drucker et al., 1996) with Linear kernel and RBF kernel. Also, with larger training size, the accuracy keeps increasing. Considering the training budget, we conduct 3000 proxy experiments in total to get a better results.",
+      "word_count": 107
+    },
+    {
+      "index": 12,
+      "title": "Experiments on Language Model",
+      "kind": "results",
+      "text": "In this section we compare different methods of data selection and mixture with QuaDMix by training language models from scratch and evaluating on various downstream tasks.",
+      "word_count": 26
+    },
+    {
+      "index": 13,
+      "title": "Experiment Setup",
+      "kind": "body",
+      "text": "Training and evaluation We train the language model with 530M parameters from scratch for 500B tokens, taking 32 NVIDIA GPU for 3 days. We use transformer architecture (Vaswani et al., 2017) , SwiGLU (Shazeer, 2020) as the activation function and RoPE embeddings (Su et al., 2024) . Then we evaluate the model performance using lm-eval-harness (Gao et al., 2023) . We choose 9 downstream tasks, including 3 commonsense reasoning tasks (PIQA (Bisk et al., 2019) , HellaSwag (Zellers et al., 2019) , OpenBookQA (Mihaylov et al., 2018) ), 3 reading comprehension tasks (ARC-E/C (Clark et al., 2018) , Triviaqa (Joshi et al., 2017) ), 1 math problem solving task (SVAMP (Patel et al., 2021) ) and 2 knowledge intensive tasks (MMLU (Hendrycks et al., 2021) , NQ-open (Kwiatkowski et al., 2019; Lee et al., 2019) ). For each benchmark, we used normalized accuracy as the evaluation metric. Some modifications on the testing logic are applied for numerical stability.",
+      "word_count": 158
+    },
+    {
+      "index": 14,
+      "title": "Data Selection Methods",
+      "kind": "methods",
+      "text": "We generate the training data from the RefinedWeb dataset using following data selection methods.\n\n• Random Selection: Documents are randomly selected from the whole dataset.\n\n• Fineweb-edu Classifier: Documents are scored with Fineweb-edu Classifier (Penedo et al., 2024) with top-k selection • AskLLM: Documents are scored with the probability of generating \"Yes\" from a prompted large language model (Sachdeva et al., 2024) . The top-k documents are selected.\n\n• DCLM: Documents are scored with fasttext based classifier (Li et al., 2024) with top-k selection.\n\n• Criteria Mix: Following (Wettig et al., 2024) , the selected data from the above three filters are merged, with duplicated documents removed.\n\n• DSIR: Documents are sampled based on the importance calculated with the N-gram features (Xie et al., 2023b).\n\n• RegMix: Following (Liu et al., 2024) , we conduct 512 1M porxy experiments and randomly select data using the optimized data mixtures.\n\n• QuaDMix-OH: Documents are sampled with the proposed QuaDMix, where Openhermes is used as the validation set for the proxy experiments • QuaDMix-BMK: Documents are sampled with the proposed QuaDMix, where the training set of 5 downstream tasks (HellaSwag, ARC-E, ARC-C, MMLU, TriviaQA) are used as the validation set to generate the optimal QuaDMix parameters.",
+      "word_count": 203
+    },
+    {
+      "index": 15,
+      "title": "Results",
+      "kind": "results",
+      "text": "The results are summerized in Table 1 . We can see that QuaDMix outperforms the methods focusing only on data quality or data mixture on all the benchmarks, proving the necessity of jointly considering quality and diversity. It also shows that the proxy model experiments can well indicate the performance on large scale model. With loss of the benchmark training set as the target when training the regression model, the results further boost. This prove the ability of QuaDMix of optimizing for specific downstream tasks by choosing evaluation datasets in proxy experiments which are more related to the downstream tasks.",
+      "word_count": 100
+    },
+    {
+      "index": 16,
+      "title": "Analysis of optimal QuaDMix parameters",
+      "kind": "results",
+      "text": "We show the optimal data mixtures and merging parameters of quality filters from QuaDMix-BMK in",
+      "word_count": 15
+    },
+    {
+      "index": 17,
+      "title": "Ablations",
+      "kind": "body",
+      "text": "Quality Merging Benefits Selection To prove the necessity of quality score merging, we select different combinations of quality filters by manually setting the weight of certain filters to 0 when finding the optimal QuaDMix parameters. As shown in Table 2 , merging with all three quality filters shows the best performance. Although using one quality filter can be optimal for one specific task, for example DCLM-only for MATH, the merging process reduces intrinsic bias within the quality filters and outperforms in general ability, which is essential for language model pretraining.",
+      "word_count": 90
+    },
+    {
+      "index": 18,
+      "title": "More Tokens not always good",
+      "kind": "body",
+      "text": "We also experiment with selecting more tokens by loosing the sampling parameter ω in QuaDMix. In that way we introduce more diversed tokens but lower quality into the training. The results in Table 2 show that selecting 30B tokens, i.e. documents with top5% quality yields the best result, meaning that curing data quality contributes more than increasing the number of unique tokens within this range. Proxy Ability of Small Models How well the prediction loss on proxy models forecasts the performance on large-scale models is the key factor of QuaDMix. To study this, we train 5 separate regression models, each using the loss on training set of one benchmark as the target. The results on the validation set are shown as blue points in Figure 5 . We notice that HellaSwag has larger variance than others, which indicates there may be more influencing factors related with HellaSwag, making the loss on it harder to predict. Then we predict the loss for optimal parameters from QuaDMix-OH and QuaDMix-BMK using each regression model as shown in Figure 5 . It is reasonable to see the loss of QuaDMix-BMK surpasses QuaDMix-OH on all tasks since QuaDMix-BMK utilizes benchmark training set as optimizing target. Finally we report the performance of large model in Table 3 . Except for HellaSwag, QuaDMix-BMK outperforms QuaDMix-OH on other tasks, which agrees with the trend on prediction loss. The inconsistent conclusion on HellaSwag is because the predict loss has larger variance as mentioned above, making the proxy ability lower than other tasks. How to further increase the proxy ability is one of the future direction to explore.",
+      "word_count": 268
+    },
+    {
+      "index": 19,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "In this paper, we propose a novel data selection method QuaDMix that jointly optimizes the data quality and diversity for language model pretraining. We design a parameterized space that controls both the data quality and diversity, and conduct proxy experiments to find the correlation between the parameter and model performance. The training data generated with optimal parameters are proved to outperform others on various downstream tasks.",
+      "word_count": 66
+    },
+    {
+      "index": 20,
+      "title": "Limitations",
+      "kind": "limitations",
+      "text": "We note several limitations of our work. There exist improvement space for the design of parameter space of QuaDMix. For example the parameters of sampling function may generate similar functions under different parameters, which will cause redundancy and introduce uncertainty into the regression model. Secondly, the searching in the parameter space for optimal parameters is inefficient. We use random guessing in a space with 200 more dimensions, for certain the current optimal parameter is a local minimum and how to effectively search in the parameter space remains unclear. Finally, the proxy ability of small models is crucial, what is the systematic way to improve it is an important yet less explored topic. However, QuaDMix provides a useful solution for jointly optimize for data quality and diversity, and it worth continually exploring on the limitations mentioned above.",
+      "word_count": 136
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Semdedup: Dataefficient learning at web-scale through semantic deduplication",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Amro Abbas",
+        "Kushal Tirumala",
+        "Dániel Simig",
+        "Surya Ganguli",
+        "Ari S Morcos"
+      ],
+      "raw_text": "Semdedup: Dataefficient learning at web-scale through semantic deduplication Amro Abbas Kushal Tirumala Dániel Simig Surya Ganguli Ari S Morcos arXiv:2303.09540 2023 Preprint"
+    },
+    {
+      "index": 2,
+      "title": "Multi-agent collaborative data selection for efficient llm pretraining",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tianyi Bai",
+        "Ling Yang",
+        "Zhen Hao Wong",
+        "Jiahui Peng",
+        "Xinlin Zhuang",
+        "Chi Zhang",
+        "Lijun Wu",
+        "Jiantao Qiu"
+      ],
+      "raw_text": "Multi-agent collaborative data selection for efficient llm pretraining Tianyi Bai Ling Yang Zhen Hao Wong Jiahui Peng Xinlin Zhuang Chi Zhang Lijun Wu Jiantao Qiu Wentao Zhang Binhang Yuan Conghui He arXiv:2410.08102 2024 Preprint"
+    },
+    {
+      "index": 3,
+      "title": "Piqa: Reasoning about physical commonsense in natural language",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Yonatan Bisk",
+        "Rowan Zellers",
+        "Le Ronan",
+        "Jianfeng Bras",
+        "Yejin Gao",
+        "Choi"
+      ],
+      "raw_text": "Piqa: Reasoning about physical commonsense in natural language Yonatan Bisk Rowan Zellers Le Ronan Jianfeng Bras Yejin Gao Choi AAAI Conference on Artificial Intelligence 2019"
+    },
+    {
+      "index": 4,
+      "title": "Language models are fewshot learners",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Tom Brown",
+        "Benjamin Mann",
+        "Nick Ryder",
+        "Melanie Subbiah"
+      ],
+      "raw_text": "Language models are fewshot learners Tom Brown Benjamin Mann Nick Ryder Melanie Subbiah Advances in Neural Information Processing Systems 2020 33"
+    },
+    {
+      "index": 5,
+      "title": "Instruction pretraining: Language models are supervised multitask learners",
+      "doi": "10.18653/v1/2024.emnlp-main.148",
+      "year": "2024",
+      "authors": [
+        "Daixuan Cheng",
+        "Yuxian Gu",
+        "Shaohan Huang",
+        "Junyu Bi",
+        "Minlie Huang",
+        "Furu Wei"
+      ],
+      "raw_text": "Instruction pretraining: Language models are supervised multitask learners Daixuan Cheng Yuxian Gu Shaohan Huang Junyu Bi Minlie Huang Furu Wei 10.18653/v1/2024.emnlp-main.148 Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing the 2024 Conference on Empirical Methods in Natural Language Processing Miami, Florida, USA Association for Computational Linguistics 2024"
+    },
+    {
+      "index": 6,
+      "title": "Palm: Scaling language modeling with pathways",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Aakanksha Chowdhery",
+        "Sharan Narang",
+        "Jacob Devlin",
+        "Maarten Bosma",
+        "Gaurav Mishra"
+      ],
+      "raw_text": "Palm: Scaling language modeling with pathways Aakanksha Chowdhery Sharan Narang Jacob Devlin Maarten Bosma Gaurav Mishra Journal of Machine Learning Research 24 240 2023"
+    },
+    {
+      "index": 7,
+      "title": "Think you have solved question answering? try arc, the ai2 reasoning challenge",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Peter Clark",
+        "Isaac Cowhey",
+        "Oren Etzioni",
+        "Tushar Khot",
+        "Ashish Sabharwal",
+        "Carissa Schoenick",
+        "Oyvind Tafjord"
+      ],
+      "raw_text": "Think you have solved question answering? try arc, the ai2 reasoning challenge Peter Clark Isaac Cowhey Oren Etzioni Tushar Khot Ashish Sabharwal Carissa Schoenick Oyvind Tafjord arXiv:1803.05457 2018 Preprint"
+    },
+    {
+      "index": 8,
+      "title": "Support vector regression machines",
+      "doi": "",
+      "year": "1996",
+      "authors": [
+        "Harris Drucker",
+        "J C Christopher",
+        "Linda Burges",
+        "Alex Kaufman",
+        "Vladimir Smola",
+        "Vapnik"
+      ],
+      "raw_text": "Support vector regression machines Harris Drucker J C Christopher Linda Burges Alex Kaufman Vladimir Smola Vapnik Advances in Neural Information Processing Systems MIT Press 1996 9"
+    },
+    {
+      "index": 9,
+      "title": "GLaM: Efficient scaling of language models with mixtureof-experts",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Nan Du",
+        "Yanping Huang",
+        "Andrew M Dai",
+        "Simon Tong",
+        "Dmitry Lepikhin",
+        "Yuanzhong Xu",
+        "Maxim Krikun",
+        "Yanqi Zhou"
+      ],
+      "raw_text": "GLaM: Efficient scaling of language models with mixtureof-experts Nan Du Yanping Huang Andrew M Dai Simon Tong Dmitry Lepikhin Yuanzhong Xu Maxim Krikun Yanqi Zhou Adams Wei Yu Orhan Firat Barret Zoph Liam Fedus P Maarten Zongwei Bosma Tao Zhou Emma Wang Kellie Wang Marie Webster Kevin Pellat Kathleen Robinson Toju Meier-Hellstern Lucas Duke Kun Dixon Quoc Zhang Yonghui Le Zhifeng Wu Claire Chen Cui PMLR Proceedings of the 39th International Conference on Machine Learning the 39th International Conference on Machine Learning 2022 162"
+    },
+    {
+      "index": 10,
+      "title": "Doge: Domain reweighting with generalization estimation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Simin Fan",
+        "Matteo Pagliardini",
+        "Martin Jaggi"
+      ],
+      "raw_text": "Doge: Domain reweighting with generalization estimation Simin Fan Matteo Pagliardini Martin Jaggi arXiv:2310.15393 2024 Preprint"
+    },
+    {
+      "index": 11,
+      "title": "The pile: An 800gb dataset of diverse text for language modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Leo Gao",
+        "Stella Biderman",
+        "Sid Black",
+        "Laurence Golding",
+        "Travis Hoppe",
+        "Charles Foster",
+        "Jason Phang",
+        "Horace He"
+      ],
+      "raw_text": "Leo Gao Stella Biderman Sid Black Laurence Golding Travis Hoppe Charles Foster Jason Phang Horace He Anish Thite Noa Nabeshima Shawn Presser Connor Leahy arXiv:2101.00027 The pile: An 800gb dataset of diverse text for language modeling 2020 Preprint"
+    },
+    {
+      "index": 12,
+      "title": "Anish Thite",
+      "doi": "10.5281/zenodo.10256836",
+      "year": "",
+      "authors": [
+        "Leo Gao",
+        "Jonathan Tow",
+        "Stella Baber Abbasi",
+        "Sid Biderman",
+        "Anthony Black",
+        "Charles Dipofi",
+        "Laurence Foster",
+        "Jeffrey Golding"
+      ],
+      "raw_text": "Leo Gao Jonathan Tow Stella Baber Abbasi Sid Biderman Anthony Black Charles Dipofi Laurence Foster Jeffrey Golding Alain Hsu Haonan Le Noac'h Kyle Li Niklas Mcdonell Chris Muennighoff Jason Ociepa Laria Phang Hailey Reynolds Aviya Schoelkopf Lintang Skowron Eric Sutawika Tang 10.5281/zenodo.10256836 Anish Thite and Andy Zou. 2023. A framework for few-shot language model evaluation"
+    },
+    {
+      "index": 13,
+      "title": "Bimix: Bivariate data mixing law for language model pretraining",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ce Ge",
+        "Zhijian Ma",
+        "Daoyuan Chen",
+        "Yaliang Li",
+        "Bolin Ding"
+      ],
+      "raw_text": "Bimix: Bivariate data mixing law for language model pretraining Ce Ge Zhijian Ma Daoyuan Chen Yaliang Li Bolin Ding arXiv:2405.14908 2024 Preprint"
+    },
+    {
+      "index": 14,
+      "title": "Data selection via optimal control for language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yuxian Gu",
+        "Li Dong",
+        "Hongning Wang",
+        "Yaru Hao",
+        "Qingxiu Dong",
+        "Furu Wei",
+        "Minlie Huang"
+      ],
+      "raw_text": "Data selection via optimal control for language models Yuxian Gu Li Dong Hongning Wang Yaru Hao Qingxiu Dong Furu Wei Minlie Huang arXiv:2410.07064 2024 Preprint"
+    },
+    {
+      "index": 15,
+      "title": "Textbooks are all you need",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Suriya Gunasekar",
+        "Yi Zhang",
+        "Jyoti Aneja",
+        "Caio César",
+        "Teodoro Mendes",
+        "Allie Del Giorno",
+        "Sivakanth Gopi",
+        "Mojan Javaheripi"
+      ],
+      "raw_text": "Textbooks are all you need Suriya Gunasekar Yi Zhang Jyoti Aneja Caio César Teodoro Mendes Allie Del Giorno Sivakanth Gopi Mojan Javaheripi Piero Kauffmann Gustavo De Rosa Olli Saarikivi arXiv:2306.11644 Adil Salim, Shital Shah, Harkirat Singh Behl, Xin Wang, Sébastien Bubeck, Ronen Eldan, Adam Tauman Kalai, Yin Tat Lee, and Yuanzhi Li 2023 Preprint"
+    },
+    {
+      "index": 16,
+      "title": "Debertav3: Improving deberta using electra-style pretraining with gradient-disentangled embedding sharing",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Pengcheng He",
+        "Jianfeng Gao",
+        "Weizhu Chen"
+      ],
+      "raw_text": "Debertav3: Improving deberta using electra-style pretraining with gradient-disentangled embedding sharing Pengcheng He Jianfeng Gao Weizhu Chen arXiv:2111.09543 2023 Preprint"
+    },
+    {
+      "index": 17,
+      "title": "Measuring massive multitask language understanding",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Dan Hendrycks",
+        "Collin Burns",
+        "Steven Basart",
+        "Andy Zou",
+        "Mantas Mazeika",
+        "Dawn Song",
+        "Jacob Steinhardt"
+      ],
+      "raw_text": "Measuring massive multitask language understanding Dan Hendrycks Collin Burns Steven Basart Andy Zou Mantas Mazeika Dawn Song Jacob Steinhardt 2021 In ICLR. OpenReview.net"
+    },
+    {
+      "index": 18,
+      "title": "Scaling laws and interpretability of learning from repeated data",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Danny Hernandez",
+        "Tom Brown",
+        "Tom Conerly",
+        "Nova Dassarma",
+        "Dawn Drain",
+        "Sheer El-Showk",
+        "Nelson Elhage",
+        "Zac Hatfield-Dodds"
+      ],
+      "raw_text": "Scaling laws and interpretability of learning from repeated data Danny Hernandez Tom Brown Tom Conerly Nova Dassarma Dawn Drain Sheer El-Showk Nelson Elhage Zac Hatfield-Dodds Tom Henighan Tristan Hume Scott Johnston Ben Mann Chris Olah Catherine Olsson Dario Amodei Nicholas Joseph Jared Kaplan Sam Mccandlish arXiv:2205.10487 2022 Preprint"
+    },
+    {
+      "index": 19,
+      "title": "An empirical analysis of compute-optimal large language model training",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jordan Hoffmann",
+        "Sebastian Borgeaud",
+        "Arthur Mensch",
+        "Elena Buchatskaya",
+        "Trevor Cai",
+        "Eliza Rutherford",
+        "Diego De Las",
+        "Lisa Anne Casas"
+      ],
+      "raw_text": "An empirical analysis of compute-optimal large language model training Jordan Hoffmann Sebastian Borgeaud Arthur Mensch Elena Buchatskaya Trevor Cai Eliza Rutherford Diego De Las Lisa Anne Casas Johannes Hendricks Aidan Welbl Thomas Clark Eric Hennigan Katherine Noland George Millican Bogdan Van Den Driessche Aurelia Damoc Simon Guy Karén Osindero Erich Simonyan Oriol Elsen Jack Vinyals Laurent Rae Sifre Advances in Neural Information Processing Systems Curran Associates, Inc 2022 35"
+    },
+    {
+      "index": 20,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Joseph Jennings",
+        "Mostofa Patwary",
+        "Sandeep Subramanian",
+        "Shrimai Prabhumoye",
+        "Ayush Dattagupta",
+        "Vibhu Jawa",
+        "Jiwei Liu",
+        "Ryan Wolf"
+      ],
+      "raw_text": "Joseph Jennings Mostofa Patwary Sandeep Subramanian Shrimai Prabhumoye Ayush Dattagupta Vibhu Jawa Jiwei Liu Ryan Wolf Sarah Yurick Varun Singh NeMo-Curator a toolkit for data curation"
+    },
+    {
+      "index": 21,
+      "title": "TriviaQA: A large scale distantly supervised challenge dataset for reading comprehension",
+      "doi": "10.18653/v1/P17-1147",
+      "year": "2017",
+      "authors": [
+        "Mandar Joshi",
+        "Eunsol Choi",
+        "Daniel Weld",
+        "Luke Zettlemoyer"
+      ],
+      "raw_text": "TriviaQA: A large scale distantly supervised challenge dataset for reading comprehension Mandar Joshi Eunsol Choi Daniel Weld Luke Zettlemoyer 10.18653/v1/P17-1147 Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics the 55th Annual Meeting of the Association for Computational Linguistics Vancouver, Canada. Association for Computational Linguistics 2017 1 Long Papers)"
+    },
+    {
+      "index": 22,
+      "title": "Autoscale: Automatic prediction of compute-optimal data composition for training llms",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Feiyang Kang",
+        "Yifan Sun",
+        "Bingbing Wen",
+        "Si Chen",
+        "Dawn Song",
+        "Rafid Mahmood",
+        "Ruoxi Jia"
+      ],
+      "raw_text": "Autoscale: Automatic prediction of compute-optimal data composition for training llms Feiyang Kang Yifan Sun Bingbing Wen Si Chen Dawn Song Rafid Mahmood Ruoxi Jia arXiv:2407.20177 2024 Preprint"
+    },
+    {
+      "index": 23,
+      "title": "Scaling laws for neural language models",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Jared Kaplan",
+        "Sam Mccandlish",
+        "Tom Henighan",
+        "Tom B Brown",
+        "Benjamin Chess",
+        "Rewon Child",
+        "Scott Gray",
+        "Alec Radford"
+      ],
+      "raw_text": "Scaling laws for neural language models Jared Kaplan Sam Mccandlish Tom Henighan Tom B Brown Benjamin Chess Rewon Child Scott Gray Alec Radford Jeffrey Wu Dario Amodei arXiv:2001.08361 2020 Preprint"
+    },
+    {
+      "index": 24,
+      "title": "Natural questions: A benchmark for question answering research",
+      "doi": "10.1162/tacl_a_00276",
+      "year": "2017",
+      "authors": [
+        "Guolin Ke",
+        "Qi Meng",
+        "Thomas Finley",
+        "Taifeng Wang",
+        "Wei Chen",
+        "Weidong Ma",
+        "Qiwei Ye",
+        "Tie-Yan Liu"
+      ],
+      "raw_text": "Natural questions: A benchmark for question answering research Guolin Ke Qi Meng Thomas Finley Taifeng Wang Wei Chen Weidong Ma Qiwei Ye Tie-Yan Liu 10.1162/tacl_a_00276 Advances in Neural Information Processing Systems Tom Kwiatkowski Jennimaria Palomaki Olivia Redfield Michael Collins Ankur Parikh Chris Alberti Danielle Epstein Illia Polosukhin Jacob Devlin Kenton Lee Kristina Toutanova Llion Jones Matthew Kelcey Ming-Wei Chang Andrew M Dai Jakob Uszkoreit Quoc Le Slav Petrov Curran Associates, Inc 2017. 2019 30 Lightgbm: A highly efficient gradient boosting decision tree"
+    },
+    {
+      "index": 25,
+      "title": "The bigscience roots corpus: A 1.6tb composite multilingual dataset",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Lucile Hugo Laurençon",
+        "Thomas Saulnier",
+        "Christopher Wang",
+        "Albert Akiki",
+        "Teven Villanova Del Moral",
+        "Leandro Le Scao",
+        "Chenghao Von Werra",
+        "Eduardo González Mou"
+      ],
+      "raw_text": "The bigscience roots corpus: A 1.6tb composite multilingual dataset Lucile Hugo Laurençon Thomas Saulnier Christopher Wang Albert Akiki Teven Villanova Del Moral Leandro Le Scao Chenghao Von Werra Eduardo González Mou Huu Ponferrada Jörg Nguyen Mario Frohberg Šaško Advances in Neural Information Processing Systems 2022 35"
+    },
+    {
+      "index": 26,
+      "title": "Latent retrieval for weakly supervised open domain question answering",
+      "doi": "10.18653/v1/P19-1612",
+      "year": "2019",
+      "authors": [
+        "Kenton Lee",
+        "Ming-Wei Chang",
+        "Kristina Toutanova"
+      ],
+      "raw_text": "Latent retrieval for weakly supervised open domain question answering Kenton Lee Ming-Wei Chang Kristina Toutanova 10.18653/v1/P19-1612 Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics the 57th Annual Meeting of the Association for Computational Linguistics Florence, Italy 2019 Association for Computational Linguistics"
+    },
+    {
+      "index": 27,
+      "title": "Datacomp-lm: In search of the next generation of training sets for language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jeffrey Li",
+        "Alex Fang",
+        "Georgios Smyrnis",
+        "Maor Ivgi",
+        "Matt Jordan",
+        "Samir Gadre",
+        "Hritik Bansal",
+        "Etash Guha"
+      ],
+      "raw_text": "Datacomp-lm: In search of the next generation of training sets for language models Jeffrey Li Alex Fang Georgios Smyrnis Maor Ivgi Matt Jordan Samir Gadre Hritik Bansal Etash Guha Sedrick Keh arXiv:2406.11794 2024 Preprint"
+    },
+    {
+      "index": 28,
+      "title": "Rho-1: Not all tokens are what you need",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zhenghao Lin",
+        "Zhibin Gou",
+        "Yeyun Gong",
+        "Xiao Liu",
+        "Yelong Shen",
+        "Ruochen Xu",
+        "Chen Lin",
+        "Yujiu Yang"
+      ],
+      "raw_text": "Rho-1: Not all tokens are what you need Zhenghao Lin Zhibin Gou Yeyun Gong Xiao Liu Yelong Shen Ruochen Xu Chen Lin Yujiu Yang Jian Jiao Nan Duan Weizhu Chen arXiv:2404.07965 2025 Preprint"
+    },
+    {
+      "index": 29,
+      "title": "Regmix: Data mixture as regression for language model pre-training",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Qian Liu",
+        "Xiaosen Zheng",
+        "Niklas Muennighoff",
+        "Guangtao Zeng",
+        "Longxu Dou",
+        "Tianyu Pang",
+        "Jing Jiang",
+        "Min Lin"
+      ],
+      "raw_text": "Qian Liu Xiaosen Zheng Niklas Muennighoff Guangtao Zeng Longxu Dou Tianyu Pang Jing Jiang Min Lin arXiv:2407.01492 Regmix: Data mixture as regression for language model pre-training 2024 Preprint"
+    },
+    {
+      "index": 30,
+      "title": "A pretrainer's guide to training data: Measuring the effects of data age, domain coverage, quality, & toxicity",
+      "doi": "10.18653/v1/2024.naacl-long.179",
+      "year": "2024",
+      "authors": [
+        "Shayne Longpre",
+        "Gregory Yauney",
+        "Emily Reif",
+        "Katherine Lee",
+        "Adam Roberts",
+        "Barret Zoph",
+        "Denny Zhou",
+        "Jason Wei"
+      ],
+      "raw_text": "A pretrainer's guide to training data: Measuring the effects of data age, domain coverage, quality, & toxicity Shayne Longpre Gregory Yauney Emily Reif Katherine Lee Adam Roberts Barret Zoph Denny Zhou Jason Wei Kevin Robinson David Mimno Daphne Ippolito 10.18653/v1/2024.naacl-long.179 Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies Mexico City, Mexico 2024 1 Long Papers) Association for Computational Linguistics"
+    },
+    {
+      "index": 31,
+      "title": "When less is more: Investigating data pruning for pretraining llms at scale",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Max Marion",
+        "Ahmet Üstün",
+        "Luiza Pozzobon",
+        "Alex Wang",
+        "Marzieh Fadaee",
+        "Sara Hooker"
+      ],
+      "raw_text": "When less is more: Investigating data pruning for pretraining llms at scale Max Marion Ahmet Üstün Luiza Pozzobon Alex Wang Marzieh Fadaee Sara Hooker arXiv:2309.04564 2023 Preprint"
+    },
+    {
+      "index": 32,
+      "title": "Can a suit of armor conduct elec-tricity? a new dataset for open book question answering",
+      "doi": "10.18653/v1/D18-1260",
+      "year": "2018",
+      "authors": [
+        "Todor Mihaylov",
+        "Peter Clark",
+        "Tushar Khot",
+        "Ashish Sabharwal"
+      ],
+      "raw_text": "Can a suit of armor conduct elec-tricity? a new dataset for open book question answering Todor Mihaylov Peter Clark Tushar Khot Ashish Sabharwal 10.18653/v1/D18-1260 Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing the 2018 Conference on Empirical Methods in Natural Language Processing Brussels, Belgium Association for Computational Linguistics 2018"
+    },
+    {
+      "index": 33,
+      "title": "Scaling data-constrained language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Niklas Muennighoff",
+        "Alexander Rush",
+        "Boaz Barak",
+        "Teven Le Scao",
+        "Nouamane Tazi",
+        "Aleksandra Piktus",
+        "Sampo Pyysalo",
+        "Thomas Wolf"
+      ],
+      "raw_text": "Scaling data-constrained language models Niklas Muennighoff Alexander Rush Boaz Barak Teven Le Scao Nouamane Tazi Aleksandra Piktus Sampo Pyysalo Thomas Wolf Colin A Raffel Advances in Neural Information Processing Systems Curran Associates, Inc 2023 36"
+    },
+    {
+      "index": 34,
+      "title": "Are NLP models really able to solve simple math word problems?",
+      "doi": "10.18653/v1/2021.naacl-main.168",
+      "year": "2021",
+      "authors": [
+        "Arkil Patel",
+        "Satwik Bhattamishra",
+        "Navin Goyal"
+      ],
+      "raw_text": "Are NLP models really able to solve simple math word problems? Arkil Patel Satwik Bhattamishra Navin Goyal 10.18653/v1/2021.naacl-main.168 Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies Online. Association for Computational Linguistics 2021"
+    },
+    {
+      "index": 35,
+      "title": "The fineweb datasets: Decanting the web for the finest text data at scale",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Guilherme Penedo",
+        "Hynek Kydlíček",
+        "Loubna Ben Allal",
+        "Anton Lozhkov",
+        "Margaret Mitchell",
+        "Colin Raffel",
+        "Leandro Von Werra",
+        "Thomas Wolf"
+      ],
+      "raw_text": "The fineweb datasets: Decanting the web for the finest text data at scale Guilherme Penedo Hynek Kydlíček Loubna Ben Allal Anton Lozhkov Margaret Mitchell Colin Raffel Leandro Von Werra Thomas Wolf arXiv:2406.17557 2024 Preprint"
+    },
+    {
+      "index": 36,
+      "title": "The refinedweb dataset for falcon llm: Outperforming curated corpora with web data only",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Guilherme Penedo",
+        "Quentin Malartic",
+        "Daniel Hesslow",
+        "Ruxandra Cojocaru",
+        "Hamza Alobeidli",
+        "Alessandro Cappelli",
+        "Baptiste Pannier",
+        "Ebtesam Almazrouei"
+      ],
+      "raw_text": "The refinedweb dataset for falcon llm: Outperforming curated corpora with web data only Guilherme Penedo Quentin Malartic Daniel Hesslow Ruxandra Cojocaru Hamza Alobeidli Alessandro Cappelli Baptiste Pannier Ebtesam Almazrouei Julien Launay Advances in Neural Information Processing Systems 2023 36"
+    },
+    {
+      "index": 37,
+      "title": "D-cpt law: Domain-specific continual pre-training scaling law for large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Haoran Que",
+        "Jiaheng Liu",
+        "Ge Zhang",
+        "Chenchen Zhang",
+        "Xingwei Qu",
+        "Yinghao Ma",
+        "Feiyu Duan",
+        "Zhiqi Bai"
+      ],
+      "raw_text": "D-cpt law: Domain-specific continual pre-training scaling law for large language models Haoran Que Jiaheng Liu Ge Zhang Chenchen Zhang Xingwei Qu Yinghao Ma Feiyu Duan Zhiqi Bai Jiakai Wang Yuanxing Zhang Xu Tan Jie Fu Wenbo Su Jiamang Wang Lin Qu Bo Zheng arXiv:2406.01375 2024 Preprint"
+    },
+    {
+      "index": 38,
+      "title": "Scaling language models: Methods, analysis & insights from training gopher",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Jack W Rae",
+        "Sebastian Borgeaud",
+        "Trevor Cai",
+        "Katie Millican",
+        "Jordan Hoffmann",
+        "Francis Song",
+        "John Aslanides",
+        "Sarah Henderson"
+      ],
+      "raw_text": "Jack W Rae Sebastian Borgeaud Trevor Cai Katie Millican Jordan Hoffmann Francis Song John Aslanides Sarah Henderson Roman Ring Susannah Young Eliza Rutherford Tom Hennigan Jacob Menick Albin Cassirer Richard Powell George Van Den Driessche Lisa Anne Hendricks Maribeth Rauh Po-Sen Huang Amelia Glaese Johannes Welbl Sumanth Dathathri arXiv:2112.11446 Scaling language models: Methods, analysis & insights from training gopher 2022 Preprint"
+    },
+    {
+      "index": 39,
+      "title": "Exploring the limits of transfer learning with a unified text-to-text transformer",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Colin Raffel",
+        "Noam Shazeer",
+        "Adam Roberts",
+        "Katherine Lee",
+        "Sharan Narang",
+        "Michael Matena",
+        "Yanqi Zhou",
+        "Wei Li"
+      ],
+      "raw_text": "Exploring the limits of transfer learning with a unified text-to-text transformer Colin Raffel Noam Shazeer Adam Roberts Katherine Lee Sharan Narang Michael Matena Yanqi Zhou Wei Li Peter J Liu Journal of Machine Learning Research 21 140 2020"
+    },
+    {
+      "index": 40,
+      "title": "How to train data-efficient llms",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Noveen Sachdeva",
+        "Benjamin Coleman",
+        "Wang-Cheng Kang",
+        "Jianmo Ni",
+        "Lichan Hong",
+        "Ed H Chi",
+        "James Caverlee",
+        "Julian Mcauley"
+      ],
+      "raw_text": "How to train data-efficient llms Noveen Sachdeva Benjamin Coleman Wang-Cheng Kang Jianmo Ni Lichan Hong Ed H Chi James Caverlee Julian Mcauley Derek Zhiyuan Cheng arXiv:2402.09668 2024 Preprint"
+    },
+    {
+      "index": 41,
+      "title": "Balanced data sampling for language model training with clustering",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Yunfan Shao",
+        "Linyang Li",
+        "Zhaoye Fei",
+        "Hang Yan",
+        "Dahua Lin",
+        "Xipeng Qiu"
+      ],
+      "raw_text": "Balanced data sampling for language model training with clustering Yunfan Shao Linyang Li Zhaoye Fei Hang Yan Dahua Lin Xipeng Qiu arXiv:2402.14526 2024 Preprint"
+    },
+    {
+      "index": 42,
+      "title": "Glu variants improve transformer",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Noam Shazeer"
+      ],
+      "raw_text": "Glu variants improve transformer Noam Shazeer arXiv:2002.05202 2020 Preprint"
+    },
+    {
+      "index": 43,
+      "title": "Dolma: an open corpus of three trillion tokens for language model pretraining research",
+      "doi": "10.18653/v1/2024.acl-long.840",
+      "year": "2024",
+      "authors": [
+        "Luca Soldaini",
+        "Rodney Kinney",
+        "Akshita Bhagia",
+        "Dustin Schwenk",
+        "David Atkinson",
+        "Russell Authur",
+        "Ben Bogin",
+        "Khyathi Chandu"
+      ],
+      "raw_text": "Dolma: an open corpus of three trillion tokens for language model pretraining research Luca Soldaini Rodney Kinney Akshita Bhagia Dustin Schwenk David Atkinson Russell Authur Ben Bogin Khyathi Chandu Jennifer Dumas Yanai Elazar Valentin Hofmann Ananya Jha Sachin Kumar Li Lucy Xinxi Lyu Nathan Lambert 10.18653/v1/2024.acl-long.840 Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics the 62nd Annual Meeting of the Association for Computational Linguistics Bangkok, Thailand Association for Computational Linguistics 2024 1"
+    },
+    {
+      "index": 44,
+      "title": "Roformer: Enhanced transformer with rotary position embedding",
+      "doi": "10.1016/j.neucom.2023.127063",
+      "year": "2024",
+      "authors": [
+        "Jianlin Su",
+        "Murtadha Ahmed",
+        "Yu Lu",
+        "Shengfeng Pan",
+        "Wen Bo",
+        "Yunfeng Liu"
+      ],
+      "raw_text": "Roformer: Enhanced transformer with rotary position embedding Jianlin Su Murtadha Ahmed Yu Lu Shengfeng Pan Wen Bo Yunfeng Liu 10.1016/j.neucom.2023.127063 Neurocomputing 568 127063 2024"
+    },
+    {
+      "index": 45,
+      "title": "Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Teknium"
+      ],
+      "raw_text": "Openhermes 2.5: An open dataset of synthetic data for generalist llm assistants Teknium 2023 In huggingface"
+    },
+    {
+      "index": 46,
+      "title": "Improving pretraining data using perplexity correlations",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Tristan Thrush",
+        "Christopher Potts",
+        "Tatsunori Hashimoto"
+      ],
+      "raw_text": "Improving pretraining data using perplexity correlations Tristan Thrush Christopher Potts Tatsunori Hashimoto arXiv:2409.05816 2024 Preprint"
+    },
+    {
+      "index": 47,
+      "title": "Improving llm pretraining via document de-duplication and diversification",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Kushal Tirumala",
+        "Daniel Simig",
+        "Armen Aghajanyan",
+        "Ari S Morcos"
+      ],
+      "raw_text": "Improving llm pretraining via document de-duplication and diversification Kushal Tirumala Daniel Simig Armen Aghajanyan Ari S Morcos arXiv:2308.12284 2023 4 Preprint"
+    },
+    {
+      "index": 48,
+      "title": "Llama: Open and efficient foundation language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Hugo Touvron",
+        "Thibaut Lavril",
+        "Gautier Izacard",
+        "Xavier Martinet",
+        "Marie-Anne Lachaux",
+        "Timothée Lacroix",
+        "Baptiste Rozière",
+        "Naman Goyal"
+      ],
+      "raw_text": "Hugo Touvron Thibaut Lavril Gautier Izacard Xavier Martinet Marie-Anne Lachaux Timothée Lacroix Baptiste Rozière Naman Goyal Eric Hambro Faisal Azhar Aurelien Rodriguez Armand Joulin Edouard Grave Guillaume Lample arXiv:2302.13971 Llama: Open and efficient foundation language models 2023 Preprint"
+    },
+    {
+      "index": 49,
+      "title": "Attention is all you need",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Ashish Vaswani",
+        "Noam Shazeer",
+        "Niki Parmar",
+        "Jakob Uszkoreit",
+        "Llion Jones",
+        "Aidan N Gomez",
+        "Ł Ukasz Kaiser",
+        "Illia Polosukhin"
+      ],
+      "raw_text": "Attention is all you need Ashish Vaswani Noam Shazeer Niki Parmar Jakob Uszkoreit Llion Jones Aidan N Gomez Ł Ukasz Kaiser Illia Polosukhin Advances in Neural Information Processing Systems Curran Associates, Inc 2017 30"
+    },
+    {
+      "index": 50,
+      "title": "Redpajama: an open dataset for training large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Maurice Weber",
+        "Daniel Fu",
+        "Quentin Anthony",
+        "Yonatan Oren",
+        "Shane Adams",
+        "Anton Alexandrov",
+        "Xiaozhong Lyu",
+        "Huu Nguyen"
+      ],
+      "raw_text": "Maurice Weber Daniel Fu Quentin Anthony Yonatan Oren Shane Adams Anton Alexandrov Xiaozhong Lyu Huu Nguyen Xiaozhe Yao Virginia Adams Ben Athiwaratkun Rahul Chalamala Kezhen Chen Max Ryabinin Tri Dao Percy Liang Christopher Ré Irina Rish Ce Zhang arXiv:2411.12372 Redpajama: an open dataset for training large language models 2024 Preprint"
+    },
+    {
+      "index": 51,
+      "title": "CCNet: Extracting high quality monolingual datasets from web crawl data",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Guillaume Wenzek",
+        "Marie-Anne Lachaux",
+        "Alexis Conneau",
+        "Vishrav Chaudhary",
+        "Francisco Guzmán",
+        "Armand Joulin",
+        "Edouard Grave"
+      ],
+      "raw_text": "CCNet: Extracting high quality monolingual datasets from web crawl data Guillaume Wenzek Marie-Anne Lachaux Alexis Conneau Vishrav Chaudhary Francisco Guzmán Armand Joulin Edouard Grave Proceedings of the Twelfth Language Resources and Evaluation Conference the Twelfth Language Resources and Evaluation Conference Marseille, France European Language Resources Association 2020"
+    },
+    {
+      "index": 52,
+      "title": "Qurating: Selecting highquality data for training language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Wettig",
+        "Aatmik Gupta",
+        "Saumya Malik",
+        "Danqi Chen"
+      ],
+      "raw_text": "Qurating: Selecting highquality data for training language models Alexander Wettig Aatmik Gupta Saumya Malik Danqi Chen arXiv:2402.09739 2024 Preprint"
+    },
+    {
+      "index": 53,
+      "title": "Doremi: Optimizing data mixtures speeds up language model pretraining",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Sang Michael Xie",
+        "Hieu Pham",
+        "Xuanyi Dong",
+        "Nan Du",
+        "Hanxiao Liu",
+        "Yifeng Lu",
+        "Percy S Liang",
+        "V Quoc"
+      ],
+      "raw_text": "Doremi: Optimizing data mixtures speeds up language model pretraining Sang Michael Xie Hieu Pham Xuanyi Dong Nan Du Hanxiao Liu Yifeng Lu Percy S Liang V Quoc Tengyu Le Adams Wei Ma Yu Advances in Neural Information Processing Systems 2023"
+    },
+    {
+      "index": 54,
+      "title": "2023b. Data selection for language models via importance resampling",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Sang Michael Xie",
+        "Shibani Santurkar",
+        "Tengyu Ma",
+        "Percy S Liang"
+      ],
+      "raw_text": "2023b. Data selection for language models via importance resampling Sang Michael Xie Shibani Santurkar Tengyu Ma Percy S Liang Advances in Neural Information Processing Systems Curran Associates, Inc 36"
+    },
+    {
+      "index": 55,
+      "title": "Data mixing laws: Optimizing data mixtures by predicting language modeling performance",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jiasheng Ye",
+        "Peiju Liu",
+        "Tianxiang Sun",
+        "Yunhua Zhou",
+        "Jun Zhan",
+        "Xipeng Qiu"
+      ],
+      "raw_text": "Data mixing laws: Optimizing data mixtures by predicting language modeling performance Jiasheng Ye Peiju Liu Tianxiang Sun Yunhua Zhou Jun Zhan Xipeng Qiu arXiv:2403.16952 2024 Preprint"
+    },
+    {
+      "index": 56,
+      "title": "Mates: Model-aware data selection for efficient pretraining with data influence models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Zichun Yu",
+        "Spandan Das",
+        "Chenyan Xiong"
+      ],
+      "raw_text": "Mates: Model-aware data selection for efficient pretraining with data influence models Zichun Yu Spandan Das Chenyan Xiong arXiv:2406.06046 2024 Preprint"
+    },
+    {
+      "index": 57,
+      "title": "HellaSwag: Can a machine really finish your sentence?",
+      "doi": "10.18653/v1/P19-1472",
+      "year": "2019",
+      "authors": [
+        "Rowan Zellers",
+        "Ari Holtzman",
+        "Yonatan Bisk",
+        "Ali Farhadi",
+        "Yejin Choi"
+      ],
+      "raw_text": "HellaSwag: Can a machine really finish your sentence? Rowan Zellers Ari Holtzman Yonatan Bisk Ali Farhadi Yejin Choi 10.18653/v1/P19-1472 Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics the 57th Annual Meeting of the Association for Computational Linguistics Florence, Italy 2019 Association for Computational Linguistics"
+    }
+  ],
+  "section_count": 20,
+  "reference_count": 57,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:26.959404+00:00"
+}

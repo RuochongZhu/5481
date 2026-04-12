@@ -1,95 +1,92 @@
 # Research Knowledge Graph Report
 
-**Nodes:** 216  
-**Edges:** 933
+**Nodes:** 243  
+**Edges:** 1127
 
 ## Node Types
 
 - beat: 5
 - category: 11
-- layer: 3
+- layer: 5
 - paper: 168
-- query: 24
-- source: 5
+- query: 41
+- source: 13
 
 ## Relation Types
 
-- supports_beat: 189
+- supports_beat: 301
 - classified_as: 168
 - provided_record: 168
-- retrieved_via: 168
-- retrieved: 165
-- secondary_category: 38
-- builds_on: 27
-- extends: 6
-- cites: 3
-- contradicts: 1
+- retrieved_via: 167
+- retrieved: 160
+- secondary_category: 89
+- builds_on: 60
+- contradicts: 7
+- extends: 7
 
 ## Integrity Signals
 
 - Paper nodes: 168
-- With DOI: 0
-- With publisher metadata: 0
+- With DOI: 139
+- With publisher metadata: 69
 - Retracted flagged: 0
+- Publisher: Association for Computational Linguistics (18)
+- Publisher: Springer Science and Business Media LLC (6)
+- Publisher: MDPI AG (6)
+- Publisher: ACM (5)
+- Publisher: Oxford University Press (OUP) (2)
 
 ## Top Hubs
 
-- openalex (layer, degree=107)
-- openalex (source, degree=98)
-- Validation Experiment (beat, degree=68)
-- arxiv (source, degree=58)
-- arxiv (layer, degree=58)
-- Category X (category, degree=52)
-- Crisis Exists (beat, degree=43)
-- Category E (category, degree=29)
-- Empirical Degradation (beat, degree=29)
-- Category D (category, degree=27)
-- Theoretical Framework (beat, degree=27)
-- Category F (category, degree=22)
-- Platform Solution (beat, degree=22)
-- Category C (category, degree=20)
-- Category A (category, degree=17)
+- Validation Experiment (beat, degree=79)
+- Crisis Exists (beat, degree=74)
+- openalex (layer, degree=68)
+- Platform Solution (beat, degree=57)
+- Empirical Degradation (beat, degree=54)
+- Category A (category, degree=41)
+- Category E (category, degree=41)
+- openalex (source, degree=40)
+- lens (layer, degree=40)
+- lens (source, degree=39)
+- Category D (category, degree=37)
+- Theoretical Framework (beat, degree=37)
+- arxiv (source, degree=32)
+- arxiv (layer, degree=32)
+- Category F (category, degree=28)
 
 ## Communities
 
-### Category E (75 nodes)
-- Validation Experiment (beat, degree=68)
-- arxiv (source, degree=58)
-- arxiv (layer, degree=58)
-- Category E (category, degree=29)
-- Empirical Degradation (beat, degree=29)
+### Category F (70 nodes)
+- Validation Experiment (beat, degree=79)
+- openalex (layer, degree=68)
+- Category E (category, degree=41)
+- openalex (source, degree=40)
+- Category F (category, degree=28)
 
-### Category G (74 nodes)
-- openalex (layer, degree=107)
-- openalex (source, degree=98)
-- Category X (category, degree=52)
-- AI generated content web pollution contamination percentage (query, degree=17)
-- data provenance verification platform community design (query, degree=12)
+### Category A (65 nodes)
+- Crisis Exists (beat, degree=74)
+- Platform Solution (beat, degree=57)
+- Category A (category, degree=41)
+- lens (layer, degree=40)
+- lens (source, degree=39)
 
-### Category A (31 nodes)
-- Crisis Exists (beat, degree=43)
-- Platform Solution (beat, degree=22)
-- Category A (category, degree=17)
-- AI models collapse when trained on recursively generated data (paper, degree=11)
-- How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model Collapse (paper, degree=11)
+### Category D (62 nodes)
+- Empirical Degradation (beat, degree=54)
+- Category D (category, degree=37)
+- Theoretical Framework (beat, degree=37)
+- arxiv (source, degree=32)
+- arxiv (layer, degree=32)
 
-### Category C (17 nodes)
-- Category C (category, degree=20)
-- AI text detection watermarking limitations adversarial (query, degree=12)
-- Paraphrasing evades detectors of AI-generated text, but retrieval is an effective defense (paper, degree=9)
-- Detecting AI-Generated Code Assignments Using Perplexity of Large Language Models (paper, degree=8)
-- Simple techniques to bypass GenAI text detectors: implications for inclusive education (paper, degree=8)
+### The Curse of Recursion: Training on Generated Data Makes Mod (31 nodes)
+- s2_citation (layer, degree=25)
+- AI models collapse when trained on recursively generated data (paper, degree=17)
+- The Curse of Recursion: Training on Generated Data Makes Models Forget (paper, degree=16)
+- s2+arxiv (source, degree=15)
+- Self-Consuming Generative Models go MAD (paper, degree=13)
 
-### Category F (14 nodes)
-- Category F (category, degree=22)
-- RLHF human feedback cost preference data quality (query, degree=14)
-- Direct Preference Optimization: Your Language Model is Secretly a Reward Model (paper, degree=7)
-- RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Feedback with AI Feedback (paper, degree=6)
-- AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback (paper, degree=6)
-
-### UNICORN on RAINBOW: A Universal Commonsense Reasoning Model  (5 nodes)
-- SocialIQA social reasoning benchmark evaluation (query, degree=5)
-- Clever Hans or Neural Theory of Mind? Stress Testing Social Reasoning in Large Language Models (paper, degree=5)
-- On Curriculum Learning for Commonsense Reasoning (paper, degree=5)
-- TSGP: Two-Stage Generative Prompting for Unsupervised Commonsense Question Answering (paper, degree=5)
-- UNICORN on RAINBOW: A Universal Commonsense Reasoning Model on a New Multitask Benchmark (paper, degree=5)
+### Category H (15 nodes)
+- Category H (category, degree=17)
+- Large Language Models Suffer From Their Own Output: An Analysis of the Self-Consuming Training Loop (paper, degree=10)
+- ChatGPT is incredible (at being average) (paper, degree=9)
+- The Curious Decline of Linguistic Diversity: Training Language Models on Synthetic Text (paper, degree=9)
+- AICC: Parse HTML Finer, Make Models Better - A 7.3T AI-Ready Corpus Built by a Model-Based HTML Parser (paper, degree=7)

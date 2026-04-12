@@ -1,0 +1,1580 @@
+{
+  "paperId": "doi:10.48550/arxiv.2511.10338",
+  "title": "BhashaKritika: Building Synthetic Pretraining Data at Scale for Indic Languages",
+  "year": 2025,
+  "source": "s2+arxiv",
+  "source_pdf_url": "",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2511.10338.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2511.10338.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2511.10338.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "In the context of pretraining of Large Language Models (LLMs), synthetic data has emerged as an alternative for generating high-quality pretraining data at scale. This is particularly beneficial in low-resource language settings where the benefits of recent LLMs have been unevenly distributed across languages. In this work, we present a systematic study on the generation and evaluation of synthetic multilingual pretraining data for Indic languages, where we construct a large-scale synthetic dataset BhashaKritika, comprising 540B tokens using 5 different techniques for 10 languages. We explore the impact of grounding generation in documents, personas, and topics. We analyze how language choice, both in the prompt instructions and document grounding, affects data quality, and we compare translations of English content with native generation in Indic languages. To support scalable and language-sensitive evaluation, we introduce a modular quality evaluation pipeline that integrates script and language detection, metadata consistency checks, n-gram repetition analysis, and perplexity-based filtering using KenLM models. Our framework enables robust quality control across diverse scripts and linguistic contexts. Empirical results through model runs reveal key trade-offs in generation strategies and highlight best practices for constructing effective multilingual corpora.",
+      "word_count": 187
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "Most state-of-the-art LLMs (Chowdhery et al. 2022; Touvron et al. 2023; Grattafiori et al. 2024; Abdin et al. 2025) are trained predominantly on English corpora, available in abundance, leaving many of the world's other languages underrepresented in both training data and model performance (Joshi et al. 2020; Mueller et al. 2023) . Villalobos et al. (2022) emphasize the finite nature of available pretraining data, often sourced from CommonCrawl (Common Crawl 2007) and the need for alternative approaches to progress the state of LLMs. Even when multilingual datasets exist, they often suffer from issues related to quantity, quality, domain bias, diversity and inconsistent formatting (Conneau et al. 2020) . Thus, open-access pretrained models with strong multilingual capabilities remain limited, especially for low-resource and morphologically rich Indian languages. Hindi, for instance, does not appear in the top 20 languages of Common Crawl despite being the third most spoken globally (Penedo et al. 2023) and Indian languages collectively constitute less than 1% (Kallappa et al. 2025) . This scarcity of both data and models presents a major barrier to the development of culturally inclusive LLMs especially with recent data constrained scaling laws (Muennighoff et al. 2023) arguing that model performance show degradation after 4 epochs on repeated data.\n\nSynthetic data generation has thus emerged as a viable approach where, training data is artificially generated while mirroring the features, structures, and statistical attributes of real-world data (Nadas, Diosan, and Tomescu 2025; Liu et al. 2024; Yu et al. 2023) . This offers a compelling alternative to conventional web-scraping and manual curation while providing control and diversity compared to web data. By leveraging existing LLMs as generators, it is possible to create large-scale, language-diverse corpora that is customizable and replicable (Wang et al. 2022b; Taori et al. 2023; Longpre et al. 2023; Chen et al. 2023) . The Phi series of models (Gunasekar et al. 2023; Li et al. 2023; Abdin et al. 2024) focused on proprietary synthetic data as part of their pre-training corpus and showed its efficacy in their training pipeline. Ben Allal et al. (2024) , created the opensource Cosmopedia consisting of 25B English synthetic tokens, grounded in web documents. Ge et al. (2024) introduced PersonaHub, a collection of English personas, that are then used for persona-grounded synthetic generation. Here, a 'persona' is defined as 'a person with specific professional experiences and cultural backgrounds having unique interests in reading and writing'.\n\nIn this work, we propose a pipeline for generating highquality synthetic pretraining text data focusing on both Indian languages and local context. Our approach builds on previous work and involves language-aware prompt engineering, style and domain variation, and automated quality filtering to ensure broad linguistic coverage and coherence.\n\nSpecifically, we make the following contributions: • We develop a modular pipeline for generating large-scale high-quality synthetic Indic multilingual corpora. We design prompt templates, data curation pipelines, generation strategies, and conduct ablations across languages and models that collectively ensure that the generated Figure 1 : Overview of Synthetic data generation techniques (Section 3) followed by Quality Evaluation (Section 4). We follow 5 approaches across 10 Indian languages using a pool of Multilingual LLMs to generate a large scale BhashaKritika corpora.\n\ndata is factually grounded, knowledge-dense, rich in Indic cultural context, and topically diverse.\n\n• We propose a novel method for constructing mathfocused pretraining data by transforming instructiontuned datasets into pretraining-style corpora through controlled synthetic generation.\n\n• We implement an automated quality filtering pipeline, covering language consistency, fluency, heuristic filters, statistical filters, quality classifiers, bias detection and mitigation strategy in the generated data.\n\n• We use our synthetic generation pipeline to generate BhashaKritika, a 540B tokens high-quality Indic multilingual synthetic corpus. We also share a part of this data for public use 1 .\n\n• We perform extensive analysis with additional two controlled experiments including annealing as well as pretraining a 1B param from scratch and show models trained on synthetic data continue to improve and closely match the one trained with the real data.\n\n2 Related Work",
+      "word_count": 664
+    },
+    {
+      "index": 3,
+      "title": "Web Crawled Datasets",
+      "kind": "body",
+      "text": "For text-based pretraining, large-scale datasets such as The Pile (Gao et al. 2020), C4 (Raffel et al. 2020 ), RedPajama (Computer 2023), RefinedWeb (Penedo et al. 2023) , Dolma (Soldaini et al. 2024) , DataComp-LM (Li et al. 2024b) , and FineWeb (Penedo et al. 2024a ) have been instrumental in training LLMs. Nemotron-CC (Su et al. 2024) further refines this effort with a high-quality subset of 6.4T tokens while MegaMath (Zhou et al. 2025 ) filters for Math datasets. Mostly sourced from CommonCrawl (Common Crawl 2007), these datasets however, predominantly feature English and other high-resource languages, offering limited coverage of Indian languages or culturally grounded content. More recently, FineWeb2 (Penedo et al. 2024b ) introduces broader language coverage, however only a small portion, around 40B words, pertains to Indian languages.\n\n1 https://huggingface.co/datasets/krutrim-ai-labs/BhashaKritika",
+      "word_count": 133
+    },
+    {
+      "index": 4,
+      "title": "Indic LLM Research",
+      "kind": "body",
+      "text": "Most prior work has focused on adapting existing Englishdominant models through fine-tuning or continued pretraining on Indic language corpora (Balachandran\n\n2023; Kohli et al. 2023; Gala et al. 2024; Sarvam 2023; Choudhury, Chauhan et al. 2024). In contrast, only a few models (Krutrim 2024; Bendale et al. 2024; Sarvam 2024) have been trained from scratch, aiming to create more culturally inclusive LLMs for the Indian context. Alongside model development, there have been ongoing efforts to curate multilingual datasets focused on Indian languages. One of the earlier efforts in this direction, the IndicNLP Corpora (Kunchukuttan et al. 2020), compiled around 2.7B tokens for 10 Indic languages from web-based content which was later expanded to IndicCorp (Kakwani et al. 2020), comprising 8.8B tokens across 11 Indian languages and English. Gala et al. (2024) released Indic Instruct Data v0.1, a Hindi instruction-tuning dataset derived through translation of pre-existing instruction sets. Additionally, the Sangraha corpus (Khan et al. 2024) offers a collection of 251B tokens covering 22 Indian languages, nonetheless, its scale remains modest compared to the much larger corpora generally available for English (in 5 -15T tokens) and the other Western languages.",
+      "word_count": 189
+    },
+    {
+      "index": 5,
+      "title": "Synthetic Data Generation",
+      "kind": "body",
+      "text": "Synthetic data techniques have become a valuable resource for enriching both fine-tuning and pretraining corpora. Early instruction-tuning methods include Self-Instruct (Wang et al. 2022a), Evol-Instruct (Xu et al. 2023) and Magpie (Xu et al. 2024) to name a few. Beyond fine-tuning, synthetic data for pre-training has also shown promise, notably in the proprietary Phi models (Li et al. 2023; Abdin et al. 2024). Open-source alternative Cosmopedia (Ben Allal et al. 2024) offer 25B tokens of diverse synthetic text generated in English. Recent work has also explored persona-based generation to increase diversity and alignment with Person-aHub introducing 1M synthetic personas (Ge et al. 2024) which Nemotron-Personas further aligns personas with demographic and psychological traits (Meyer and Corneil 2025). Similar techniques have been applied in multimodal settings (Yang et al. 2025) and domain-specific tasks like math and reasoning (Lambert et al. 2024). Odumakinde et al. (2024) proposed a multilingual arbitrage framework to further improve teacher model selection across languages. Finally, synthetic data scaling laws proposed by (Qin et al. 2025) emphasize the interplay of quantity, diversity, and generation methods. We build upon these works to generate pre-training synthetic data for Indian languages.",
+      "word_count": 190
+    },
+    {
+      "index": 6,
+      "title": "Synthetic Data Generation Techniques",
+      "kind": "body",
+      "text": "We develop a pipeline to generate synthetic data at scale and demonstrate how we used it to generate 540B tokens of highquality Indic synthetic data. Our pipeline leverages different Web data sources (both direct and derived) as context, multiple generation techniques and output styles that together ensure that the generated synthetic data is factually grounded, knowledge-rich, and topically diverse.",
+      "word_count": 59
+    },
+    {
+      "index": 7,
+      "title": "Document Grounded Generation",
+      "kind": "body",
+      "text": "Following work on English synthetic data generation (Ben Allal et al. 2024; Su et al. 2024; Maini et al. 2024; Li et al. 2023; Gunasekar et al. 2023) , we leverage multilingual LLMs, prompted with documents from the Web as context, to generate Indic synthetic data in different knowledge-rich formats and creative styles. (Ben Allal et al. 2024; Su et al. 2024; Maini et al. 2024; Li et al. 2023; Gunasekar et al. 2023) . In addition to using documents from English FineWeb (Penedo et al. 2024a ) and multilingual FineWeb2 (Penedo et al. 2024b ) directly, we also selectively curate \"Indic context\" documents. The Indic context documents are identified using a FastText-based classifier (Joulin et al. 2016 ) trained on 93K annotated documents. We also perform clustering by adapting Huggingface text-clustering 2 to get broad topics for Indian context data, that we optionally append to the prompts for document grounded generations. We evaluate (via human annotation) different multilingual LLMs based on their quality of direct generations in a language xx and generations in En followed by their translation to xx. Table 1 shows the language-model mapping that we followed for our synthetic generation. In addition to ensuring language-specific quality, the use of multiple LLMs in our pipeline also alleviates model-specific biases, avoids model collapse, and encourages generalization, diversity, and robustness in our generated data (Agarwal, Bozdag, and Hakkani-Tür 2025; Odumakinde et al. 2024) .\n\nTaking inspiration from prior works (Ben Allal et al. 2024; Su et al. 2024; Maini et al. 2024; Akter et al. 2025) that show efficacy of \"textbook-like\" and \"educational\" data in pretraining LLMs, we use several knowledge-rich formats such as textbook entries, blog posts, wikihow, inter alia to enhance factual synthesis and structured reasoning. We also use several creative styles such as moral stories, poetry, reddit posts and others to encourage generative fluency and imagination. We list all prompts utilised in Appendix C.\n\n2 https://github.com/huggingface/text-clustering Language Generate in xx Generate in En and translate to xx Gemma-3 Krutrim-2 LLaMA-3.3 70B Gemma-3 Krutrim-2 LLaMA-3.3 70B\n\nBengali ✓ ✗ ✗ ✗ ✗ ✗ Gujarati ✗ ✓ ✗ ✗ ✗ ✗ Hindi ✓ ✓ ✗ ✗ ✗ ✗ Kannada ✗ ✗ ✗ ✗ ✓ ✗ Malayalam ✗ ✓ ✓ ✗ ✗ ✗ Marathi ✓ ✓ ✗ ✗ ✗ ✗ Oriya ✗ ✗ ✓ ✗ ✗ ✗ Punjabi ✓ ✓ ✓ ✗ ✗ ✗ Tamil ✓ ✓ ✗ ✓ ✗ ✗ Telugu ✓ ✓ ✗ ✗ ✗ ✗\n\nTable 1 : Language-wise mapping of models used for direct generation (in language xx) and translation (generation in En followed by its translation to xx). Corresponding detailed human evaluations for the models are included in the Appendix in Table 11 -21. Interestingly, LLaMA-3.3 70B (Grattafiori et al. 2024) showed superior performance than LLaMA-4 (Meta 2025) series for Indian languages.",
+      "word_count": 468
+    },
+    {
+      "index": 8,
+      "title": "Persona-Based Generation",
+      "kind": "body",
+      "text": "We leverage PersonaHub (Ge et al. 2024) , an open source repository of 371M personas, to synthetically generate 164.3M English Indic context personas. Additionally, we follow their approach to synthetically generate 50K Indic language personas, from Indic Web documents, that cover the diverse Indian linguistic, regional, and sociocultural identities. An example of a generated persona from our dataset: A young software engineer from Bangalore who codes all day and hits the gym hard at night.\n\nWe then use these personas as context in our synthetic generation pipeline following two approaches: (1) Personabased generation, guided solely by the persona and language input to produce free-form, culturally fluent text; and (2) Persona and document-based generation where a persona is paired with a document, sampled either at random or based on its semantic similarity to the persona, for a more controlled and contextually rich generation.",
+      "word_count": 142
+    },
+    {
+      "index": 9,
+      "title": "Math and Reasoning-Based Synthetic Data",
+      "kind": "body",
+      "text": "We introduce a novel methodology for generating highquality pretraining data from existing instruction-tuning datasets for math and reasoning. Our method transforms existing, verified Question-Solution (Q-S) pairs from instruction-tuning datasets (Hendrycks et al. 2021b; Li et al. 2024a; Moshkov et al. 2025 ) into comprehensive and selfsufficient textbook sections. Specifically, we condition a generation model on a Q-S pair and instruct it to first introduce the underlying mathematical or technical concepts and theorems required to understand the problem, and then present a detailed, step-by-step solution. We posit that this approach offers two key advantages. Firstly, because the generation is grounded in an already-verified solution, it maintains the mathematical correctness and obviates the need for an additional, complex verification step. Secondly, we hypothesize that this \"concept-then-solution\" format will better equip models to emulate human-like reasoning",
+      "word_count": 133
+    },
+    {
+      "index": 10,
+      "title": "Topic-Aware Retrieval Augmented Generation (RAG)",
+      "kind": "body",
+      "text": "To ensure extensive and accurate coverage of the Indian context, especially within long-tail topics, we first curate a detailed collection of Indic-specific topics. This is accomplished by systematically traversing the Wikipedia knowledge graph starting from the root node Category:India foot_0 up to a depth of three, resulting in a dataset containing over 10,000 topic titles. Next, we cluster our existing synthetic data using Vyakyarth 4 -a multilingual semantic embedding model tailored for Indic languages. We then filter the identified Indic topics by nearest neighbour based similarity score and subsequently applying a distance threshold. This ensures the retained topics are different from the topics already covered by the previously generated synthetic data. Finally, for each filtered topic, we utilize the SERP API foot_2 to retrieve relevant external documents. Leveraging these retrieved documents, we apply Retrieval Augmented Generation (RAG) techniques (Lewis et al. 2020 ) to generate contextually accurate and linguistically diverse content in multiple Indian languages.",
+      "word_count": 155
+    },
+    {
+      "index": 11,
+      "title": "Translation of English Synthetic Data",
+      "kind": "body",
+      "text": "In addition to the different generation strategies discussed earlier, we also translate the 25B English synthetic Cosmopedia (Ben Allal et al. 2024) dataset, originally generated using the Mixtral-8x7B-Instruct-v0.1 model (Jiang et al. 2024) . We evaluate various translation models across languages (Refer to Table 26 in the Appendix) and select Sarvam-Translate (Sarvam AI 2025b) for this translation. In order to ensure knowledge diversity across languages, we translate each of the 30M documents in Cosmopedia to only one randomly sampled Indic language.",
+      "word_count": 81
+    },
+    {
+      "index": 12,
+      "title": "Quality Evaluation Pipeline",
+      "kind": "results",
+      "text": "Recent scaling laws (Chang et al. 2024; Chen et al. 2025 ) have argued the importance of quality data in pre-training. In order to assess the quality of synthetic data and filter out low-quality data at scale, we develop an automated quality evaluation pipeline comprising multiple heuristic and model-based filters outlined below. 1. Language consistency filter: Multilingual LLMs, especially when used in mid-to-low resource language settings, might generate text in mixed languages or in a language different from the intended language in the prompt. To ensure the generated data is in the target language, we leverage an ensemble language identification (LID) module optimized for Indian languages, building on top of the recent works (Khan et al. 2024 ).\n\n2. Heuristic content filters: This module filters lowquality text in our generated large-scale corpora using rulebased heuristics and statistical features. It targets undesirable content such as NSFW material, excessive stopword or word repetition, anomalous characters (e.g., non-Latin/Indic scripts), outlier word counts, generic boilerplate, and references to third-party AI systems. Each criterion is governed by empirically tuned thresholds, and texts exceeding these limits are excluded to ensure high-quality data for downstream tasks, reported in Appendix (see Table 28 ).",
+      "word_count": 196
+    },
+    {
+      "index": 13,
+      "title": "Fluency evaluation (Perplexity filtering):",
+      "kind": "results",
+      "text": "In order to evaluate the fluency of the generated synthetic data, we train a 5-gram Kneser-Ney model using the KenLM (Heafield 2011 ) library.\n\nThe model is trained on 14.5M high-quality text samples sourced from Wikipedia, Sangraha (Khan et al. 2024) , FineWeb2 (Penedo et al. 2024b) , and bootstrapped synthetic corpora. For each data point, a perplexity score is computed and compared against language-specific thresholds, where low scores denote high linguistic coherence in the generated data. These thresholds are determined using held-out validation sets, with the 80th percentile of the score distribution used as the default cutoff, following earlier works (Khan et al. 2024) . Further details regarding training and validation data used are in the Appendix (Table 29 ).",
+      "word_count": 121
+    },
+    {
+      "index": 14,
+      "title": "Quality classifiers:",
+      "kind": "body",
+      "text": "We also evaluate overall quality of the generated synthetic data on aspects such as content accuracy, clarity, coherence, grammatical correctness, informational depth, and overall usefulness, using a custom-trained FastText (Joulin et al. 2016 ) binary classifier to automatically assess the quality of Indic-language responses, labeling each instance as either high or low quality. The classifier is trained on approximately 384K examples labeled using the Gemini-1.5-Flash model through prompt-based evaluation. The training data comprises samples from diverse, highquality sources such as Wikipedia, Sangraha (Khan et al. 2024) , FineWeb2 (Penedo et al. 2024b) , and generated synthetic corpora. The model achieves an overall accuracy of 98.9%, demonstrating high precision and recall across both quality classes on test split consisting of 160K examples. Details on training data composition, language-wise test set distribution, and evaluation metrics are provided in the Appendix (see Tables 30 , 31 ). On the source English documents, we also leverage pretrained models from NeMo Curator foot_3 library including the FineWebEdu classifier for detecting high-quality educational content and the Domain Classifier for categorizing the text into broad domains such as science, health, finance etc.",
+      "word_count": 185
+    },
+    {
+      "index": 15,
+      "title": "Bias detection and mitigation:",
+      "kind": "body",
+      "text": "We leverage the Word Embedding Association Test (WEAT) (Jentzsch et al. 2019) to quantify the social and cultural biases in our generated data. WEAT measures the strength of association between predefined target and attribute word sets in an embedding space, providing a quantitative estimate of implicit bias. The word embeddings are obtained from language-specific Fast-Text models trained on our synthetic dataset. Our evaluation focuses on five key dimensions of social bias: gender, caste, race, religion, and regional/linguistic identity (Refer to Table 32 in the Appendix). For each dimension, we capture representative stereotypes using manually curated target and attribute word sets, each comprising 18-20 terms per language (Appendix Figures 5 6 7 8 9 show manually curated\n\nType Generated Tokens (B) Filtered Tokens (B) Discard Rate (%) Avg. source length Avg. generated length Document grounded -En (Section 3.1) 394.85 382.94 3.36 150 414 Document grounded -Indic (Section 3.1) 63.75 62.88 1.45 186 460 Persona based (Section 3.2) 37.83 37.24 1.56 34 242 Math & Reasoning (Section 3.3) 5.09 4.83 4.80 236 624 Topic based RAG (Section 3.4) 0.13 0.13 3.14 124 568 Translation (Section 3.5) 57.69 55.26 4.10 540 572\n\nTable 2 : Generated and filtered token counts (in billions) for each synthetic data source. Token counts are estimated using the LLaMA-4 tokenizer. We show discard rate as % of data filtered out and also report average output length (in words).\n\nHindi bias words across various bias aspects). Higher WEAT scores (typically > 1.0) correspond to stronger stereotypical associations.",
+      "word_count": 248
+    },
+    {
+      "index": 16,
+      "title": "BhashaKritika: Synthetic Data",
+      "kind": "body",
+      "text": "We used our pipeline to generate ∼ 540B tokens of highquality synthetic data covering multiple Indian languages and Indic context topics. In Table 2 , we show the distribution of this data by different sources used for generation.\n\nHere, \"filtered tokens\" correspond to the data that passes our quality evaluation pipeline and the \"discard rate\" is the percent of the synthetic data that is filtered out. Figure 2 illustrates the language-wise and topic-wise distribution of our synthetic data respectively. Each of these 12 topics in turn covers multiple Indic context sub-topics, for instance, Indian culture and society subsumes Indian lifestyle, Indian philosophy, Indian fashion, and others. We provide a comprehensive report of the different prompts, classifier datasets, annotation instructions as well as the quality evaluation in the Appendix for reproducibility.",
+      "word_count": 130
+    },
+    {
+      "index": 17,
+      "title": "Experiments",
+      "kind": "results",
+      "text": "We conduct several ablations over the data sources, their language, the language of prompt instructions, and the personas to inform our choices in the synthetic generation process. Also, in order to evaluate the efficacy of our synthetic data in pretraining LLMs, we conduct experiments with a 1B parameter LLaMA-3.2 architecture in the compute constrained settings. We report the key findings here.",
+      "word_count": 61
+    },
+    {
+      "index": 18,
+      "title": "Does Language of Source Document and Prompt Impact the Quality of Generations?",
+      "kind": "body",
+      "text": "Our synthetic data generation pipeline leverages source documents in both English (e.g. FineWeb) and Indian languages (e.g. FineWeb2) as the grounding context. How does the language of this context impact the quality of generated synthetic data? For context in Indic languages, is it better to provide prompt instructions in English or Indic languages?\n\nIn order to answer these questions, we conduct an evaluation on the documents sampled from Pralekha (Suryanarayanan et al. 2024) , a large-scale parallel document dataset in English and Indic languages, as context and the prompt instruction in English or Indic. We leverage our quality evaluation pipeline and report the discard rate on the generated synthetic data (Table 3 ). We observe that the models perform better when prompted with context in the same language as the intended language of generation and prompt instructions in English perform better than those in Indic. We, therefore, use prompts in English across all our synthetic generations.\n\nLanguage En/En Ind/En Ind/Ind\n\nBengali 0.57 0.47 0.33 Gujarati 17.45 15.85 24.15 Hindi 1.025 0.6 1.125 Malayalam 11.50 9.70 11.40 Marathi 1.20 1.05 0.93 Punjabi 7.97 5.03 4.97 Tamil 3.83 3.00 5.30 Telugu 3.10 3.03 4.73 Table 4: Impact of language of source persona and additional document grounding through a pilot study.",
+      "word_count": 208
+    },
+    {
+      "index": 19,
+      "title": "Does Language of Persona Impact the Quality of Generations?",
+      "kind": "body",
+      "text": "We conduct a pilot study to evaluate the impact of additional document grounding by appending personas with either matching or random documents, selected using FAISS similarity scores. As shown in Table 4 , this grounding significantly increases discard rates, suggesting that random pairing introduces linguistic inconsistencies and quality degradation. Additionally, generations conditioned on Indic personas yield lower discard rates compared to those grounded in English personas.",
+      "word_count": 66
+    },
+    {
+      "index": 20,
+      "title": "How Much Data is Filtered Out by the Quality Evaluation Pipeline and Why?",
+      "kind": "results",
+      "text": "We ablate over the quality filters in the quality evaluation pipeline and present our insights. Refer to Table 27 in the Appendix for filter-wise discard rates across languages. 1. Language consistency filter: Language inconsistency is predominantly observed in Gujarati and Hindi languages (over 10% compared to an average of 7.6% across languages). This is primarily due to generations in other languages from the same language family (Marathi or Sanskrit instead of Hindi) and regional references in the document context. For instance, a news article mentioning Telangana Govt. used as context leads to generation in Telugu instead of Gujarati (target language mentioned in the prompt).\n\n2. Heuristic content filters: Length violations are the most common issue, affecting 2.26% generations, primarily due to incomplete or excessively verbose generations outside the 100-2500 word range. While toxic content is generally well-controlled, 1.13% of outputs contain NSFW material, and 2.02% include references to other AI systems. Word repetition (0.34%) and the use of excessive stopwords or non-Latin/non-Indic scripts (under 0.01%) remain rare. However, this filtering relies on manually curated keyword lists that are not exhaustive, and certain NSFW terms are context dependent, occasionally leading to false positives.",
+      "word_count": 192
+    },
+    {
+      "index": 21,
+      "title": "Fluency (perplexity-based) filter:",
+      "kind": "body",
+      "text": "Most generations are reasonably fluent, however, certain languages like Tamil and Bengali, show alarmingly high rates (above 10%). We observe the presence of English named entities and occasional English noun references impacting the perplexity scores, suggesting further room for improvement in our KenLM-based perplexity scoring.\n\n4. Quality classifiers: Overall 3.40% of the total outputs are flagged as low quality by the quality classifiers. Some languages like Malayalam exhibit disproportionately high low-quality rates, primarily due to frequent word/character repetitions and poor linguistic coherence. While the classifier-based filter complements the content filters for repetition, NSFW, and stopwords, and the perplexity-based fluency filter, its key limitation is the dependency on domainspecific training data. Incorporating new styles or source types necessitates retraining the classifier unlike the relatively low-cost heuristic and statistical filters.\n\n5. Bias detection: We evaluate our Hindi synthetic corpora across styles (e.g., textbook, blogpost, persona) for Indian sociolinguistic bias. For each style, we report WEAT effect sizes and scores, computed over 1M samples, using curated target-attribute word sets. The analysis reveals consistent medium to high stereotypical bias across socio-cultural dimensions. Caste bias has effect sizes between 0.56-1.09, highest in persona. Gender bias is most pronounced in story (1.58) and Redditpost (1.21) styles, with high bias in four of seven styles. Race bias scored above 1.0 in most styles, peaking in blogpost (1.51), textbook (1.46), and Wikihow (1.28). Religion bias was similarly high in blogpost (1.39), textbook (1.3), and Wikihow (1.73) styles, indicating strong 'Hindu-Muslim' stereotypes. Region/linguistic bias was present but weaker, with translation showing a reverse effect, suggesting mitigation. These findings indicate prevalent and measurable biases in synthetic generations, especially regarding religion, race, and gender. The complete results are provided in the Appendix, Table 33 .\n\n6. Bias mitigation: We conduct a small-scale intervention targeting religious bias in Hindi textbook-style synthetic data. For around 20 biased instances per target term (e.g. Islamic and Hindu words), identified based on stereotypical co-occurrences, we replace them with LLM-based synthetically generated counter-stereotypical examples by reversing associations (e.g., Islam association with positive and Hindu with negative attributes). Retraining FastText embeddings on this modified corpus reduced the WEAT effect size and score from (1.34, 1.11) to (1.29, 1.03). This finding suggests that this targeted data augmentation is a scalable mitigation strategy in our synthetic generation pipeline. Detailed results are available in the Appendix Figure 10 .\n\n7. Bias comparison (Web vs. BhashaKritika): We leverage documents from the Web as context in our synthetic generation pipeline. In order to evaluate the inherent bias mitigation in our pipeline, we compute WEAT scores on the source Web documents and the corresponding generated synthetic data (Refer to Table 34 in the Appendix). For instance, the religious bias in 'Hindi textbook-style' data, with effect size and WEAT score of (1.43, 1.35) in the source documents, dropped to (1.14, 0.93) in the generated synthetic data. These results indicate that our synthetic data has lower biases compared to those in the source Web data, with targeted interventions, as described in the last section, further aiding the debiasing. Detailed association scores for individ- ual target words and other bias dimensions are provided in the Appendix (Figures 11-13).",
+      "word_count": 521
+    },
+    {
+      "index": 22,
+      "title": "How does Synthetic Data Compare to Web",
+      "kind": "body",
+      "text": "Data for LLM Training?\n\nIn addition to intrinsic data quality evaluation, we also evaluate our synthetic data for LLM pretraining. Starting from the pretrained checkpoint of LLaMA-3.2 1B model, we perform annealing (Grattafiori et al. 2024; Allal et al. 2025; OLMo et al. 2025 ), where we linearly decay LR to 0 over 50B tokens of training data comprising 70% Web, Math, and code data and 30% Indic data. We train two models -M W eb and M BK where the Indic data is sampled from the Web and BhashaKritika, our Indic synthetic corpus, respectively. We attribute the faster convergence of M BK (Fig. 3 ) to the high-quality and knowledge-dense nature of our synthetic data while the Web data tends to be relatively noisy (Abdin et al. 2024) . In Table 5 , we report the performance of these models on the English and Indic benchmarks. Further implementation details are provided in Appendix B.",
+      "word_count": 155
+    },
+    {
+      "index": 23,
+      "title": "Dataset Web BhashaKritika",
+      "kind": "body",
+      "text": "Hellaswag (Zellers et al. 2019) 0.483 0.482 MMLU (Hendrycks et al. 2021a) 0.412 0.408 OpenbookQA (Mihaylov et al. 2018) 0.276 0.268 GSM8K (Cobbe et al. 2021) 0.111 0.120 DROP (F1) (Dua et al. 2019) 0.077 0.083 TriviaQA (Joshi et al. 2017) 0.398 0.404 ARC Easy (Clark et 6.5 Can we Use Synthetic Data in Low Resource Settings?\n\nA key challenge in building models for Indian languages is the limited availability of high-quality data. We explore whether our BhashaKritika corpus could serve as a good pretraining data in these low resource settings by conducting a controlled experiment. We pretrain LLaMA-3.2 1B model from scratch on a fixed budget of 15B tokens of Indic Web data (10K training steps in Fig. 4 ). Starting from this base model, we continually pretrain M W eb for 3 more epochs on the same Indic Web data and M BK on data sampled from our BhashaKritika synthetic corpus.\n\nThe model trained on our Indic synthetic data converges faster and shows a similar or better performance on Indic benchmarks (Table 6 ). This indicates that high-quality synthetic data can serve as a viable substitute when Web data is limited, offering a promising direction for low-resource language settings.",
+      "word_count": 201
+    },
+    {
+      "index": 24,
+      "title": "Web BhashaKritika",
+      "kind": "body",
+      "text": "Indic Sentiment (Doddapaneni et al. 2023 ) 0.491 0.499 MILU (Verma et al. 2024) 0.235 0.236 Indic Copa (Doddapaneni et al. 2023) 0.509 0.512 Indic XParaphrase (Doddapaneni et al. 2023) 0.499 0.500 Indic XNLI (Doddapaneni et al. 2023) 0.330 0.339 ARC Challenge Indic (Doddapaneni et al. 2023) 0.213 0.210\n\nTable 6: Benchmark comparison on Indic datasets; 1B model pretrained on 15B tokens of Indic Web data from scratch is continually pretrained on multiple epochs of the same Web data vs BhashaKritika data.",
+      "word_count": 82
+    },
+    {
+      "index": 25,
+      "title": "Conclusion",
+      "kind": "conclusion",
+      "text": "We introduced BhashaKritika, a 540B tokens high-quality Indic synthetic corpus across 10 languages and different knowledge-dense styles. The data is generated using our scalable synthetic generation pipeline comprising multiple data sources, five generation approaches, multilingual LLMs, and translation models. We show that by careful selection of models per language and using Indic documents, topics and personas for grounding, we can synthetically generate high-quality Indic data. We demonstrate that using En-glish instructions alongside Indic source texts yields better quality outputs and also introduce a novel technique to create math and reasoning focused data. Further, we introduce a comprehensive automated quality evaluation pipeline to ensure quality of the generated data. Through extensive analysis and empirical runs, we show the efficacy of our synthetically generated data, opening up avenues to augment the pretraining dataset for the low resource Indic languages.",
+      "word_count": 137
+    },
+    {
+      "index": 26,
+      "title": "Overall Synthetic Data Statistics",
+      "kind": "body",
+      "text": "Source and synthetic data length statistics: Tables 7 , 8 , 9 show the source and synthetic data length statistics across different sources, generation styles and languages respectively. Figure 2 in the main content shows the distribution of languages (left) and topics (right) in BhashaKritika.\n\nSource Dataset Source Length Gen Length Gen/Source Ratio FineWeb 150 414 2.76 FineWeb2 186 460 2.47 Personas 34 242 7.22 MATH 53 159 3.01 Numina Math 239 630 2.64 Topic RAG 124 568 4.58 English Cosmopedia 540 572 1.06 Total 148 399 2.70 Table 7: Average length (in words) of source and generated data across various strategies used. We consider FineWeb (Penedo et al. 2024a) and FineWeb2 (Penedo et al. 2024b) for document grounded generations, sampled personas from PersonaHub (Ge et al. 2024), MATH (Hendrycks et al. 2021b) and NuminaMath (Li et al. 2024a) for maths and reasoning based generations. Finally, we also include translations of English Cosmopedia (Ben Allal et al. 2024) as part of our synthetic dataset. Generation Style Source Length Gen Length Gen/Source Ratio blogpost 153 308 2.02 forums story 152 366 2.40 morality story 152 338 2.23 persona 33 243 7.25 problem solving story 152 368 2.42 reddit post 154 330 2.14 textbook 62 187 3.00 textbook academic 153 451 2.94 textbook narrative 153 442 2.89 translation 360 423 1.18 wikihow 153 529 3.45 young children story 152 294 1.93 Total 148 399 2.70 A Synthetic Data Generation 1. Document Grounded Generation Recognizing that LLM performance varies significantly across languages, we conducted a systematic human evaluation to identify the optimal models for each of our target languages. To mitigate potential rater bias towards specific model providers, all outputs were presented to annotators in an anonymized format with model names hidden. The generations were evaluated on five key criteria: (1) Grammar & Readability, (2) Faithfulness to Prompt, (3) Overall Generation Quality, (4) Factual Accuracy, and (5) Length of Output on a scale of 1-5. The detailed guidelines provided to the manual annotators can be found in Appendix D. Tables 11 12 13 14 15 16 17 18 19 20 21 show Human evaluation scores of generation quality across LLMs for different languages using two methods-1. Gen (direct generation by the model in language xx) 2. Trans (generation in En followed by its translation to xx). Table 1 in the main content shows the model mapping we chose for the synthetic data generation based on our human evaluation. Open-weight LLMs supporting Indian languages are limited, however, we considered Krutrim-2 12B, Gemma-3 27B, LLaMA-3.3 70B, LLaMA-4 (both Maverick 17B-128e and Scout 17B-16e), Qwen-3 32B. Interestingly, we observe high percentage of sentence repetitions when using Qwen-3 and unknown tokens for LLaMA-4 when using for generation in Indian Languages. We thus omit them from our choice of models.",
+      "word_count": 462
+    },
+    {
+      "index": 27,
+      "title": "Persona-Based Generation",
+      "kind": "body",
+      "text": "Overall generation statistics: Tables 22 , 23 display the generation statistics across different categories and generation paths. Table 22: Persona generation statistics across various categories.\n\nGeneration Path Tokens Generated Elite Persona → Text ∼10B Other Persona → Text 7.7M Persona + Document grounded → Text 1.5B\n\nTable 23: Persona-based generation token statistics across various generation paths.",
+      "word_count": 56
+    },
+    {
+      "index": 28,
+      "title": "Maths and Reasoning based synthetic data",
+      "kind": "body",
+      "text": "Table 24 shows various math focused datasets usable for synthetic data generations. On eyeballing some generations, we observed that using easy grade school level math examples as source simplified the generations too much.",
+      "word_count": 33
+    },
+    {
+      "index": 29,
+      "title": "Topic aware Retrieval Augmentation Generation (RAG) techniques",
+      "kind": "body",
+      "text": "To ensure comprehensive coverage of topics relevant to India, we implemented a targeted data expansion strategy. First, we performed topic modeling on our existing data to understand its thematic distribution. We used Vyakyarth embeddings with UMAP for dimensionality reduction and a FAISS-powered DBSCAN algorithm to group documents into distinct clusters, adapting the text-clustering library from Hugging Face foot_4 . Each resulting cluster was then assigned a descriptive label via LLM-based summarization to clarify its topic. This analysis revealed a significant concentration in specific areas; for instance, \"Indian Lifestyle\" and \"Bollywood\" collectively constituted over 25% of the dataset . To identify and fill underrepresented domains, we first curated a comprehensive list of target topics by traversing Wikipedia's knowledge graph, starting from the Category:India foot_5 until depth 3 scraping over 10k titles. We then computed FAISS similarity scores between our existing topic clusters and this target topic list. Any target topic with a similarity score below a threshold of 0.4 was identified as a coverage gap. For each gap, we used SERP API to fetch and scrape new documents. These documents are then used as a source for the document grounded generations. Table 25 shows broad as well as specific topic distributions (%) of the synthetic data generated.",
+      "word_count": 206
+    },
+    {
+      "index": 30,
+      "title": "Translation",
+      "kind": "body",
+      "text": "We follow a similar setup of anonymised evaluation as grounded generations for assessing the ability of translation models across languages to choose models for translation. The translations from various models are evaluated on four key criteria -(1) Grammar & Readability, (2) Translation Faithfulness, (3) Terminology and Domain Consistency and ( 4 ) Fluency & Style on a scale of 1-5. Table 26 shows Human evaluation scores of different translation models based on grammar, prompt faithfulness, generation quality, and factual accuracy criteria. We evaluate In-dicTrans2 (Gala et al. 2023) , and Sarvam-Translate (Sarvam AI 2025b) for translations.\n\nImplementation Details We leverage the vLLM (Kwon et al. 2023) inference library to create model endpoints for generating synthetic data at scale for local models. After choosing the relevant models, we estimate the time required for generating 1B model tokens for various open source weight models which are choosen for generations for scaling purposes. Table 10 contains the time in GPU hours required to generate 1B tokens (estimated using the LLaMA-4 tokenizer) from various models.",
+      "word_count": 171
+    },
+    {
+      "index": 31,
+      "title": "A.1 Quality Evaluation Pipeline",
+      "kind": "results",
+      "text": "The discard rates for each of the quality filter across different languages are displayed in the Table 27 .",
+      "word_count": 19
+    },
+    {
+      "index": 32,
+      "title": "Heuristic content filter",
+      "kind": "body",
+      "text": "Our filtering pipeline targets low-quality content by detecting NSFW material, repetitive or generic text, anomalous characters, outlier word counts, and third-party AI references. Each criterion is controlled by empirically tuned thresholds outlined in Table 28 .",
+      "word_count": 36
+    },
+    {
+      "index": 33,
+      "title": "Fluency (perplexity-based) filter",
+      "kind": "body",
+      "text": "In order to evaluate the fluency of the generated synthetic data using perplexity scoring, we train a 5-gram Kneser-Ney model using the KenLM (Heafield 2011 ) library.\n\nTraining and validation dataset statistics: Table 29 summarizes the language-wise data sources and total counts used for training the KenLM-based perplexity models. To evaluate and calibrate perplexity thresholds, we curated a validation dataset consisting of clean, high-quality samples across multiple Indic languages.\n\nThreshold selection: Per-language thresholds (see Table 29 ) were computed by scoring a validation set and taking the 80th percentile perplexity score, in line with the methodology used in the Setu pipeline. Further manual inspection was conducted to adjust thresholds upward for languages where high-quality texts were inadvertently being flagged due to overly strict cutoff values.",
+      "word_count": 125
+    },
+    {
+      "index": 34,
+      "title": "Quality classifiers",
+      "kind": "body",
+      "text": "We assess the overall quality of synthetic data across dimensions such as accuracy, clarity, coherence, grammar, informational depth, and usefulness. A custom-trained Fast-Text (Joulin et al. 2016) binary classifier is used to automatically label Indic-language responses as either high or low quality.\n\nTraining and test dataset statistics: Table 30 summarizes the language-wise data sources and total counts used for training and testing of the fasttext binary classifier model.\n\nEvaluation statistics: Table 31 summarizes the performance of a binary classification model evaluated on a test (Jentzsch et al. 2019) quantifies implicit bias in word embeddings by measuring the differential association between two sets of target words X and Y (e.g., career vs. family) , and two sets of attribute words A and B (e.g., male vs. female terms). The test statistic is defined as:\n\ns(X, Y, A, B) = x∈X [s(x, A, B)] - y∈Y [s(y, A, B)]\n\nwhere\n\ns(w, A, B) = mean a∈A cos( ⃗ w, ⃗ a) -mean b∈B cos( ⃗ w, ⃗ b)\n\nHere, cos( ⃗ w, ⃗ a) denotes the cosine similarity between word vectors. The effect size is calculated as:\n\neffect size = s(X, Y, A, B) std dev w∈X∪Y s(w, A, B)\n\nA larger effect size indicates stronger bias embedded in the representation.",
+      "word_count": 209
+    },
+    {
+      "index": 35,
+      "title": "Bias dimensions and WEAT configurations:",
+      "kind": "body",
+      "text": "Table 32 outlines the different social bias dimensions evaluated using the WEAT (Word Embedding Association Test) framework. For each bias type-such as gender, caste, race, religion, and region-it specifies the contrasting stereotype groups used as target sets and the attribute sets representing evaluative dimensions. Bias Aspect Target Sets Attribute Sets Gender Career vs. Family Male vs. Female Caste Marginalised vs. Upper Unpleasant vs. Pleasant Race Dark vs. Fair Negative vs. Positive Religion Islam vs. Hindu Negative vs. Positive Region Marginalised vs. Dominant Discriminatory vs. Prestigious\n\nTable 32: Bias dimensions and WEAT configurations.\n\nBias words: Bias words i.e. both target and attribute sets (around 18-20 words per set) have been manually curated for each language to capture the stereotypes. Figures 5 , 6 , 7, 8, 9 consist of the bias words curated for Hindi language on caste, gender, race, regional/linguistic and religion bias aspects. Bias evaluation: Bias Evaluations for Hindi synthetic corpora across styles (textbook, blogpost, persona, etc.) using Figure 7: Manually curated bias words (target and attribute sets) for race aspect. curated target-attribute word sets reflecting Indian sociolinguistic stereotypes are displayed in Table 33 . For each style, 1M samples (equal distribution from various sources) were evaluated, and WEAT effect sizes and scores were computed.",
+      "word_count": 206
+    },
+    {
+      "index": 36,
+      "title": "Bias mitigation",
+      "kind": "body",
+      "text": "Inspection of target-word wise association scores before and after anti-biasing for analysing the key reason for decrease in bias in the aspect of religion is displayed in Figure 10 . 6. Bias comparison (source vs synthetic) Bias Evaluations for source data and synthetic data generated using that source data for religion, caste and racial bias aspects are shown in\n\nTable 34. Inspection of target-word wise association scores for source data and synthetic data generated using that source data for religion, caste and racial bias aspects are shown in the below Figures 11, 12, 13. B Model runs B.1 Implementation We use NeMo2 framework 9 for our model experiments and orchestrate across 16 H100 GPUs using slurm 10 . We use Llama 3.2 1B model architecture for all our ablations. Experiment hyperparameters and model architecture is detailed in Tables 35, 36.",
+      "word_count": 140
+    },
+    {
+      "index": 37,
+      "title": "B.2 Evaluation",
+      "kind": "results",
+      "text": "We evaluate our models against standard English benchmarks: MMLU ( Hendrycks",
+      "word_count": 11
+    },
+    {
+      "index": 38,
+      "title": "C Prompts used",
+      "kind": "body",
+      "text": "Prompt Template for Generating Indian Personas from a Given Perspective You are an AI assistant. Follow the below guidelines.\n\nInput:\n\n• input persona: {persona} -The persona whose perspective, context, and potential biases should be adopted. Objective: Generate multiple brief descriptions of distinct Indian personas, making them relevant to and subtly reflecting the perspective of the input persona.",
+      "word_count": 57
+    },
+    {
+      "index": 39,
+      "title": "Instructions:",
+      "kind": "body",
+      "text": "1. Embody the input persona. 2. Create 5-10 brief (1-2 sentence) descriptions of different individuals in India. 3. For each description:\n\n• Reflect the input persona's subtle perspective and tone.\n\n• Include authentic Indian details (e.g., profession, age group, location, concerns).\n\n• Keep it gender-neutral, especially for roles like teacher, chef, or healthcare worker.\n\n• Do not use any names.",
+      "word_count": 60
+    },
+    {
+      "index": 40,
+      "title": "Output Requirements:",
+      "kind": "body",
+      "text": "• Content: Provide only the list of generated persona descriptions. Exclude any introductory or concluding text or labels.\n\n• Quantity: Deliver 5-10 distinct persona descriptions.\n\n• Format: Use a Markdown bulleted list. Each bullet point should contain one persona description.",
+      "word_count": 40
+    },
+    {
+      "index": 41,
+      "title": "Prompt Template for Generating a Wikihow article",
+      "kind": "body",
+      "text": "Here is an extract from a webpage: \"{extract}\". Write a long and very detailed tutorial that could be part of WikiHow whose title is related to the extract above{topic}. Include in depth explanations for each step and how it helps achieve the desired outcome, including key tips and guidelines. Ensure clarity and practicality, allowing readers to easily follow and apply the instructions. Do not use images. Do not use phrases like 'in the above extract', 'as per the extract' etc. Don't focus on irrelevant information in the web extract. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 114
+    },
+    {
+      "index": 42,
+      "title": "Prompt Template for Generating a Blogpost",
+      "kind": "body",
+      "text": "Here is an extract from a webpage: \"{extract}\". Write an informative and insightful blog post that expands upon the extract above{topic}. Your post should delve into the nuances of the topic, offering fresh perspectives and deeper analysis. Aim to:\n\n• Inform: Provide valuable, well-researched information that educates the reader.\n\n• Engage: Write in a conversational tone that connects with the audience, making complex ideas accessible.\n\n• Illustrate: Use examples, anecdotes, or personal experiences to bring the topic to life.\n\nDo not give a title and do not start with sentences like \"Have you ever...\" or \"Hello dear readers..\", simply write the content without these introductory phrases. Do not use phrases like 'in the above extract', 'as per the extract' etc. Don't focus on irrelevant information in the web extract. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script. Prompt Template for Persona-Based Generation You are an AI assistant. Follow the below guidelines. **Input**: -Persona Description: {persona} -Target Language: {lang} **Task**: Assume the role of the specified Indian persona, deeply rooted in an Indian context. Generate an article embodying this persona's perspective and knowledge within India. **Generated Text Specifications**: 1. Language: Author exclusively in Target {lang} Language. 2. Vocabulary: No translation and transliteration. 3. Voice & Tone: Authentically reflect persona (persona) in {lang}, specific to Indian context. 4. Cultural Accuracy: Integrate relevant Indian cultural norms and social context. 5. Contextual Grounding: Base all examples, steps, and advice on practical Indian realities.\n\n**Final Output Requirements**: The text must be authentic, useful for the target audience in India, and strictly generated in the specified language, clearly reflecting the persona.",
+      "word_count": 282
+    },
+    {
+      "index": 43,
+      "title": "Prompt Template for Generating an Academic Style Textbook",
+      "kind": "body",
+      "text": "Here is an extract from a webpage: \"{extract}\". Write an extensive and detailed course unit suitable for a textbook targeted at college students related to the given extract{topic}. Do not just list concepts, but develop each one in detail before moving to the next, as we prioritize depth of understanding and comprehensive exploration of the subject matter over breadth. Focus on:\n\n• Rigor: Ensure in-depth coverage of the concepts/sections.\n\n• Engagement: Write with an academic, professional and engaging tone that captivates interest.\n\n• Application: Incorporate specific, practical examples, such as proofs in calculus or critical dates and figures in history.\n\nDo not include a title or an introduction, simply write the content without headlines and introductory phrases. Do not use images. Do not use phrases like 'in the above extract', 'as per the extract' etc. Don't focus on irrelevant information in the web extract. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 169
+    },
+    {
+      "index": 44,
+      "title": "Prompt Template for Generating a Textbook Narrative",
+      "kind": "body",
+      "text": "Here is an extract from a webpage: \"{extract}\". Write an extensive and detailed course unit suitable for a textbook related to the given extract{topic}. Do not just list concepts, but develop each one in detail before moving to the next, as we prioritize depth of understanding and comprehensive exploration of the subject matter over breadth. Focus on:\n\n• Rigor: Ensure in-depth coverage of the concepts.\n\n• Engagement: Use a narrative style akin to Michael Lewis, making it captivating and thoughtprovoking.\n\n• Relevance: Connect the topic with current trends, real-life examples, or recent studies. Do not use images.\n\nDo not include a title or an introduction, simply write the content without headlines and introductory phrases. Do not use images. Do not use phrases like 'in the above extract', 'as per the extract' etc. Don't focus on irrelevant information in the web extract. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 166
+    },
+    {
+      "index": 45,
+      "title": "Prompt Template for Story for Young Children with Scientific Insight",
+      "kind": "body",
+      "text": "Write an educational story (3-5 paragraphs) targeted at young children using simple words. The story should be inspired from this text snippet: \"{extract}\". The story doesn't have to address everything in the snippet, it is there just for inspiration.\n\nThe story should have the following features:\n\n• Science Integration: Embed basic science concepts within the story, explaining them through the characters' adventures and discoveries.\n\n• Dialogue: Include at least one dialogue and insightful conversation.\n\n• Unexpected Twist: Conclude with a twist that doesn't resolve as hoped, but leaves a clear lesson about life and science.\n\nDo not start with classic sentences like \"Once upon a time\", be creative. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 133
+    },
+    {
+      "index": 46,
+      "title": "Prompt Template for Generation of Persona-Based Articles with Seed Data",
+      "kind": "body",
+      "text": "You are an AI assistant. Follow the below guidelines.\n\nInput:\n\n• Seed Text (for context): {seed text} • Persona Description: {persona} • Target Language: {language} Task: Assume the role of the specified Indian persona ({persona}), deeply rooted in an Indian context. Generate an article embodying this persona's perspective and given knowledge, within India.",
+      "word_count": 53
+    },
+    {
+      "index": 47,
+      "title": "Generated Article Specifications:",
+      "kind": "body",
+      "text": "1. Language: Author exclusively in target language ({language}). 2. Voice & Tone: Authentically reflect persona ({persona}) in {language}, specific to Indian context. 3. Topic Relevance: Subject must be pertinent to the persona within India. 4. Cultural Accuracy: Integrate relevant Indian cultural norms and social context. 5. Contextual Grounding: Base all examples, steps, and advice on practical Indian realities.\n\nFinal Output Check: The article must be authentic, useful for the target audience in India, and strictly generated in the specified {language} language, clearly reflecting the persona {persona}.",
+      "word_count": 86
+    },
+    {
+      "index": 48,
+      "title": "Prompt Template for Morality-Focused Narrative",
+      "kind": "body",
+      "text": "Write a compelling story related to the following text snippet: \"{extract}\". The story doesn't need to mention everything in the snippet-use it just for inspiration and be creative! The story should incorporate the following elements:\n\n• Dialogue: Include at least one meaningful dialogue that reveals character depth or unravels a crucial piece of the mystery.\n\n• Interesting Themes: Explore themes such as moral ambiguity, existential queries, personal transformation, or consequences of past actions.\n\nDo not start with classic sentences like \"Once upon a time\", \"The sun hung low in the sky\", or \"In the dimly lit\", be creative. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 123
+    },
+    {
+      "index": 49,
+      "title": "Prompt Template for Story Emphasizing Problem Solving",
+      "kind": "body",
+      "text": "Write a story that explores a situation slightly related to this text snippet: \"{extract}\". The story should unfold through the characters' interactions, decisions, and consequences. Emphasize problem-solving, common-sense lessons, and social cues. It should cater to a diverse age group, include at least one dialogue, and present both positive and negative outcomes. Do not start with classic sentences like \"Once upon a time\", be creative. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 90
+    },
+    {
+      "index": 50,
+      "title": "Prompt Template for Forum-Style Life Story",
+      "kind": "body",
+      "text": "Write a story in the style of real-life situations shared in forums. The story should be somehow related to this text snippet: \"{extract}\". The story should feature:\n\n• A compelling and unexpected plot twist • Authenticity and emotional depth like personal forum posts • Relatable events and human complexity Do not start with classic sentences like \"Once upon a time\", \"A few years back\", or \"A few months ago\", be creative. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.",
+      "word_count": 96
+    },
+    {
+      "index": 51,
+      "title": "Prompt Template for Reddit-Style Real-Life Post",
+      "kind": "body",
+      "text": "Write a real-life story shared by someone in a Reddit forum. The story should be somehow related to this text snippet: \"{extract}\". The story should include:\n\n• Niche Interests or Humor: Focus on specific hobbies, interests, or amusing situations.\n\n• An Unexpected Plot Twist or Conflict: Introduce a relatable yet challenging situation.\n\n• Reflection and Insight: Conclude with a personal revelation or communal connection.\n\nStart the story right away. Do not begin with sentences like \"Once upon a time\", \"A few years ago\", or \"A few years back\", be creative. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.\n\nPrompt Template for Persona-Based Indicate Generation with Seed as Persona You are an AI assistant. Follow the below guidelines.\n\nInput:\n\n• Persona Description: {persona} (The persona whose perspective, context, and potential biases should be adopted). Objective: Generate multiple brief descriptions of distinct Indian personas, making them relevant to and subtly reflecting the perspective of the {persona}.",
+      "word_count": 171
+    },
+    {
+      "index": 52,
+      "title": "Instructions:",
+      "kind": "body",
+      "text": "1. Embody the {persona}. 2. Create 5-10 brief (1-2 sentences) descriptions of different individuals in India. 3. For each description:\n\n• Reflect the {persona}'s subtle perspective and tone.\n\n• Include authentic Indian details (e.g., profession, age group, location, concerns).\n\n• Keep it gender-neutral, especially for roles like teacher, chef, or healthcare worker.\n\n• Do not use any names.",
+      "word_count": 58
+    },
+    {
+      "index": 53,
+      "title": "Output Requirements:",
+      "kind": "body",
+      "text": "1. Content: Provide only the list of generated persona descriptions. Exclude any introductory or concluding text or labels. 2. Quantity: Deliver 5-10 distinct persona descriptions. 3. Format: Use a Markdown bulleted list. Each bullet point should contain one persona description.",
+      "word_count": 40
+    },
+    {
+      "index": 54,
+      "title": "Prompt Template for generating Math textbook sections",
+      "kind": "body",
+      "text": "You are given a math question and its solution: Question: {question} Solution: {solution} Create an academic textbook section based on this Q/A pair, by following these instructions:\n\n1. Start with a section title that reflects the broad mathematical concepts involved in solving the question. The title should not refer specifically to the question, but rather to the general topic it belongs to (e.g., \"Linear Equations\" instead of \"Finding the Value of x\"). 2. In the section, explain the relevant mathematical principles, methods, and definitions in depth. Each concept should be introduced and developed fully before moving to the next. Do not simply list concepts -build understanding by expanding on each idea thoroughly. 3. Use an academic, professional, and engaging tone that resembles college-level textbooks. Prioritize clarity, rigor, and depth over brevity. 4. After the conceptual explanation, include the given question as an exercise and present a detailed, stepby-step solution using sound mathematical reasoning. The solution should be complete and clean, and must not include informal phrases or concluding remarks like \"this shows that\" or \"as seen above.\" 5. Generate text in {language} language. Ensure that the output is entirely in {script} script and avoid using any English words or {language} in Latin script.\n\nThe output should read like a cohesive, standalone textbook section that educates the reader on the topic, illustrates it through the example, and reinforces understanding via rigorous solution steps. Ensure you generate text in {language} language and use {script} script throughout.",
+      "word_count": 244
+    },
+    {
+      "index": 55,
+      "title": "D Guidelines For Manual Annotation",
+      "kind": "body",
+      "text": "In the following, we provide the guidelines provided to the human annotators for evaluating both generation as well as translation across different models.",
+      "word_count": 23
+    },
+    {
+      "index": 56,
+      "title": "Guidelines for Evaluating Sample Synthetic Data -Indian Context",
+      "kind": "body",
+      "text": "We aim to evaluate large language models (LLMs) for generating high-quality textbook-like content in 22 Indian languages. Provided prompt-response pairs should be annotated using the following five-point criteria:\n\n1. Grammar & Readability (1-5) Evaluate how natural and grammatically correct the writing is.\n\n• 1 -Poor: Hard to read; grammar issues, awkward phrasing.\n\n• 3 -Acceptable: Understandable with minor flaws.\n\n• 5 -Excellent: Flawless grammar and fluent structure.",
+      "word_count": 67
+    },
+    {
+      "index": 57,
+      "title": "Faithfulness to the Prompt (1-5)",
+      "kind": "body",
+      "text": "Assess whether the response stays on-topic and fulfills the instruction.\n\n• 1 -Poor: Largely off-topic or missing key ideas.\n\n• 3 -Acceptable: Mostly aligned with prompt intent.\n\n• 5 -Excellent: Fully relevant and complete response.\n\n3. Overall Generation Quality (1-5) Judge coherence, structure, title quality, and overall flow.\n\n• 1 -Poor: Unstructured, incoherent, or dull.\n\n• 3 -Acceptable: Decent flow and organization.\n\n• 5 -Excellent: Clear, compelling, and wellstructured.",
+      "word_count": 69
+    },
+    {
+      "index": 58,
+      "title": "Hallucination / Factual Accuracy (1-5)",
+      "kind": "body",
+      "text": "Rate the factual correctness and reliability of the content.\n\n• 1 -Poor: Contains major factual errors or fabrications.\n\n• 3 -Acceptable: Mostly accurate, with minor mistakes.\n\n• 5 -Excellent: Fully factual and verifiable content.",
+      "word_count": 34
+    },
+    {
+      "index": 59,
+      "title": "Length of Output (1-5)",
+      "kind": "body",
+      "text": "Evaluate if the output is sufficiently detailed and balanced.\n\n• 1 -Too Short: <10 lines; lacks depth.\n\n• 3 -Moderate: 20-40 lines; informative but could improve.\n\n• 5 -Ideal: Well-balanced and comprehensive.",
+      "word_count": 32
+    },
+    {
+      "index": 60,
+      "title": "Guidelines for Evaluating Translations by LLMs sections",
+      "kind": "body",
+      "text": "The goal is to evaluate the quality of machine-generated translations of educational content across Indian languages. Each translation is to be rated on the following 4-point criteria, using a 1-5 scale:\n\n1. Grammar & Readability Judge how grammatically correct and naturally flowing the translation is in the target language.\n\n• 1 -Poor: Hard to read due to grammar issues or awkward phrasing.\n\n• 3 -Acceptable: Mostly clear with minor issues.\n\n• 5 -Excellent: Native-like fluency with polished flow.",
+      "word_count": 78
+    },
+    {
+      "index": 61,
+      "title": "Translation Faithfulness",
+      "kind": "body",
+      "text": "Assess how accurately the original meaning is preserved.\n\n• 1 -Poor: Major distortions or omissions.\n\n• 3 -Acceptable: Mostly faithful with minor deviations.\n\n• 5 -Excellent: Fully equivalent in meaning.",
+      "word_count": 30
+    },
+    {
+      "index": 62,
+      "title": "Terminology & Domain Consistency",
+      "kind": "body",
+      "text": "Evaluate the use of domain-specific terms and formatting.\n\n• 1 -Poor: Inconsistent or incorrect terminology.\n\n• 3 -Acceptable: Mostly correct, some inconsistencies.\n\n• 5 -Excellent: Consistently accurate and wellsuited to context.",
+      "word_count": 31
+    },
+    {
+      "index": 63,
+      "title": "Fluency & Style",
+      "kind": "body",
+      "text": "Consider stylistic smoothness, tone, and sentence flow.\n\n• 1 -Poor: Disjointed or robotic.\n\n• 3 -Acceptable: Understandable but slightly mechanical.\n\n• 5 -Excellent: Natural, fluent, and human-like.",
+      "word_count": 27
+    },
+    {
+      "index": 64,
+      "title": "E Examples",
+      "kind": "body",
+      "text": "We also show the example generations through different LLMs across various styles in the Figures 14 15 16 17 18 19 20 21 22 23 24 .",
+      "word_count": 27
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Phi-4-reasoning technical report",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "M Abdin",
+        "S Agarwal",
+        "A Awadallah",
+        "V Balachandran",
+        "H Behl",
+        "L Chen",
+        "G De Rosa",
+        "S Gunasekar"
+      ],
+      "raw_text": "M Abdin S Agarwal A Awadallah V Balachandran H Behl L Chen G De Rosa S Gunasekar M Javaheripi N Joshi arXiv:2504.21318 Phi-4-reasoning technical report 2025 arXiv preprint"
+    },
+    {
+      "index": 2,
+      "title": "Language Specific Knowledge: Do Models Know Better in X than in English? arXiv preprint",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "M Abdin",
+        "J Aneja",
+        "H Behl",
+        "S Bubeck",
+        "R Eldan",
+        "S Gunasekar",
+        "M Harrison",
+        "R J Hewett"
+      ],
+      "raw_text": "M Abdin J Aneja H Behl S Bubeck R Eldan S Gunasekar M Harrison R J Hewett M Javaheripi P Kauffmann arXiv:2412.08905 arXiv:2505.14990 Language Specific Knowledge: Do Models Know Better in X than in English? arXiv preprint 2024. 2025 arXiv preprint Phi-4 technical report"
+    },
+    {
+      "index": 3,
+      "title": "MIND: Math Informed syNthetic Dialogues for Pretraining LLMs",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "S N Akter",
+        "S Prabhumoye",
+        "J Kamalu",
+        "S Satheesh",
+        "E Nyberg",
+        "M Patwary",
+        "M Shoeybi",
+        "B Catanzaro"
+      ],
+      "raw_text": "MIND: Math Informed syNthetic Dialogues for Pretraining LLMs S N Akter S Prabhumoye J Kamalu S Satheesh E Nyberg M Patwary M Shoeybi B Catanzaro L B Allal A Lozhkov E Bakouch G M Blázquez G Penedo L Tunstall A Marafioti H Kydlíček A P Lajarín V Srivastav arXiv:2502.02737 SmolLM2: When Smol Goes Big-Data-Centric Training of a Small Language Model 2025. 2025 arXiv preprint The Thirteenth International Conference on Learning Representations"
+    },
+    {
+      "index": 4,
+      "title": "Tamil-Llama: A New Tamil Language Model Based on Llama 2",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "A Balachandran",
+        "L Ben Allal",
+        "A Lozhkov",
+        "G Penedo",
+        "T Wolf",
+        "L Werra"
+      ],
+      "raw_text": "A Balachandran L Ben Allal A Lozhkov G Penedo T Wolf L Werra arXiv:2311.05845 Tamil-Llama: A New Tamil Language Model Based on Llama 2 Cosmopedia 2023. 2024"
+    },
+    {
+      "index": 5,
+      "title": "SUTRA: Scalable Multilingual Language Model Architecture",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "A Bendale",
+        "M Sapienza",
+        "S Ripplinger",
+        "S Gibbs",
+        "J Lee",
+        "P Mistry"
+      ],
+      "raw_text": "A Bendale M Sapienza S Ripplinger S Gibbs J Lee P Mistry arXiv:2405.06694 SUTRA: Scalable Multilingual Language Model Architecture 2024 arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "Scaling Parameter-Constrained Language Models with Quality Data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "E Chang",
+        "M Paltenghi",
+        "Y Li",
+        "P.-J Lin",
+        "C Zhao",
+        "P Huber",
+        "Z Liu",
+        "R Rabatin"
+      ],
+      "raw_text": "E Chang M Paltenghi Y Li P.-J Lin C Zhao P Huber Z Liu R Rabatin Y Shi V Chandra arXiv:2410.03083 Scaling Parameter-Constrained Language Models with Quality Data 2024 arXiv preprint"
+    },
+    {
+      "index": 7,
+      "title": "SYNTHIA: Synthetic Instruction Data for Zero-Shot Cross-Task Generalization",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "A Chen"
+      ],
+      "raw_text": "SYNTHIA: Synthetic Instruction Data for Zero-Shot Cross-Task Generalization A Chen 2023 ACL"
+    },
+    {
+      "index": 8,
+      "title": "Revisiting Scaling Laws for Language Models: The Role of Data Quality and Training Strategies",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Z Chen",
+        "S Wang",
+        "T Xiao",
+        "Y Wang",
+        "S Chen",
+        "X Cai",
+        "J He",
+        "J Wang"
+      ],
+      "raw_text": "Revisiting Scaling Laws for Language Models: The Role of Data Quality and Training Strategies Z Chen S Wang T Xiao Y Wang S Chen X Cai J He J Wang Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics the 63rd Annual Meeting of the Association for Computational Linguistics Long Papers 2025 1"
+    },
+    {
+      "index": 9,
+      "title": "Llama-3-Nanda-10B-Chat: An Open Generative Large Language Model for Hindi",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "M Choudhury",
+        "S Chauhan"
+      ],
+      "raw_text": "Llama-3-Nanda-10B-Chat: An Open Generative Large Language Model for Hindi M Choudhury S Chauhan arXiv:2204.02311 PaLM: Scaling Language Modeling with Pathways 2024. 2022 arXiv preprint"
+    },
+    {
+      "index": 10,
+      "title": "Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "P Clark",
+        "I Cowhey",
+        "O Etzioni",
+        "T Khot",
+        "A Sabharwal",
+        "C Schoenick",
+        "O Tafjord"
+      ],
+      "raw_text": "P Clark I Cowhey O Etzioni T Khot A Sabharwal C Schoenick O Tafjord arXiv:1803.05457 Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge 2018"
+    },
+    {
+      "index": 11,
+      "title": "Common Crawl. 2007. Common Crawl -Open Repository of Web Crawl Data",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "K Cobbe",
+        "V Kosaraju",
+        "M Bavarian",
+        "M Chen",
+        "H Jun",
+        "L Kaiser",
+        "M Plappert",
+        "J Tworek"
+      ],
+      "raw_text": "K Cobbe V Kosaraju M Bavarian M Chen H Jun L Kaiser M Plappert J Tworek J Hilton R Nakano C Hesse J Schulman arXiv:2110.14168 Common Crawl. 2007. Common Crawl -Open Repository of Web Crawl Data 2021 Training Verifiers to Solve Math Word Problems T. 2023. RedPajama: an Open Dataset for Training Large Language Models"
+    },
+    {
+      "index": 12,
+      "title": "Unsupervised Cross-lingual Representation Learning at Scale. ACL",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "A Conneau"
+      ],
+      "raw_text": "A Conneau Unsupervised Cross-lingual Representation Learning at Scale. ACL 2020"
+    },
+    {
+      "index": 13,
+      "title": "Towards Leaving No Indic Language Behind: Building Monolingual Corpora, Benchmark and Models for Indic Languages",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "S Doddapaneni",
+        "R Aralikatte",
+        "G Ramesh",
+        "S Goyal",
+        "M M Khapra",
+        "A Kunchukuttan",
+        "P Kumar"
+      ],
+      "raw_text": "S Doddapaneni R Aralikatte G Ramesh S Goyal M M Khapra A Kunchukuttan P Kumar arXiv:2212.05409 Towards Leaving No Indic Language Behind: Building Monolingual Corpora, Benchmark and Models for Indic Languages 2023"
+    },
+    {
+      "index": 14,
+      "title": "DROP: A Reading Comprehension Benchmark Requiring Discrete Reasoning Over Paragraphs",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "D Dua",
+        "Y Wang",
+        "P Dasigi",
+        "G Stanovsky",
+        "S Singh",
+        "M Gardner",
+        "J Gala",
+        "P A Chitale"
+      ],
+      "raw_text": "DROP: A Reading Comprehension Benchmark Requiring Discrete Reasoning Over Paragraphs D Dua Y Wang P Dasigi G Stanovsky S Singh M Gardner J Gala P A Chitale R Ak V Gumma S Doddapaneni A Kumar J Nawale A Sujatha R Puduppully V Raghavan arXiv:1903.00161 arXiv:2305.16307 Towards high-quality and accessible machine translation models for all 22 scheduled indian languages 2019. 2023 2 arXiv preprint"
+    },
+    {
+      "index": 15,
+      "title": "The Pile: An 800GB Dataset of Diverse Text for Language Modeling",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "J Gala",
+        "T Jayakumar",
+        "J A Husain",
+        "M",
+        "A K Khan",
+        "M S U R Kanojia",
+        "D Puduppully",
+        "R Khapra"
+      ],
+      "raw_text": "J Gala T Jayakumar J A Husain M A K Khan M S U R Kanojia D Puduppully R Khapra M M Dabre R Murthy R Kunchukuttan A Gao L Biderman S Black S Golding L Hoppe T Foster C Phang J He H Thite A Nabeshima N Presser S Leahy C Gao L Tow J Abbasi B Biderman S Black S Dipofi A Foster C Golding L Hsu J Le Noac'h A Li H Mcdonell K Muennighoff N Ociepa C Phang J Reynolds L Schoelkopf H Skowron A Sutawika L Tang E arXiv:2401.15006 ArXiv, abs/2101.00027 The Pile: An 800GB Dataset of Diverse Text for Language Modeling 2024. 2020 arXiv preprint Airavata: Introducing Hindi Instruction-tuned LLM Thite, A.; Wang, B.; Wang, K.; and Zou, A. 2024. The Language Model Evaluation Harness"
+    },
+    {
+      "index": 16,
+      "title": "Scaling synthetic data creation with 1,000,000,000 personas",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "T Ge",
+        "X Chan",
+        "X Wang",
+        "D Yu",
+        "H Mi",
+        "D Yu"
+      ],
+      "raw_text": "Scaling synthetic data creation with 1,000,000,000 personas T Ge X Chan X Wang D Yu H Mi D Yu arXiv:2406.20094 2024 arXiv preprint"
+    },
+    {
+      "index": 17,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "A Grattafiori",
+        "A Dubey",
+        "A Jauhri",
+        "A Pandey",
+        "A Kadian",
+        "A Al-Dahle",
+        "A Letman",
+        "A Mathur"
+      ],
+      "raw_text": "A Grattafiori A Dubey A Jauhri A Pandey A Kadian A Al-Dahle A Letman A Mathur Schelten, A."
+    },
+    {
+      "index": 18,
+      "title": "The llama 3 herd of models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "A Vaughan"
+      ],
+      "raw_text": "A Vaughan arXiv:2407.21783 The llama 3 herd of models 2024 arXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "Textbooks are all you need",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "S Gunasekar",
+        "Y Zhang",
+        "J Aneja",
+        "C C T Mendes",
+        "A Del Giorno",
+        "S Gopi",
+        "M Javaheripi",
+        "P Kauffmann"
+      ],
+      "raw_text": "S Gunasekar Y Zhang J Aneja C C T Mendes A Del Giorno S Gopi M Javaheripi P Kauffmann G De Rosa O Saarikivi arXiv:2306.11644 Textbooks are all you need 2023 arXiv preprint"
+    },
+    {
+      "index": 20,
+      "title": "KenLM: Faster and smaller language model queries",
+      "doi": "",
+      "year": "2011",
+      "authors": [
+        "K Heafield"
+      ],
+      "raw_text": "KenLM: Faster and smaller language model queries K Heafield Proceedings of the sixth workshop on statistical machine translation the sixth workshop on statistical machine translation 2011"
+    },
+    {
+      "index": 21,
+      "title": "2021a. Measuring Massive Multitask Language Understanding",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "D Hendrycks",
+        "C Burns",
+        "S Basart",
+        "A Zou",
+        "M Mazeika",
+        "D Song",
+        "J Steinhardt"
+      ],
+      "raw_text": "2021a. Measuring Massive Multitask Language Understanding D Hendrycks C Burns S Basart A Zou M Mazeika D Song J Steinhardt International Conference on Learning Representations"
+    },
+    {
+      "index": 22,
+      "title": "Semantics derived automatically from language corpora contain human-like moral choices",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "D Hendrycks",
+        "C Burns",
+        "S Kadavath",
+        "A Arora",
+        "S Basart",
+        "E Tang",
+        "D Song",
+        "J Steinhardt"
+      ],
+      "raw_text": "Semantics derived automatically from language corpora contain human-like moral choices D Hendrycks C Burns S Kadavath A Arora S Basart E Tang D Song J Steinhardt S Jentzsch P Schramowski C Rothkopf K Kersting arXiv:2103.03874 Proceedings of the 2019 AAAI/ACM Conference on AI, Ethics, and Society the 2019 AAAI/ACM Conference on AI, Ethics, and Society 2021. 2019 Measuring Mathematical Problem Solving With the MATH Dataset"
+    },
+    {
+      "index": 23,
+      "title": "Mixtral of experts",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "A Q Jiang",
+        "A Sablayrolles",
+        "A Roux",
+        "A Mensch",
+        "B Savary",
+        "C Bamford",
+        "D S Chaplot",
+        "D D Casas"
+      ],
+      "raw_text": "A Q Jiang A Sablayrolles A Roux A Mensch B Savary C Bamford D S Chaplot D D Casas E B Hanna F Bressand arXiv:2401.04088 Mixtral of experts 2024 arXiv preprint"
+    },
+    {
+      "index": 24,
+      "title": "TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "M Joshi",
+        "E Choi",
+        "D S Weld",
+        "L Zettlemoyer"
+      ],
+      "raw_text": "M Joshi E Choi D S Weld L Zettlemoyer arXiv:1705.03551 TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension 2017"
+    },
+    {
+      "index": 25,
+      "title": "The state and fate of linguistic diversity and inclusion in the NLP world",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "P Joshi",
+        "S Santy",
+        "A Budhiraja",
+        "K Bali",
+        "M Choudhury"
+      ],
+      "raw_text": "P Joshi S Santy A Budhiraja K Bali M Choudhury arXiv:2004.09095 The state and fate of linguistic diversity and inclusion in the NLP world 2020 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "FastText.zip: Compressing text classification models",
+      "doi": "",
+      "year": "2016",
+      "authors": [
+        "A Joulin",
+        "E Grave",
+        "P Bojanowski",
+        "M Douze",
+        "H Jégou",
+        "T Mikolov"
+      ],
+      "raw_text": "A Joulin E Grave P Bojanowski M Douze H Jégou T Mikolov arXiv:1612.03651 FastText.zip: Compressing text classification models 2016 arXiv preprint"
+    },
+    {
+      "index": 27,
+      "title": "Indic-NLPSuite: Monolingual Corpora, Evaluation Benchmarks and Pre-trained Multilingual Language Models for Indian Languages",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "D Kakwani",
+        "A Kunchukuttan",
+        "S Golla",
+        "N C",
+        "G Bhattacharyya",
+        "A Khapra",
+        "M M Kumar",
+        "P"
+      ],
+      "raw_text": "Indic-NLPSuite: Monolingual Corpora, Evaluation Benchmarks and Pre-trained Multilingual Language Models for Indian Languages D Kakwani A Kunchukuttan S Golla N C G Bhattacharyya A Khapra M M Kumar P Findings of the Association for Computational Linguistics: EMNLP 2020 2020 Online: Association for Computational Linguistics"
+    },
+    {
+      "index": 28,
+      "title": "Krutrim LLM: Multilingual Foundational Model for over a Billion People",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "A Kallappa",
+        "P Kamble",
+        "A Ravi",
+        "A Patidar",
+        "V Dhruv",
+        "D Kumar",
+        "R Awasthi",
+        "A Manjunath"
+      ],
+      "raw_text": "A Kallappa P Kamble A Ravi A Patidar V Dhruv D Kumar R Awasthi A Manjunath S Agarwal K Ashish G Bhargava C Khatri arXiv:2502.09642 Krutrim LLM: Multilingual Foundational Model for over a Billion People 2025"
+    },
+    {
+      "index": 29,
+      "title": "Building a Llama2-finetuned LLM for Odia Language Utilizing Domain Knowledge Instruction Set",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "M S U R Khan",
+        "P Mehta",
+        "A Sankar",
+        "U Kumaravelan",
+        "S Doddapaneni",
+        "S Jain",
+        "A Kunchukuttan",
+        "P Kumar"
+      ],
+      "raw_text": "Building a Llama2-finetuned LLM for Odia Language Utilizing Domain Knowledge Instruction Set M S U R Khan P Mehta A Sankar U Kumaravelan S Doddapaneni S Jain A Kunchukuttan P Kumar R Dabre M M Khapra arXiv:2403.06350 arXiv:2411.15124 Indi-cLLMSuite: A Blueprint for Creating Pre-training and Fine-Tuning Datasets for Indian Languages Lambert, N 2024. 2023. 2020. 2023 arXiv preprint Krutrim LLM: Multilingual Foundational Model for over a Billion People AI4Bharat-IndicNLP Corpus: Monolingual Corpora and Word Embeddings for Indic Languages Efficient Memory Management for Large Language Model Serving with PagedAttention Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles et al. 2024. T\\\" ulu 3: Pushing frontiers in open language model post-training"
+    },
+    {
+      "index": 30,
+      "title": "Retrieval-augmented generation for knowledge-intensive nlp tasks",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "P Lewis",
+        "E Perez",
+        "A Piktus",
+        "F Petroni",
+        "V Karpukhin",
+        "N Goyal",
+        "H Küttler",
+        "M Lewis"
+      ],
+      "raw_text": "Retrieval-augmented generation for knowledge-intensive nlp tasks P Lewis E Perez A Piktus F Petroni V Karpukhin N Goyal H Küttler M Lewis W.-T Yih T Rocktäschel Advances in neural information processing systems 2020 33"
+    },
+    {
+      "index": 31,
+      "title": "Numina-Math",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "J Li",
+        "E Beeching",
+        "L Tunstall",
+        "B Lipkin",
+        "R Soletskyi",
+        "S C Huang",
+        "K Rasul",
+        "L Yu"
+      ],
+      "raw_text": "J Li E Beeching L Tunstall B Lipkin R Soletskyi S C Huang K Rasul L Yu A Jiang Z Shen Z Qin B Dong L Zhou Y Fleureau G Lample S Polu Numina-Math 2024"
+    },
+    {
+      "index": 32,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "J Li",
+        "A Fang",
+        "G Smyrnis",
+        "M Ivgi",
+        "M Jordan",
+        "S Y Gadre",
+        "H Bansal",
+        "E K Guha"
+      ],
+      "raw_text": "J Li A Fang G Smyrnis M Ivgi M Jordan S Y Gadre H Bansal E K Guha S S Keh K Arora S Garg R Xin N Muennighoff R Heckel J.-P Mercat M Chen S Gururangan M Wortsman A Albalak Y Bitton M Nezhurina A Abbas C.-Y Hsieh D Ghosh J Gardner M Kilian H Zhang R Shao S Pratt S Sanyal G Ilharco G Daras K Marathe A Gokaslan J Zhang K Chandu T Nguyen I Vasiljevic S M Kakade S Song S Sanghavi F Faghri S Oh L Zettlemoyer K Lo A El-Nouby H Pouransari A Toshev S Wang D Groeneveld L Soldani P W Koh J Jitsev T Kollar A G Dimakis Y Carmon A Dave L Schmidt Shankar ArXiv, abs/2406.11794 V. 2024b. DataComp-LM: In search of the next generation of training sets for language models"
+    },
+    {
+      "index": 33,
+      "title": "Textbooks are all you need ii: phi-1.5 technical report",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Y Li",
+        "S Bubeck",
+        "R Eldan",
+        "A Del Giorno",
+        "S Gunasekar",
+        "Y T Lee"
+      ],
+      "raw_text": "Y Li S Bubeck R Eldan A Del Giorno S Gunasekar Y T Lee arXiv:2309.05463 Textbooks are all you need ii: phi-1.5 technical report 2023 arXiv preprint"
+    },
+    {
+      "index": 34,
+      "title": "Best practices and lessons learned on synthetic data for language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "R Liu",
+        "J Wei",
+        "F Liu",
+        "C Si",
+        "Y Zhang",
+        "J Rao",
+        "S Zheng",
+        "D Peng"
+      ],
+      "raw_text": "Best practices and lessons learned on synthetic data for language models R Liu J Wei F Liu C Si Y Zhang J Rao S Zheng D Peng D Yang D Zhou 2024"
+    },
+    {
+      "index": 35,
+      "title": "The flan collection: Designing data and methods for effective instruction tuning",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Corr",
+        "S Longpre",
+        "L Hou",
+        "T Vu",
+        "A Webson",
+        "H W Chung",
+        "Y Tay",
+        "D Zhou"
+      ],
+      "raw_text": "The flan collection: Designing data and methods for effective instruction tuning Corr S Longpre L Hou T Vu A Webson H W Chung Y Tay D Zhou Q V Le B Zoph J Wei ICML 2023"
+    },
+    {
+      "index": 36,
+      "title": "Rephrasing the Web: A Recipe for Compute and Data-Efficient Language Modeling",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "P Maini",
+        "S Seto",
+        "H Bai",
+        "D Grangier",
+        "Y Zhang",
+        "N Jaitly"
+      ],
+      "raw_text": "P Maini S Seto H Bai D Grangier Y Zhang N Jaitly arXiv:2401.16380 Rephrasing the Web: A Recipe for Compute and Data-Efficient Language Modeling 2024"
+    },
+    {
+      "index": 37,
+      "title": "The llama 4 herd: The beginning of a new era of natively multimodal ai innovation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "A Meta"
+      ],
+      "raw_text": "The llama 4 herd: The beginning of a new era of natively multimodal ai innovation A Meta 2025 4 2025"
+    },
+    {
+      "index": 38,
+      "title": "Nemotron-Personas: Synthetic Personas Aligned to Real",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Y Meyer",
+        "D Corneil"
+      ],
+      "raw_text": "Nemotron-Personas: Synthetic Personas Aligned to Real Y Meyer D Corneil 2025 World Distributions"
+    },
+    {
+      "index": 39,
+      "title": "Can a Suit of Armor Conduct Electricity? A New Dataset for Open Book Question Answering",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "T Mihaylov",
+        "P Clark",
+        "T Khot",
+        "A Sabharwal"
+      ],
+      "raw_text": "T Mihaylov P Clark T Khot A Sabharwal arXiv:1809.02789 Can a Suit of Armor Conduct Electricity? A New Dataset for Open Book Question Answering 2018"
+    },
+    {
+      "index": 40,
+      "title": "AIMO-2 Winning Solution: Building State-of-the-Art Mathematical Reasoning Models with OpenMathReasoning dataset",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "I Moshkov",
+        "D Hanley",
+        "I Sorokin",
+        "S Toshniwal",
+        "C Henkel",
+        "B Schifferer",
+        "W Du",
+        "I Gitman"
+      ],
+      "raw_text": "AIMO-2 Winning Solution: Building State-of-the-Art Mathematical Reasoning Models with OpenMathReasoning dataset I Moshkov D Hanley I Sorokin S Toshniwal C Henkel B Schifferer W Du I Gitman arXiv:2504.16891 2025 arXiv preprint"
+    },
+    {
+      "index": 41,
+      "title": "Is ChatGPT multilingual? Evaluating zero-shot performance across 50 languages",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "A Mueller"
+      ],
+      "raw_text": "A Mueller arXiv:2304.09157 Is ChatGPT multilingual? Evaluating zero-shot performance across 50 languages 2023 arXiv preprint"
+    },
+    {
+      "index": 42,
+      "title": "Scaling data-constrained language models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "N Muennighoff",
+        "A Rush",
+        "B Barak",
+        "T Le Scao",
+        "N Tazi",
+        "A Piktus",
+        "S Pyysalo",
+        "T Wolf"
+      ],
+      "raw_text": "Scaling data-constrained language models N Muennighoff A Rush B Barak T Le Scao N Tazi A Piktus S Pyysalo T Wolf C A Raffel Advances in Neural Information Processing Systems 36 2023"
+    },
+    {
+      "index": 43,
+      "title": "Synthetic data generation using large language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "M Nadas",
+        "L Diosan",
+        "A Tomescu"
+      ],
+      "raw_text": "Synthetic data generation using large language models M Nadas L Diosan A Tomescu arXiv:2503.14023 Advances in text and code 2025 arXiv preprint"
+    },
+    {
+      "index": 44,
+      "title": "Multilingual arbitrage: Optimizing data pools to accelerate multilingual progress",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "A Odumakinde",
+        "D D'souza",
+        "P Verga",
+        "B Ermis",
+        "S Hooker"
+      ],
+      "raw_text": "Multilingual arbitrage: Optimizing data pools to accelerate multilingual progress A Odumakinde D D'souza P Verga B Ermis S Hooker arXiv:2408.14960 2024 arXiv preprint"
+    },
+    {
+      "index": 45,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "T Olmo",
+        "P Walsh",
+        "L Soldaini",
+        "D Groeneveld",
+        "K Lo",
+        "S Arora",
+        "A Bhagia",
+        "Y Gu"
+      ],
+      "raw_text": "T Olmo P Walsh L Soldaini D Groeneveld K Lo S Arora A Bhagia Y Gu S Huang M Jordan N Lambert D Schwenk O Tafjord T Anderson D Atkinson F Brahman C Clark P Dasigi N Dziri M Guerquin H Ivison P W Koh J Liu S Malik W Merrill L J V Miranda J Morrison T Murray C Nam V Pyatkin A Rangapur M Schmitz S Skjonsberg D Wadden C Wilhelm M Wilson L Zettlemoyer Farhadi arXiv:2501.00656 and Hajishirzi, H. 2025. 2 OLMo 2 Furious"
+    },
+    {
+      "index": 46,
+      "title": "The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "G Penedo",
+        "H Kydlíček",
+        "A Lozhkov",
+        "M Mitchell",
+        "C Raffel",
+        "L Von Werra",
+        "T Wolf"
+      ],
+      "raw_text": "G Penedo H Kydlíček A Lozhkov M Mitchell C Raffel L Von Werra T Wolf arXiv:2406.17557 The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale 2024 arXiv preprint"
+    },
+    {
+      "index": 47,
+      "title": "2024b. FineWeb2: A sparkling update with 1000s of languages. Accessed",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "G Penedo",
+        "H Kydlíček",
+        "V Sabolčec",
+        "B Messmer",
+        "N Foroutan",
+        "M Jaggi",
+        "L Von Werra",
+        "T Wolf"
+      ],
+      "raw_text": "2024b. FineWeb2: A sparkling update with 1000s of languages. Accessed G Penedo H Kydlíček V Sabolčec B Messmer N Foroutan M Jaggi L Von Werra T Wolf 30 Jan. 2025"
+    },
+    {
+      "index": 48,
+      "title": "The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data, and Web Data Only",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "G Penedo",
+        "Q Malartic",
+        "D Hesslow",
+        "R.-A Cojocaru",
+        "A Cappelli",
+        "H Alobeidli",
+        "B Pannier",
+        "E Almazrouei"
+      ],
+      "raw_text": "The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data, and Web Data Only G Penedo Q Malartic D Hesslow R.-A Cojocaru A Cappelli H Alobeidli B Pannier E Almazrouei J Launay ArXiv, abs/2306.01116 2023"
+    },
+    {
+      "index": 49,
+      "title": "Scaling laws of synthetic data for language models",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Z Qin",
+        "Q Dong",
+        "X Zhang",
+        "L Dong",
+        "X Huang",
+        "Z Yang",
+        "M Khademi",
+        "D Zhang"
+      ],
+      "raw_text": "Scaling laws of synthetic data for language models Z Qin Q Dong X Zhang L Dong X Huang Z Yang M Khademi D Zhang H H Awadalla Y R Fung arXiv:2503.19551 2025 arXiv preprint"
+    },
+    {
+      "index": 50,
+      "title": "Exploring the limits of transfer learning with a unified text-to-text transformer",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "C Raffel",
+        "N Shazeer",
+        "A Roberts",
+        "K Lee",
+        "S Narang",
+        "M Matena",
+        "Y Zhou",
+        "W Li"
+      ],
+      "raw_text": "Exploring the limits of transfer learning with a unified text-to-text transformer C Raffel N Shazeer A Roberts K Lee S Narang M Matena Y Zhou W Li P J Liu K Sakaguchi R L Bras C Bhagavatula Y Choi Journal of machine learning research 21 140 2020. 2021 WinoGrande: an adversarial winograd schema challenge at scale Commun. ACM"
+    },
+    {
+      "index": 51,
+      "title": "OpenHathi Series: An Approach To Build Bilingual LLMs Frugally. Sarvam. 2024. Sarvam AI launches first LLM for Indian languages. Sarvam AI. 2025a. Arc-Challenge-Indic",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Sarvam"
+      ],
+      "raw_text": "Sarvam OpenHathi Series: An Approach To Build Bilingual LLMs Frugally. Sarvam. 2024. Sarvam AI launches first LLM for Indian languages. Sarvam AI. 2025a. Arc-Challenge-Indic 2023"
+    },
+    {
+      "index": 52,
+      "title": "Sarvam AI. 2025b. Sarvam-Translate",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Sarvam AI. 2025b. Sarvam-Translate"
+    },
+    {
+      "index": 53,
+      "title": "Dolma: an Open Corpus of Three Trillion Tokens for Language Model Pretraining Research",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "L Soldaini",
+        "R Kinney",
+        "A Bhagia",
+        "D Schwenk",
+        "D Atkinson",
+        "R Authur",
+        "B Bogin",
+        "K R Chandu"
+      ],
+      "raw_text": "L Soldaini R Kinney A Bhagia D Schwenk D Atkinson R Authur B Bogin K R Chandu J Dumas Y Elazar V Hofmann A Jha S Kumar L Lucy ArXiv, abs/2402.00159 Dolma: an Open Corpus of Three Trillion Tokens for Language Model Pretraining Research 2024"
+    },
+    {
+      "index": 54,
+      "title": "Nemotron-CC: Transforming Common Crawl into a Refined Long-Horizon Pretraining Dataset",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "D Su",
+        "K Kong",
+        "Y Lin",
+        "J Jennings",
+        "B Norick",
+        "M Kliegl",
+        "M Patwary",
+        "M Shoeybi"
+      ],
+      "raw_text": "D Su K Kong Y Lin J Jennings B Norick M Kliegl M Patwary M Shoeybi B Catanzaro arXiv:2412.02595 Nemotron-CC: Transforming Common Crawl into a Refined Long-Horizon Pretraining Dataset 2024 arXiv preprint"
+    },
+    {
+      "index": 55,
+      "title": "Pralekha: An Indic Document Alignment Evaluation Benchmark",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "S Suryanarayanan",
+        "H Song",
+        "M S U R Khan",
+        "A Kunchukuttan",
+        "M M Khapra",
+        "R Dabre"
+      ],
+      "raw_text": "S Suryanarayanan H Song M S U R Khan A Kunchukuttan M M Khapra R Dabre arXiv:2411.19096 Pralekha: An Indic Document Alignment Evaluation Benchmark 2024 arXiv preprint"
+    },
+    {
+      "index": 56,
+      "title": "Com-monsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "A Talmor",
+        "J Herzig",
+        "N Lourie",
+        "J Berant"
+      ],
+      "raw_text": "A Talmor J Herzig N Lourie J Berant arXiv:1811.00937 Com-monsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge 2019"
+    },
+    {
+      "index": 57,
+      "title": "Stanford alpaca: An instruction-following llama model",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "R Taori",
+        "I Gulrajani",
+        "T Zhang",
+        "Y Dubois",
+        "X Li",
+        "C Guestrin",
+        "P Liang",
+        "T B Hashimoto"
+      ],
+      "raw_text": "R Taori I Gulrajani T Zhang Y Dubois X Li C Guestrin P Liang T B Hashimoto Stanford alpaca: An instruction-following llama model 2023"
+    },
+    {
+      "index": 58,
+      "title": "LLaMA: Open and Efficient Foundation Language Models",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "H Touvron"
+      ],
+      "raw_text": "H Touvron arXiv:2302.13971 LLaMA: Open and Efficient Foundation Language Models 2023 arXiv preprint"
+    },
+    {
+      "index": 59,
+      "title": "MILU: A Multi-task Indic Language Understanding Benchmark",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "S Verma",
+        "M S U R Khan",
+        "V Kumar",
+        "R Murthy",
+        "J Sen"
+      ],
+      "raw_text": "S Verma M S U R Khan V Kumar R Murthy J Sen arXiv:2411.02538 MILU: A Multi-task Indic Language Understanding Benchmark 2024 arXiv preprint"
+    },
+    {
+      "index": 60,
+      "title": "Will we run out of data? Limits of LLM scaling based on human-generated data",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "P Villalobos",
+        "A Ho",
+        "J Sevilla",
+        "T Besiroglu",
+        "L Heim",
+        "M Hobbhahn"
+      ],
+      "raw_text": "P Villalobos A Ho J Sevilla T Besiroglu L Heim M Hobbhahn arXiv:2211.04325 Will we run out of data? Limits of LLM scaling based on human-generated data 2022 arXiv preprint"
+    },
+    {
+      "index": 61,
+      "title": "Self-instruct: Aligning language models with self-generated instructions",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Y Wang",
+        "Y Kordi",
+        "S Mishra",
+        "A Liu",
+        "N A Smith",
+        "D Khashabi",
+        "H Hajishirzi"
+      ],
+      "raw_text": "Y Wang Y Kordi S Mishra A Liu N A Smith D Khashabi H Hajishirzi arXiv:2212.10560 Self-instruct: Aligning language models with self-generated instructions 2022 arXiv preprint"
+    },
+    {
+      "index": 62,
+      "title": "Aligning Language Models with Self-Generated Instructions",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Y Wang"
+      ],
+      "raw_text": "Y Wang arXiv:2212.10560 Aligning Language Models with Self-Generated Instructions 2022 arXiv preprint"
+    },
+    {
+      "index": 63,
+      "title": "Wizardlm: Empowering large language models to follow complex instructions",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "C Xu",
+        "Q Sun",
+        "K Zheng",
+        "X Geng",
+        "P Zhao",
+        "J Feng",
+        "C Tao",
+        "D Jiang"
+      ],
+      "raw_text": "C Xu Q Sun K Zheng X Geng P Zhao J Feng C Tao D Jiang arXiv:2304.12244 Wizardlm: Empowering large language models to follow complex instructions 2023 arXiv preprint"
+    },
+    {
+      "index": 64,
+      "title": "Magpie: Alignment Data Synthesis from Scratch by Prompting Aligned LLMs with Nothing",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Z Xu",
+        "F Jiang",
+        "L Niu",
+        "Y Deng",
+        "R Poovendran",
+        "Y Choi",
+        "B Y Lin"
+      ],
+      "raw_text": "Magpie: Alignment Data Synthesis from Scratch by Prompting Aligned LLMs with Nothing Z Xu F Jiang L Niu Y Deng R Poovendran Y Choi B Y Lin arXiv:2406.08464 2024"
+    },
+    {
+      "index": 65,
+      "title": "Scaling Text-Rich Image Understanding via Code-Guided Synthetic Multimodal Data Generation",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Y Yang",
+        "A Patel",
+        "M Deitke",
+        "T Gupta",
+        "L Weihs",
+        "A Head",
+        "M Yatskar",
+        "C Callison-Burch"
+      ],
+      "raw_text": "Scaling Text-Rich Image Understanding via Code-Guided Synthetic Multimodal Data Generation Y Yang A Patel M Deitke T Gupta L Weihs A Head M Yatskar C Callison-Burch R Krishna A Kembhavi arXiv:2502.14846 2025 arXiv preprint"
+    },
+    {
+      "index": 66,
+      "title": "Large language model as attributed training data generator: A tale of diversity and bias",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Y Yu",
+        "Y Zhuang",
+        "J Zhang",
+        "Y Meng",
+        "A J Ratner",
+        "R Krishna",
+        "J Shen",
+        "C Zhang"
+      ],
+      "raw_text": "Large language model as attributed training data generator: A tale of diversity and bias Y Yu Y Zhuang J Zhang Y Meng A J Ratner R Krishna J Shen C Zhang Advances in neural information processing systems 36 2023"
+    },
+    {
+      "index": 67,
+      "title": "HellaSwag: Can a Machine Really Finish Your Sentence?",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "R Zellers",
+        "A Holtzman",
+        "Y Bisk",
+        "A Farhadi",
+        "Y Choi"
+      ],
+      "raw_text": "HellaSwag: Can a Machine Really Finish Your Sentence? R Zellers A Holtzman Y Bisk A Farhadi Y Choi arXiv:1905.07830 2019"
+    },
+    {
+      "index": 68,
+      "title": "MegaMath: Pushing the Limits of Open Math Corpora",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "F Zhou",
+        "Z Wang",
+        "N Ranjan",
+        "Z Cheng",
+        "L Tang",
+        "G He",
+        "Z Liu",
+        "E P Xing"
+      ],
+      "raw_text": "F Zhou Z Wang N Ranjan Z Cheng L Tang G He Z Liu E P Xing arXiv:2504.02807 MegaMath: Pushing the Limits of Open Math Corpora 2025"
+    },
+    {
+      "index": 69,
+      "title": "Scores are on a scale of 1 to 5 averaged over 10 languages. The two scores correspond to generation methods Gen (direct generation by the model in language xx) and Trans (generation in En followed by its translation to xx)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Scores are on a scale of 1 to 5 averaged over 10 languages. The two scores correspond to generation methods Gen (direct generation by the model in language xx) and Trans (generation in En followed by its translation to xx) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Hallucination (Accuracy) Length of Output Average Gemma 3 Table 11: Human evaluation of average generation quality across LLMs"
+    },
+    {
+      "index": 70,
+      "title": "Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Bengali) and Trans (generation in English followed by translation to Bengali)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Bengali) and Trans (generation in English followed by translation to Bengali) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Hallucination (Accuracy) Length of Output Average Krutrim 12 2 Human evaluation of generation quality for Bengali Table"
+    },
+    {
+      "index": 71,
+      "title": "Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Gujarati) and Trans (generation in English followed by translation to Gujarati)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Gujarati) and Trans (generation in English followed by translation to Gujarati) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Factual Accuracy Length of Output Average LLaMA-4-Maverick 13 Human evaluation of generation quality for Gujarati Table"
+    },
+    {
+      "index": 72,
+      "title": "Human evaluation of generation and translation quality for Hindi. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Hindi) and Trans (generation in English followed by translation to Hindi)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Human evaluation of generation and translation quality for Hindi. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Hindi) and Trans (generation in English followed by translation to Hindi) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Factual Accuracy Length of Output Average Qwen 14 3 Table"
+    },
+    {
+      "index": 73,
+      "title": "Human evaluation of generation and translation quality for Kannada. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Kannada) and Trans (generation in English followed by translation to Kannada)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Human evaluation of generation and translation quality for Kannada. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Kannada) and Trans (generation in English followed by translation to Kannada) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Factual Accuracy Length of Output Average Krutrim 15 2 Table"
+    },
+    {
+      "index": 74,
+      "title": "Human evaluation of generation and translation quality for Malayalam. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Malayalam) and Trans (generation in English followed by translation to Malayalam)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Human evaluation of generation and translation quality for Malayalam. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Malayalam) and Trans (generation in English followed by translation to Malayalam) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Factual Accuracy Length of Output Average Krutrim 16 2"
+    },
+    {
+      "index": 75,
+      "title": "Human evaluation of generation and translation quality for Marathi. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Marathi) and Trans (generation in English followed by translation to Marathi)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Human evaluation of generation and translation quality for Marathi. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Marathi) and Trans (generation in English followed by translation to Marathi) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Overall Generation Quality Factual Accuracy Length of Output Average Qwen 17 3 Table"
+    },
+    {
+      "index": 76,
+      "title": "Human evaluation of generation and translation quality for Oriya. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Oriya) and Trans (generation in English followed by translation to Oriya)",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Human evaluation of generation and translation quality for Oriya. Scores are on a scale of 1 to 5, averaged across criteria. Each pair represents Gen (direct generation in Oriya) and Trans (generation in English followed by translation to Oriya) Model (Gen/Trans) Grammar & Readability Faithfulness to Prompt Generation Quality Factual Accuracy Length of Output Average LLaMA-4-Scout 18"
+    },
+    {
+      "index": 77,
+      "title": "Table 19: Human evaluation of generation and translation quality for Punjabi. Each pair shows Gen (generation in Punjabi) and Trans (generation",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Table 19: Human evaluation of generation and translation quality for Punjabi. Each pair shows Gen (generation in Punjabi) and Trans (generation"
+    },
+    {
+      "index": 78,
+      "title": "Human evaluation of generation and translation quality for Tamil. Each score shows Gen",
+      "doi": "",
+      "year": "",
+      "authors": [],
+      "raw_text": "Human evaluation of generation and translation quality for Tamil. Each score shows Gen Table 20 generation directly in"
+    },
+    {
+      "index": 79,
+      "title": "",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "/"
+      ],
+      "raw_text": "/"
+    }
+  ],
+  "section_count": 64,
+  "reference_count": 79,
+  "error": "",
+  "updated_at": "2026-04-12T03:13:18.193692+00:00"
+}

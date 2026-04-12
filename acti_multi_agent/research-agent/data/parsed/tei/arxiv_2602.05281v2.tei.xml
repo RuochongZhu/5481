@@ -1,0 +1,1640 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Back to Basics: Revisiting Exploration in Reinforcement Learning for LLM Reasoning via Generative Probabilities</title>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-02-06">6 Feb 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author role="corresp">
+							<persName><forename type="first">Pengyi</forename><surname>Li</surname></persName>
+							<email>&lt;li.pengyi@fusionbrainlab.com&gt;.</email>
+							<affiliation key="aff0">
+								<orgName type="laboratory">FusionBrain Lab</orgName>
+								<address>
+									<country key="RU">Russia</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Elizaveta</forename><surname>Goncharova</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="laboratory">FusionBrain Lab</orgName>
+								<address>
+									<country key="RU">Russia</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Andrey</forename><surname>Kuznetsov</surname></persName>
+							<affiliation key="aff0">
+								<orgName type="laboratory">FusionBrain Lab</orgName>
+								<address>
+									<country key="RU">Russia</country>
+								</address>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Ivan</forename><surname>Oseledets</surname></persName>
+							<affiliation key="aff1">
+								<orgName type="department">Institute of Numerical Mathematics</orgName>
+								<address>
+									<country key="RU">Russia</country>
+								</address>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Back to Basics: Revisiting Exploration in Reinforcement Learning for LLM Reasoning via Generative Probabilities</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-02-06">6 Feb 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">7982ED6DEB32C270D92ECA786A6EA239</idno>
+					<idno type="arXiv">arXiv:2602.05281v2[cs.LG]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T03:13+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Reinforcement Learning with Verifiable Rewards (RLVR) has emerged as an indispensable paradigm for enhancing reasoning in Large Language Models (LLMs). However, standard policy optimization methods, such as Group Relative Policy Optimization (GRPO), often converge to lowentropy policies, leading to severe mode collapse and limited output diversity. We analyze this issue from the perspective of sampling probability dynamics, identifying that the standard objective disproportionately reinforces the highest-likelihood paths, thereby suppressing valid alternative reasoning chains. To address this, we propose a novel Advantage Re-weighting Mechanism (ARM) designed to equilibrate the confidence levels across all correct responses. By incorporating Prompt Perplexity and Answer Confidence into the advantage estimation, our method dynamically reshapes the reward signal to attenuate the gradient updates of over-confident reasoning paths, while redistributing probability mass toward under-explored correct solutions. Empirical results demonstrate that our approach significantly enhances generative diversity and response entropy while maintaining competitive accuracy, effectively achieving a superior trade-off between exploration and exploitation in reasoning tasks. Empirical results on Qwen2.5 and DeepSeek models across mathematical and coding benchmarks show that Pro-GRPO significantly mitigates entropy collapse. Specifically, on Qwen2.5-7B, our method outperforms GRPO by 5.7% in Pass@1 and, notably, by 13.9% in Pass@32, highlighting its superior capability in generating diverse correct reasoning paths.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.">Introduction</head><p>In recent years, Large Language Models (LLMs) have made significant progress through Reinforcement Learning (RL)driven post-training <ref type="bibr" target="#b25">(Sutton et al., 1998;</ref><ref type="bibr" target="#b23">Schulman et al., 2017;</ref><ref type="bibr" target="#b21">Rafailov et al., 2023;</ref><ref type="bibr" target="#b18">Ouyang et al., 2022)</ref>, particularly in complex reasoning tasks. As a simple yet highly efficient training paradigm, Reinforcement Learning with Verifiable Rewards (RLVR) <ref type="bibr" target="#b12">(Lambert et al., 2024;</ref><ref type="bibr" target="#b5">Guo et al., 2025)</ref> leverages explicit verification signals to stably induce the generation of longer Chain-of-Thought (CoT) reasoning paths <ref type="bibr" target="#b24">(Shao et al., 2024;</ref><ref type="bibr" target="#b10">Jaech et al., 2024;</ref><ref type="bibr" target="#b26">Team et al., 2025)</ref>. This, in turn, leads to substantial performance gains on high-difficulty reasoning tasks, consistent with prior findings on the effectiveness of CoT reasoning and test-time scaling <ref type="bibr" target="#b32">(Wei et al., 2022;</ref><ref type="bibr" target="#b17">Muennighoff et al., 2025)</ref>.</p><p>However, although RLVR can effectively improve task success rates, its training process is often accompanied by obvious entropy collapse and mode collapse phenomena, leading to reasoning paths generated by the model being highly concentrated on a few dominant solutions. This issue inherently stems from the reward-weighted likelihood maximization objective: this objective continuously amplifies the probability mass of high-reward trajectories during optimization, thereby compressing the probability space occupied by lowfrequency but equally valid reasoning paths, weakening the model's exploration capabilities <ref type="bibr" target="#b36">(Yue et al., 2025)</ref>.</p><p>Addressing the aforementioned issues, existing works have attempted to mitigate mode collapse by introducing entropy regularization <ref type="bibr" target="#b40">(Ziebart et al., 2008;</ref><ref type="bibr" target="#b6">Haarnoja et al., 2018;</ref><ref type="bibr" target="#b4">Cui et al., 2025;</ref><ref type="bibr">Wang et al., 2025b)</ref>, clip-higher <ref type="bibr" target="#b35">(Yu et al., 2025)</ref>, dynamic clipping strategies <ref type="bibr">(Yang et al., 2025b)</ref>, or high-entropy token promotion mechanisms <ref type="bibr">(Wang et al., 2025a)</ref>. However, these methods remain largely limited to local modifications within the reward maximization framework, making it difficult to fundamentally improve the ability to model diverse reasoning paths. On the other hand, recent research indicates that applying penalties only to incorrect trajectories while maintaining a relatively flat reward structure for correct ones can, to a certain extent, increase the diversity of the solution space <ref type="bibr">(Zhu et al., 2025b)</ref>. This phenomenon further demonstrates that the relative probability structure among reasoning paths plays a critical role in shaping the model's exploration behavior.</p><p>From the perspective of generative modeling, the reasoning process of LLMs is essentially a token-by-token probabilistic sampling process. When the policy becomes overly deterministic on a few trajectories, the diversity of the sampling distribution inevitably drops <ref type="bibr" target="#b14">(Li et al., 2025)</ref>. Based on this observation, we propose a new reinforcement learning paradigm, Probabilistic based GRPO (ProGRPO), which re-examines the construction of Advantage from the perspective of probability distributions.</p><p>Specifically, ProGRPO utilizes the internal probability signals of the prompt and the generated answer from the LLM, combined with verifiable rewards, to reshape the Advantage distribution, thereby implicitly reshaping the effective reward-weighted trajectory distribution optimized by the policy gradient. This re-weighting mechanism based on probability structure can effectively alleviate the entropy collapse problem and significantly enhance the diversity of reasoning paths and training stability.</p><p>Our main contributions include:</p><p>• Methodology: We propose ProGRPO, a principled extension of GRPO that incorporates a novel Advantage Re-weighting Mechanism (ARM). By introducing confidence-aware signals into the advantage function, our method achieves targeted exploration without compromising training stability.</p><p>• Broad Effectiveness: We validate ProGRPO across diverse reasoning and code generation benchmarks using Qwen2.5 (7B, 32B) and DeepSeek models. Our method consistently outperforms mainstream baselines like GRPO and FlowRL, demonstrating strong scalability and generalization across different model sizes.</p><p>• OOD Robustness: Beyond standard benchmarks, Pro-GRPO exhibits superior Out-of-Distribution (OOD) adaptability, maintaining robust performance on unseen data distributions.</p><p>• Significant Gains: ProGRPO substantially enhances both accuracy and output diversity. On Qwen2.5-7B, it improves Pass@1 and Pass@32 by 5.7% and 13.9% respectively over GRPO (and 8.0% / 7.5% over FlowRL), highlighting its superior exploration efficiency.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.">Preliminaries</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.1.">REINFORCE</head><p>REINFORCE <ref type="bibr" target="#b25">(Sutton et al., 1998)</ref> is the classic policy gradient algorithm. Its objective is to maximize the expected cumulative reward. However, the gradient estimation suffers from high variance, leading to training instability.</p><formula xml:id="formula_0">J REINFORCE (θ) = E τ ∼π θ R(τ ) log π θ (τ )<label>(1)</label></formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.2.">Proximal Policy Optimization (PPO)</head><p>PPO <ref type="bibr" target="#b23">(Schulman et al., 2017)</ref> stabilizes training by enforcing a trust region constraint via a clipping mechanism, which restricts the size of the policy update.</p><formula xml:id="formula_1">J PPO (θ) = E q∼D,o∼π θ old 1 |o| |o| t=1 min r t (θ)A t , clip r t (θ), 1 -ϵ, 1 + ϵ A t<label>(2)</label></formula><p>PPO requires an additional value function (Critic) to estimate the advantage A t , which incurs significant computational overhead.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="2.3.">Group Relative Policy Optimization (GRPO)</head><p>GRPO <ref type="bibr" target="#b24">(Shao et al., 2024)</ref> eliminates the need for a value function by using verifiable rewards and group-based relative advantages. It samples a group of outputs {o i } G i=1 for each query q and uses the group mean as the baseline.</p><formula xml:id="formula_2">J GRPO (θ) = E q∼D,{oi} G i=1 ∼π θ old 1 G G i=1 1 |o i | |oi| t=1 min r i,t (θ)A i , clip r i,t (θ), 1 -ϵ, 1 + ϵ A i (3)</formula><p>where the advantage A i is computed by normalizing the rewards within the group:</p><formula xml:id="formula_3">A i = Ri-mean(R) std(R) .</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Methodology</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1.">Advantage Re-weighting Mechanism (AMR)</head><p>We redefine the advantage by incorporating sample-level signals derived from the model itself, using the low-probability token length normalized likelihood as a confidence score.</p><formula xml:id="formula_4">Ãi =              A i , if G k=1 r i,k = 0 A i + α (c θ (q i ) -c θ (o i | q i )) , otherwise<label>(4)</label></formula><p>Here, c(q i ) denotes the model's confidence on the current prompt. Rather than relying on heuristic assumptions, we ground this design in the principles of Curriculum Reinforcement Learning <ref type="bibr" target="#b19">(Parashar et al., 2025)</ref>, which posits that the difficulty of training samples (ranging from simple to hard) significantly impacts model optimization. Consequently, we incorporate c(q i ) as a dynamic control term to regulate the training process based on the model's familiarity with the prompt.</p><formula xml:id="formula_5">c θ (q i ) = exp   1 |T low i | t∈T low i log p θ (q i,t | q i,&lt;t )   (5) c θ (o j | q i ) represents the model's confidence in generating the answer o j for prompt q i . c θ (o j | q i ) = exp 1 |T low i | t∈T low i log p θ o j,t | q i , o j,&lt;t (6)</formula><p>This Advantage reweighting indirectly reshapes the effective reward distribution, allowing us to score reasoning trajectories rather than simply maximize rewards. The reason for not modifying the reward directly is that within a group, all answers might be correct or incorrect; directly penalizing or rewarding them could distort the update signal, compromising the stability and effectiveness of model training. By adjusting the Advantage instead, we preserve meaningful gradient signals while encouraging diverse and accurate reasoning paths.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2.">Low-Probability Token Length Normalization</head><p>We observe that applying length normalization to the full sequence likelihood can be suboptimal for reward modeling. Following the insights from <ref type="bibr">(Wang et al., 2025a)</ref>, predictive uncertainty is typically concentrated in a small fraction of generation steps. Specifically, roughly 20% of token positions substantially influence the subsequent reasoning path, while at the remaining positions, the model's next-token distribution is sharply peaked, with the top candidate often receiving a probability above 0.9.</p><p>In our framework, applying length normalization over the entire sequence would disproportionately dilute the reward signal by including these "trivial" high-confidence tokens, leading to a weak and less informative training signal. To mitigate this, we define a critical subset of tokens, denoted as T low oi , which comprises the approximately 20% of positions in the response o i that exhibit the highest predictive uncertainty. Consequently, we apply this selective length normalization to the confidence scores formulated in Equations 5 and 6. By focusing on this informative subset, we preserve meaningful confidence variations that more directly reflect the model's reasoning quality, thereby providing a more robust signal for policy optimization.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.3.">ProGRPO</head><p>Finally, our overall objective function is given by Equation 7.</p><p>J</p><formula xml:id="formula_6">ProGRPO (θ) = E (q,a)∼D,{oi} G i=1 ∼π θ old (•|q) 1 G i=1 |o i | G i=1 |oi| t=1 min r i,t (θ) Ãi , clip r i,t (θ), 1 -ε low , 1 + ε high Ãi<label>(7)</label></formula><p>The final pseudocode is presented in Algorithm 1. A detailed theoretical justification of ProGRPO is provided in Appendix A.  <ref type="table" target="#tab_0">1</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.">Experiments</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.1.">Experimental Settings</head><p>We do not employ any specially designed or task-specific prompts in this work. All models are trained and evaluated using the default prompting setup of the underlying language model.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Training Dataset.</head><p>We conduct experiments in two domains: mathematics and code generation. For mathematics, we train on the DAPO dataset <ref type="bibr" target="#b35">(Yu et al., 2025)</ref>. For code generation, we use the training split of the DeepCoder dataset <ref type="bibr" target="#b16">(Luo et al., 2025)</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Base Models.</head><p>Our experiments involve multiple model scales and families. We utilize Qwen2.5-7B, Qwen2.5-32B <ref type="bibr">(Team, 2024)</ref> and DeepSeek-R1-Distill-Qwen-1.5B <ref type="bibr" target="#b5">(Guo et al., 2025)</ref> for general reasoning tasks, while leveraging</p><p>DeepSeek-R1-Distill-Qwen-7B <ref type="bibr" target="#b5">(Guo et al., 2025)</ref> specifically for the code domain.</p><p>Algorithm 1 ProGRPO: Probabilistic Group Relative Policy Optimization</p><formula xml:id="formula_7">1: Input: Dataset D, Policy Model π θ , Reference Model π ref 2: Hyperparams: Group size G, Learning rate η, Weight α, Clip ε low , ε high 3: while not converged do 4: Sample batch of prompts Q ∼ D 5: Initialize batch loss L batch = 0 6: for each prompt q in Q do 7: 1. Sampling Phase 8: Generate G outputs {o 1 , . . . , o G } from π θold (• | q) 9: Compute rewards R = {r 1 , . . . , r G } 10: 2. Standard GRPO Advantage 11: Compute µ = mean(R) and σ = std(R) 12: A i = ri-µ σ+δ for i ∈ {1 . . . G} 13:</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Advantage Re-weighting (AMR)</head><p>14:</p><formula xml:id="formula_8">if G k=1 r k = 0 or G k=1 r k = G then 15: Ãi ← A i for all i ∈ {1 . . . G} 16:</formula><p>else 17:</p><p>// Calculate Prompt Confidence (Eq. 5)</p><p>18:</p><formula xml:id="formula_9">Identify low-prob tokens T low q in prompt q 19: Compute c θ (q) 20: for i = 1 to G do 21: // Calculate Answer Confidence (Eq. 6) 22: Identify low-prob tokens T low oi in answer o i 23: Compute c θ (o i | q) 24:</formula><p>// Apply Re-weighting (Eq. 4)</p><p>25:</p><formula xml:id="formula_10">Ãi ← A i + α • (c θ (q) -c θ (o i | q))<label>26:</label></formula><p>end for 27:</p><p>end if 28:</p><p>4. Loss Computation (Eq. 7)</p><p>29:</p><p>Initialize prompt loss L q = 0 30:</p><formula xml:id="formula_11">for i = 1 to G do 31: for t = 1 to |o i | do 32: Ratio r i,t (θ) = π θ (oi,t|q,oi,&lt;t) π θ old (oi,t|q,oi,&lt;t)<label>33:</label></formula><formula xml:id="formula_12">L surr = min r i,t (θ) Ãi , 34: clip r i,t (θ), 1 -ε low , 1 + ε high Ãi 35: L q ← L q + L surr 36:</formula><p>end for 37:</p><p>end for 38:</p><formula xml:id="formula_13">L q ← 1 G i=1 |oi| L q 39: L batch ← L batch + L q 40:</formula><p>end for 41:</p><p>Update parameters θ by minimizing -L batch 42: end while 4.2. Evaluation Math Domain. We evaluate our method on a set of widely used mathematical reasoning benchmarks, including AIME2024 <ref type="bibr" target="#b13">(Li et al., 2024)</ref>, AIME2025 <ref type="bibr" target="#b1">(Balunović et al., 2025)</ref>, AMC23 <ref type="bibr" target="#b13">(Li et al., 2024)</ref>, MATH500 <ref type="bibr">(Hendrycks et al., 2021b)</ref>, Minerva <ref type="bibr">(Hendrycks et al., 2021a)</ref>, and OlympiadBench <ref type="bibr" target="#b7">(He et al., 2024)</ref>.</p><p>Code Domain. For code-related tasks, we conduct experiments on LiveCodeBench <ref type="bibr" target="#b11">(Jain et al., 2024)</ref>, CodeForces <ref type="bibr" target="#b20">(Penedo et al., 2025)</ref>, and HumanEval+ <ref type="bibr" target="#b15">(Liu et al., 2023)</ref>.</p><p>For out-of-distribution (OOD) evaluation in the general domain, we use GPQA <ref type="bibr" target="#b22">(Rein et al., 2024)</ref> and MMLU-Pro <ref type="bibr" target="#b30">(Wang et al., 2024)</ref>.</p><p>During the evaluation, we set the sampling temperature to 0.6 and top-p to 0.95. We report performance using Pass@1 and Pass@k as the primary evaluation metrics.</p><p>For the Qwen2.5 series <ref type="bibr" target="#b0">(Bai et al., 2023)</ref>, we perform evaluations on reasoning benchmarks with a maximum output length of 8K tokens. For the DeepSeek-R1-Distill-Qwen series <ref type="bibr" target="#b5">(Guo et al., 2025)</ref>, we use a maximum output length of 8K tokens for code-domain tasks and 32K tokens for reasoning tasks, reflecting their extended context capabilities.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.3.">Results</head><p>Our primary experimental results are summarized in Tables 2 and 3. Across both mathematical reasoning and code generation domains, ProGRPO consistently outperforms the direct reward maximization baseline (GRPO) as well as the reward matching approach proposed by FlowRL.</p><p>Mathematical reasoning. As shown in Table <ref type="table" target="#tab_1">2</ref>, ProGRPO achieves substantial improvements across all evaluated benchmarks and model scales. For Qwen2.5-7B, ProGRPO attains an average Pass@1 of 43.3%, improving over GRPO by +5.7% and over FlowRL by +8.0%. The gains are even more pronounced in the multi-sample regime, where Pro-GRPO reaches an average Pass@32 of 68.5%, surpassing GRPO and FlowRL by +13.8 and +7.5%, respectively. Notably, large margins are observed on challenging benchmarks such as AIME 2024 (+12.1 Pass@1 over FlowRL) and OlympiadBench (+7.7 Pass@1 over FlowRL).</p><p>For Qwen2.5-32B, ProGRPO further scales favorably, achieving an average Pass@1 of 52.7%, which is +4.8% higher than GRPO. Similar trends are observed for DeepSeek-R1-Distill-Qwen-1.5B, where ProGRPO improves the average Pass@1 from 49.4% to 58.3%, demonstrating that our method remains effective even for smaller distilled models. Overall, these results indicate that Pro-GRPO delivers robust and consistent gains across model sizes and mathematical reasoning tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Code generation.</head><p>Table <ref type="table" target="#tab_2">3</ref> presents the results on code reasoning benchmarks. On LiveCodeBench, ProGRPO achieves an Avg@16 score of 36.47 and Pass@16 of 54.12, outperforming GRPO by +1.53 and +0.36, respectively. On CodeForces, ProGRPO yields a substantial improvement, reaching a rating of 1422.49, which exceeds GRPO by nearly +180 rating and FlowRL by +293, corresponding to a percentile increase to 75.4%. Additionally, ProGRPO attains the best performance on HumanEval+, achieving an Avg@16 score of 84.01%, further confirming its effectiveness in complex logic and syntax generation tasks.</p><p>As shown in Figure <ref type="figure">1</ref>, we further compare the Pass@K metric and observe that our method significantly surpasses the baseline base model across all evaluated settings. In addition, we evaluate the generalization performance of our model under OOD settings. As shown in Table <ref type="table" target="#tab_3">4</ref>, our method still maintains a clear advantage over GRPO.</p><p>In summary, we have achieved consistent and significant performance improvements across varying model scales and architectures. These findings provide strong empirical support for our proposed confidence-based strategy, demonstrating its capability to substantially enhance both model diversity and generalization ability.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.4.">Analysis of Training</head><p>We continuously monitored the evolution of entropy during training. As shown in the Figure <ref type="figure">2</ref>, entropy first decreases, then increases, and eventually stabilizes. This behavior can be interpreted as follows: in the early stage of training, the model mainly focuses on learning a small number of correct answers, causing the predictive distribution to contract and entropy to decrease. As training progresses and the number of correct answers within a group increases, the model begins to allocate probabilities more evenly across samples, leading to a smoother output distribution and a corresponding rise in entropy, which eventually stabilizes. In contrast, GRPO consistently reinforces the most confident answers, driving probability mass toward a few samples and resulting in entropy collapse.  0 50 100 150 200 250 300 Training Step 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 Entropy Entropy over Training Steps (up to 330 steps) GRPO w p(x)-p(y|x) GRPO w 1-p(x)-p(y|x) GRPO Naive Figure 2. Training entropy across optimization steps for different methods. Higher entropy indicates increased exploration during policy optimization.</p><p>We also investigate how diverse are the generations after the model's training. Table <ref type="table" target="#tab_4">5</ref> reports three diversity-related metrics -Distinct-2, Self-BLEU, and Semantic Cosinecomputed at the dataset level for correct solutions on AIME 2024, where sentence representations are obtained using all-MiniLM-L6-v2 <ref type="bibr" target="#b29">(Wang et al., 2020)</ref>. Compared with the GRPO baseline, our method achieves substantially lower Self-BLEU and Semantic Cosine scores, indicating reduced lexical and semantic redundancy among generated solutions. Although Distinct-2 is slightly lower, this suggests that the improved diversity primarily stems from higherlevel structural and semantic variation in reasoning rather than surface-level n-gram diversification. Overall, these results demonstrate that our approach encourages more diverse yet valid reasoning trajectories, consistent with the observed gains under higher-entropy decoding.</p><p>Overall, ProGRPO method demonstrates superior performance to GRPO in both reliability and diversity: it achieves higher average probabilities, exhibits greater stability for low-probability tokens, and generates richer outputs. This conclusion aligns with the comparative results presented in Figure <ref type="figure" target="#fig_3">3a</ref> and Figure <ref type="figure" target="#fig_3">3b</ref>.</p><p>As shown Figure <ref type="figure" target="#fig_5">4</ref>, we conduct a systematic analysis of the output entropy on the AIME dataset. The results show that, compared with models trained using GRPO, our method significantly increases the entropy of the output distribu-   tion while maintaining comparable Pass@1 performance. Furthermore, when combined with the Pass@k metric, we observe that the model continues to achieve stable improvements in Pass@k under higher entropy levels. This indicates that the increased entropy does not arise from randomization, but rather from generating a more diverse set of valid reasoning paths while preserving solution correctness.  </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4.5.">Ablation</head><p>Ba se lin e G RP O</p><formula xml:id="formula_14">1 c (oj qi ) 1 c (qi ) c (oj qi ) c (qi ) c (oj qi )<label>0</label></formula><p>10 20 30 40 50 60 70 Performance (%) 23.6 37.6 38.5 44.3 43.3 57.1 54.7 60.6 67.1 68.5 Average Performance Comparison Avg Accuracy Avg Pass@32 As shown in Figure <ref type="figure" target="#fig_6">5</ref>, compared with GRPO, our proposed algorithm consistently achieves stable and significant performance improvements across different models and advantage formulations. In particular, the effectiveness and robustness of our method are consistently validated when encouraging low-probability answers, as well as under advantage designs that combine perplexity -both low and highwith low-probability answer incentives. As shown in Table <ref type="table" target="#tab_5">6</ref>, the averaged results across six benchmarks demonstrate that the hyperparameter α in Equation X has a significant impact on model performance. When α = 0, the model reduces to pure GRPO and yields relatively weak performance. Increasing α to 0.3 introduces a moderate confidence-based advantage reweighting, leading to substantial improvements in both Pass@1 and Pass@32, which indicates more effective reinforcement of high-quality reasoning trajectories while maintaining training stability. However, further increasing α (e.g., to 0.7 or 1) degrades performance, suggesting that overly strong confidence signals can dominate the advantage function and weaken the supervision from the original reward. Overall, α = 0.3 achieves the best balance between performance and stability.</p><formula xml:id="formula_15">In summary, c θ (q i ) -c θ (o j | q i ) with α = 0.3 is a more robust choice, whereas 1 -c θ (q i ) -c θ (o j | q i ))</formula><p>tends to be more exploratory, as it encourages larger updates on harder problems compared to easier ones.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.">Related Work Reasoning Models.</head><p>Recently, reinforcement learning-driven reasoning models have typically generated explicit and lengthy chains of thought before producing final answers, as exemplified by models such as OpenAI o1 <ref type="bibr" target="#b10">(Jaech et al., 2024)</ref>, DeepSeek <ref type="bibr" target="#b24">(Shao et al., 2024)</ref>, Kimi <ref type="bibr" target="#b26">(Team et al., 2025)</ref>, and Qwen <ref type="bibr" target="#b0">(Bai et al., 2023)</ref>  <ref type="bibr">(Team, 2024)</ref>  <ref type="bibr">(Yang et al., 2025a)</ref>. Within this paradigm, reinforcement learning with verifiable rewards has become a dominant post-training approach, with widely adopted algorithms including GRPO <ref type="bibr" target="#b24">(Shao et al., 2024)</ref>, GSPO <ref type="bibr" target="#b37">(Zheng et al., 2025)</ref>, DAPO <ref type="bibr" target="#b35">(Yu et al., 2025)</ref>, and CISPO <ref type="bibr" target="#b2">(Chen et al., 2025)</ref>. However, the generalization ability of reasoning models remains a critical concern. Prior studies have shown that under the Pass@k metric, the performance advantage of RL-fine-tuned models over their base counterparts often diminishes-or even vanishes-as k increases <ref type="bibr" target="#b36">(Yue et al., 2025)</ref>. This phenomenon highlights a fundamental challenge arising from insufficient exploration mechanisms in reinforcement learning.</p><p>Exploration in Reinforcement Learning. Exploration and entropy collapse have long been central challenges in reinforcement learning. Prior work has explored the use of entropy-based signals <ref type="bibr" target="#b3">(Cheng et al., 2025)</ref> to guide exploration, yet these approaches often yield limited empirical improvements. Other studies introduce entropy regularization <ref type="bibr" target="#b4">(Cui et al., 2025;</ref><ref type="bibr">Wang et al., 2025b)</ref> to enhance exploratory behavior, but they still face challenges in terms of stability and effectiveness. Recently, FlowRL <ref type="bibr">(Zhu et al., 2025a)</ref> redefines the reward function to assign different scores to different reasoning paths (reward matching), thereby improving the model's exploratory capabilities-while also effectively balancing the confidence across reasoning paths.</p><p>Inspired by research on model confidence <ref type="bibr" target="#b14">(Li et al., 2025)</ref> and FlowRL <ref type="bibr">(Zhu et al., 2025a)</ref>, we revisit the relationship between entropy collapse and confidence in policy learning. When the model is overly confident <ref type="bibr" target="#b14">(Li et al., 2025)</ref>, the policy tends to determinism, leading to entropy collapse.</p><p>Motivated by this observation, we pose a complementary question: what happens when the model is insufficiently confident? To address this, we propose a confidence-balancing method based on the correctness of answers, which explicitly regulates model confidence and introduces a new research paradigm for achieving a better trade-off between exploration and stability.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6.">Conclusion</head><p>In this paper, we propose ProGRPO, a novel algorithm approached from the perspective of generative probabilities, designed to address the severe entropy collapse phenomenon observed during RLVR training. By introducing Low-Probability Token Length Normalization and a confidenceaware Advantage Reweighting mechanism (ARM), Pro-GRPO effectively mitigates mode collapse while preserving the model's reasoning capabilities.</p><p>Empirical results demonstrate that our method not only achieves competitive performance on standard metrics but also maintains a significant advantage in multi-sample settings (e.g., Pass@k), indicating a robust capability to generate diverse and correct solutions. Ultimately, ProGRPO presents a novel and effective solution to the fundamental Exploration-Exploitation trade-off in LLM reasoning tasks, paving the way for more stable and exploratory reinforcement learning paradigms.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Impact Statement</head><p>This paper aims to advance the field of Machine Learning by improving the stability and diversity of reinforcement learning with verifiable rewards for large language models. Our proposed method focuses on mitigating mode collapse during policy optimization, thereby encouraging more diverse and robust reasoning behaviors without introducing new model capabilities or application domains.</p><p>The techniques presented in this work are primarily methodological and are intended to enhance existing training paradigms for reasoning and code generation tasks. We do not anticipate any significant negative societal or ethical consequences beyond those commonly associated with large language models, such as issues related to misuse or over-reliance, which are not exacerbated by our approach. Overall, we believe that this work contributes positively to the reliability and robustness of machine learning systems.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A. Theoretical Justification</head><p>In this section, we provide a rigorous mathematical justification for the proposed ProGRPO framework. Under the RLVR (Reinforcement Learning with Verifiable Rewards) setting, we demonstrate how ProGRPO overcomes the fundamental limitations of standard GRPO through its Adaptive Margin Reward (AMR) mechanism.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1. Preliminaries and the Homogeneity Limitation</head><p>Let q be a prompt sampled from a dataset D, and π θ be the policy model. In each iteration, GRPO samples a group of G outputs G = {o 1 , . . . , o G }.</p><p>• Binary Rewards: r(o) ∈ {0, 1}.</p><p>• Correctness Subsets:</p><formula xml:id="formula_16">O + = {o ∈ G | r(o) = 1} with cardinality K = |O + |.</formula><p>• Standard GRPO Statistics: The mean reward µ and standard deviation σ are:</p><formula xml:id="formula_17">µ = K G , σ = K G 1 - K G + ϵ (<label>8</label></formula><formula xml:id="formula_18">)</formula><p>Lemma A.1 (Homogeneity of Advantage). In standard GRPO, for any two distinct correct responses o i , o j ∈ O + , the advantage values are identical:</p><formula xml:id="formula_19">A(o i ) = A(o j ) = 1 -µ σ ≜ A pos &gt; 0 (<label>9</label></formula><formula xml:id="formula_20">)</formula><p>Proof. Since r(o i ) = r(o j ) = 1, the linear transformation A = (r -µ)/σ maps all elements of O + to the same scalar A pos . Consequently, the gradient update ∇ θ J ∝ A(o)∇ θ log π θ (o) treats all correct trajectories indiscriminately. If π θ (o i ) &gt; π θ (o j ) initially, the model enters a positive feedback loop, exponentially increasing π θ (o i ) while suppressing other valid paths o j . This leads to Entropy Collapse.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.2. Theorem 1: Convergence to Confidence Equilibrium and Difficulty Calibration</head><p>The ProGRPO advantage for o i ∈ O + is defined as:</p><formula xml:id="formula_21">Ã(o i ) = A pos + α (c G -c θ (o i | q))<label>(10)</label></formula><p>where Part 2: Why Prompt-Specific cG is Essential. Let D(q) represent the intrinsic difficulty of prompt q. For easy prompts, the model's absolute confidence c θ is naturally high, while for hard prompts, c θ is low.</p><formula xml:id="formula_22">cG = 1 G G j=1 c θ (o j | q)</formula><p>• Failure of Global Baseline: If we used a fixed global threshold τ instead of cG , the term (τ -c θ ) would be consistently negative for all easy prompts (penalizing correct answers) and positive for all hard prompts (ignoring diversity).</p><p>• Calibration via cG : By defining the advantage relative to the group mean cG , we isolate the intra-prompt path discrepancy from the inter-prompt difficulty noise.</p><p>Mathematically, let c θ (o | q) = f (q) + δ(o), where f (q) is the prompt difficulty component and δ(o) is the path-specific variation. Then:</p><formula xml:id="formula_23">cG -c θ (o i | q) = f (q) + 1 G δ(o j ) -(f (q) + δ(o i )) = δ -δ(o i )<label>(11)</label></formula><p>The prompt-specific bias f (q) is canceled out. This ensures that the diversity pressure is applied consistently across the entire dataset, regardless of whether a prompt is easy or difficult.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.3. Theorem 2: Semantic Diversity vs. Syntactic Fluency</head><p>Theorem A.3. AMR induces semantic-level diversity on reasoning paths while preserving the syntactic certainty of functional segments.</p><p>Proof. Let an output o be decomposed into functional tokens S func (e.g., "The answer is") and reasoning tokens S reason . The confidence c θ is computed over the low-probability set T low :</p><formula xml:id="formula_24">T low = {t ∈ [1, |o|] | p θ (o t | o &lt;t ) &lt; bottom-20% threshold} (<label>12</label></formula><formula xml:id="formula_25">)</formula><p>For functional tokens, p θ (t) ≈ 1 due to grammatical determinism, hence S func ∩ T low = ∅. Consequently:</p><formula xml:id="formula_26">∂ Ã ∂π(t) = 0, ∀t ∈ S func (<label>13</label></formula><formula xml:id="formula_27">)</formula><p>Unlike standard Entropy Maximization which penalizes all tokens, AMR targets only the branching points in S reason , protecting the model's linguistic fluency. </p><formula xml:id="formula_28">Ãneg = A neg + α (c G -c θ (o neg | q))<label>(14)</label></formula><p>To ensure o neg remains suppressed, we require Ãneg &lt; 0. This is satisfied when:</p><formula xml:id="formula_29">α &lt; |A neg | sup |c G -c θ | (<label>15</label></formula><formula xml:id="formula_30">)</formula><p>Since |A neg | is significantly negative in the early-to-mid training stages and α is a small hyperparameter (e.g., 0.1), the sign of the gradient remains negative. Thus, AMR acts as a modulation of the penalty magnitude rather than a reversal of the objective, ensuring incorrect paths are never reinforced.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.5. Theorem 4: Implicit Entropy Regularization on the Success Manifold</head><p>Theorem A.5. Under the Reinforcement Learning with Verifiable Rewards (RLVR) setting, the Advantage Modulation Rule (AMR) in ProGRPO induces an implicit entropy-maximizing bias over the set of correct solutions O + . Specifically, while preserving correctness, AMR promotes a high-entropy policy over O + , thereby mitigating mode collapse.</p><p>Proof. 1. Entropy collapse in standard GRPO. In standard GRPO, Lemma A.1 shows that all correct solutions o ∈ O + share the same positive advantage A pos . The policy gradient restricted to O + is therefore</p><formula xml:id="formula_31">∇ θ J GRPO O + ∝ oi∈O + A pos ∇ θ log π θ (o i | q).<label>(16)</label></formula><p>This corresponds to a uniform likelihood amplification over competing correct trajectories. From an information-theoretic perspective, such undifferentiated reinforcement causes probability mass to concentrate on the initially slightly more likely paths (e.g., shorter or syntactically simpler solutions), leading to entropy collapse:</p><formula xml:id="formula_32">H(π θ | O + ) → 0.</formula><p>2. AMR as an entropy-promoting mechanism. Consider the Shannon entropy of the policy restricted to O + :</p><formula xml:id="formula_33">H O + = - K i=1 p i log p i , p i = π θ (o i | q) j∈O + π θ (o j | q) .<label>(17)</label></formula><p>The gradient of H O + encourages the distribution to become uniform over O + .</p><p>In ProGRPO, the modulated advantage for correct solutions is</p><formula xml:id="formula_34">Ã(o i ) = A pos + α (E j∼G [c θ (o j | q)] -c θ (o i | q)) ,<label>(18)</label></formula><p>where the confidence score c θ (o i | q) serves as a monotonic proxy for log π θ (o i | q) (e.g., defined as an average of token-level probabilities).</p><p>Ignoring the constant term A pos , the AMR-induced gradient direction is</p><formula xml:id="formula_35">∇ θ J AMR ∝ oi∈O + α(c -c i )∇ θ log π θ (o i | q),<label>(19)</label></formula><p>where c denotes the group-average confidence. Paths with higher-than-average confidence are down-weighted, while lower-confidence paths are amplified. This update direction is aligned with that of minimizing the KL divergence between the policy restricted to O + and the uniform distribution, thereby implicitly encouraging higher entropy.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.">Stationary points.</head><p>At a stationary point, ∇ θ J = 0, which within O + requires Ã(o i ) = Ã(o j ), ∀i, j.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>By the definition of AMR, this implies c</head><formula xml:id="formula_36">θ (o i | q) = c θ (o j | q), ∀i, j,</formula><p>indicating equalized confidence (and thus probability mass) across all correct solutions. Consequently, the induced policy attains a maximum-entropy configuration over O + .</p><p>Therefore, ProGRPO preserves correctness while implicitly steering the policy toward a high-entropy distribution on the success manifold, effectively preventing mode collapse.  <ref type="bibr" target="#b4">(Cui et al., 2025)</ref> </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>B. Additional Results</head></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 .Figure 2 .</head><label>12</label><figDesc>Figure 1. Pass@k comparison on AIME 2024, AIME 2025, and AMC 23 benchmarks using Qwen2.5-7B with FlowRL and GRPO and Ours.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><figDesc>Boxplot comparison of model performance (OURS vs GRPO).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><figDesc>Histogram comparison of model performance (OURS vs GRPO).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 3 .</head><label>3</label><figDesc>Figure3. Comparison of model performance across three metrics (average probability, lower 20% probability, and entropy), with statistics computed over 32 rollouts per sample using the AIME2024 dataset.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><figDesc>Boxplot of rollout entropy.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>Figure 4 .</head><label>4</label><figDesc>Figure 4. Comparison of rollout token-level entropy on AIME 2024 between OURS and the GRPO baseline.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 5 .</head><label>5</label><figDesc>Figure 5. Ablation study of average pass@k performance under different advantage formulations.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><figDesc>is the prompt-specific group baseline. Theorem A.2. The AMR mechanism stabilizes policy dynamics within O + by: (i) inducing a Maximum Entropy state through negative feedback, and (ii) eliminating the difficulty bias across different prompts.Proof. Part 1: Negative Feedback for Diversity. Consider o 1 , o 2 ∈ O + . If c θ (o 1 | q) &gt; c θ (o 2 | q), then Ã(o 1 ) &lt; Ã(o 2 ).This differential advantage ensures that over-optimized paths receive a smaller reinforcement signal than under-explored ones. Equilibrium is reached only when Ã(o 1 ) = Ã(o 2 ), implying c θ (o 1 | q) = c θ (o 2 | q), which corresponds to a uniform distribution over the success manifold.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><head>A. 4 .</head><label>4</label><figDesc>Theorem 3: Preservation of Correctness Theorem A.4. The AMR mechanism strictly bounds exploration within the valid reward landscape and does not encourage incorrect responses o ∈ O -. Proof. For an incorrect response o neg where r(o neg ) = 0, the base advantage is A neg = -µ/σ &lt; 0. Under AMR:</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 6 .</head><label>6</label><figDesc>Figure6. Reproduction of the best-performing method proposed in Entropy Mechanism<ref type="bibr" target="#b4">(Cui et al., 2025)</ref> </figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_0"><head>Table 1 .</head><label>1</label><figDesc>Training Hyperparameters</figDesc><table><row><cell>Hyperparameter</cell><cell>Value</cell></row><row><cell>Advantage Estimator</cell><cell>GRPO</cell></row><row><cell>Use KL Loss</cell><cell>No</cell></row><row><cell cols="2">Use Entropy Regularization No</cell></row><row><cell>Train Batch Size</cell><cell>512</cell></row><row><cell>Max Response Length</cell><cell>8092</cell></row><row><cell>PPO Mini-batch Size</cell><cell>32</cell></row><row><cell>Clip Ratio Range</cell><cell>[0.8, 1.28]</cell></row><row><cell>Learning Rate</cell><cell>1 × 10 -6</cell></row><row><cell>Sampling Temperature</cell><cell>1.0</cell></row><row><cell>Number of Rollouts (N )</cell><cell>8</cell></row><row><cell>Reward Function</cell><cell>DAPO (Yu et al., 2025)</cell></row></table><note><p>Training Setup. Our experiments are conducted under the GRPO framework; detailed hyperparameter settings are provided in Table</p></note></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_1"><head>Table 2 .</head><label>2</label><figDesc>Main results across six mathematical reasoning benchmarks. Each cell reports Pass@1 / Pass@32 (%). GRPO w/ KL-Cov<ref type="bibr" target="#b4">(Cui et al., 2025)</ref> exhibits high sensitivity to optimization hyperparameters. Although all experiments are conducted using the original implementation without modifications, training instability is occasionally observed, which negatively affects the final results.</figDesc><table><row><cell>Method</cell><cell cols="2">AIME 2024 AIME 2025</cell><cell>AMC 23</cell><cell>MATH 500</cell><cell>Minerva</cell><cell>OlympiadBench</cell><cell>Average</cell></row><row><cell></cell><cell></cell><cell cols="4">Qwen2.5-7B (Max Response Len = 8K tokens)</cell><cell></cell></row><row><cell>Baseline</cell><cell>5.4 / 30.0</cell><cell>2.5 / 20.0</cell><cell cols="3">32.4 / 82.5 54.7 / 92.6 22.0 / 54.4</cell><cell>24.6 / 63.1</cell><cell>23.6 / 57.1</cell></row><row><cell>GRPO</cell><cell>9.2 / 26.7</cell><cell>6.1 / 30.0</cell><cell cols="3">65.5 / 80.0 75.3 / 87.0 33.8 / 51.1</cell><cell>35.6 / 53.6</cell><cell>37.6 / 54.7</cell></row><row><cell>GRPO w KL-Cov</cell><cell>6.1 / 26.7</cell><cell>8.4 / 36.7</cell><cell cols="3">46.3 / 80.0 56.9 / 87.6 23.2 / 54.8</cell><cell>25.7 / 60.2</cell><cell>27.8 / 57.7</cell></row><row><cell>FlowRL</cell><cell>14.6 / 33.3</cell><cell>10.4 / 40.0</cell><cell cols="3">54.0 / 85.0 66.9 / 87.0 30.9 / 54.4</cell><cell>35.0 / 60.7</cell><cell>35.3 / 61.0</cell></row><row><cell cols="2">ProGRPO (Ours) 21.3 / 53.3</cell><cell>15.9 / 50.0</cell><cell cols="3">67.2 / 92.5 80.5 / 94.2 32.0 / 53.3</cell><cell>42.7 / 67.5</cell><cell>43.3 / 68.5</cell></row><row><cell></cell><cell></cell><cell cols="4">Qwen2.5-32B (Max Response Len = 8K tokens)</cell><cell></cell></row><row><cell>Baseline</cell><cell>5.7 / 43.3</cell><cell>2.2 / 26.7</cell><cell cols="3">29.7 / 87.5 52.0 / 91.8 27.3 / 59.6</cell><cell>22.4 / 68.4</cell><cell>23.2 / 62.9</cell></row><row><cell>GRPO</cell><cell>16.8 / 43.3</cell><cell>13.9 / 26.7</cell><cell cols="3">80.1 / 95.0 84.7 / 92.4 42.3 / 55.9</cell><cell>49.7 / 65.1</cell><cell>47.9 / 63.1</cell></row><row><cell cols="2">ProGRPO (Ours) 34.6 / 60.0</cell><cell>24.8 / 46.7</cell><cell cols="3">80.6 / 97.5 82.8 / 96.2 39.3 / 58.5</cell><cell>54.1 / 74.5</cell><cell>52.7 / 72.2</cell></row><row><cell></cell><cell cols="6">DeepSeek-R1-Distill-Qwen-1.5B (Max Response Len = 32K tokens)</cell></row><row><cell>Baseline</cell><cell>31.6 / 76.7</cell><cell>24.9 / 60.0</cell><cell cols="3">71.6 / 95.0 74.3 / 95.6 26.1 / 56.3</cell><cell>49.1 / 80.1</cell><cell>46.3 / 77.3</cell></row><row><cell>GRPO</cell><cell>26.6 / 70.0</cell><cell>28.0 / 56.7</cell><cell cols="3">77.9 / 97.5 80.6 / 96.6 29.9 / 56.3</cell><cell>53.1 / 79.2</cell><cell>49.4 / 76.1</cell></row><row><cell cols="2">ProGRPO (Ours) 46.0 / 76.7</cell><cell>33.6 / 60.0</cell><cell cols="3">86.3 / 95.0 87.0 / 98.2 34.8 / 58.1</cell><cell>62.0 / 81.8</cell><cell>58.3 / 78.3</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_2"><head>Table 3 .</head><label>3</label><figDesc>Performance comparison on code reasoning benchmarks. All models are evaluated with a maximum response length of 8K tokens. * We state that FlowRL's results were reproduced using weights released by Hugging Face, however, this does not affect the overall conclusions of our study.</figDesc><table><row><cell>Models</cell><cell cols="2">LiveCodeBench</cell><cell cols="2">CodeForces</cell><cell>HumanEval+</cell></row><row><cell></cell><cell cols="3">Avg@16 Pass@16 Rating</cell><cell>Pct.</cell><cell>Avg@16</cell></row><row><cell cols="6">DeepSeek-R1-Distill-Qwen-7B (Max Response Len = 8K tokens)</cell></row><row><cell>Backbone</cell><cell>30.96</cell><cell>48.03</cell><cell>764.93</cell><cell>8.2</cell><cell>80.33</cell></row><row><cell>GRPO</cell><cell>34.94</cell><cell>53.76</cell><cell cols="2">1243.24 60.7</cell><cell>83.32</cell></row><row><cell>FlowRL</cell><cell>33.98</cell><cell>51.97</cell><cell cols="2">1129.58 48.5</cell><cell>82.67</cell></row><row><cell>ProGRPO (Ours)</cell><cell>36.47</cell><cell>54.12</cell><cell cols="2">1422.49 75.4</cell><cell>84.01</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_3"><head>Table 4 .</head><label>4</label><figDesc>Performance on out-of-distribution (OOD) generaldomain benchmarks.</figDesc><table><row><cell>Models</cell><cell cols="2">MMLU-PRO GPQA (Avg@4)</cell></row><row><cell>Qwen2.5-7B</cell><cell>48.7</cell><cell>32.4</cell></row><row><cell>+GRPO</cell><cell>52.1</cell><cell>38.9</cell></row><row><cell>+ProGRPO (Ours)</cell><cell>54.3</cell><cell>42.3</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_4"><head>Table 5 .</head><label>5</label><figDesc>Dataset-level Evaluation on AIME 2024: Accuracy and Diversity of Correct Solutions</figDesc><table><row><cell>Setting</cell><cell cols="3">Distinct-2 Self-BLEU Semantic Cosine</cell></row><row><cell>GRPO</cell><cell>0.1693</cell><cell>0.9299</cell><cell>0.9725</cell></row><row><cell>ProGRPO (Ours)</cell><cell>0.1443</cell><cell>0.6746</cell><cell>0.9233</cell></row></table></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_5"><head>Table 6 .</head><label>6</label><figDesc>Impact of the advantage reweighting coefficient α in Eq. 4 on ProGRPO performance, averaged over six benchmarks.</figDesc><table><row><cell>Alpha</cell><cell cols="2">Pass@1 Pass@32</cell></row><row><cell>0 (Pure GRPO)</cell><cell>37.6</cell><cell>54.7</cell></row><row><cell>0.3</cell><cell>43.3</cell><cell>68.5</cell></row><row><cell>0.7</cell><cell>40.9</cell><cell>59.8</cell></row><row><cell>1.0</cell><cell>39.0</cell><cell>56.2</cell></row></table></figure>
+		</body>
+		<back>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>We reproduced the method proposed by <ref type="bibr" target="#b4">Cui et al. (2025)</ref>. During our experiments, we observed that although the method can achieve the reported performance in some cases, the training process is extremely unstable and prone to collapse, as show in Figure <ref type="figure">6</ref>. This highlights the practical challenges of reproducing the approach and motivates the need for more stable alternatives.   Since the AIME2024 dataset contains only 30 samples, we also computed the entropy on the Math500 dataset (see Figure <ref type="figure" target="#fig_12">7</ref>), and the results are consistent with the analysis on AIME2024.</p><p>Analysis of a single sample from the AIME2024 dataset (Figure <ref type="figure" target="#fig_13">8</ref>) shows that our model achieves higher token-level entropy and more balanced probabilities across 32 rollouts. This is consistent with the inter-sample balancing mechanism in Equation 4, demonstrating that our model outperforms the GRPO baseline in both reliability and diversity of generation. As shown in Table <ref type="table" target="#tab_6">7</ref>, these results highlight that relative confidence reweighting, rather than absolute confidence penalties, is essential for selectively attenuating dominant paths while promoting under-explored correct reasoning trajectories. </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_10"><figDesc>Kernel density estimation (KDE).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_11"><figDesc>Boxplot of rollout entropy.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_12"><head>Figure 7 .</head><label>7</label><figDesc>Rollout token-level entropy comparison on Math 500 between OURS and the GRPO baseline.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_13"><head>Figure 8 .</head><label>8</label><figDesc>Per-sample analysis of 32 rollouts, showing average token probability and the mean of the lowest 20% token probabilities.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" type="table" xml:id="tab_6"><head>Table 7 .</head><label>7</label><figDesc>Ablation study on reward formulation. Each cell reports Acc / Pass@32 (%).</figDesc><table><row><cell>Method</cell><cell cols="2">AIME 2024 AIME 2025</cell><cell>AMC 23</cell><cell>MATH 500</cell><cell>Minerva</cell><cell>Olympiad</cell><cell>Avg</cell></row><row><cell>Baseline</cell><cell>5.4 / 30.0</cell><cell>2.5 / 20.0</cell><cell>32.4 / 82.5</cell><cell>54.7 / 92.6</cell><cell cols="3">22.0 / 54.4 24.6 / 63.1 23.6 / 57.1</cell></row><row><cell>GRPO</cell><cell>9.2 / 26.7</cell><cell>6.1 / 30.0</cell><cell>65.5 / 80.0</cell><cell>75.3 / 87.0</cell><cell cols="3">33.8 / 51.1 35.6 / 53.6 37.6 / 54.7</cell></row><row><cell>with 1 -c θ (oj | qi)</cell><cell>12.5 / 33.3</cell><cell>9.7 / 30.0</cell><cell>66.3 / 95.0</cell><cell>73.7 / 91.2</cell><cell cols="3">32.7 / 52.9 36.0 / 61.1 38.5 / 60.6</cell></row><row><cell>with 1 -c θ (qi) -c θ (oj | qi)</cell><cell>16.6 / 43.3</cell><cell>15.2 / 46.7</cell><cell>70.0 / 90.0</cell><cell>81.8 / 95.0</cell><cell cols="3">36.4 / 57.4 45.8 / 70.0 44.3 / 67.1</cell></row><row><cell>with c θ (qi) -c θ (oj | qi)</cell><cell>21.3 / 53.3</cell><cell>15.9 / 50.0</cell><cell>67.2 / 92.5</cell><cell>80.5 / 94.2</cell><cell cols="3">32.0 / 53.3 42.7 / 67.5 43.3 / 68.5</cell></row></table></figure>
+			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Dang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Ge</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2309.16609</idno>
+		<title level="m">Qwen technical report</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<author>
+			<persName><forename type="first">M</forename><surname>Balunović</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Dekoninck</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Petrov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Jovanović</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Vechev</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Matharena</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.23281</idno>
+		<title level="m">Evaluating llms on uncontaminated math competitions</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Gong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Shan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.13585</idno>
+		<title level="m">Minimaxm1: Scaling test-time compute efficiently with lightning attention</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<monogr>
+		<title level="m" type="main">Reasoning with exploration: An entropy perspective</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><forename type="middle">X</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.14758</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<monogr>
+		<title level="m" type="main">The entropy mechanism of reinforcement learning for reasoning language models</title>
+		<author>
+			<persName><forename type="first">G</forename><surname>Cui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zuo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.22617</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<monogr>
+		<author>
+			<persName><forename type="first">D</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2501.12948</idno>
+		<title level="m">Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor</title>
+		<author>
+			<persName><forename type="first">T</forename><surname>Haarnoja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Abbeel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Levine</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International conference on machine learning</title>
+		<imprint>
+			<publisher>Pmlr</publisher>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="1861" to="1870" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<monogr>
+		<title level="m" type="main">Olympiadbench: A challenging benchmark for promoting agi with olympiadlevel bilingual multimodal scientific problems</title>
+		<author>
+			<persName><forename type="first">C</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><forename type="middle">L</forename><surname>Thai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Hu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.14008</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title level="m" type="main">Measuring mathematical problem solving with the math dataset</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hendrycks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Arora</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Basart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<imprint>
+			<publisher>NeurIPS</publisher>
+			<biblScope unit="page">2021</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<monogr>
+		<title level="m" type="main">Measuring mathematical problem solving with the math dataset</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Hendrycks</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Burns</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Kadavath</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Arora</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Basart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Tang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Steinhardt</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2103.03874</idno>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Jaech</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kalai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lerer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Richardson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>El-Kishky</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Low</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Helyar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Madry</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Beutel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Carney</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2412.16720</idno>
+		<title level="m">Openai o1 system card</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<monogr>
+		<author>
+			<persName><forename type="first">N</forename><surname>Jain</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Han</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W.-D</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Yan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Solar-Lezama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Sen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Stoica</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Livecodebench</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2403.07974</idno>
+		<title level="m">Holistic and contamination free evaluation of large language models for code</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<monogr>
+		<author>
+			<persName><forename type="first">N</forename><surname>Lambert</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Morrison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">V</forename><surname>Pyatkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ivison</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Brahman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">J V</forename><surname>Miranda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Dziri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Lyu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2411.15124</idno>
+		<title level="m">Tulu 3: Pushing frontiers in open language model post-training</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Numinamath: The largest public dataset in ai4maths with 860k pairs of competition math problems and solutions</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Beeching</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Tunstall</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Lipkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Soletskyi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Rasul</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">Q</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Hugging Face repository</title>
+		<imprint>
+			<biblScope unit="volume">13</biblScope>
+			<biblScope unit="issue">9</biblScope>
+			<biblScope unit="page">9</biblScope>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<monogr>
+		<author>
+			<persName><forename type="first">P</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Skripkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zubrey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Kuznetsov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">I</forename><surname>Oseledets</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.06395</idno>
+		<title level="m">Confidence is all you need: Few-shot rl fine-tuning of language models</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Is your code generated by chatgpt really correct? rigorous evaluation of large language models for code generation</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">S</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="21558" to="21572" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">Deepcoder: A fully open-source 14b coder at o3-mini level</title>
+		<author>
+			<persName><forename type="first">M</forename><surname>Luo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Patel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ariyak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Cai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Weber</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Notion Blog</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<analytic>
+		<title level="a" type="main">B. s1: Simple test-time scaling</title>
+		<author>
+			<persName><forename type="first">N</forename><surname>Muennighoff</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><forename type="middle">L</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Fei-Fei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Hajishirzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Zettlemoyer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Liang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Candès</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Hashimoto</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2025 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="20286" to="20332" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Training language models to follow instructions with human feedback</title>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Ray</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="27730" to="27744" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<title level="m" type="main">Curriculum reinforcement learning from easy to hard tasks improves llm reasoning</title>
+		<author>
+			<persName><forename type="first">S</forename><surname>Parashar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Gui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Ling</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Vemuri</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Olson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Caverlee</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Kalathil</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.06632</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<analytic>
+		<title/>
+		<author>
+			<persName><forename type="first">G</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Kydlíček</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><forename type="middle">B</forename><surname>Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Beeching</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">P</forename><surname>Lajarín</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Gallouédec</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Habib</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Tunstall</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Von</forename><surname>Werra</surname></persName>
+		</author>
+		<ptr target="https://huggingface.co/datasets/open-r1/codeforces" />
+	</analytic>
+	<monogr>
+		<title level="j">L. Codeforces</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<analytic>
+		<title level="a" type="main">Direct preference optimization: Your language model is secretly a reward model</title>
+		<author>
+			<persName><forename type="first">R</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Sharma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Mitchell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><forename type="middle">D</forename><surname>Manning</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Ermon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Finn</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="53728" to="53741" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">Gpqa: A graduate-level google-proof q&amp;a benchmark</title>
+		<author>
+			<persName><forename type="first">D</forename><surname>Rein</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><forename type="middle">L</forename><surname>Hou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">C</forename><surname>Stickland</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Petty</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">Y</forename><surname>Pang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Dirani</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Michael</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><forename type="middle">R</forename><surname>Bowman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">First Conference on Language Modeling</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<monogr>
+		<author>
+			<persName><forename type="first">J</forename><surname>Schulman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wolski</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Dhariwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Radford</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">O</forename><surname>Klimov</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:1707.06347</idno>
+		<title level="m">Proximal policy optimization algorithms</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Shao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2402.03300</idno>
+		<title level="m">Deepseekmath: Pushing the limits of mathematical reasoning in open language models</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<monogr>
+		<title level="m" type="main">Reinforcement learning: An introduction</title>
+		<author>
+			<persName><forename type="first">R</forename><forename type="middle">S</forename><surname>Sutton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">G</forename><surname>Barto</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="1998">1998</date>
+			<publisher>MIT press Cambridge</publisher>
+			<biblScope unit="volume">1</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<monogr>
+		<author>
+			<persName><forename type="first">K</forename><surname>Team</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Chen</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2507.20534</idno>
+		<title level="m">Open agentic intelligence</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">2</biblScope>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Qwen2.5: A party of foundation models</title>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Team</surname></persName>
+		</author>
+		<ptr target="https://qwenlm.github.io/blog/qwen2.5/" />
+	</analytic>
+	<monogr>
+		<title level="m">September 2024</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Dang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.01939</idno>
+		<title level="m">Beyond the 80/20 rule: High-entropy minority tokens drive effective reinforcement learning for llm reasoning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Deep self-attention distillation for task-agnostic compression of pre-trained transformers</title>
+		<author>
+			<persName><forename type="first">W</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Bao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">N</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Zhou</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Minilm</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="volume">33</biblScope>
+			<biblScope unit="page" from="5776" to="5788" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<analytic>
+		<title level="a" type="main">Mmlu-pro: A more robust and challenging multi-task language understanding benchmark</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Ni</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Chandra</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Arulraj</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Jiang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="95266" to="95290" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<monogr>
+		<title level="m" type="main">Reinforcement learning for reasoning in large language models with one training example</title>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zeng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Ren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Peng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><surname>Gao</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.20571</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<analytic>
+		<title level="a" type="main">Chain-of-thought prompting elicits reasoning in large language models</title>
+		<author>
+			<persName><forename type="first">J</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Schuurmans</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Bosma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Chi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><forename type="middle">V</forename><surname>Le</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Zhou</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="24824" to="24837" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<monogr>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Hui</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Huang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Lv</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.09388</idno>
+		<title level="m">Qwen3 technical report</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<monogr>
+		<author>
+			<persName><forename type="first">S</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Dou</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">P</forename><surname>Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Ju</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">F</forename><surname>Deng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Xin</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Dcpo</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2509.02333</idno>
+		<title level="m">Dynamic clipping policy optimization</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">Dapo: An open-source llm reinforcement learning system at scale</title>
+		<author>
+			<persName><forename type="first">Q</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zuo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W</forename><surname>Dai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">T</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">L</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.14476</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Yue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Lu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">G</forename><surname>Huang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2504.13837</idno>
+		<title level="m">Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model? arXiv preprint</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<monogr>
+		<author>
+			<persName><forename type="first">C</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">S</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X.-H</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">B</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Gao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Dang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">R</forename><surname>Men</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><surname>Yang</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2507.18071</idno>
+		<title level="m">Group sequence policy optimization</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">H</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">K</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">C</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">E</forename><surname>Hua</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Zuo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">X</forename><surname>Lv</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2509.15207</idno>
+		<title level="m">Matching reward distributions for llm reasoning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<monogr>
+		<title level="m" type="main">The surprising effectiveness of negative reinforcement in llm reasoning</title>
+		<author>
+			<persName><forename type="first">X</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">M</forename><surname>Xia</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Z</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">W.-L</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">D</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Meng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2506.01347</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Maximum entropy inverse reinforcement learning</title>
+		<author>
+			<persName><forename type="first">B</forename><forename type="middle">D</forename><surname>Ziebart</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">L</forename><surname>Maas</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">J</forename><forename type="middle">A</forename><surname>Bagnell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">A</forename><forename type="middle">K</forename><surname>Dey</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Aaai</title>
+		<meeting><address><addrLine>Chicago, IL, USA</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2008">2008</date>
+			<biblScope unit="volume">8</biblScope>
+			<biblScope unit="page" from="1433" to="1438" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>
