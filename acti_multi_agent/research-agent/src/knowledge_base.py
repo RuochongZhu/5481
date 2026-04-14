@@ -11,12 +11,14 @@ import networkx as nx
 from .paper_identity import build_alias_lookup, canonicalize_paper_ref
 from .utils import atomic_write_json
 
+# Import centralized beat definitions
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config.beat_definitions import BEAT_CATEGORIES as _BEAT_CATS, BEAT_NAMES as _BEAT_NAMES, ARGUMENT_LINES
+
 BEAT_CATEGORIES = {
-    1: {"name": "Crisis Exists", "categories": ["A", "B", "C"]},
-    2: {"name": "Empirical Degradation", "categories": ["D", "H"]},
-    3: {"name": "Theoretical Framework", "categories": ["D"]},
-    4: {"name": "Validation Experiment", "categories": ["E", "F", "I", "J"]},
-    5: {"name": "Platform Solution", "categories": ["A", "G"]},
+    beat: {"name": _BEAT_NAMES[beat], "categories": cats, "argument_line": ARGUMENT_LINES[beat]}
+    for beat, cats in _BEAT_CATS.items()
 }
 
 

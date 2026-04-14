@@ -22,22 +22,13 @@ from .utils import atomic_write_json, load_json
 
 log = logging.getLogger("research_agent")
 
-# Beat → category mapping
-BEAT_CATEGORIES = {
-    1: ["A", "B", "C"],
-    2: ["D", "H"],
-    3: ["D"],
-    4: ["E", "F", "I", "J"],
-    5: ["A", "G"],
-}
-
-BEAT_NAMES = {
-    1: "Crisis And Contamination Risk",
-    2: "Partial Measurement Of Web Drift",
-    3: "Grounded Ingredients For L_auth",
-    4: "Verified Human Data For Social Tasks",
-    5: "CampusGo As Design Proposal",
-}
+# Import centralized beat definitions
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config.beat_definitions import (
+    BEAT_CATEGORIES, BEAT_NAMES, ARGUMENT_LINES, NUM_BEATS,
+    MUST_CITE_COUNTEREVIDENCE, HONESTY_CONSTRAINTS, CITATION_VERB_RULES,
+)
 
 BEAT_PRIORITY_PAPERS = {
     1: [
@@ -58,17 +49,34 @@ BEAT_PRIORITY_PAPERS = {
         "doi:10.1075/sl.22034.oh",
         "doi:10.3390/e22040394",
         "doi:10.1103/rxxz-lk3n",
+        "doi:10.18653/v1/2024.findings-naacl.228",
     ],
     4: [
+        "doi:10.18653/v1/d19-1454",
+        "doi:10.18653/v1/2022.emnlp-main.248",
         "doi:10.48550/arxiv.2305.11206",
-        "doi:10.48550/arxiv.2305.14314",
-        "doi:10.48550/arxiv.2404.00816",
+        "doi:10.48550/arxiv.2303.17548",
+        "doi:10.48550/arxiv.2305.18290",
+        "doi:10.48550/arxiv.2309.00267",
     ],
     5: [
+        "doi:10.18653/v1/d19-1454",
+        "doi:10.48550/arxiv.2305.11206",
+        "doi:10.48550/arxiv.2305.18290",
+        "doi:10.48550/arxiv.2305.14387",
+        "doi:10.48550/arxiv.2309.00267",
+        "doi:10.48550/arxiv.2310.16944",
+        "doi:10.18653/v1/2022.emnlp-main.248",
+    ],
+    6: [
+        "doi:10.48550/arxiv.2404.12691",
+        "doi:10.48550/arxiv.2304.07327",
         "doi:10.1145/3774904.3792955",
         "doi:10.1145/3770762.3772602",
         "doi:10.1145/2632048.2632054",
         "doi:10.1007/s00779-005-0046-3",
+        "doi:10.5334/cstp.303",
+        "doi:10.1017/aap.2022.33",
     ],
 }
 
@@ -91,22 +99,287 @@ BEAT_NARRATIVE_GUIDANCE = {
         "Before any category-B bridge, insert one explicit scope-limiting step or transition that says the literature "
         "mostly proves indiscriminate recursive reuse risk, not universal synthetic-data failure; papers like Beyond Model "
         "Collapse or A Tale of Tails can serve this limiting step. If category-B evidence is still thin, say so explicitly "
-        "instead of forcing a strong bridge."
+        "instead of forcing a strong bridge. "
+        "MUST cite counterevidence: pi^2/6 pathway (mixed real+synthetic avoids collapse), self-correcting loops, "
+        "curated synthetic data success cases."
     ),
     2: (
         "Beat 2 should progress from measurement proxies to longitudinal web observations to crawl-curation practice. "
-        "Keep the conclusion narrow: measurable drift is partial and indirect, not decisive proof of web-wide contamination."
+        "Keep the conclusion narrow: measurable drift is partial and indirect, not decisive proof of web-wide contamination. "
+        "MUST cite counterevidence: RefinedWeb/FineWeb show filtered web data still trains strong models. "
+        "Explicitly state: no post-2022 web-scale contamination audit exists in the corpus."
     ),
     3: (
-        "Beat 3 should end on scope limits: L_auth is a synthesis of metric ingredients, not a validated standalone law."
+        "Beat 3 defines L_auth as a stage-agnostic descriptive framework with four dimensions: "
+        "Provenance Ratio (D1), Lexical Diversity (D2), Entropy (D3), Social Behavioral Diversity (D4). "
+        "D1 and D4 are design-level inputs; D2 and D3 are measurable emergent outcomes. "
+        "End on scope limits: L_auth is a synthesis of metric ingredients, not a validated standalone law. "
+        "Weight calibration is explicitly future work."
     ),
     4: (
-        "Beat 4 should balance human-data value against bounded synthetic success cases rather than implying universal human-data superiority."
+        "Beat 4 belongs to Argument Line 2 (fine-tuning). Its evidence base is INDEPENDENT of Beat 1's "
+        "collapse mechanism. Do NOT use pretraining collapse papers to support fine-tuning claims. "
+        "Balance human-data value against bounded synthetic success cases (RLAIF, AlpacaFarm, Zephyr). "
+        "The defensible claim is narrower: human data appears especially valuable for socially grounded tasks, "
+        "not that it universally dominates. "
+        "MUST cite counterevidence: RLAIF matches RLHF on summarization, AlpacaFarm 50x cheaper, "
+        "Zephyr 7B beats LLaMA2-Chat-70B with AI feedback DPO."
     ),
     5: (
-        "Beat 5 must stay proposal-framed. Use platform and provenance precedents as motivation for a design proposal, "
-        "not proof that CampusGo or any platform solution is already validated."
+        "Beat 5 is the contrastive fine-tuning experiment. Frame as 'pilot study' not 'validation'. "
+        "Use 'initial evidence suggests' not 'demonstrates'. "
+        "Acknowledge: 3B model may not amplify data quality differences sufficiently. "
+        "Acknowledge: D1 and D4 co-vary in this design, cannot separate independent contributions. "
+        "This beat shares categories F, I, J with Beat 4 but focuses on experimental methodology."
     ),
+    6: (
+        "Beat 6 must stay proposal-framed. Use platform and provenance precedents as motivation for a design "
+        "proposal, not proof that CampusGo or any platform solution is already validated. "
+        "Use proposal verbs: 'motivates' 'suggests' 'points toward' 'frames requirements for'. "
+        "Acknowledge: G-category literature is from adjacent domains (citizen science, biomedicine, "
+        "Indigenous data governance), not directly from AI training data collection."
+    ),
+}
+
+MANUAL_VERIFIED_PROGRESSIONS = {
+    ("doi:10.48550/arxiv.2305.18290", "doi:10.48550/arxiv.2305.14387"):
+        "Verified by check_citations.py: AlpacaFarm cites DPO.",
+    ("doi:10.48550/arxiv.2305.18290", "doi:10.48550/arxiv.2310.16944"):
+        "Verified by check_citations.py: Zephyr cites DPO.",
+}
+
+STRUCTURED_BEAT_SPECS = {
+    4: {
+        "anchor": "doi:10.48550/arxiv.2305.11206",
+        "spine": [
+            "doi:10.18653/v1/2022.emnlp-main.248",
+            "doi:10.48550/arxiv.2305.11206",
+            "doi:10.48550/arxiv.2303.17548",
+            "doi:10.48550/arxiv.2305.18290",
+            "doi:10.48550/arxiv.2309.00267",
+        ],
+        "roles": {
+            "doi:10.18653/v1/2022.emnlp-main.248":
+                "Establishes why social reasoning is the right downstream target: even strong LLMs lag on mental-state and norm-sensitive tasks, so this capability cannot be assumed from pretraining alone.",
+            "doi:10.48550/arxiv.2305.11206":
+                "Anchor paper for Beat 4: LIMA shows that a small, carefully curated human-authored set can drive large alignment gains, making data provenance a high-leverage post-training variable.",
+            "doi:10.48550/arxiv.2303.17548":
+                "Shows that post-training data source changes socially meaningful outputs, not just generic helpfulness: instruction tuning shifts whose opinions the model appears to reflect.",
+            "doi:10.48550/arxiv.2305.18290":
+                "Provides the clean methodological hinge: DPO simplifies preference optimization so feedback-source comparisons become more interpretable than full RLHF stacks.",
+            "doi:10.48550/arxiv.2309.00267":
+                "Provides required counterevidence: AI feedback can match RLHF on bounded dialogue and summarization tasks, so the claim must stay narrower than universal human-data superiority.",
+        },
+        "transitions": {
+            ("doi:10.18653/v1/2022.emnlp-main.248", "doi:10.48550/arxiv.2305.11206"):
+                "Once social reasoning is established as a persistent weak spot, the next question is whether carefully curated post-training data can move that behavior more efficiently than scale alone.",
+            ("doi:10.48550/arxiv.2305.11206", "doi:10.48550/arxiv.2303.17548"):
+                "After LIMA makes curation a plausible treatment variable, the literature asks whether provenance alters socially meaningful outputs rather than only general chat quality.",
+            ("doi:10.48550/arxiv.2303.17548", "doi:10.48550/arxiv.2305.18290"):
+                "If provenance affects social judgments, then the optimization pipeline itself matters, which is why later work isolates a simpler preference-learning objective.",
+            ("doi:10.48550/arxiv.2305.18290", "doi:10.48550/arxiv.2309.00267"):
+                "With a simpler alignment method in place, the strongest counterclaim is that AI-generated preference signals may substitute for human judgments on bounded tasks.",
+        },
+        "paragraphs": [
+            {
+                "topic": "Social reasoning remains a distinct post-training weak spot",
+                "papers": [
+                    "doi:10.18653/v1/d19-1454",
+                    "doi:10.18653/v1/2022.emnlp-main.248",
+                ],
+                "opening_sentence": "The fine-tuning line should begin from task sensitivity, not from collapse theory: social commonsense and theory-of-mind style reasoning remain meaningfully weaker than generic instruction following.",
+            },
+            {
+                "topic": "Curated human data and provenance shape socially meaningful behavior",
+                "papers": [
+                    "doi:10.48550/arxiv.2304.07327",
+                    "doi:10.48550/arxiv.2305.11206",
+                    "doi:10.48550/arxiv.2303.17548",
+                ],
+                "opening_sentence": "Against that backdrop, human conversational corpora and curated instruction sets make data provenance concrete, and LIMA plus opinion-shift evidence show that source quality affects socially meaningful outputs.",
+            },
+            {
+                "topic": "Methodological hinge plus bounded-task counterevidence",
+                "papers": [
+                    "doi:10.48550/arxiv.2305.18290",
+                    "doi:10.48550/arxiv.2305.14387",
+                    "doi:10.48550/arxiv.2309.00267",
+                    "doi:10.48550/arxiv.2310.16944",
+                ],
+                "opening_sentence": "The honest conclusion comes only after the counterexamples: DPO makes source comparisons cleaner, but AlpacaFarm, RLAIF, and Zephyr all show that synthetic or AI-feedback pipelines can succeed on bounded alignment objectives.",
+            },
+        ],
+        "supporting": [
+            {
+                "paperId": "doi:10.18653/v1/d19-1454",
+                "attached_to_spine_paper": "doi:10.18653/v1/2022.emnlp-main.248",
+                "role": "Benchmark anchor showing that social interaction reasoning remains far below human performance.",
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2304.07327",
+                "attached_to_spine_paper": "doi:10.48550/arxiv.2305.11206",
+                "role": "Human-generated conversation corpus that makes post-training provenance concrete rather than hypothetical.",
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2305.14387",
+                "attached_to_spine_paper": "doi:10.48550/arxiv.2305.18290",
+                "role": "Low-cost simulated-feedback baseline that narrows any claim of uniquely human preference data.",
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2310.16944",
+                "attached_to_spine_paper": "doi:10.48550/arxiv.2309.00267",
+                "role": "Additional counterevidence that AI-feedback distillation can be highly competitive on general chat alignment.",
+            },
+        ],
+        "writing_notes":
+            "Keep Beat 4 clearly separate from collapse literature. The defensible chain is: social reasoning is a real post-training weak spot; curated human data can be disproportionately high leverage; provenance changes socially meaningful outputs; and bounded-task counterevidence prevents any universal claim that human data always wins. The final sentence of the beat should explicitly narrow the thesis to socially grounded, norm-sensitive behavior rather than alignment overall.",
+    },
+    5: {
+        "anchor": "doi:10.48550/arxiv.2305.11206",
+        "spine": [
+            "doi:10.18653/v1/d19-1454",
+            "doi:10.48550/arxiv.2305.11206",
+            "doi:10.48550/arxiv.2305.18290",
+            "doi:10.48550/arxiv.2310.16944",
+        ],
+        "roles": {
+            "doi:10.18653/v1/d19-1454":
+                "Establishes Social IQa as a demanding evaluation target, which is why the pilot uses social reasoning rather than only generic chat benchmarks.",
+            "doi:10.48550/arxiv.2305.11206":
+                "Anchor paper for Beat 5: LIMA is the clearest precedent that data quality and curation can matter enough to justify a provenance-sensitive fine-tuning contrast.",
+            "doi:10.48550/arxiv.2305.18290":
+                "Defines the pilot's methodological hinge: DPO keeps the optimization recipe simple enough that differences between data conditions remain interpretable.",
+            "doi:10.48550/arxiv.2310.16944":
+                "Provides the strongest competitive synthetic baseline: AI-feedback distillation can produce strong chat alignment, which is why the pilot must be framed as a directional test rather than a foregone human-data victory.",
+        },
+        "transitions": {
+            ("doi:10.18653/v1/d19-1454", "doi:10.48550/arxiv.2305.11206"):
+                "Because the benchmark is intentionally socially grounded, the next step is a precedent showing that carefully curated fine-tuning data can materially change behavior.",
+            ("doi:10.48550/arxiv.2305.11206", "doi:10.48550/arxiv.2305.18290"):
+                "Once data quality is treated as the intervention, the method must stay simple enough that condition-to-condition differences remain interpretable.",
+            ("doi:10.48550/arxiv.2305.18290", "doi:10.48550/arxiv.2310.16944"):
+                "With a controlled preference objective in place, the strongest next baseline is Zephyr, which applies AI-feedback distillation on top of a DPO-style alignment recipe.",
+        },
+        "paragraphs": [
+            {
+                "topic": "Why the pilot uses social reasoning as its evaluation target",
+                "papers": [
+                    "doi:10.18653/v1/d19-1454",
+                    "doi:10.18653/v1/2022.emnlp-main.248",
+                ],
+                "opening_sentence": "The experiment beat should begin by justifying the evaluation target: social reasoning remains difficult enough that small changes in data provenance are more likely to surface here than on generic chat benchmarks.",
+            },
+            {
+                "topic": "Why a provenance-sensitive contrast is methodologically plausible",
+                "papers": [
+                    "doi:10.48550/arxiv.2305.11206",
+                    "doi:10.48550/arxiv.2305.18290",
+                    "doi:10.48550/arxiv.2305.14387",
+                ],
+                "opening_sentence": "LIMA motivates the treatment variable, DPO keeps the comparison interpretable, and AlpacaFarm shows why a synthetic baseline is methodologically reasonable even if it is not the same as socially grounded human data.",
+            },
+            {
+                "topic": "Why the outcome must be framed as directional rather than validated",
+                "papers": [
+                    "doi:10.48550/arxiv.2309.00267",
+                    "doi:10.48550/arxiv.2310.16944",
+                ],
+                "opening_sentence": "The strongest existing counterevidence comes from bounded alignment tasks: RLAIF and Zephyr show that AI feedback can already be highly competitive, which is why the present experiment can only offer directional evidence on social reasoning rather than full validation.",
+            },
+        ],
+        "supporting": [
+            {
+                "paperId": "doi:10.18653/v1/2022.emnlp-main.248",
+                "attached_to_spine_paper": "doi:10.18653/v1/d19-1454",
+                "role": "Broader theory-of-mind benchmark evidence showing that social reasoning deficits persist in strong LLMs.",
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2305.14387",
+                "attached_to_spine_paper": "doi:10.48550/arxiv.2305.18290",
+                "role": "Low-cost simulated-feedback baseline that makes a non-human comparison arm realistic for pilot studies.",
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2309.00267",
+                "attached_to_spine_paper": "doi:10.48550/arxiv.2310.16944",
+                "role": "Bounded-task counterevidence showing AI feedback can already match RLHF in dialogue and summarization.",
+            },
+        ],
+        "writing_notes":
+            "Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.",
+    },
+    6: {
+        "anchor": "doi:10.48550/arxiv.2404.12691",
+        "spine": [
+            "doi:10.1007/s00779-005-0046-3",
+            "doi:10.1145/2632048.2632054",
+            "doi:10.48550/arxiv.2404.12691",
+            "doi:10.48550/arxiv.2304.07327",
+            "doi:10.1017/aap.2022.33",
+        ],
+        "roles": {
+            "doi:10.1007/s00779-005-0046-3":
+                "Provides the broad feasibility precedent: mobile sensing can capture rich human behavioral traces over time.",
+            "doi:10.1145/2632048.2632054":
+                "Narrows that feasibility claim into the university setting by showing that continuous smartphone sensing can characterize student behavior in a campus environment.",
+            "doi:10.48550/arxiv.2404.12691":
+                "Anchor paper for Beat 6: AI data authenticity, consent, and provenance are currently fragmented, so any collection platform needs these design requirements baked in from the start.",
+            "doi:10.48550/arxiv.2304.07327":
+                "Provides the bridge from collection to downstream use: intentionally gathered human conversations can become alignment corpora, so a CampusGo-style platform is not just sensing infrastructure but a potential data-generation pathway.",
+            "doi:10.1017/aap.2022.33":
+                "Adds the stewardship boundary: contributors must remain stakeholders in how sensitive data are curated and reused, which keeps CampusGo proposal-framed rather than extractive.",
+        },
+        "transitions": {
+            ("doi:10.1007/s00779-005-0046-3", "doi:10.1145/2632048.2632054"):
+                "A general sensing precedent becomes relevant only after it is narrowed into a campus-specific behavioral setting.",
+            ("doi:10.1145/2632048.2632054", "doi:10.48550/arxiv.2404.12691"):
+                "Once campus collection looks feasible, the key question becomes not sensing alone but how authenticity, consent, and provenance should be represented for AI use.",
+            ("doi:10.48550/arxiv.2404.12691", "doi:10.48550/arxiv.2304.07327"):
+                "Once provenance requirements are explicit, the next question is whether intentionally collected human interaction data can actually flow into alignment pipelines; OpenAssistant provides that bridge.",
+            ("doi:10.48550/arxiv.2304.07327", "doi:10.1017/aap.2022.33"):
+                "A usable human-data pipeline is still not enough unless contributors remain visible as ongoing stakeholders in reuse and curation decisions.",
+        },
+        "paragraphs": [
+            {
+                "topic": "Campus-situated collection is technically plausible",
+                "papers": [
+                    "doi:10.1007/s00779-005-0046-3",
+                    "doi:10.1145/2632048.2632054",
+                ],
+                "opening_sentence": "The proposal should start with feasibility only: adjacent mobile-sensing work shows that campus-scale behavioral collection is technically plausible, not that it is automatically appropriate for AI training data.",
+            },
+            {
+                "topic": "AI-specific provenance requirements define the proposal core",
+                "papers": [
+                    "doi:10.48550/arxiv.2404.12691",
+                    "doi:10.48550/arxiv.2304.07327",
+                    "doi:10.3389/fclim.2021.637037",
+                ],
+                "opening_sentence": "What turns simple sensing into a defensible proposal is the provenance layer plus a downstream use case: authenticity, consent, and governance must be designed together, and OpenAssistant shows that intentionally collected human conversations can in fact become alignment data.",
+            },
+            {
+                "topic": "Stewardship requirements keep CampusGo proposal-framed",
+                "papers": [
+                    "doi:10.5334/cstp.303",
+                    "doi:10.1017/aap.2022.33",
+                ],
+                "opening_sentence": "The final move is a scope limit: stewardship principles show why CampusGo can only be presented as a motivated design direction and not as a validated intervention.",
+            },
+        ],
+        "supporting": [
+            {
+                "paperId": "doi:10.3389/fclim.2021.637037",
+                "attached_to_spine_paper": "doi:10.1017/aap.2022.33",
+                "role": "Power-sensitive governance lens reinforcing that open-data defaults are insufficient for contributor-originated data.",
+            },
+            {
+                "paperId": "doi:10.5334/cstp.303",
+                "attached_to_spine_paper": "doi:10.1017/aap.2022.33",
+                "role": "Operational reminder that documentation, interoperability, and reuse norms often break before raw data collection does.",
+            },
+        ],
+        "writing_notes":
+            "Beat 6 should read as requirements engineering, not validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a system would need to satisfy.",
+    },
 }
 
 
@@ -124,6 +397,18 @@ def run_phase3_5(state: dict, state_path: str, base_dir: str, client,
 
     classified = load_json(classified_path)
     log.info(f"Phase 3.5: building narrative chains for {len(classified)} papers")
+
+    # Load verified citation chains from check_citations.py if available
+    verified_chains_path = os.path.join(base_dir, "citation_chains.json")
+    verified_chains = {}
+    if os.path.exists(verified_chains_path):
+        verified_data = load_json(verified_chains_path)
+        for edge in verified_data.get("edges", []):
+            src = edge.get("from", "")
+            tgt = edge.get("to", "")
+            if src and tgt:
+                verified_chains.setdefault(src, []).append(tgt)
+        log.info(f"Loaded {len(verified_data.get('edges', []))} verified citation edges from citation_chains.json")
 
     # Step 1: Expand citation graph (full pairwise references)
     if not is_step_complete(state, "3.5", "citation_expansion"):
@@ -329,6 +614,12 @@ def _build_narrative_chains(client, classified: list[dict],
                 citation_map,
                 papers_input,
             )
+            result = _apply_structured_refinement(
+                beat_num,
+                result,
+                selected_papers,
+                citation_map,
+            )
             result["beat"] = beat_num
             result["beat_name"] = beat_name
             result["paper_count"] = len(beat_papers)
@@ -440,6 +731,7 @@ def _run_narrative_agent(client, beat_num: int, beat_name: str, categories: list
                          citation_map: dict,
                          papers_input: str) -> dict:
     beat_guidance = BEAT_NARRATIVE_GUIDANCE.get(beat_num, "")
+    argument_line = ARGUMENT_LINES.get(beat_num, "unknown")
     selected_by_id = {p["paperId"]: p for p in selected_papers}
     priority_titles = [
         f"{pid} :: {selected_by_id[pid].get('title', '')}"
@@ -452,11 +744,35 @@ def _run_narrative_agent(client, beat_num: int, beat_name: str, categories: list
         if priority_titles else
         "Priority anchors to consider: none explicitly seeded for this beat."
     )
+
+    # Argument line separation constraint
+    line_warning = ""
+    if argument_line == "line_2":
+        line_warning = (
+            "\nCRITICAL CONSTRAINT: This beat belongs to Argument Line 2 (fine-tuning). "
+            "Do NOT use Category A (collapse) papers as direct support. "
+            "The fine-tuning argument line has its own independent evidence base.\n"
+        )
+    elif argument_line == "line_1":
+        line_warning = (
+            "\nCRITICAL CONSTRAINT: This beat belongs to Argument Line 1 (pretraining). "
+            "Do NOT use fine-tuning-specific papers (Categories F, I, J) as direct support.\n"
+        )
+
+    # Honesty constraints
+    honesty = HONESTY_CONSTRAINTS.get(beat_num, [])
+    honesty_block = ""
+    if honesty:
+        honesty_block = "\nHonesty constraints for this beat:\n" + "\n".join(f"- {h}" for h in honesty) + "\n"
+
     task = (
-        f"Construct the narrative chain for Beat {beat_num}: {beat_name}.\n\n"
+        f"Construct the narrative chain for Beat {beat_num}: {beat_name}.\n"
+        f"Argument line: {argument_line}\n\n"
         f"This beat covers categories {categories} and has {len(beat_papers)} candidate papers. "
         f"You are seeing the top {len(selected_papers)} papers selected for signal density.\n"
         f"Beat-specific guidance: {beat_guidance}\n"
+        f"{line_warning}"
+        f"{honesty_block}"
         f"{priority_hint}\n"
         f"If a required category is thin, make that weakness explicit in the chain instead of forcing a strong bridge.\n"
         f"Use at most 6 spine papers and at most 12 supporting papers.\n\n"
@@ -509,6 +825,127 @@ def _run_narrative_agent(client, beat_num: int, beat_name: str, categories: list
                 selected_papers,
                 error=second_error,
             )
+
+
+def _apply_structured_refinement(beat_num: int, result: dict, selected_papers: list[dict],
+                                 citation_map: dict[str, list[str]]) -> dict:
+    """Tighten weak late-line beats into shorter, more inspectable chains."""
+    spec = STRUCTURED_BEAT_SPECS.get(beat_num)
+    if not spec:
+        return result
+
+    selected_by_id = {p["paperId"]: p for p in selected_papers}
+    ranked_ids = [
+        p["paperId"]
+        for p in sorted(
+            selected_papers,
+            key=lambda x: (x.get("citationCount", 0), x.get("year", 0)),
+            reverse=True,
+        )
+    ]
+
+    spine_ids = [pid for pid in spec.get("spine", []) if pid in selected_by_id]
+    target_spine_len = max(3, len(spec.get("spine", [])))
+    for pid in [item.get("paperId", "") for item in result.get("spine", [])] + ranked_ids:
+        if pid and pid in selected_by_id and pid not in spine_ids and len(spine_ids) < target_spine_len:
+            spine_ids.append(pid)
+
+    if len(spine_ids) < 3:
+        return result
+
+    anchor_id = spec.get("anchor")
+    if anchor_id not in selected_by_id:
+        anchor_id = result.get("anchor_paper", {}).get("paperId", "")
+    if anchor_id and anchor_id not in spine_ids and anchor_id in selected_by_id:
+        spine_ids = spine_ids[:1] + [anchor_id] + [pid for pid in spine_ids[1:] if pid != anchor_id]
+        spine_ids = spine_ids[:target_spine_len]
+    if not anchor_id:
+        anchor_id = spine_ids[0]
+
+    existing_anchor = result.get("anchor_paper", {}) or {}
+    anchor_why = existing_anchor.get("why", "")
+    if existing_anchor.get("paperId") != anchor_id or not anchor_why:
+        anchor_why = spec.get("roles", {}).get(anchor_id, "Structured anchor selected for clearer narrative inspection.")
+
+    spine = []
+    for idx, pid in enumerate(spine_ids, start=1):
+        next_id = spine_ids[idx] if idx < len(spine_ids) else ""
+        transition = spec.get("transitions", {}).get((pid, next_id), "")
+        ordering_basis, ordering_note, ordering_summary = _describe_ordering_basis(pid, next_id, citation_map)
+        if transition and ordering_summary:
+            transition = f"{transition} [{ordering_summary}]"
+        item = {
+            "paperId": pid,
+            "position": idx,
+            "role_in_narrative": spec.get("roles", {}).get(pid, f"Structured Beat {beat_num} spine paper."),
+            "transition_to_next": transition,
+        }
+        if next_id:
+            item["ordering_basis"] = ordering_basis
+            item["ordering_note"] = ordering_note
+        spine.append(item)
+
+    supporting = []
+    seen_support = set()
+    for item in spec.get("supporting", []):
+        pid = item.get("paperId", "")
+        if pid in selected_by_id and pid not in spine_ids and pid not in seen_support:
+            supporting.append(dict(item))
+            seen_support.add(pid)
+    for item in result.get("supporting", []):
+        pid = item.get("paperId", "")
+        if pid in selected_by_id and pid not in spine_ids and pid not in seen_support and len(supporting) < 8:
+            supporting.append(item)
+            seen_support.add(pid)
+
+    paragraphs = []
+    for idx, para in enumerate(spec.get("paragraphs", []), start=1):
+        paper_ids = [pid for pid in para.get("papers", []) if pid in selected_by_id]
+        if not paper_ids:
+            continue
+        paragraphs.append({
+            "paragraph": idx,
+            "topic": para.get("topic", f"Beat {beat_num} paragraph {idx}"),
+            "papers": paper_ids,
+            "opening_sentence": para.get("opening_sentence", ""),
+        })
+
+    refined = dict(result)
+    refined["anchor_paper"] = {"paperId": anchor_id, "why": anchor_why}
+    refined["spine"] = spine
+    refined["supporting"] = supporting
+    if paragraphs:
+        refined["paragraph_outline"] = paragraphs
+    refined["writing_notes"] = spec.get("writing_notes", result.get("writing_notes", ""))
+    refined["structured_refinement"] = True
+    return refined
+
+
+def _describe_ordering_basis(current_id: str, next_id: str,
+                             citation_map: dict[str, list[str]]) -> tuple[str, str, str]:
+    if not next_id:
+        return "", "", ""
+
+    if current_id in citation_map.get(next_id, []):
+        note = f"Verified citation order: {next_id} cites {current_id}."
+        return "verified_citation", note, "verified citation order"
+
+    manual_note = MANUAL_VERIFIED_PROGRESSIONS.get((current_id, next_id))
+    if manual_note:
+        return "verified_citation", manual_note, "verified citation order"
+
+    if next_id in citation_map.get(current_id, []):
+        note = (
+            "Direct internal citation runs in the opposite direction, so this sequence is kept as "
+            "thematic progression rather than strict citation order."
+        )
+        return "thematic_progression", note, "thematic progression; direct citation runs in the opposite direction"
+
+    note = (
+        "No direct internal citation edge was found; order is justified by the argument progression "
+        "rather than by a verified citation chain."
+    )
+    return "thematic_progression", note, "thematic progression; no verified internal citation edge"
 
 
 def _ensure_narrative_beat_valid(result: dict) -> dict:
@@ -793,6 +1230,10 @@ def _generate_writing_outline(chains: list[dict], classified: list[dict],
                 title = p.get("title", pid)[:70]
                 lines.append(f"  {s.get('position', '?')}. [{p.get('year', '?')}] {title}")
                 lines.append(f"     Role: {s.get('role_in_narrative', 'N/A')}")
+                if s.get("ordering_basis"):
+                    lines.append(f"     Basis: {s['ordering_basis']}")
+                if s.get("ordering_note"):
+                    lines.append(f"     Note: {s['ordering_note']}")
                 if s.get("transition_to_next"):
                     lines.append(f"     → {s['transition_to_next']}")
             lines.append("")

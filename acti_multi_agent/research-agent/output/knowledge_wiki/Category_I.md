@@ -1,60 +1,53 @@
 # Category I
 
-> 79 nodes in this community
+> 33 nodes in this community
 
 ## Key Nodes
 
-- **Validation Experiment** (beat, degree=79)
-- **openalex** (layer, degree=68)
-- **Category E** (category, degree=41)
-- **openalex** (source, degree=40)
-- **Category F** (category, degree=28)
-- **Category H** (category, degree=17)
-- **Category J** (category, degree=14)
-- **openalex+s2** (source, degree=14)
+- **supplement_json** (source, degree=18)
+- **supplement_json** (layer, degree=18)
+- **Category I** (category, degree=16)
+- **More Articles Are Now Created by AI Than Humans** (paper, degree=9)
+- **How Faithful is your Synthetic Data? Sample-level Metrics for Evaluating and Auditing Generative Models** (paper, degree=9)
+- **Take Caution in Using LLMs as Human Surrogates: Scylla Ex Machina** (paper, degree=8)
+- **Testing theory of mind in large language models and humans** (paper, degree=8)
+- **Quantifying Large Language Model Usage in Scientific Papers** (paper, degree=7)
 
 ## Member Nodes
 
-- Validation Experiment [beat]
-- openalex [layer]
-- Category E [category]
-- openalex [source]
-- Category F [category]
-- Category H [category]
-- Category J [category]
-- openalex+s2 [source]
-- The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data, and Web Data Only [paper]
+- supplement_json [source]
+- supplement_json [layer]
 - Category I [category]
-- The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale [paper]
-- Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Corpus [paper]
-- RLHF human feedback cost preference data quality [query]
-- Scaling Laws Revisited: Modeling the Role of Data Quality in Language Model Pretraining [paper]
-- Principle-Driven Self-Alignment of Language Models from Scratch with Minimal Human Supervision [paper]
-- When Less is More: Investigating Data Pruning for Pretraining LLMs at Scale [paper]
-- DataComp-LM: In search of the next generation of training sets for language models [paper]
-- Neural Theory-of-Mind? On the Limits of Social Intelligence in Large LMs [paper]
-- Self-Instruct: Aligning Language Models with Self-Generated Instructions [paper]
-- The GenAI Future of Consumer Research [paper]
-- AICC: Parse HTML Finer, Make Models Better - A 7.3T AI-Ready Corpus Built by a Model-Based HTML Parser [paper]
-- RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Feedback with AI Feedback [paper]
-- OpenAssistant Conversations -- Democratizing Large Language Model Alignment [paper]
-- WizardLM: Empowering large pre-trained language models to follow complex instructions [paper]
-- A Watermark for Large Language Models [paper]
-- RedPajama: an Open Dataset for Training Large Language Models [paper]
-- SALMON: Self-Alignment with Instructable Reward Models [paper]
-- Direct Preference Optimization: Your Language Model is Secretly a Reward Model [paper]
-- Social IQa: Commonsense Reasoning about Social Interactions [paper]
-- CoMMET: To What Extent Can LLMs Perform Theory of Mind Tasks? [paper]
-- all:"social reasoning" AND all:"benchmark" AND all:"language model" [query]
-- Are Vision Language Models Cross-Cultural Theory of Mind Reasoners? [paper]
-- LIMA: Less Is More for Alignment [paper]
-- What Are the Internal and External Applications of Conversational Data in Large Language Models? [paper]
-- BhashaKritika: Building Synthetic Pretraining Data at Scale for Indic Languages [paper]
-- Can Small Training Runs Reliably Guide Data Curation? Rethinking Proxy-Model Practice [paper]
-- RRHF: Rank Responses to Align Language Models with Human Feedback without tears [paper]
-- Human-in-the-Loop Reinforcement Learning: A Survey and Position on Requirements, Challenges, and Opportunities [paper]
-- AI Supported Degradation of the Self Concept: A Theoretical Framework Grounded in Established Cognitive and Computational Mechanisms [paper]
-- Zephyr: Direct Distillation of LM Alignment [paper]
+- More Articles Are Now Created by AI Than Humans [paper]
+- How Faithful is your Synthetic Data? Sample-level Metrics for Evaluating and Auditing Generative Models [paper]
+- Take Caution in Using LLMs as Human Surrogates: Scylla Ex Machina [paper]
+- Testing theory of mind in large language models and humans [paper]
+- Quantifying Large Language Model Usage in Scientific Papers [paper]
+- Training Language Models to Be Warm and Empathetic Makes Them Less Reliable [paper]
+- Traces of Social Competence in Large Language Models [paper]
+- Finetuning LLMs for Human Behavior Prediction in Social Science Experiments [paper]
+- The Pragmatic Mind of Machines: Tracing the Emergence of Pragmatic Competence in Large Language Models [paper]
+- Centaur: a foundation model of human cognition [paper]
+- Hybrid Training Approaches for LLMs: Leveraging Real and Synthetic Data to Enhance Model Performance in Domain-Specific Applications [paper]
+- Synth-Empathy: Towards High-Quality Synthetic Empathy Data [paper]
+- A Primer for Evaluating Large Language Models in Social-Science Research [paper]
+- Do LLMs Exhibit Human-Like Reasoning? Evaluating Theory of Mind in LLMs for Open-Ended Responses [paper]
+- 74% of New Webpages Include AI Content (Study of 900k Pages) [paper]
+- Liang quantifying LLM usage scientific papers Nature Human Behaviour 2025 [query]
+- Ahrefs 74% new webpages AI content 900k pages 2025 [query]
+- Graphite AI articles surpassed human articles 2024 Common Crawl [query]
+- How Faithful synthetic data alpha precision beta recall authenticity ICML 2022 [query]
+- training language models warm empathetic less reliable [query]
+- Traces Social Competence LLMs 2026 [query]
+- Take caution LLMs human surrogates PNAS 2025 [query]
+- Kolluri Bernstein finetuning LLMs human behavior prediction EMNLP 2025 [query]
+- Primer evaluating LLMs social-science research AMPPS 2025 [query]
+- Pragmatic Mind Machines ALTPRAG emergence pragmatic competence LLM [query]
+- Centaur foundation model human cognition Nature 2025 [query]
+- Strachan Testing theory of mind Nature Human Behaviour 2024 [query]
+- LLMs human-like reasoning theory of mind open-ended CIKM 2024 [query]
+- Hybrid Training real synthetic data domain-specific LLM [query]
+- Synth-Empathy synthetic empathy data quality diversity [query]
 
 ---
 

@@ -14,6 +14,11 @@ from .utils import atomic_write_json, load_json
 
 log = logging.getLogger("research_agent")
 
+# Import centralized beat definitions
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config.beat_definitions import ARGUMENT_LINES, HONESTY_CONSTRAINTS
+
 TYPE_PRIORITY = {
     "direct_contradiction": 0,
     "scope_disagreement": 1,
@@ -26,7 +31,7 @@ FALLBACK_FOCUS_HEURISTICS = {
         "question": "Can curated synthetic data or correction mechanisms prevent collapse without fresh human data every round?",
         "type": "direct_contradiction",
         "severity": "critical",
-        "beat": 4,
+        "beat": 1,
         "side_a_keywords": [
             "collapse",
             "irreversible",
@@ -199,10 +204,10 @@ FALLBACK_FOCUS_HEURISTICS = {
             "socially grounded",
         ],
         "relevance": (
-            "This keeps Beat 5 from overselling platform value or synthetic substitution. Synthetic instruction pipelines can work well for many tasks, while socially grounded reasoning may still expose missing human signals."
+            "This keeps Beat 6 from overselling platform value or synthetic substitution. Synthetic instruction pipelines can work well for many tasks, while socially grounded reasoning may still expose missing human signals."
         ),
         "handling": (
-            "Write Beat 5 as a targeted platform proposal for high-value data niches, not a blanket claim that all future training must shift away from web/synthetic mixtures."
+            "Write Beat 6 as a targeted platform proposal for high-value data niches, not a blanket claim that all future training must shift away from web/synthetic mixtures."
         ),
         "unresolved": [
             "Which downstream tasks actually benefit from the proposed human-grounded data collection pipeline rather than generic synthetic instruction expansion.",
@@ -244,7 +249,7 @@ FALLBACK_FOCUS_HEURISTICS = {
         "question": "Does social reasoning weakness reflect a real human-data gap, or can data composition fixes close it?",
         "type": "scope_disagreement",
         "severity": "moderate",
-        "beat": 5,
+        "beat": 4,
         "side_a_keywords": [
             "social reasoning",
             "commonsense",

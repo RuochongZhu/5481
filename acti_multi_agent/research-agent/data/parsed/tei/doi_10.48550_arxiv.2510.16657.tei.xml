@@ -1,0 +1,1823 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main">Escaping Model Collapse via Synthetic Data Verification: Near-term Improvements and Long-term Convergence *</title>
+				<funder ref="#_2cvWa73">
+					<orgName type="full">UChicago</orgName>
+				</funder>
+				<funder>
+					<orgName type="full">Tsinghua</orgName>
+				</funder>
+				<funder ref="#_AuxFFyR">
+					<orgName type="full">Army Research Office</orgName>
+				</funder>
+			</titleStmt>
+			<publicationStmt>
+				<publisher/>
+				<availability  status="unknown">
+					<licence/>
+				</availability>
+				<date type="published" when="2026-03-05">5 Mar 2026</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Bingji</forename><surname>Yi</surname></persName>
+							<email>yibingji@gmail.com</email>
+						</author>
+						<author>
+							<persName><forename type="first">Qiyuan</forename><surname>Liu</surname></persName>
+							<email>qiyuanliu@uchicago.edu</email>
+							<affiliation key="aff0">
+								<orgName type="department">Department of Statistics</orgName>
+								<orgName type="institution">University of Chicago</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Yuwei</forename><surname>Cheng</surname></persName>
+							<email>yuweicheng@uchicago.edu</email>
+							<affiliation key="aff0">
+								<orgName type="department">Department of Statistics</orgName>
+								<orgName type="institution">University of Chicago</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Haifeng</forename><surname>Xu</surname></persName>
+							<email>haifengxu@uchicago.edu</email>
+							<affiliation key="aff1">
+								<orgName type="department">Department of Computer Science</orgName>
+								<orgName type="institution">University of Chicago</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main">Escaping Model Collapse via Synthetic Data Verification: Near-term Improvements and Long-term Convergence *</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2026-03-05">5 Mar 2026</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">18EF77A98B7D2D5813493C03A92D7E83</idno>
+					<idno type="arXiv">arXiv:2510.16657v2[stat.ML]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.0" ident="GROBID" when="2026-04-12T19:09+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.0</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=1, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=false, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[], flavor=null</label>
+					<ref target="https://github.com/kermitt2/grobid"/>
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<textClass>
+				<keywords>Original Data Initial Model Re-Trained on Synthetic Images after 40 Rounds VAE Trained on 500 Real Images Directly Trained on All 60K Real Images</keywords>
+			</textClass>
+			<abstract>
+<div xmlns="http://www.tei-c.org/ns/1.0"><p>Synthetic data has been increasingly used to train frontier generative models. However, recent studies raise key concerns that iteratively retraining a generative model on its self-generated synthetic data may keep deteriorating model performance, a phenomenon often coined model collapse. In this paper, we investigate ways to modify the synthetic retraining process to avoid model collapse, and even possibly help reverse the trend from collapse to improvement. Our key finding is that by injecting information through an external synthetic data verifier, whether a human or a better model, synthetic retraining will not cause model collapse. Specifically, we situate our theoretical analysis in the fundamental linear regression setting, showing that verifier-guided retraining can yield near-term improvements, but ultimately drives the parameter estimate to the verifier's "knowledge center" in the long run. Our theory further predicts that, unless the verifier is perfectly reliable, these early gains will plateau and may even reverse. Indeed, our experiments across linear regression, Variational Autoencoders (VAEs) trained on MNIST, and fining-tuning SmolLM2-135M on the XSUM task confirm these theoretical insights.</p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1">Introduction</head><p>The use of synthetic data has gained significant traction due to its ability to reduce data collection costs and enhance privacy protection, with applications in computer vision <ref type="bibr" target="#b47">(Wood et al., 2021)</ref>, healthcare <ref type="bibr" target="#b3">(Azizi et al., 2021;</ref><ref type="bibr" target="#b37">Santangelo et al., 2025)</ref>, finance <ref type="bibr" target="#b36">(Potluru et al., 2023)</ref> and recently large language models (LLMs) <ref type="bibr">(Chen et al., 2024)</ref>. A growing body of work has demonstrated that training with synthetic data can improve model performance in various applications such as image recognition <ref type="bibr" target="#b25">(He et al., 2023;</ref><ref type="bibr" target="#b43">Tremblay et al., 2018)</ref>, image generation <ref type="bibr" target="#b9">(Doersch &amp; Zisserman, 2019;</ref><ref type="bibr" target="#b39">Shrivastava et al., 2017;</ref><ref type="bibr" target="#b42">Tian et al., 2023)</ref> and language generation <ref type="bibr" target="#b20">(Gunasekar et al., 2023;</ref><ref type="bibr" target="#b21">Guo et al., 2024;</ref><ref type="bibr" target="#b51">Zelikman et al., 2022)</ref>. However, recent studies caution that recursively training models on synthetic data alone can lead to a degradation of quality, a phenomenon often coined model collapse <ref type="bibr" target="#b40">(Shumailov et al., 2024;</ref><ref type="bibr">Dohmatob et al., 2024a</ref><ref type="bibr" target="#b12">Dohmatob et al., , 2025</ref><ref type="bibr">Dohmatob et al., , 2024b;;</ref><ref type="bibr" target="#b0">Alemohammad et al., 2024;</ref><ref type="bibr">Gerstgrasser et al., 2024)</ref>. This contrast between empirical success and pessimistic research findings gives rise to a natural question about what might have caused the discrepancy.</p><p>In response to the above question, an important practical observation is that synthetic data are rarely used in raw form in the aforementioned applications. Instead, practitioners often apply filtering steps to remove low-quality synthetic samples before retraining. For example, in natural language generation, synthetic sentences are often screened using grammar checkers or LLM-as-a-judge pipelines <ref type="bibr" target="#b53">(Zheng et al., 2023;</ref><ref type="bibr" target="#b19">Gu et al., 2024)</ref>; in computer vision, synthetic images can be filtered using pretrained discriminators or human annotation <ref type="bibr" target="#b25">(He et al., 2023)</ref>; in recommendation and preference learning, synthetic feedback is often validated against external heuristics or known user signals <ref type="bibr" target="#b44">(Tu et al., 2025;</ref><ref type="bibr" target="#b27">Iskander et al., 2024;</ref><ref type="bibr" target="#b32">Lupidi et al., 2024;</ref><ref type="bibr" target="#b30">Lampis et al., 2023;</ref><ref type="bibr" target="#b52">Zhang et al., 2024)</ref>. Common across all these approaches is the use of a knowledgeable "discriminator" (henceforth the verifier ) -whether a machine or human -that evaluates and filters out low-quality candidate synthetic samples (i.e., those not passing the discriminator's screening). This observation naturally raises the following research question: Does verifier-based filtering of synthetic data contribute to the observed empirical success of model improvements, and does it prevent model collapse in the long run?</p><p>There has been a growing body of work studying the mechanisms of model collapse, including theoretical analyzes that are often examined in the context of classic parameter estimation problems <ref type="bibr">(Dohmatob et al., 2024a</ref><ref type="bibr" target="#b12">(Dohmatob et al., , 2025;;</ref><ref type="bibr">Gerstgrasser et al., 2024;</ref><ref type="bibr" target="#b8">Dey &amp; Donoho, 2024;</ref><ref type="bibr" target="#b49">Xu et al., 2025;</ref><ref type="bibr" target="#b41">Suresh et al., 2025)</ref>. However, these works have all assumed the use of synthetic data without filtering. Only few recent works start to examine how filtered synthetic data affects the performance of iterative retraining, but under idealized assumptions such as access to a perfectly correct verifier <ref type="bibr" target="#b2">(Amin et al., 2025)</ref> or highly structured errors in synthetic data (i.e., i.i.d. noise added to binary labels <ref type="bibr" target="#b13">(Feng et al., 2025)</ref>). A realistic and instructive framework for analyzing synthetic retraining of generative models remains still poorly understood. In this paper, we further push the boundary of this important agenda, and examine iterative retraining under imperfect verifiers that filter out low-quality synthetic data based on their (possibly biased) knowledge. We refer to this process as verifier-based synthetic retraining for convenience. Specifically, we seek principled understandings about the empirically observed short-term successes of verifier-based synthetic retraining and analysis about its long-term convergence under iterative retraining.</p><p>Our contributions. We start from theoretical investigations and analyze verifier-based synthetic retraining with verified synthetic data on the foundational linear regression model-a canonical setting that has become central to the study of model collapse (e.g., <ref type="bibr">(Dohmatob et al., 2024a</ref><ref type="bibr" target="#b12">(Dohmatob et al., , 2025;;</ref><ref type="bibr">Gerstgrasser et al., 2024;</ref><ref type="bibr" target="#b54">Zhu et al., 2025;</ref><ref type="bibr" target="#b17">Garg et al., 2025)</ref>). <ref type="foot" target="#foot_0">2</ref> We then verify our theoretical insights through thorough empirical studies in real-world generative settings. Our main contributions are summarized as follows:</p><p>• Does verified synthetic data improve retraining and, if so, under what conditions? We show that it indeed can, provided the right conditions are met. Through a new form of bias-variance trade-off under data filtering, we characterize the regimes in which verifier-based synthetic retraining leads to strict model improvement, rather than degradation, in the short term (Theorem 3.1). The conditions we identify highlight the mixed effect of synthetic sample size, the verifier's bias and selectivity during filtering, yielding practical insights regarding when verification of synthetic data is beneficial.</p><p>• Can the retraining improvement in the short term be sustained in the long run? Our theoretical analysis shows that the answer is No -unless the verifier has no bias. Formally, we show that verifier-based synthetic retraining will converge to the verifier's knowledge center in the long term (Theorem 4.1). This result reveals how the verifier's quality affects the asymptotic dynamics of iterative retraining. Notably, while verifier selectivity influences short-term performance, it does not change the long-run converging point, though it does affect its convergence rate.</p><p>• Do the insights from the above theoretical analysis apply to real generative models empirically? Indeed, both simulations of linear regression settings and training Variational Autoencoders (VAEs) on the real-world MNIST data demonstrate that our theoretical insights align with observed training dynamics in these settings. For example, Figure <ref type="figure" target="#fig_0">1</ref> shows how the generative model of VAE can start from a poor model trained on a small number of 500 images and gradually improve from being retrained on filtered synthetic imaged generated by itself, until after 40 iterations of retraining generating sharp images that are visually comparable to a VAE trained directly on the entire MNIST dataset. More quantitative analysis of our empirical studies can be found in Section 5.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="1.1">Related Work</head><p>Understanding and mitigating model collapse. Recent work shows that heavy reliance on synthetic data in iterative training can cause model collapse-the degradation of performance when a model is repeatedly retrained on its own synthetic outputs (possibly mixed with real data). <ref type="foot" target="#foot_1">3</ref> Empirical evidence supports this phenomenon: <ref type="bibr" target="#b40">Shumailov et al. (2024)</ref> show that recursive training on unfiltered synthetic data induces distribution shift and mode collapse, while <ref type="bibr" target="#b12">Dohmatob et al. (2025)</ref> find that even small synthetic proportions can harm performance. In linear settings, <ref type="bibr">Dohmatob et al. (2024a)</ref> analyze collapse mechanisms explicitly, and <ref type="bibr">Dohmatob et al. (2024b)</ref> connect degradation to altered neural scaling laws.</p><p>To mitigate collapse, prior work broadly explores three strategies. First, accumulating data or gradually increasing the synthetic dataset size across iterations can suppress noise and bound errors <ref type="bibr">(Gerstgrasser et al., 2024;</ref><ref type="bibr" target="#b8">Dey &amp; Donoho, 2024;</ref><ref type="bibr" target="#b49">Xu et al., 2025;</ref><ref type="bibr" target="#b28">Kazdan et al., 2025;</ref><ref type="bibr" target="#b4">Barzilai &amp; Shamir, 2025)</ref>. Second, mixing synthetic data with real data stabilizes retraining <ref type="bibr" target="#b5">(Bertrand et al., 2024;</ref><ref type="bibr" target="#b15">Fu et al., 2024</ref><ref type="bibr" target="#b16">Fu et al., , 2025))</ref>, as performance progressively degrades without sufficient fresh real data <ref type="bibr" target="#b0">(Alemohammad et al., 2024)</ref>. Recent studies have even derived optimal mixing ratios to maximize this stabilizing effect <ref type="bibr" target="#b24">(He et al., 2025;</ref><ref type="bibr" target="#b17">Garg et al., 2025)</ref>. Finally, algorithmic interventions, such as the token re-sampling procedures proposed by <ref type="bibr" target="#b54">Zhu et al. (2025)</ref>, offer alternative pathways to avoid collapse.</p><p>Unlike prior work that relies on unfiltered synthetic data, our framework incorporates an external verifier to remove low-quality samples. Such verifiers may be human annotators or stronger teacher models. Filtering is widely used in iterative retraining and has shown empirical success in preventing model degradation and even improving performance <ref type="bibr" target="#b25">(He et al., 2023;</ref><ref type="bibr" target="#b42">Tian et al., 2023;</ref><ref type="bibr" target="#b21">Guo et al., 2024;</ref><ref type="bibr" target="#b51">Zelikman et al., 2022;</ref><ref type="bibr" target="#b52">Zhang et al., 2024;</ref><ref type="bibr" target="#b30">Lampis et al., 2023;</ref><ref type="bibr" target="#b23">Haluptzok et al., 2023;</ref><ref type="bibr" target="#b35">Patwa et al., 2024)</ref>. Motivated by this, we develop a principled understanding of when improvement is possible-namely, whether a generative model can leverage the verifier's feedback, embedded in the selected synthetic subset, to achieve sustained gains.</p><p>Filtering and selecting synthetic data. While a rich line of empirical work demonstrates that these filtering strategies can improve model performance, theoretical understanding about iterative retraining with filtered synthetic data remains largely unexplored, with only a few recent exceptions. <ref type="bibr" target="#b2">Amin et al. (2025)</ref> assume a strong, reliable quality function and focus on how an external labeler aids learning under this fixed filtering mechanism. <ref type="bibr" target="#b13">Feng et al. (2025)</ref> study a classification problem and identify a sharp phase transition. However, modeling synthetic data merely as noisy labels abstracts away the structural dependencies between features and labels inherent to true generative processes. Finally, <ref type="bibr" target="#b14">Ferbach et al. (2024)</ref>; Wei &amp; Zhang considers a conceptually similar problem of learning a discrete preference distribution from human feedback by using humans' preferred choices as a filtering strategy. In their population-level analysis, curating synthetic data via an external reward function forces the model distribution to converge to the highest-reward level set, maximizing expected reward but ultimately collapsing in diversity.</p><p>Similar to many of the aforementioned studies above, our theoretical analysis also focuses on linear models <ref type="bibr" target="#b13">(Feng et al., 2025;</ref><ref type="bibr" target="#b12">Dohmatob et al., 2025;</ref><ref type="bibr">Gerstgrasser et al., 2024)</ref>. However, our model allows inaccuracy of the verifier in terms of both bias and variance. Errors in the synthetic data primarily stem from the inaccuracy of the generative model itself rather than exogenous noise. We show that model's short-term performance varies smoothly with the verifier's bias, selectivity, and size of synthetic data, rather than exhibiting a sharp phrase transition from complete failure to perfect accuracy as in <ref type="bibr" target="#b13">Feng et al. (2025)</ref>. In the long run, the model's performance converges to the verifier's knowledge center whereas verifier's selectivity only affects convergence speed. Our results bridge short-term and long-term perspectives of iterative retraining, illustrating how varied verifier qualities give rise to distinct performances of iterative retraining.</p><p>Comparison with reward maximization frameworks. While sharing the conceptual similarity of evaluating generated data via an external feedback mechanism, our modeling approach substantially differs from reward maximization frameworks in various aspects, including preference matching <ref type="bibr" target="#b14">(Ferbach et al., 2024;</ref><ref type="bibr">Wei &amp; Zhang)</ref> and recent Reinforcement Learning with Verified Rewards (RLVR) <ref type="bibr" target="#b21">(Guo et al., 2024;</ref><ref type="bibr" target="#b50">Yu et al., 2025)</ref>.</p><p>Theoretically, these methods frame the problem as policy optimization, where the objective is to maximize a provided reward signal. While highly effective for alignment, the definition of a "good model" is tied to the specific reward formulation, which may not correspond to recovering the true data-generating distribution.</p><p>Practically, reward optimization relies on assigning scalar rewards or pairwise comparison signals <ref type="bibr" target="#b34">(Ouyang et al., 2022)</ref>, which are often difficult and noisy to define. For instance, evaluating image quality or open-ended language generation with a single numerical reward is inherently subjective. While recent methods like RLVR avoid this issue by restricting themselves to domains with clearly verifiable rewards <ref type="bibr" target="#b22">(Guo et al., 2025;</ref><ref type="bibr" target="#b48">Wu &amp; Choi;</ref><ref type="bibr" target="#b50">Yu et al., 2025)</ref>, many important training settings lack such reliable reward functions. In contrast, we study the widely used "generate-verify-retrain" paradigm, which utilizes binary accept/reject filtering. Theoretically, our framework defines a "good model" at the parameter level, explicitly modeling the relationship between the verifier's filtering rule and the ground truth. By formalizing this link, we can directly analyze model performance during iterative retraining, even for an imperfect or biased verifier. Practically, this filtering mechanism is less noisy, highly stable, and serves as a core scalable primitive in modern LLM pipelines like <ref type="bibr">DeepSeek-Coder (Guo et al., 2025)</ref>.</p><p>2 Modeling Verifier-Based Synthetic Retraining: the Linear Regression Case</p><p>In this section, we formalize our model of iterative retraining with verified synthetic data, coined verifier-based synthetic retraining for convenience. Following recent works in this space <ref type="bibr">(Dohmatob et al., 2024a;</ref><ref type="bibr">Gerstgrasser et al., 2024;</ref><ref type="bibr" target="#b17">Garg et al., 2025;</ref><ref type="bibr" target="#b54">Zhu et al., 2025)</ref>, we focus on the foundational linear regression setting where the objective is to estimate a high-dimensional coefficient vector θ ⋆ in the following linear model</p><formula xml:id="formula_0">y = x ⊤ θ ⋆ + ξ,</formula><p>where ξ ∼ N (0, σ 2 ), x ∈ R p , and θ ⋆ ∈ R p is the unknown parameter of interest. We use the standard Mean Squared Error (MSE), i.e., MSE( θ) = E ξ ∥ θ -θ ⋆ ∥ 2 , to evaluate estimators.</p><p>Modeling the verifier and data filtering rule. Suppose we have access to a verifier that possesses prior knowledge of θ ⋆ , modeled by a knowledge set. Specifically, the verifier's knowledge is described by a spherical ball: B r (θ c ) := θ ∈ R p : ∥θ -θ c ∥ ≤ r , with fixed center θ c and radius r. We assume this knowledge set indeed contains the true parameter, i.e., θ ⋆ ∈ B r (θ c ), but the true parameter θ ⋆ is unknown. The verifier does not reveal θ c or r directly (see modeling motivations below). Instead, it only provides binary feedback indicating whether a given (real or synthetic) data point (x i , y i ) is consistent with the knowledge θ ⋆ ∈ B r (θ c ) or not. Specifically, the verifier outputs Yes if</p><formula xml:id="formula_1">|y i -x ⊤ i θ c | ≤ r∥x i ∥ + σ c ,<label>(1)</label></formula><p>and No otherwise. Here σ c is a constant related to the verifier's capability. This filtering rule is motivated by the following bound on expected errors:</p><formula xml:id="formula_2">E |y i -x ⊤ i θ c | = E |x ⊤ i (θ ⋆ -θ c )+ξ i | ≤ r∥x i ∥+E|ξ i | = r∥x i ∥+ 2 π σ.</formula><p>Since the true σ might be unknown in practice, σ c serves as an estimate of the true σ.</p><p>We refer to ∆ = ∥θ ⋆ -θ c ∥ as the bias of the verifier, whereas r captures the selectivity of the verifier -the smaller r is, less likely the verifier accepts a data point (x i , y i ). The verifier only needs to provide Yes/No answers based on the above selection rule in equation 1, but does not needs to know the parameter θ c , r of the knowledge set. The motivation of this modeling primarily comes from practice, as explained below.</p><p>Motivation of binary feedback from verifiers. We adopt the binary feedback from verifiers mainly for practical reasons. In practice, eliciting simple yes/no feedback is far less noisy and more cost-effective than asking verifiers to directly specify θ c or r. Indeed, in real applications verifiers may not even know these quantities explicitly, which would correspond to model parameters if the verifier is a stronger teacher model or how the human reasons if the verifier is a human. This model choice is also aligned with the widely adopted comparison-based feedback in reinforcement learning from human feedback (RLHF) <ref type="bibr" target="#b34">(Ouyang et al., 2022)</ref>. Such binary feedback has become a standard approach in preference alignment for large language models, where LLM raters and human evaluators provide pairwise or accept/reject judgments that effectively guide learning at scale <ref type="bibr" target="#b46">(Wettig et al., 2024)</ref>. Although simple, our theory and empirical evaluations both show that this single bit of information for each sample can successfully be injected into the retraining process to improve models.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Synthetic Retraining with Verifier-based Filtering We begin with an</head><formula xml:id="formula_3">initial set of real data (X 0 , Y 0 ), where X 0 ∈ R n0×p and Y 0 ∈ R n0 . The initial estimator θ0 is obtained via Ordinary Least Squares (OLS) 4 θ0 = (X 0 ⊤ X 0 ) -1 X 0 ⊤ Y 0 .</formula><p>We then proceed with iterative synthetic retraining via the generate-verify-retrain procedure outlined in Figure <ref type="figure">2</ref>, the rigorous retraining Scheme 2 and Algorithm 3 are provided in Appendix B.</p><formula xml:id="formula_4">θk (X k+1 , Y k+1 ) (X k+1 ′ , Y k+1 ′ ) θk+1 Generate Verify Retrain Figure 2: Generate-Verify-Retrain pipeline.</formula><p>Since learning proceeds through the conditional Y k | X k , synthetic retraining requires specifying the covariate design X k ; labels Y k are then generated conditionally via the model under verifier constraints. In principle, one could construct X k arbitrarily; however, for mathematical clarity, below we describe a targeted though arguably natural design. In particular, we choose to align the synthetic covariates with a fixed orthonormal set {v 1 , . . . , v p } and construct X k in a block-structured form by repeating each v ⊤ j as rows:</p><formula xml:id="formula_5">X k = ( v 1 , . . . copies of v1 , v 2 , . . . copies of v2 , . . . , v p , . . . copies of vp ) ⊤ .<label>(2)</label></formula><p>After verifier filtering, each orthogonal direction v j retains exactly n k samples with</p><formula xml:id="formula_6">n 0 ≤ pn 1 ≤ pn 2 ≤ • • • .</formula><p>Notably, the estimation of parameter θk+1 using only synthetic data from the model with θk , though with filtering, leads to a Markovian transition θk → θk+1 . The above block design essentially helps "diagonalize" the transition operator θk → θk+1 . The conceptual benefit of this covariance design choice is that we remove the rotational variability that arbitrary designs would introduce across iterations and decouple the dynamics along orthogonal directions. In practice, this design mirrors curating data along approximately orthogonal latent spaces or topics (e.g., topical axes like politics, sports, mathematics). However, the choice of covariant X k is not unique: alternatives (e.g., canonical basis, isotropic random directions) can yield similar qualitative conclusions, with potentially different constants or rates. We expect our theoretical insights to generalize to any reasonable design of the covariant X k , though the rigorous proofs may be less tractable for some designs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3">On the Near-Term Improvement under Synthetic Retraining</head><p>This section investigates the verifier's role in synthetic retraining: does it help, when does it help, and why does it help? We focus on one round and show that verifier-guided retraining can improve performance under mild assumptions. The underlying mechanism is a verifier-induced bias-variance trade-off: filtering synthetic data reduces variance but may introduce bias.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.1">Source of Improvement: Bias-Variance Trade-off with Verifier's Bias</head><p>To address the question of when and why verifier-based synthetic retraining improves estimation, we analyze the mean squared error (MSE) of the one-step estimator θ1 in estimating the true regression coefficient θ ⋆ . The MSE admits the following decomposition:</p><formula xml:id="formula_7">E∥ θ1 -θ ⋆ ∥ 2 = E θ0 Tr Var( θ1 | θ0 ) + E θ0 E θ1 | θ0 -θ ⋆ 2 .<label>(3)</label></formula><p>The first term in equation 3 is the synthetic variance: it captures additional estimation noise from the randomness in synthetic data generation. This variance decreases at rate 1/n 1 with the synthetic sample size n 1 , but is unaffected by the real sample size n 0 . Hence, with abundant synthetic data, this term becomes negligible.</p><p>The second term is the verification error, which measures the deviation of the conditional mean estimator E( θ1 | θ0 ) from θ ⋆ . This error depends both on the accuracy of the verifier (i.e., its potential bias) and the quality of the initial estimator θ0 , which improves with larger n 0 .</p><p>To further disentangle the verification error, we decompose it as</p><formula xml:id="formula_8">E θ0 E θ1 | θ0 -θ ⋆ 2 = Tr Var E θ1 | θ0 + ∥E[ θ 1 ] -θ ⋆ ∥ 2 .<label>(4)</label></formula><p>Here, the first term is the verification variance, reflecting variance reduction achieved by discarding inconsistent synthetic samples, while the second is the verification bias, capturing systematic deviation introduced by verifier bias.</p><p>Putting these together, the full decomposition is</p><formula xml:id="formula_9">E∥ θ 1 -θ ⋆ ∥ 2 = E θ0 Tr Var( θ1 | θ0 ) Synthetic Variance + Tr Var E θ1 | θ0 Verification Variance + ∥E[ θ 1 ] -θ ⋆ ∥ 2 Verification Bias .<label>(5)</label></formula><p>This decomposition highlights the central trade-off: verifier filtering reduces variance but may introduce bias.</p><p>Verified synthetic data leads to improvement precisely when the variance reduction outweighs the bias introduced.</p><p>In particular, when the verifier is sufficiently accurate and the synthetic sample size n 1 is large, the MSE of θ1 can be strictly smaller than that of the real-data estimator θ0 .</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="3.2">Characterizing Improvement in One-Round Retraining</head><p>The following theorem rigorously quantifies this trade-off for the linear regression model, demonstrating exactly when the one-step estimator θ1 improves or degrades upon the initial baseline. By characterizing the MSE of θ1 , it reveals how synthetic sample size, verifier bias, and verifier selectivity determine the final outcome.</p><p>Theorem 3.1. Let {µ j } p j=1 denote the singular values of X 0 , and assume each of them satisfies µ j = Ω( √ n 0 ). <ref type="foot" target="#foot_3">5</ref>Then there exist constants m 1,j , m 3,j ∈ R and m 2,j ∈ (0, 1) for j = 1, . . . , p, as well as a constant L &gt; 0 such that:</p><formula xml:id="formula_10">1 σ 2 MSE( θ1 ) = p j=1 m 2,j n 1 Synthetic Variance + m 2 1,j + m 1,j m 3,j + m 2 2,j µ 2 j Verification Error + O n -4/3 0<label>(6)</label></formula><p>holds with probability at least 1 -p exp -Ln 1/3 0 , where n 1 denotes the post-verification sample size.</p><p>While the explicit forms of the constants are deferred to Appendix B, their roles are highly intuitive: m 1,j and m 3,j capture the directional bias between the verifier's knowledge center θ c and the ground truth θ * along the j-th singular direction (vanishing if θ c = θ * ), while m 2,j &lt; 1 quantifies the variance reduction along that direction. Theorem 3.1 mathematically guarantees when verifier-guided retraining improves the model. Since the scaled baseline error is 1 σ 2 MSE( θ0 ) = p j=1 µ -2 j , we can directly compare it to Equation 6. When the verifier is highly accurate (m 1,j , m 3,j ≈ 0), the verification error term becomes dominated by p j=1 m 2 2,j /µ 2 j . Because m 2,j &lt; 1, this verification error is strictly smaller than the real-data error. Thus, whenever the verified synthetic sample size n 1 is sufficiently large to drive the synthetic variance down, MSE( θ1 ) strictly improves upon the baseline. This result highlights why verifier-based retraining is practically useful: in modern machine learning systems where real data collection is costly but generative models or simulators are available, a moderately accurate verifier can filter synthetic samples to effectively amplify limited real-world evidence and substantially reduce estimation error. Conceptually, this offers a sharp departure from classical model collapse literature, which typically models iterative synthetic data purely as a variance-inflating noise source <ref type="bibr" target="#b40">(Shumailov et al., 2024;</ref><ref type="bibr" target="#b0">Alemohammad et al., 2024;</ref><ref type="bibr">Dohmatob et al., 2024a)</ref>. Here, we prove that verification transforms synthetic data into a variance-reducing resource, provided the verifier's bias is sufficiently controlled. As we will demonstrate empirically in Section 5, this mechanism is not confined to the linear model; it manifests clearly in complex models such as VAEs and LLMs.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="4">Iterative Retraining Converges to the Verifier's Knowledge Center</head><p>Having established that a single round of verifier-based retraining can improve estimation through a bias-variance trade-off, a natural question arises: can this improvement be sustained over multiple rounds, and what is the eventual outcome? To contextualize our long-term analysis within the broader literature on model collapse, we first formalize these widely discussed empirical phenomena within our linear regression setting. Specifically, we define Model Degradation/Collapse as lim sup k→∞ MSE( θk ) &gt; MSE( θ0 ), and Model Improvement as lim sup k→∞ MSE( θk ) &lt; MSE( θ0 ).</p><p>Our key finding is that both behaviors can occur in long-term iterative retraining. The outcome depends critically on three factors: the growth rate of synthetic data, the verifier's bias, and the verifier's capability (i.e., its ability to reduce variance). Over time, iterative retraining injects increasingly more verifier knowledge into the estimator, while the contribution from the original data gradually decays. As a result, the verifier and the generative model family eventually dominate the limit behavior, driving the estimator θk toward a fixed point, which corresponds to the verifier's knowledge center θ c . This dynamic gives rise to three distinct phases of long-term behavior: (1) Unbiased verifier: If the verifier is unbiased (i.e., θ c = θ ⋆ ), iterative retraining yields continuous improvement and the estimator converges to the true parameter. (2) Mildly biased verifier: With small bias, iterative retraining can improve performance in the short term by reducing variance, but performance eventually plateaus or deteriorates as verifier bias accumulates.</p><p>(3) Strongly biased verifier: With large bias, iterative retraining leads to degradation and may even cause collapse in the limit. Among these, the mildly biased case is the most practically relevant. It highlights a cautionary message: while synthetic retraining can initially boost accuracy, a perfectly unbiased verifier is unrealistic; consequently, this inherent bias will ultimately prevent sustained improvement.</p><p>Formally, the following theorem characterizes the long-term behavior of the estimator θk in linear regression under verifier-based synthetic retraining.</p><p>Theorem 4.1. There exist synthetic retraining processes (e.g., Algorithm 3) and a constant 0 &lt; ρ &lt; 1 such that:</p><formula xml:id="formula_11">E∥ θk -θ c ∥ 2 ≤ ρ 2k E∥ θ0 -θ c ∥ 2 + pσ 2 k-1 j=0 ρ 2(k-j)-1 n j .<label>(7)</label></formula><p>where</p><formula xml:id="formula_12">n 1 ≤ n 2 ≤ • • • ≤ n k • • • denote the number of verified synthetic samples per direction at each iteration. In particular, if lim k→∞ n k = ∞, then lim k→∞ E∥ θk -θ c ∥ 2 = 0.</formula><p>The proof of Theorem 4.1 is provided in Appendix B, utilizing concentration bounds and supermartingale inequalities to establish convergence. Here we focus on the main intuition and highlight the key novelty of our analysis.</p><p>The central observation to establish Theorem 4.1 is that the iterative retraining procedure (see Figure <ref type="figure">2</ref>) induces a Markov process: the next state θk+1 depends only on the current state θk . Formally, the update can be expressed as</p><formula xml:id="formula_13">θk+1 = T ( θk ) + η k+1 ,<label>(8)</label></formula><p>where T (•) is a deterministic mapping determined by verifier filtering, and η k+1 is a sub-Gaussian noise term due to the randomness of synthetic samples at iteration k + 1. Crucially, we show that T (•) is a contraction mapping, and that the variance of the noise decays at the rate Var(η k+1 ) ≍ 1/n k+1 . This perspective allows us to view equation 8 as a discretized stochastic differential equation (SDE). As n k → ∞, the noise term vanishes and the dynamics are dominated by the deterministic contraction T ( θk ),</p><p>which drives the recursion toward its fixed point-the verifier's knowledge center θ c . The presence of the verifier is therefore essential: it is precisely what transforms the update rule into a contraction, guaranteeing convergence. By contrast, in prior work on model collapse without a verifier (e.g., Gerstgrasser et al. (2024); Xu et al. ( <ref type="formula">2025</ref>)), the update reduces to the identity mapping. In that case, increasing the synthetic sample size can suppress noise accumulation and ensure bounded error (i.e., MSE( θk ) &lt; ∞), but there is no contraction and hence no convergence or sustained improvement. The knowledge extracted from the verifier is precisely what elevates T (•) beyond an identity mapping. Our analysis is the first to formally show that the verifier fundamentally alters the long-term dynamics: it continuously injects knowledge, iteration by iteration, so that the estimator moves closer to θ c over time.</p><p>This contribution also clarifies a common misconception: even with a perfect verifier (θ c = θ ⋆ ) and infinitely many synthetic samples in one iteration, convergence cannot occur in a single step. As shown in Theorem 3.1, while infinite samples remove the synthetic variance term, the verification error term persists. Thus, convergence requires the iterative action of the verifier, which gradually aligns the estimator with the truth.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5">Experiments</head><p>In this section, we validate our theoretical predictions across three settings: a linear regression simulation that is consistent with our analytical assumptions, alongside Variational Autoencoders (VAEs) on MNIST and fine-tuning a pretrained SmolLM2-135M (Allal et al., 2025) on a large-scale news summarization task, which together illustrate practical behavior under iterative retraining and filtering. Across all settings, the empirical results closely align with our theoretical predictions. Experimental code used to generate the results is publicly available at <ref type="url" target="https://github.com/liuqiyuanhhh/Verified-Synthetic-Data">https://github.com/liuqiyuanhhh/Verified-Synthetic-Data</ref>.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.1">Linear Regression on Simulated Data</head><p>Setting. We consider the linear model y = x ⊤ θ ⋆ + ξ, with ξ ∼ N (0, 1), θ ⋆ ∈ R p , and x ∈ R p . We first fit an OLS estimator on the real dataset (X 0 , Y 0 ), and then perform multiple rounds of synthetic retraining, where the synthetic covariate design is aligned with the right singular vectors of X 0 .</p><p>One-step Synthetic Retraining. Figures 3a and 3b empirically validates Theorem 3.1 by comparing the real-data estimator θ0 with the one-step synthetic estimator θ1 , where color regions reflect different levels of error reduction, measured by log(</p><formula xml:id="formula_14">|| θ0 -θ ⋆ || || θ1 -θ ⋆ || ).</formula><p>Theoretical predictions (Figure <ref type="figure" target="#fig_2">3a</ref>) align closely with empirical results (Figure <ref type="figure">3b</ref>), validating the sharpness of our bounds. Using 100 real and 800 synthetic samples, we set θ ⋆ = 1 8 and the verifier center θ c = θ ⋆ + ∆ • u, where u is a random unit vector and ∆ controls bias magnitude. The radius r (see equation 1) determines verifier selectivity. These results confirm that synthetic retraining outperforms the baseline under small bias (green region) but degrades under excessive bias (red region), consistent with the predicted short-term bias-variance trade-off. verifier (smaller r) accelerates convergence. Figure <ref type="figure">3d</ref> presents the unbiased case (∆ = 0), where verifier-based retraining consistently outperforms unfiltered baselines. Together, these findings illustrate how the verifier's contraction effect sustains error reduction and prevents model collapse. Additional experiments confirm that our conclusions are robust to random covariate designs (Appendix D.1) and different verifier shapes (Appendix D.2).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Iterative Synthetic Retraining.</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.2">Variational Autoencoders (VAEs) on MNIST</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Extending beyond linear regression, we evaluate our theory on real-world image generation tasks using Variational Autoencoders (VAEs) on the MNIST dataset.</head><p>Setting and evaluation metrics. Specifically, we adopt Conditional VAEs (CVAEs) to leverage class conditioning and avoid verifier-induced imbalance; otherwise, easily generated digits would dominate the retained synthetic data. To test the bias-variance trade-off and verifier information injection, we initialize the CVAE with only 500 real images (a challenging small dataset scenario). A discriminator, trained on varying amounts of real data alongside an equal number of synthetic samples, serves as the verifier. It assigns a reality probability to each synthetic sample, from which we retain the top 10% per digit. Motivated by our one-step analysis, this 10% threshold optimally balances sample quality against diversity. The CVAE is iteratively retrained on verified data for 40 iterations until performance stabilizes. The synthetic sample size n k follows either a fixed or linear growth schedule. We evaluate generative performance using Fréchet Inception Distance (FID) <ref type="bibr" target="#b26">(Heusel et al., 2017)</ref> and the evidence lower bound (ELBO) <ref type="bibr" target="#b29">(Kingma &amp; Welling, 2014)</ref>. Appendices C and D.4 provide implementation details and initial sample size ablations.</p><p>Results. Since our verifier emphasizes perceptual realism over likelihood calibration, we report FID as the primary metric and defer qualitatively similar ELBO results to Appendix C. As shown in Figure <ref type="figure" target="#fig_3">4a</ref>, synthetic retraining with a strong verifier (trained on 60K real images) yields rapid early FID improvement before plateauing, whereas unverified retraining (dashed curves) leads to severe degradation. This validates our theory: early gains arise from the short-term bias-variance trade-off (Theorem 3.1), and the verifier's contraction effect drives convergence to a fixed-though biased-point that substantially improves upon the initial CVAE (Theorem 4.1). The eventual plateau reflects two limitations: training the initial generator on only 500 real images inherently restricts overall diversity, and the standard MLP verifier lacks diversity-preserving mechanisms, introducing selection bias by disproportionately rejecting harder-to-generate modes. For reference, a baseline 0 5 10 15 20 25 30 35 40 Model-Fitting Iteration 40 60 80 100 120 140 FID FID vs Model-Fitting Iteration Verifier training sample size 500 1k 5k 10k 20k 40k 60k (b) Verifier quality. CVAE trained on 60K real images achieves 17.56 FID, whereas the best synthetic model reaches 21.17 after 40 iterations. Figure <ref type="figure" target="#fig_3">4b</ref> further shows that with 20K synthetic samples per round, stronger verifiers (trained on more real data) produce larger FID improvements, while weaker ones cause early plateau or even degradation. Qualitative results are shown in Figure <ref type="figure" target="#fig_0">1</ref>, with consistent MNIST-specific FID results reported in Appendix D.3.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="5.3">Large-Scale News Summarization</head><p>Extending beyond image generation, we evaluate our theory on natural-language tasks using the XSUM news-summarization dataset <ref type="bibr" target="#b33">(Narayan et al., 2018)</ref>.</p><p>Setting and evaluation metrics. We use the the pretrained SmolLM2-135M model (Allal et al., 2025) as our generator, first fine-tuning it on 12.5% of the XSUM training set for one epoch using full-parameter training. While following the base setup of <ref type="bibr" target="#b13">Feng et al. (2025)</ref>, we depart from their single-round evaluation by considering a multi-iteration generate-verify-retrain regime to capture how performance evolves over repeated cycles. Given the low-entropy nature of news summarization, we follow the common practice of employing greedy decoding for both generation and evaluation. In each iteration, the model generates synthetic summaries for the training corpus, which are scored using ROUGE-1 against ground-truth references. Acting as an oracle verifier, we select the top 12.5% of these summaries to form the synthetic retraining dataset. The model is then retrained on this subset, and test ROUGE-1 scores are recorded after each iteration.</p><p>Results. Figure <ref type="figure" target="#fig_4">5</ref> reports ROUGE-1 scores across 15 rounds for both filtered and unfiltered retraining regimes, while all other experimental conditions remain identical. Under verifier filtering, performance improves monotonically during early iterations before eventually stabilizing. In contrast, the unfiltered baseline fluctuates around its initial score without meaningful improvement. These observed dynamics mirror our MNIST findings and theoretical predictions, demonstrating that our framework scales to natural-language tasks.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head n="6">Discussion</head><p>Our study provides a theoretical and empirical characterization of verifier-guided synthetic retraining. We show that the process yields short-term gains by reducing variance through verifier filtering, but in the long run the estimator converges to the verifier's knowledge center. This explains both the promise and the risk of such methods: a high-quality verifier can inject reliable external knowledge, while a biased verifier inevitably steers the model away from the truth. Viewed through the lens of information elicitation, our framework formalizes how external signals are incorporated recursively into training and why the outcome reflects the verifier's information.</p><p>Meanwhile, we also acknowledge the limitations of our results.Primarily, our analytical testbed relies on a well-specified parametric setting (linear regression) that assumes the existence of a global, ground-truth optimal parameter θ * . This idealized assumption mathematically abstracts the complex, often competing attributes of a "good" generative model-such as sample diversity and generation quality-into a singular distance metric. In practice, while models like LLMs are parametric, they are approximating a true data-generating process that is unknown and highly likely non-parametric. For complex domains like natural language, a singular "true model" may not even exist; therefore, defining or evaluating an optimal model remains an open challenge. While our empirical extensions to VAEs and LLMs validate the theory qualitatively, formal generalization to richer models such as exponential families or simple neural network architectures are interesting future directions. Other future venues include developing sharper bounds for nonlinear models, exploring effectiveness of alternative synthetic design strategies beyond block orthogonalization, and studying verifier dynamics in large language models (LLMs) and vision models.</p><p>We will compare the estimator X1 with X0 and formally characterize when data verification enhances or degrades model performance -i.e., when E( X1 -µ) 2 &lt; E( X0 -µ) 2 or not. Our key finding is that X1 introduces the core bias-variance trade-off that underpins model improvement or degradation. We will characterize the MSE of X1 which reveals how key quantities such as the real and synthetic sample size, the verifier's bias and variance will decide performance of the filtering strategy. These insights provide intuition for extending verifier-guided re-training to more complex settings.</p><p>We first review some notation and key results for the truncated normal distribution, which will be used in the subsequent sections. Consider a one-dimensional normal distribution X ∼ N (µ, σ 2 ) and let X ′ be its truncated version restricted to the interval <ref type="bibr">[a, b]</ref>. The distribution of X ′ is the called the truncated normal distribution,</p><formula xml:id="formula_15">denoted as X ′ ∼ N (x|µ, σ 2 ) • 1 {a&lt;x&lt;b} .</formula><p>The mean and variance of the truncated normal distribution X ′ are given analytically:</p><formula xml:id="formula_16">E[X ′ |µ] = µ -σ ϕ( b-µ σ ) -ϕ( a-µ σ ) Φ( b-µ σ ) -Φ( a-µ σ ) := µ + σm 1 ( a -µ σ , b -µ σ ) Var(X ′ |µ) = σ 2   1 - b-µ σ ϕ( b-µ σ ) -a-µ σ ϕ( a-µ σ ) Φ( b-µ σ ) -Φ( a-µ σ ) - ϕ( b-µ σ ) -ϕ( a-µ σ ) Φ( b-µ σ ) -Φ( a-µ σ ) 2   := σ 2 m 2 ( a -µ σ , b -µ σ ) (<label>9</label></formula><formula xml:id="formula_17">)</formula><p>where ϕ(x) and Φ(x) denote the standard normal density and cumulative distribution functions, respectively. Standardizing X via Z := X-µ σ and setting</p><formula xml:id="formula_18">α = a -µ σ , β = b -µ σ ,<label>(10)</label></formula><p>the expression in equation 9 become:</p><formula xml:id="formula_19">E[Z ′ ] = m 1 (α, β) Var(Z ′ ) = m 2 (α, β)<label>(11)</label></formula><p>where Z ′ ∼ N (x|0, 1) • 1 {α&lt;x&lt;β} is the standardized truncated normal distribution. For convenience, we write N trunc (α, β) := N (x|0, 1) • 1 {α&lt;x&lt;β} . Thus, m 1 and m 2 correspond to the first and second central moments of the standardized truncated normal distribution. In addition, we also define the third central moment of the standardized truncated normal distribution:</p><formula xml:id="formula_20">m 3 (α, β) := E(Z ′ -EZ ′ ) 3 = - (β 2 -1)ϕ(β) -(α 2 -1)ϕ(α) (Φ(β) -Φ(α)) - 3(ϕ(β) -ϕ(α))(βϕ(β) -αϕ(α)) (Φ(β) -Φ(α)) 2 - 2(ϕ(β) -ϕ(α)) 3 (Φ(β) -Φ(α)) 3 . (<label>12</label></formula><formula xml:id="formula_21">)</formula><p>In particular, 0 &lt; m 2 (α, β) &lt; 1 for any α &lt; β and m 1 (α, β) = m 3 (α, β) = 0 if α + β = 0.</p><p>A.2 Characterization of E( X1 -µ) 2 , Bias-Variance Trade-off, and Model Improvement Theorem A.1. Assume that n 1 &gt; n 0 ≥ 100. Then there exists constant K, depending only on α and β, such that</p><formula xml:id="formula_22">1 σ 2 E( X1 -µ) 2 - m 2 (α, β) n 1 Synthetic Variance -m 2 1 (α, β) + m 2 2 (α, β) + m 3 (α, β)m 1 (α, β) n 0 Verification Bias+Variance &lt; K 1 n 1 n 1/3 0 + 1 n 3/2 0 (<label>13</label></formula><formula xml:id="formula_23">)</formula><p>holds with probability at least 1 -exp -1 2 n 1/3 0 .</p><p>Proof of Theorem A.1. It will be convenient to reparameterize the sample mean estimators by centering them around the true mean. Specifically, we define the residuals:</p><formula xml:id="formula_24">ϵ 1 := X0 -µ σ , ϵ 1 ∼ N (0, 1 n 0 ).<label>(14)</label></formula><p>Note that X1 is the mean of n 1 i.i.d. samples from the truncated normal distribution N (x| X0 , σ 2 ) • 1 {a&lt;x&lt;b} .</p><p>The MSE of X1 can be decomposed as follows:</p><formula xml:id="formula_25">E[( X1 -µ) 2 ] = E X0 E X1 | X0 ( X1 -µ) 2 = E X0 Var( X1 |, X0 ) + E[ X1 | X0 ] -µ 2 = σ 2 E X0 m 2 (α -ϵ 1 , β -ϵ 1 ) n 1 + E X0 ( X0 -µ -σm 1 (α -ϵ 1 , β -ϵ 1 )) 2 = σ 2 n 1 E ϵ1 [m 2 (α -ϵ 1 , β -ϵ 1 )] + σ 2 E ϵ1 (m 1 (α -ϵ 1 , β -ϵ 1 ) + ϵ 1 ) 2<label>(15)</label></formula><p>For the first term in 15, we consider the event</p><formula xml:id="formula_26">E 1 := |ϵ 1 | &lt; n -1/3 0 , the function m 2 (•, •) is Lipschitz continuous in a neighborhood of (α, β), so we have |m 2 (α -ϵ 1 , β -ϵ 1 ) -m 2 (α, β)| = |ϵ 1 | • m (1) 2 (α -ξ, β -ξ) &lt; M 1 n 1/3 0 ,<label>(16)</label></formula><p>for some ξ ∈ (0, ϵ 1 ), where we define</p><formula xml:id="formula_27">M 1 := sup |ξ|&lt; 1 100 1 3 m (1) 2 (α -ξ, β -ξ) ,</formula><p>and M 1 is a constant independent of n 0 as long as n 0 ≥ 100. Event E 1 hold with high probability:</p><formula xml:id="formula_28">P |ϵ 1 | &lt; n -1/3 0 &gt; 1 - exp - n 1/3 0 2 π/2 • n 1/6 0 &gt; 1 - exp - n 1/3 0 2 π/2 • 100 1/6 &gt; 1 -exp - n 1/3 0 2 .</formula><p>Then we consider then second term in 15. The Taylor expansion of the function</p><formula xml:id="formula_29">m 1 (ϵ 1 ) := m 1 (α -ϵ 1 , β -ϵ 1 )</formula><p>up to the third-order terms is:</p><formula xml:id="formula_30">m 1 (ϵ 1 ) = m 1 (α, β) -[1 -m 2 (α, β)] ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 + 1 6 m (3) 1 (ξ)ϵ 3 1 , for some ξ ∈ (0, ϵ 1 ),<label>(17)</label></formula><p>where m</p><p>(3) 1 (ξ) denotes the third derivative of m 1 evaluated at some point between 0 and ϵ 1 . Then we can get</p><formula xml:id="formula_31">E ϵ1 (m 1 (α -ϵ 1 , β -ϵ 1 ) + ϵ 1 ) 2 = E m 1 (α, β) + m 2 (α, β)ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 + 1 6 m (3) 1 (ξ)ϵ 3 1 2 = m 2 1 (α, β) + m 2 2 (α, β) + m 1 (α, β)m 3 (α, β) n 0 + 3m 2 3 (α, β) 4n 2 0 + E m 1 (α, β) + m 2 (α, β)ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 m (3) 1 (ξ) 3 ϵ 3 1 + E m (3) 2 1 (ξ) 36 ϵ 6 1 .<label>(18)</label></formula><p>First, using the fact that there exists constant M that only depends on α and β, such that |m</p><p>1 (x)| &lt; M for any x, we have:</p><formula xml:id="formula_33">E m 1 (α, β) + m 2 (α, β)ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 m (3) 1 (ξ) 3 ϵ 3 1 ≤ E |m 1 (α, β)| + m 2 (α, β)|ϵ 1 | + 1 2 |m 3 (α, β)|ϵ 2 1 • M 3 |ϵ 1 | 3 = E M 3 |m 1 (α, β)||ϵ 1 | 3 + M 3 m 2 (α, β)|ϵ 1 | 4 + M 6 |m 3 (α, β)||ϵ 1 | 5 ≤ K 1 n 3/2 0 .</formula><p>for some constant K 1 depending only on α and β.</p><p>Secondly, the last term in equation 18 is bounded by:</p><formula xml:id="formula_34">E   m (3) 1 2 (ξ) 36 ϵ 6 1   ≤ M 2 36 E[ϵ 6 1 ] = 5M 2 σ 6 12n 3 0 ≤ K 2 n 3 0 , for some constant K 2 .</formula><p>So the second term in 15 is bounded by</p><formula xml:id="formula_35">E ϵ1 (m 1 (α -ϵ 1 , β -ϵ 1 ) + ϵ 1 ) 2 -m 2 1 (α, β) - m 2 2 (α, β) + m 1 (α, β)m 3 (α, β) n 0 &lt; K n 3/2 0<label>(19)</label></formula><p>for some constant K.</p><p>Combining 15, 16, and 19 completes the proof.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.3 Iterative Retraining and Long-Term Dynamics in One-Dimensional Gaussian Mean Estimation</head><p>Now consider the verifier-guided synthetic retraining in the Gaussian mean estimation setting. The iterative retraining process can be described by the following algorithm.</p><p>Algorithm 1 Iterative Verifier-Guided Retraining for Gaussian Mean Estimation</p><formula xml:id="formula_36">1: Input: Initial estimate X0 from real data 2: for k = 0, 1, 2, . . . do 3: Draw ξ i i.i.d.</formula><p>∼ N (0, σ 2 ) and construct synthetic samples</p><formula xml:id="formula_37">X k i = Xk + ξ i . 4:</formula><p>Retain points with a &lt; X k i &lt; b, yielding n k verified samples {X ′k i : i = 1, 2, . . . n k }.</p><p>5:</p><formula xml:id="formula_38">Xk+1 ← 1 n k n k i=1 X ′k i . 6: end for Algorithm 1 defines a Markov process { X0 , X1 , . . . Xk , . . . }, where the conditional distribution p( Xk+1 | Xk ) is given by p( Xk+1 | Xk ) : Xk+1 = Xk + σ n k i=1 ξ ′k+1 i n k , ξ ′k+1 i i.i.d ∼ N trunc ( a -Xk σ , b -Xk σ )<label>(20)</label></formula><p>The following theorem summarizes these findings:</p><p>Theorem A.2. Let Xk be the Markov process determined by equation 20 with initial condition</p><formula xml:id="formula_39">X0 ∼ N (0, σ 2 n 0 ),</formula><p>and assume n k is non-decreasing in k. Then the following statements hold:</p><formula xml:id="formula_40">• If |a|, |b| &lt; ∞, there exists a constant 0 &lt; ρ &lt; 1 such that, E Xk - a + b 2 2 ≤ ρ 2k E( X0 - a + b 2 ) 2 + k-1 j=0 ρ 2(k-j)-1 n j . Moreover, if lim k→∞ n k = ∞, lim k→∞ E| Xk -a+b 2 | 2 = 0. • If -∞ = a &lt; b &lt; ∞, then lim inf k→∞ Xk = -∞. If -∞ &lt; a &lt; b = ∞, then lim sup k→∞ Xk = ∞. Proof of Theorem A.2. Define ϵ k = Xk -µ σ ,<label>(21)</label></formula><p>which represents the standardized error of the estimator Xk . It is easy to see that ϵ k ∈ [α, β] ⇔ Xk ∈ [a, b], where α, β are defined in equation 10. Therefore, it suffices to consider the standardized process {ϵ k , k = 0, 1, 2, . . .}. equation 20 can be standardized as:</p><formula xml:id="formula_41">ϵ k+1 = ϵ k + n k i=1 ξ ′k+1 i n k , ξ ′k+1 i ∼ N trunc (α -ϵ k , β -ϵ k ) ,<label>(22)</label></formula><p>For convenience, we shift the noise terms ξ ′k+1 i in equation 22 to have mean zero. Therefore, we introduce</p><formula xml:id="formula_42">T α,β (x) := x + E Z α -x ≤ Z ≤ β -x , v α,β (x) := Var Z α -x ≤ Z ≤ β -x .<label>(23)</label></formula><p>where Z ∼ N (0, 1).</p><p>Therefore, equation 22 can be rewritten as</p><formula xml:id="formula_43">ϵ k+1 = T α,β (ϵ k ) + η k+1<label>(24)</label></formula><p>where</p><formula xml:id="formula_44">η k+1 = 1 n k n k i=1 ξ ′k+1 i -Eξ ′k+1 i</formula><p>is the average of independent mean zero noise in equation 22. In particular, we have</p><formula xml:id="formula_45">E[η k+1 | F k ] = 0, Var(η k+1 | F k ) = v α,β (ϵ k ) n k .</formula><p>where F k := σ(ϵ 0 , η 1 , . . . , η k ) and n k is the (post-filtering) batch size at round k.</p><p>It is easy to see that</p><formula xml:id="formula_46">T α,β (x) = x + m 1 (α -x, β -x), v α,β (x) = m 2 (α -x, β -x), T ′ α,β (x) = v α,β (x).</formula><p>We first consider |a|, |b| &lt; ∞. In this case, we first show that the derterministic part T α,β (x) in equation 24 is a global contraction. Since -∞ &lt; α &lt; β &lt; ∞, we have</p><formula xml:id="formula_47">sup x∈R T ′ α,β (x) = sup x∈R Var Z | α -x ≤ Z ≤ β -x = Var Z | |Z| &lt; | α + β 2 | := ρ &lt; 1.</formula><p>Therefore, T α,β (x) is a global contraction. By the contractive mapping theorem that T α,β (x) has a unique fixed point x * , which solves x * = T α,β (x * ). It is easy to see that</p><formula xml:id="formula_48">x * = T α,β (x * ) =⇒ x * = x * + E(Z α -x * ≤ Z ≤ β -x * ) =⇒ x * = α + β 2 . (<label>25</label></formula><formula xml:id="formula_49">)</formula><p>By the mean-value theorem,</p><formula xml:id="formula_50">|T α,β (ϵ k ) - α + β 2 | ≤ ρ |ϵ k - α + β 2 |. Let V k := (ϵ k -α+β 2 ) 2 , we have E V k+1 | ϵ k = (T α,β (ϵ k ) - α + β 2 ) 2 + v α,β (ϵ k ) n k ≤ ρ 2 (ϵ k - α + β 2 ) 2 + ρ n k .</formula><p>Taking expectations yields</p><formula xml:id="formula_51">EV k+1 ≤ ρ 2 EV k + ρ n k .<label>(26)</label></formula><p>Unrolling equation 26,</p><formula xml:id="formula_52">EV k ≤ ρ 2k EV 0 + ρ k-1 j=0 ρ 2(k-1-j) n j . (<label>27</label></formula><formula xml:id="formula_53">)</formula><p>It is easy to see that</p><formula xml:id="formula_54">EV k ≤ ρ 2k EV 0 + ρ k-1 j=0 ρ 2(k-1-j) n 0 &lt; ρ 2k EV 0 + ρ n 0 (1 -ρ 2 )</formula><p>.</p><p>Therefore, by the Cauchy-Schwarz inequality, lim k→∞ Eϵ 2 k &lt; ∞ easily follows. Moreover, when n k → ∞, let g i := ρ 2i and a j := 1/n j → 0. A standard ℓ 1 -convolution argument shows (g * a) k := k-1</p><formula xml:id="formula_55">j=0 g k-1-j a j = k-1 j=0 ρ 2(k-1-j) nj → 0. Therefore lim k→∞ EV k = lim k→∞ E(ϵ k -α+β</formula><p>2 ) 2 = 0. Now we consider the case -∞ = a &lt; b &lt; ∞ (equivalently -∞ = α &lt; β &lt; ∞). We will show that lim inf k→∞ ϵ k = -∞ a.s.. Let t k := β -ϵ k and the recursion equation 24 can be rewritten for t k :</p><formula xml:id="formula_56">t k+1 = t k + λ(t k ) -η k+1 , where λ(t k ) = -E(Z|Z &lt; β -ϵ k ) = E[Z | Z ≥ -t k ].</formula><p>Consider the hitting time τ M := inf{k : t k ≥ M } for any M &gt; 0. Fix M &gt; 0 and define</p><formula xml:id="formula_57">m(M ) := min t≤M λ(t) = E[Z | Z ≥ -M ] &gt; 0,</formula><p>which is strictly positive the fact that λ(t) &gt; 0 and λ(t) is a decreasing function. On the event {τ M &gt; K} we have t j &lt; M for j = 0, . . . , K -1, hence λ(t j ) ≥ m(M ). Summing the recursion yields</p><formula xml:id="formula_58">t K = t 0 + K-1 j=0 λ(t j ) - K-1 j=0 η j+1 ≥ t 0 + K m(M ) -S K , where S K := K-1 j=0 η j+1 and t 0 = β -ϵ 0 is F 0 -measurable (hence random). Therefore, {τ M &gt; K} ⊆ S K ≥ t 0 + K m(M ) -M .<label>(28)</label></formula><p>Define the (random) burn-in index</p><formula xml:id="formula_59">K 0 := 2(M -t 0 ) m(M ) .</formula><p>Then for all K ≥ K 0 ,</p><formula xml:id="formula_60">t 0 + K m(M ) -M ≥ m(M ) 2 K,</formula><p>and equation 28 gives, conditionally on F 0 ,</p><formula xml:id="formula_61">{τ M &gt; K} ⊆ S K ≥ m(M ) 2 K , for all K ≥ K 0 .<label>(29)</label></formula><p>Next, we will show that S K is a sub-exponential random variable in event {τ M &gt; K}.</p><formula xml:id="formula_62">Since S K = K-1 j=0 η j+1 = K-1 j=0 1 nj nj i=1 ξ ′j+1 i -Eξ ′j+1 i , we will first show that ξ ′j+1 i -Eξ ′j+1 i is sub-exponential.</formula><p>Since ξ ′j+1 i ∼ N trunc (-∞, β -ϵ j ) = N trunc (-∞, t j ), on the event {τ M &gt; K} we have</p><formula xml:id="formula_63">ξ ′j+1 i -Eξ ′j+1 i &lt; t j -E[Z | Z &lt; t j ] ≤ M -E[Z | Z &lt; M ] := b(M ) &lt; ∞.</formula><p>The above inequality follows from the fact that t -E[Z | Z &lt; t] is an increasing function of t and t j &lt; M for j = 0, . . . , K -1 on the event {τ M &gt; K}. In addition, Var(ξ ′j+1 i ) = Var(Z|Z &lt; t j ) ≤ 1. Therefore,</p><formula xml:id="formula_64">ξ ′j+1 i -Eξ ′j+1 i is mean zero, bounded above by b(M ) with Var ξ ′j+1 i -Eξ ′j+1 i &lt; 1. By Bennet/Bernstein MGF inequality, we have log Ee λ(ξ ′j+1 i -Eξ ′j+1 i ) ≤ λ 2 2(1 -b(M )λ/3) , for 0 &lt; λ &lt; 3 b(M ) . This shows that ξ ′j+1 i -Eξ ′j+1 i is sub-exponential with parameters SE(1, 2b(M )/3).</formula><p>By standard properties of sub-exponential random variables,</p><formula xml:id="formula_65">η j+1 = 1 nj nj i=1 ξ ′j+1 i -Eξ ′j+1 i is SE(1/n j , 2b(M )/(3n j )) and S K = K-1 j=0 η j+1 is SE( K-1 j=0 1/n j , 2b(M )/(3n<label>1</label></formula><p>)) since n j is nondecreasing. Therefore, for any t &gt; 0 we have tail bound</p><formula xml:id="formula_66">P (S K ≥ t) ≤ exp - 1 2 min{ t 2 K-1 j=0 1/n j , n 1 t 2b(M ) } ≤ exp - 1 2 min{ n 1 t 2 K , n 1 t 2b(M ) } .<label>(30)</label></formula><p>Use the tail bound equation 30 in equation 29, we have Generate: Synthetic covariates X k+1 are constructed (details below), and responses are generated as:</p><formula xml:id="formula_67">P (τ M &gt; K | F 0 ) ≤ P S K ≥ m(M ) 2 K ≤ exp -c(M )n 1 K (<label>31</label></formula><formula xml:id="formula_68">Y k+1 = X k+1 θk + ξ k+1 , ξ k+1 ∼ N (0, σ 2 I) 4: Verify: Each synthetic sample (x k+1 i , y k+1 i ) of (X k+1 , Y k+1</formula><p>) is filtered by the verifier Condition equation 1, retaining only the verified subset (X k+1 ′ , Y k+1 ′ ).</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>5:</head><p>Retrain: A new OLS estimator is computed using only the verified data:</p><formula xml:id="formula_69">θk+1 = (X k+1 ′ ⊤ X k+1 ′ ) -1 X k+1 ′ ⊤ Y k+1 ′ 6: end for</formula><p>Given the orthogonality of {v j } in the block design equation 2, the OLS estimator decomposes into a set of one-dimensional problems, each estimating the coordinate of θ along direction v j . In particular, choosing {v j } as the right singular vectors of the real data matrix X 0 yields the cleanest interpretation, making explicit how verifier bias, synthetic sample size, and noise variance interact. Accordingly, the retraining procedure can be formalized as follows:</p><p>Algorithm 3 Iterative Verifier-Guided Retraining in Linear Regression</p><formula xml:id="formula_70">1: Input: Real data (X 0 , Y 0 ) 2: Compute initial estimator θ0 = (X 0 ⊤ X 0 ) -1 X 0 ⊤ Y 0 3: Let X 0 = U ΣV ⊤ be the SVD of X 0 , with right singular vectors V = (v 1 , . . . , v p ) 4: for k = 0, 1, 2, . . . do 5:</formula><p>for j = 1, . . . , p do 6:</p><p>Construct synthetic design matrix X k+1,j with all rows equal to v ⊤ j 7:</p><p>Generate synthetic responses Y k+1,j = X k+1,j θk + ξ k+1,j , where ξ k+1,j ∼ N (0, σ 2 I) 8:</p><p>Apply verifier to each (x k+1,j i , y k+1,j i ) and retain valid samples satisfying</p><formula xml:id="formula_71">|y k+1,j i -(x k+1,j i ) ⊤ θ c | ≤ r∥x k+1,j i ∥ + σ c ,<label>(33) 9:</label></formula><p>yielding n k verified samples (x ′k+1,j i , y ′k+1,j i ).</p><p>10:</p><p>Compute one-dimensional estimator θk+1,proj,j = ȳ′ k+1,j</p><p>11:</p><p>end for 12:</p><p>Update overall estimator:</p><formula xml:id="formula_73">θk+1 = p j=1 v j θk+1,proj,j<label>(35)</label></formula><p>13: end for Proof of Theorem 3.1. We consider the one dimensional projection estimator of θ1,proj,j defined in equation 34.</p><p>The filter condition equation 33 is equivalent to:</p><formula xml:id="formula_74">|σξ 1,j i + v ⊤ j ( θ0 -θ c )| ≤ r + σ c ⇐⇒ y 1,j i = σξ 1,j i + v ⊤ j θ0 ∈ -r - σ c σ + v ⊤ j θ c , r + σ c σ + v ⊤ j θ c . (<label>36</label></formula><formula xml:id="formula_75">) Note that θ0 ∼ N (θ ⋆ , (X 0 ⊤ X 0 ) -1 σ 2 ) and v j is the j-th right singular vector of X 0 , therefore v ⊤ j θ0 ∼ N (v ⊤ j θ ⋆ , σ 2 µ -2 j )</formula><p>. Therefore, θ1,proj,j = ȳ′1,j correspond to the verifier-filtered mean estimator of a onedimensional Gaussian mean estimation problem with true mean v ⊤ j θ, variance σ 2 µ -2 j and filtering interval -r -σc σ + v ⊤ j θ c , r + σc σ + v ⊤ j θ c . Let</p><formula xml:id="formula_76">α j := -r -σ c + v ⊤ j (θ c -θ ⋆ ) σ , β j := r + σ c + v ⊤ j (θ c -θ ⋆ ) σ .<label>(37)</label></formula><p>Under the assumption µ j = ω( √ n 0 ), there exists a constant L &gt; 0, such that µ 2 j &gt; Ln 0 for all j = 1, . . . , p. Therefore, by Theorem A.1, there exists constant K j depending only on α j , β j such that if n 1 &gt; n 0 ≥ 100,</p><formula xml:id="formula_77">1 σ 2 E( θ1,proj,j -v ⊤ j θ ⋆ ) 2 - m 2 (α j , β j ) n 1 -m 2 1 (α j , β j ) + m 2 2 (α j , β j ) + m 3 (α j , β j )m 1 (α j , β j ) µ 2 j &lt; K j 1 n 1 n 1/3 0 + 1 n 3/2 0<label>(38)</label></formula><p>will hold with probability at least 1 -exp(-Ln 1/3 0 ). m 1 , m 2 , m 3 are defined in equation 11 and equation 12. By equation 35, we have θ1,proj,j =</p><formula xml:id="formula_78">v ⊤ j θ1 . In addition, since V = (v 1 , v 2 , . . . , v p ) is an orthonormal matrice, we have p j=1 E( θ1,proj,j -v ⊤ j θ ⋆ ) 2 = p j=1 E(v ⊤ j θ1 -v ⊤ j θ ⋆ ) 2 = E||V ⊤ ( θ1 -θ ⋆ )|| 2 = E∥ θ1 -θ ⋆ | 2 .<label>(39)</label></formula><p>Therefore, by summing over j on both sides of equation 38 and using simple union bound, we have</p><formula xml:id="formula_79">1 σ 2 E|| θ1 -θ ⋆ || 2 - p j=1      m 2,j n 1 Synthetic Variance + m 2 1,j + m 1,j m 3,j + m 2 2,j µ 2 j Verification Error      &lt; K 1 n 1 n 1/3 0 + 1 n 3/2 0<label>(40)</label></formula><p>with K = max j K j and m 1,j := m 1 (α j , β j ), m 2,j := m 2 (α j , β j ), m 3,j := m 3 (α j , β j ).</p><p>Proof of Theorem 4.1. We consider the transition dynamics of θk in Algorithm 3. Since we designed X k+1,j to be the rank one matrix correspond to singular vector v j , therefore equation 34 can be rewritten as</p><formula xml:id="formula_80">θk+1,proj,j = v ⊤ j θk + σ n k n k i=1 ξ ′k+1,j i (<label>41</label></formula><formula xml:id="formula_81">)</formula><p>where ξ ′k+1,j i is the truncated noise term after verification. By equation 33, we have</p><formula xml:id="formula_82">ξ ′k+1,j i i.i.d ∼ N trunc - r σ - σ c σ -v ⊤ j θk -θ c σ , r σ + σ c σ -v ⊤ j θk -θ c σ .<label>(42)</label></formula><p>We consider the rotated standardized estimator</p><formula xml:id="formula_83">ϵ k j := v ⊤ j θk -θ c σ equivalently ϵ k := V ⊤ θk -θ c σ .</formula><p>Since θk+1,proj,j = v ⊤ j θk+1 by equation 35, equation 41 can be standardized as</p><formula xml:id="formula_84">ϵ k+1 j = ϵ k j + n k i=1 ξ ′k+1,j i n k , ξ ′k+1,j i i.i.d ∼ N trunc -β -ϵ k j , β -ϵ k j<label>(43)</label></formula><p>where β = r σ + σc σ . We note that equation 43 is exactly the same dynamics we consider in the proof of Theorem A.2 with β = -α &lt; ∞. In other words, the evolution of the iterative estimator ϵ k is diagonal and each cordinates follows the same dynamics as the one dimensional gaussian iterative mean estimator. From Theorem A.2, we known that there exists a constant ρ &lt; 1 such that</p><formula xml:id="formula_85">E∥ϵ k j ∥ 2 ≤ ρ 2k E∥ϵ 0 j ∥ 2 + k-1 j=0 ρ 2(k-j)-1 n j , j = 1, 2, . . . , p.</formula><p>This implies that </p><formula xml:id="formula_86">E∥ θk -θ c ∥ 2 ≤ ρ 2k E∥ θ0 -θ c ∥ 2 + pσ 2 k-1 j=0 ρ 2(k-j)-1 n j .</formula></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D Additional Experimental Results</head></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D.1 Random Synthetic Data in Linear Regression</head><p>In the main text, the synthetic covariates were aligned with a fixed orthonormal basis to simplify analysis and make the retraining dynamics easier to interpret. To show that the observed behavior is not tied to this structured design, we repeat the same iterative retraining experiment using fully random synthetic covariates sampled i.i.d. from a standard Gaussian distribution.</p><p>Figure <ref type="figure">7</ref> presents the results, corresponding directly to the lower two panels in Figure <ref type="figure">3</ref> of the main text, but under the random-design setting. The qualitative behavior remains the same: with a well-specified verifier, retraining contracts toward the verifier's knowledge center and avoids collapse, whereas unfiltered retraining diverges. This confirms that the verifier-induced stability and improvement patterns hold beyond the orthonormal-design assumption. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D.2 Different Verifier Shapes</head><p>We further analyze how different geometric choices of the verifier region affect the acceptance rule and the resulting retraining dynamics. For any region R θ around a center θ c , a synthetic point (x, y) is accepted whenever there exists a parameter perturbation ∆ in the region that can explain y, i.e.</p><formula xml:id="formula_87">y = x ⊤ (θ c + ∆) + ξ, ∆ ∈ R θ .</formula><p>This leads to the general acceptance requirement</p><formula xml:id="formula_88">|y -x ⊤ θ c | ≤ sup ∆∈R θ |x ⊤ ∆| + σ c .</formula><p>Different verifier shapes correspond to different support functions sup ∆∈R θ |x ⊤ ∆|.</p><p>(1) Ellipsoidal verifier. Consider the anisotropic ellipsoid</p><formula xml:id="formula_89">R θ = θ : (θ -θ c ) ⊤ A(θ -θ c ) ≤ r 2 , A ≻ 0. Let ∆ = θ -θ c . Changing variables ∆ = A -1/2 u with ∥u∥ 2 ≤ r yields sup ∆ ⊤ A∆≤r 2 |x ⊤ ∆| = r∥A -1/2 x∥ 2 = r √ x ⊤ A -1 x.</formula><p>Thus the acceptance condition becomes</p><formula xml:id="formula_90">|y -x ⊤ θ c | ≤ r √ x ⊤ A -1 x + σ c .</formula><p>(2) Polyhedral ℓ 1 verifier. For the ℓ 1 knowledge region</p><formula xml:id="formula_91">R θ = {∥θ -θ c ∥ 1 ≤ r},</formula><p>the perturbation satisfies ∥∆∥ 1 ≤ r. Using Hölder duality,</p><formula xml:id="formula_92">sup ∥∆∥1≤r |x ⊤ ∆| = r∥x∥ ∞ .</formula><p>The corresponding acceptance rule is</p><formula xml:id="formula_93">|y -x ⊤ θ c | ≤ r∥x∥ ∞ + σ c .</formula><p>Although ellipsoidal and ℓ 1 (polyhedral) regions induce different forms of acceptance sets, both yield the same qualitative retraining behavior: θ(k) consistently move toward the verifier center θ c . The empirical trajectories under both shapes are shown in Figure <ref type="figure">8</ref>. </p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D.3 MNIST-Specific FID Evaluation</head><p>The standard Fréchet Inception Distance (FID) is widely used in generative modeling, including on MNIST, following prior work such as <ref type="bibr">Dai &amp; Wipf (2019)</ref>; <ref type="bibr" target="#b31">Leontev et al. (2020);</ref><ref type="bibr" target="#b6">Chan &amp; Sithungu (2024)</ref>. Nonetheless, we agree that Inception embeddings are not tailored to handwritten digits and may not fully capture perceptual similarity on MNIST.</p><p>To address this point, we introduce a MNIST-specific FID variant. We train a lightweight convolutional network directly on MNIST classification, and compute FID using the penultimate-layer activations as the embedding space. This produces a domain-appropriate FID measure while preserving the same statistical structure as the original metric. These results confirm that our conclusions are robust to the choice of embedding and do not depend on the use of vanilla FID.</p><p>Results. Figures <ref type="figure" target="#fig_2">9a</ref> and <ref type="figure">9b</ref> report the new FID scores under our retraining framework for all verifier sizes. Consistent with the standard FID curves in the main paper.</p><p>0 5 10 15 20 25 30 35 40 Iteration 0 500 1000 1500 2000 2500 3000 3500 FID FID vs Iteration VAE training sample size 2k 5k 20k Linear growth (10k 256k) Filtered Unfiltered (a) MNIST-specific FID over retraining iterations. 5 10 15 20 25 30 35 40 Iteration 0 20 40 60 80 100 120 140 FID FID vs Iteration VAE training sample size (filtered) 2k 5k 20k Linear growth (10k 256k)</p><p>(b) Zoom-in view for filtered runs. Figure <ref type="figure">9</ref>: MNIST-specific FID using our MNIST-trained feature embedding. Both results confirm that our conclusions remain unchanged when replacing standard FID with a domain-specific metric.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>D.4 Different Initial Sample Sizes</head><p>We assess the robustness of verifier-guided retraining by varying the number of real MNIST images used to train the initial CVAE (1k, 2k, 3k, 4k, 60k). For small and medium initial sample sizes, verifier filtering yields clear early FID improvements and then stabilizes performance, whereas unfiltered retraining quickly degrades. When the generator is initialized on all 60k real images, verifier filtering no longer improves FID over the initial model, but it still effectively prevents the severe collapse observed under unfiltered retraining.</p><p>We perform our main experiments in a low-real-data regime (e.g., with 500 initial images), where the verifier, having been trained on a much larger subset of MNIST, holds strictly more external knowledge than the generator. According to our theory, this is exactly the regime in which verifier-guided retraining should provide true improvement rather than simple stabilization, because the verifier contributes additional information. In contrast, when the generator is initialized on the full 60k training images, the verifier would need access to an even stronger source of external information to achieve improvement; otherwise it can only prevent collapse. For this reason, the small initial sample size serves as the most informative regime for highlighting the verifier's knowledge-injection effect and demonstrating the improvement phenomena predicted by our theoretical framework. </p></div><figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_0"><head>Figure 1 :</head><label>1</label><figDesc>Figure 1: Iterative VAE Retraining on MNIST. Left: Original MNIST images (real data). Middle: Samples from a VAE trained on 500 real images. Right: Samples after 40 rounds of synthetic retraining. The top branch (green) uses verifierfiltered synthetic data, producing clearer and more realistic digits; the bottom branch (red) retrains without verification, leading to severe degradation and mode collapse. The final column shows a VAE trained on all 60K real images (upper bound on quality).</figDesc><graphic coords="1,338.77,492.61,55.28,69.00" type="bitmap" /></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_1"><figDesc>Figure 3c validates Theorem 4.1, showing that under a biased verifier (∆ = 1), the retrained estimator converges to the verifier's knowledge center θ c rather than the true parameter θ ⋆ . In this 60-round experiment, sample size increases linearly from 100 to 5500, and results show that a more selective Iterative: Verifier without bias Figure 3: Top: Error changes of the one-step retraining estimator θ1 versus estimator θ0 only using original real data, measured by log( || θ0 -θ ⋆ || || θ1 -θ ⋆ || ): theory's prediction (a) and empirical comparisons (b). Bottom: Iterative synthetic retraining over 60 rounds with a biased verifier (∆ = 1) and an unbiased verifier (∆ = 0).</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_2"><head>( a )</head><label>a</label><figDesc>Filtering and training sample size.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_3"><head>Figure 4 :</head><label>4</label><figDesc>FID results across retraining rounds. (a) Effect of filtering and retained sample size. (b) Effect of verifier quality, varied by training data size. Together, the plots highlight how both sample selection and verifier strength shape generative performance.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_4"><head>Figure 5 :</head><label>5</label><figDesc>Figure5: ROUGE-1 score vs. iteration on the XSUM dataset. Filtered retraining yields consistent early improvements, whereas unfiltered retraining shows no significant gain.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_5"><head>)B</head><figDesc>Scheme 2 Iterative Retraining with Verified Synthetic Data 6 1: Input: Initial estimator θ0 from n 0 real samples 2: for k = 0, 1, 2, . . . do 3:</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_6"><head>Figure 6 :</head><label>6</label><figDesc>Figure6: Test negative ELBO across retraining iterations.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_7"><figDesc>Verifier without bias (random design) Figure7: Iterative synthetic retraining under random synthetic covariates, corresponding to the structured-design results in Figure3.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_8"><figDesc>Polyhedral ℓ1 verifier Figure8: Retraining trajectories under two different verifier shapes. In both cases, θ(k) empirically converges toward the verifier center θc.</figDesc></figure>
+<figure xmlns="http://www.tei-c.org/ns/1.0" xml:id="fig_9"><head>Figure 10 :</head><label>10</label><figDesc>Figure 10: FID across retraining iterations under different initial sample sizes, comparing verifier-filtered and unfiltered synthetic retraining.</figDesc></figure>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="2" xml:id="foot_0"><p>The theoretical analysis of<ref type="bibr" target="#b13">(Feng et al., 2025)</ref> is also based on linear models, specifically, linear classifiers.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="3" xml:id="foot_1"><p>There is no widely agreed-upon formal definition; see<ref type="bibr" target="#b38">(Schaeffer et al., 2025)</ref> for discussion.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="4" xml:id="foot_2"><p>For ease of presentation, we assume Rank(X 0 ) = p. If Rank(X 0 ) &lt; p, all our results are equally applicable by working in the subspace of X 0 .</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_3"><p>That is, each dimension is well-represented in the original data. This holds easily when, e.g., the feature data is drawn i.i.d. from a full-rank distribution.</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="1" xml:id="foot_4"><p>n ′ 1 i=1 X ′1 i .</p></note>
+			<note xmlns="http://www.tei-c.org/ns/1.0" place="foot" n="5" xml:id="foot_5"><p>Since only the most recent round of synthetic data is retained for training, this scheme is sometimes referred to as a discard workflow in the literature (e.g.,<ref type="bibr" target="#b8">(Dey &amp; Donoho, 2024)</ref>).</p></note>
+		</body>
+		<back>
+
+			<div type="funding">
+<div><p>* This project is supported by the <rs type="programName">AI2050 program at Schmidt Sciences</rs> (Grant <rs type="grantNumber">G-24-66104</rs>) and <rs type="funder">Army Research Office</rs> Award <rs type="grantNumber">W911NF-23-1-0030</rs>. We also thank <rs type="person">Cong Ma</rs> from <rs type="funder">UChicago</rs>, <rs type="person">Hongning Wang</rs> and <rs type="person">Bo Li</rs> from <rs type="funder">Tsinghua</rs>, <rs type="person">Pinyan Lu</rs> and <rs type="person">Gavin Tang</rs> from <rs type="affiliation">Shanghai University of Finance and Economics</rs> for helpful discussions and suggestions. ‡ Independent Researcher. Work done while visiting UChicago CS.</p></div>
+			</div>
+			<listOrg type="funding">
+				<org type="funding" xml:id="_AuxFFyR">
+					<idno type="grant-number">G-24-66104</idno>
+					<orgName type="program" subtype="full">AI2050 program at Schmidt Sciences</orgName>
+				</org>
+				<org type="funding" xml:id="_2cvWa73">
+					<idno type="grant-number">W911NF-23-1-0030</idno>
+				</org>
+			</listOrg>
+			<div type="annex">
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Appendix</head><p>This appendix contains: Appendix A (1-D Gaussian toolkit), Appendix B (reduction and full proof for linear regression), Appendix C (additional details on VAE experiments), Appendix D (additional simulations and experiments)</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A One-Dimensional Gaussian Toolkit</head><p>In this section, we provide a toolkit for analyzing the one-dimensional Gaussian mean estimation problem with verifier-filtered synthetic data. This toolkit serves as the foundation for our analysis of the linear regression models. We will establish several key lemmas and theorems that characterize the MSE of the mean estimator under the one-dimensional Gaussian model. These results will be instrumental in proving Theorem 3.1 and Theorem 4.1 in Appendix B.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>A.1 Setup and Notations</head><p>We consider the one-dimensional mean estimation problem where the real data X 0 1 , . . . , X 0 n0 are independently and identically distributed (i.i.d.) from a Gaussian distribution:</p><formula xml:id="formula_94">X 0 1 , . . . , X 0 n0 i.i.d. ∼ N (µ, σ 2 ),</formula><p>with known variance σ 2 .</p><p>In our setting, a verifier exists and encodes external knowledge that the true mean lies in an interval [a, b] (i.e.µ ∈ [a, b]). Therefore, X0 =</p><formula xml:id="formula_95">X1+•••+Xn 0 n0</formula><p>is the empirical mean of real data, which minimizes MSE if no extra information is supplied. We are interested in whether data verification could effectively inject new information and improve over X0 . Consider the following synthetic data generation and filtering procedure:</p><formula xml:id="formula_96">• Generate n 1 synthetic data X 1 1 , . . . , X 1 n1 i.i.d.</formula><p>∼ N ( X0 , σ 2 ).</p><p>• Retain</p><formula xml:id="formula_97">X 0 i ∈ [a, b] as X ′1 1 , . . . , X ′1 n ′ 1 , and estimate µ using X1 = 1 n ′ for all K ≥ K 0 with c(M ) = min m(M ) 2 8 , n(M ) 8b(M ) . P (τ M &gt; K) = E [P (τ M &gt; K | F 0 )] ≤ E exp -c(M )n 1 K 1 {K&gt;K0} + P (K ≤ K 0 )<label>(32)</label></formula><p>Let K → ∞ in equation 32, we get P(τ M &lt; ∞) = 1. Since M is arbitrary, this implies lim inf k→∞ ϵ k = -∞ a.s..</p><p>The case -∞ &lt; a &lt; b = ∞ can be proved in the same way, therefore is omitted.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>C Additional Details on CVAE Experiments</head><p>Data preprocessing. We use MNIST (28 × 28 grayscale) and normalize pixel intensities to [0, 1]. Class labels are represented as one-hot vectors y ∈ {0, 1} K (K=10).</p><p>Experiment Details. We use a convolutional CVAE model consisting of an Encoder with two convolutional layers (1→32 and 32→64 channels, 4 × 4 kernels, stride 2, with GELU activations), followed by a linear projection that outputs the mean and log-variance of a d z = 20-dimensional Gaussian latent space. The Decoder mirrors this structure: a linear layer maps the latent code to a 64 × 7 × 7 tensor, which is upsampled by two transposed convolutional layers (64→32 and 32→1 channels, 4 × 4 kernels, stride 2, with GELU activations) to reconstruct 28 × 28 images. We train the CVAE with the standard objective, i.e., binary cross-entropy reconstruction loss plus KL divergence regularization.</p><p>Discriminator for filtering. We additionally train a discriminator D to distinguish real from synthetic samples. D is implemented as a multi-layer perceptron: five fully connected layers with hidden sizes 512, 256, 128, and 64, each followed by a LeakyReLU activation, and a final linear layer mapping to a single logit. The output is passed through a sigmoid to yield the probability of the input being real. The discriminator is trained with binary cross-entropy, labeling real MNIST digits as positive and CVAE-generated digits as negative.</p><p>Synthetic generation and filtering. After each training round, we generate conditioned samples by drawing z ∼ N (0, I), choosing labels y (uniform over classes unless specified), and decoding x = g θ (z, y). To control sample quality, we score each (x, y) with the discriminator D(x, y). For each class, we retain only the top 10% of generated samples with the highest discriminator scores. These filtered synthetic samples are then combined with the real dataset to form the training data for the next round.</p></div>
+<div xmlns="http://www.tei-c.org/ns/1.0"><head>Supplementary Results on ELBO</head><p>We also evaluate generative performance using the test negative ELBO, a standard likelihood-based loss metric for VAEs. To prevent overfitting the discriminator (i.e., the verifier) and ensure stability during the retraining cycles, we incorporate standard regularization techniques, specifically applying a dropout rate of 0.1 and label smoothing with a parameter of 0.05 when training the discriminator.</p><p>To investigate the effect of synthetic data size n k , we employ three linearly increasing sample size schedules. Starting with an initial CVAE trained on only 500 samples, we scale up the retraining size by adding 5K, 30K, or 50K synthetic samples per iteration, respectively. The models are retrained for 50 iterations until the test negative ELBO stabilizes.</p><p>Figure <ref type="figure">6</ref> reports the test negative ELBO over these 50 rounds. Consistent with our bias-variance analysis, we observe a clear improvement (a decrease in loss) in the early stages (up to roughly iterations 10-15). Furthermore, the trajectories reveal a critical dynamic: while larger synthetic size schedules significantly accelerate this early convergence, all three schedules ultimately plateau and converge to a similar negative ELBO value by iteration 50. This observation validates our theoretical framework: drawing more synthetic samples expedites the initial variance reduction phase, but the asymptotic performance limit is dictated by the verifier, not the volume of synthetic data. After the initial variance-reduction gains, the negative ELBO eventually reverses its trend and increases (deteriorates) as the model inevitably converges toward the verifier's knowledge center.</p><p>As discussed in the main text regarding our verifier's limitations, this knowledge center is demonstrably biased.</p><p>For reference, across all three size schedules, the final retrained CVAEs at iteration 50 converge to a test negative ELBO of approximately 111. In contrast, a baseline CVAE trained on the entire 60K real image dataset attains a test negative ELBO of 92.12 (lower is better). Because our verifier emphasizes perceptual quality over likelihood-based reconstruction, the negative ELBO proves harder to improve than FID. As a result, even as the negative ELBO stagnates or worsens in later iterations, our retrained models continue to improve FID, achieving sharper, cleaner digits. We believe that deploying stronger verifiers with, e.g., diversity preservation capabilities could enable iterative retraining to further improve the negative ELBO.</p></div>			</div>
+			<div type="references">
+
+				<listBibl>
+
+<biblStruct status="extracted" xml:id="b0">
+	<analytic>
+		<title level="a" type="main">Self-consuming generative models go mad</title>
+		<author>
+			<persName><forename type="first">Sina</forename><surname>Alemohammad</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Josue</forename><surname>Casco-Rodriguez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lorenzo</forename><surname>Luzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ahmed</forename><surname>Imtiaz Humayun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hossein</forename><surname>Babaei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Lejeune</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ali</forename><surname>Siahkoohi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Richard</forename><surname>Baraniuk</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Twelfth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b1">
+	<monogr>
+		<title level="m" type="main">Smollm2: When smol goes big -data-centric training of a small language model</title>
+		<author>
+			<persName><forename type="first">Loubna</forename><surname>Ben Allal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Anton</forename><surname>Lozhkov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elie</forename><surname>Bakouch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guilherme</forename><surname>Gabriel Martín Blázquez</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lewis</forename><surname>Penedo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrés</forename><surname>Tunstall</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hynek</forename><surname>Marafioti</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Agustín</forename><surname>Kydlíček</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vaibhav</forename><surname>Piqueres Lajarín</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Srivastav</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caleb</forename><surname>Lochner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuan-Son</forename><surname>Fahlgren</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Clémentine</forename><surname>Nguyen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ben</forename><surname>Fourrier</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hugo</forename><surname>Burtenshaw</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haojun</forename><surname>Larcher</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Cyril</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Zakka</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Colin</forename><surname>Mathieu Morlon</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Leandro</forename><surname>Raffel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Von Werra</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Wolf</surname></persName>
+		</author>
+		<ptr target="https://arxiv.org/abs/2502.02737" />
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b2">
+	<monogr>
+		<title level="m" type="main">Escaping collapse: The strength of weak data for large language model training</title>
+		<author>
+			<persName><forename type="first">Kareem</forename><surname>Amin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sara</forename><surname>Babakniya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Bie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Weiwei</forename><surname>Kong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Umar</forename><surname>Syed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sergei</forename><surname>Vassilvitskii</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.08924</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b3">
+	<analytic>
+		<title level="a" type="main">Can synthetic data be a proxy for real clinical trial data? a validation study</title>
+		<author>
+			<persName><forename type="first">Zahra</forename><surname>Azizi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chaoyi</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lucy</forename><surname>Mosquera</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Louise</forename><surname>Pilote</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Khaled</forename><forename type="middle">El</forename><surname>Emam</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">BMJ open</title>
+		<imprint>
+			<biblScope unit="volume">11</biblScope>
+			<biblScope unit="issue">4</biblScope>
+			<biblScope unit="page">43497</biblScope>
+			<date type="published" when="2021">2021</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b4">
+	<analytic>
+		<title level="a" type="main">When models don&apos;t collapse</title>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Barzilai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ohad</forename><surname>Shamir</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.19046</idno>
+	</analytic>
+	<monogr>
+		<title level="m">On the consistency of iterative mle</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b5">
+	<analytic>
+		<title level="a" type="main">On the stability of iterative retraining of generative models on their own data</title>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joey</forename><surname>Avishek</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexandre</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Marco</forename><surname>Duplessis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gauthier</forename><surname>Jiralerspong</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Gidel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">ICLR</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b6">
+	<analytic>
+		<title level="a" type="main">Evaluating the suitability of inception score and fréchet inception distance as metrics for quality and diversity in image generation</title>
+		<author>
+			<persName><forename type="first">Adrian</forename><surname>Derrick</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siphesihle</forename><surname>Chan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sithungu</forename><surname>Philezwini</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 7th International Conference on Computational Intelligence and Intelligent Systems</title>
+		<meeting>the 2024 7th International Conference on Computational Intelligence and Intelligent Systems</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="79" to="85" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b7">
+	<analytic>
+		<title level="a" type="main">On the diversity of synthetic data and its impact on training large language models</title>
+		<author>
+			<persName><forename type="first">Abdul</forename><surname>Hao Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiang</forename><surname>Waheed</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yidong</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jindong</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bhiksha</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Raj</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Marah I Abdin</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.15226</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations</title>
+		<editor>
+			<persName><forename type="first">Bin</forename><surname>Dai</surname></persName>
+		</editor>
+		<editor>
+			<persName><forename type="first">David</forename><surname>Wipf</surname></persName>
+		</editor>
+		<imprint>
+			<date type="published" when="2019">2024. 2019</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+	<note>Diagnosing and enhancing vae models</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b8">
+	<monogr>
+		<title level="m" type="main">Universality of the π 2 /6 pathway in avoiding model collapse</title>
+		<author>
+			<persName><forename type="first">Apratim</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Donoho</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2410.22812</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b9">
+	<analytic>
+		<title level="a" type="main">Sim2real transfer learning for 3d human pose estimation: motion to the rescue</title>
+		<author>
+			<persName><forename type="first">Carl</forename><surname>Doersch</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Zisserman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">32</biblScope>
+			<date type="published" when="2019">2019</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b10">
+	<analytic>
+		<title level="a" type="main">Model collapse demystified: The case of regression</title>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="46979" to="47013" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b11">
+	<analytic>
+		<title level="a" type="main">A tale of tails: Model collapse as a change of scaling laws</title>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pu</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francois</forename><surname>Charton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="11165" to="11197" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b12">
+	<analytic>
+		<title level="a" type="main">Strong model collapse</title>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arjun</forename><surname>Subramonian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b13">
+	<analytic>
+		<title level="a" type="main">Beyond model collapse: Scaling up with synthesized data requires verification</title>
+		<author>
+			<persName><forename type="first">Yunzhen</forename><surname>Feng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elvis</forename><surname>Dohmatob</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pu</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Francois</forename><surname>Charton</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Julia</forename><surname>Kempe</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b14">
+	<analytic>
+		<title level="a" type="main">Self-consuming generative models with curated data provably optimize human preferences</title>
+		<author>
+			<persName><forename type="first">Damien</forename><surname>Ferbach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Quentin</forename><surname>Bertrand</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joey</forename><surname>Bose</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gauthier</forename><surname>Gidel</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">37</biblScope>
+			<biblScope unit="page" from="102531" to="102567" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b15">
+	<analytic>
+		<title level="a" type="main">Towards theoretical understandings of self-consuming generative models</title>
+		<author>
+			<persName><forename type="first">Shi</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sen</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yingjie</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinmei</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dacheng</forename><surname>Tao</surname></persName>
+		</author>
+		<idno>PMLR</idno>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="14228" to="14255" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b16">
+	<analytic>
+		<title level="a" type="main">A theoretical perspective: How to prevent model collapse in self-consuming training loops</title>
+		<author>
+			<persName><forename type="first">Shi</forename><surname>Fu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yingjie</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuzhu</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xinmei</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dacheng</forename><surname>Tao</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Thirteenth International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b17">
+	<monogr>
+		<title level="m" type="main">Preventing model collapse under overparametrization: Optimal mixing ratios for interpolation learning and ridge regression</title>
+		<author>
+			<persName><forename type="first">Anvit</forename><surname>Garg</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sohom</forename><surname>Bhattacharya</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pragya</forename><surname>Sur</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2509.22341</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b18">
+	<analytic>
+		<title level="a" type="main">Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data</title>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Apratim</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafael</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomasz</forename><surname>Korbak</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Henry</forename><surname>Sleight</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rajashree</forename><surname>Agrawal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">John</forename><surname>Hughes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dhruv Bhandarkar</forename><surname>Pai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrey</forename><surname>Gromov</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">First Conference on Language Modeling (COLM)</title>
+		<imprint>
+			<biblScope unit="page">2024</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b19">
+	<monogr>
+		<author>
+			<persName><forename type="first">Jiawei</forename><surname>Gu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuhui</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhichao</forename><surname>Shi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hexiang</forename><surname>Tan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xuehao</forename><surname>Zhai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chengjin</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yinghan</forename><surname>Shen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shengjie</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Honghao</forename><surname>Liu</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2411.15594</idno>
+		<title level="m">A survey on llm-as-a-judge</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b20">
+	<monogr>
+		<author>
+			<persName><forename type="first">Suriya</forename><surname>Gunasekar</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yi</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jyoti</forename><surname>Aneja</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caio</forename><surname>César</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Teodoro</forename><surname>Mendes</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Allie</forename><surname>Del Giorno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sivakanth</forename><surname>Gopi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mojan</forename><surname>Javaheripi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Piero</forename><surname>Kauffmann</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gustavo</forename><surname>De Rosa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Olli</forename><surname>Saarikivi</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2306.11644</idno>
+		<title level="m">Textbooks are all you need</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b21">
+	<monogr>
+		<title level="m" type="main">Deepseek-coder: When the large language model meets programming-the rise of code intelligence</title>
+		<author>
+			<persName><forename type="first">Qihao</forename><surname>Daya Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dejian</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhenda</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kai</forename><surname>Xie</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wentao</forename><surname>Dong</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guanting</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Y</forename><surname>Bi</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Li</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<publisher>CoRR</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b22">
+	<analytic>
+		<title level="a" type="main">Deepseek-r1 incentivizes reasoning in llms through reinforcement learning</title>
+		<author>
+			<persName><forename type="first">Dejian</forename><surname>Daya Guo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Haowei</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Junxiao</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Peiyi</forename><surname>Song</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qihao</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Runxin</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruoyu</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shirong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiao</forename><surname>Ma</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Bi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">645</biblScope>
+			<biblScope unit="issue">8081</biblScope>
+			<biblScope unit="page" from="633" to="638" />
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b23">
+	<analytic>
+		<title level="a" type="main">Language models can teach themselves to program better</title>
+		<author>
+			<persName><forename type="first">Patrick</forename><surname>Haluptzok</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthew</forename><surname>Bowers</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Adam</forename><surname>Tauman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kalai</forename></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Eleventh International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b24">
+	<monogr>
+		<author>
+			<persName><forename type="first">Hengzhi</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shirong</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guang</forename><surname>Cheng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2502.18049</idno>
+		<title level="m">Golden ratio weighting prevents model collapse</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b25">
+	<analytic>
+		<title level="a" type="main">Is synthetic data from generative models ready for image recognition</title>
+		<author>
+			<persName><forename type="first">Ruifei</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shuyang</forename><surname>Sun</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xin</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chuhui</forename><surname>Xue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenqing</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Philip</forename><surname>Torr</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Song</forename><surname>Bai</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaojuan</forename><surname>Qi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The Eleventh International Conference on Learning Representations</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b26">
+	<analytic>
+		<title level="a" type="main">Gans trained by a two time-scale update rule converge to a local nash equilibrium</title>
+		<author>
+			<persName><forename type="first">Martin</forename><surname>Heusel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hubert</forename><surname>Ramsauer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><surname>Unterthiner</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bernhard</forename><surname>Nessler</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sepp</forename><surname>Hochreiter</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in neural information processing systems</title>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="volume">30</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b27">
+	<analytic>
+		<title level="a" type="main">Quality matters: Evaluating synthetic data for tool-using llms</title>
+		<author>
+			<persName><forename type="first">Shadi</forename><surname>Iskander</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sofia</forename><surname>Tolmach</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ori</forename><surname>Shapira</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nachshon</forename><surname>Cohen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zohar</forename><surname>Karnin</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2024 Conference on Empirical Methods in Natural Language Processing</meeting>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<biblScope unit="page" from="4958" to="4976" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b28">
+	<analytic>
+		<title level="a" type="main">Collapse or thrive: Perils and promises of synthetic data in a self-generating world</title>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Kazdan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Apratim</forename><surname>Dey</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matthias</forename><surname>Gerstgrasser</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Rafael</forename><surname>Rafailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><forename type="middle">L</forename><surname>Donoho</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sanmi</forename><surname>Koyejo</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-second International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b29">
+	<analytic>
+		<title level="a" type="main">Auto-encoding variational bayes</title>
+		<author>
+			<persName><forename type="first">P</forename><surname>Diederik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Max</forename><surname>Kingma</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Welling</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">International Conference on Learning Representations (ICLR)</title>
+		<imprint>
+			<date type="published" when="2014">2014</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b30">
+	<monogr>
+		<title level="m" type="main">Bridging the gap: Enhancing the utility of synthetic data via post-processing techniques</title>
+		<author>
+			<persName><forename type="first">Andrea</forename><surname>Lampis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eugenio</forename><surname>Lomurno</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Matteo</forename><surname>Matteucci</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2305.10118</idno>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b31">
+	<analytic>
+		<title level="a" type="main">Quality metrics of variational autoencoders</title>
+		<author>
+			<persName><forename type="first">Mikhail</forename><surname>Leontev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Mikheev</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kirill</forename><surname>Sviatov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sergey</forename><surname>Sukhov</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">2020 International Conference on Information Technology and Nanotechnology (ITNT)</title>
+		<imprint>
+			<publisher>IEEE</publisher>
+			<date type="published" when="2020">2020</date>
+			<biblScope unit="page" from="1" to="5" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b32">
+	<monogr>
+		<title level="m" type="main">Source2synth: Synthetic data generation and curation grounded in real data sources</title>
+		<author>
+			<persName><forename type="first">Alisia</forename><surname>Lupidi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carlos</forename><surname>Gemmell</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicola</forename><surname>Cancedda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jane</forename><surname>Dwivedi-Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jason</forename><surname>Weston</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jakob</forename><surname>Foerster</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Roberta</forename><surname>Raileanu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Maria</forename><surname>Lomeli</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2409.08239</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b33">
+	<analytic>
+		<title level="a" type="main">Don&apos;t give me the details, just the summary! Topicaware convolutional neural networks for extreme summarization</title>
+		<author>
+			<persName><forename type="first">Shashi</forename><surname>Narayan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shay</forename><forename type="middle">B</forename><surname>Cohen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mirella</forename><surname>Lapata</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing</title>
+		<meeting>the 2018 Conference on Empirical Methods in Natural Language Processing<address><addrLine>Brussels, Belgium</addrLine></address></meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b34">
+	<analytic>
+		<title level="a" type="main">Training language models to follow instructions with human feedback</title>
+		<author>
+			<persName><forename type="first">Long</forename><surname>Ouyang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jeffrey</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xu</forename><surname>Jiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Diogo</forename><surname>Almeida</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Carroll</forename><surname>Wainwright</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Pamela</forename><surname>Mishkin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Chong</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sandhini</forename><surname>Agarwal</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Katarina</forename><surname>Slama</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alex</forename><surname>Ray</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="27730" to="27744" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b35">
+	<monogr>
+		<title level="m" type="main">Enhancing low-resource llms classification with peft and synthetic data</title>
+		<author>
+			<persName><forename type="first">Parth</forename><surname>Patwa</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Simone</forename><surname>Filice</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhiyu</forename><surname>Chen</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Giuseppe</forename><surname>Castellucci</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oleg</forename><surname>Rokhlenko</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Shervin</forename><surname>Malmasi</surname></persName>
+		</author>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+			<publisher>CoRR</publisher>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b36">
+	<monogr>
+		<author>
+			<persName><forename type="first">Daniel</forename><surname>Vamsi K Potluru</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrea</forename><surname>Borrajo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Niccolò</forename><surname>Coletta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yousef</forename><surname>Dalmasso</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Elizabeth</forename><surname>El-Laham</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mohsen</forename><surname>Fons</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sriram</forename><surname>Ghassemi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Vikesh</forename><surname>Gopalakrishnan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eleonora</forename><surname>Gosai</surname></persName>
+		</author>
+		<author>
+			<persName><surname>Kreačić</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2401.00081</idno>
+		<title level="m">Synthetic data applications in finance</title>
+		<imprint>
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b37">
+	<analytic>
+		<title level="a" type="main">How good is your synthetic data? synthro, a dashboard to evaluate and benchmark synthetic tabular data</title>
+		<author>
+			<persName><forename type="first">Gabriele</forename><surname>Santangelo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Giovanna</forename><surname>Nicora</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Riccardo</forename><surname>Bellazzi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Arianna</forename><surname>Dagliati</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">BMC Medical Informatics and Decision Making</title>
+		<imprint>
+			<biblScope unit="volume">25</biblScope>
+			<biblScope unit="issue">1</biblScope>
+			<biblScope unit="page">89</biblScope>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b38">
+	<monogr>
+		<title level="m" type="main">Position: Model collapse does not mean what you think</title>
+		<author>
+			<persName><forename type="first">Rylan</forename><surname>Schaeffer</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Kazdan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Alvan</forename></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Caleb</forename><surname>Arulandu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sanmi</forename><surname>Koyejo</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2503.03150</idno>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b39">
+	<analytic>
+		<title level="a" type="main">Learning from simulated and unsupervised images through adversarial training</title>
+		<author>
+			<persName><forename type="first">Ashish</forename><surname>Shrivastava</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tomas</forename><surname>Pfister</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Oncel</forename><surname>Tuzel</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Joshua</forename><surname>Susskind</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wenda</forename><surname>Wang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Russell</forename><surname>Webb</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE conference on computer vision and pattern recognition</title>
+		<meeting>the IEEE conference on computer vision and pattern recognition</meeting>
+		<imprint>
+			<date type="published" when="2017">2017</date>
+			<biblScope unit="page" from="2107" to="2116" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b40">
+	<analytic>
+		<title level="a" type="main">Ai models collapse when trained on recursively generated data</title>
+		<author>
+			<persName><forename type="first">Ilia</forename><surname>Shumailov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zakhar</forename><surname>Shumaylov</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yiren</forename><surname>Zhao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Nicolas</forename><surname>Papernot</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ross</forename><surname>Anderson</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yarin</forename><surname>Gal</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Nature</title>
+		<imprint>
+			<biblScope unit="volume">631</biblScope>
+			<biblScope unit="issue">8022</biblScope>
+			<biblScope unit="page" from="755" to="759" />
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b41">
+	<analytic>
+		<title level="a" type="main">Rate of model collapse in recursive training</title>
+		<author>
+			<persName><forename type="first">Ananda</forename><surname>Theertha Suresh</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Andrew</forename><surname>Thangaraj</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aditya</forename><surname>Nanda</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kishore</forename><surname>Khandavally</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">The 28th International Conference on Artificial Intelligence and Statistics</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b42">
+	<analytic>
+		<title level="a" type="main">Stablerep: Synthetic images from text-to-image models make strong visual representation learners</title>
+		<author>
+			<persName><forename type="first">Yonglong</forename><surname>Tian</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lijie</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Phillip</forename><surname>Isola</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Huiwen</forename><surname>Chang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dilip</forename><surname>Krishnan</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="48382" to="48402" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b43">
+	<analytic>
+		<title level="a" type="main">Training deep networks with synthetic data: Bridging the reality gap by domain randomization</title>
+		<author>
+			<persName><forename type="first">Jonathan</forename><surname>Tremblay</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aayush</forename><surname>Prakash</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">David</forename><surname>Acuna</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mark</forename><surname>Brophy</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Varun</forename><surname>Jampani</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE conference on computer vision and pattern recognition workshops</title>
+		<meeting>the IEEE conference on computer vision and pattern recognition workshops</meeting>
+		<imprint>
+			<date type="published" when="2018">2018</date>
+			<biblScope unit="page" from="969" to="977" />
+		</imprint>
+	</monogr>
+	<note>Cem Anil, Thang To, Eric Cameracci, Shaad Boochoon, and Stan Birchfield</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b44">
+	<analytic>
+		<title level="a" type="main">Resofilter: Fine-grained synthetic data filtering for large language models through data-parameter resonance analysis</title>
+		<author>
+			<persName><forename type="first">Zeao</forename><surname>Tu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiangdi</forename><surname>Meng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zihan</forename><surname>Yao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tianyu</forename><surname>Qi</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jun</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ming</forename><surname>Li</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Findings of the Association for Computational Linguistics: NAACL 2025</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="page" from="5414" to="5428" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b45">
+	<analytic>
+		<title level="a" type="main">Self-consuming generative models with adversarially curated data</title>
+		<author>
+			<persName><forename type="first">Xiukun</forename><surname>Wei</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xueru</forename><surname>Zhang</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Fortysecond International Conference on Machine Learning</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b46">
+	<analytic>
+		<title level="a" type="main">Qurating: Selecting high-quality data for training language models</title>
+		<author>
+			<persName><forename type="first">Alexander</forename><surname>Wettig</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Aatmik</forename><surname>Gupta</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Saumya</forename><surname>Malik</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Danqi</forename><surname>Chen</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-first International Conference on Machine Learning</title>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b47">
+	<analytic>
+		<title level="a" type="main">Fake it till you make it: face analysis in the wild using synthetic data alone</title>
+		<author>
+			<persName><forename type="first">Erroll</forename><surname>Wood</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tadas</forename><surname>Baltrušaitis</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Charlie</forename><surname>Hewitt</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Sebastian</forename><surname>Dziadzio</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Thomas</forename><forename type="middle">J</forename><surname>Cashman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jamie</forename><surname>Shotton</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Proceedings of the IEEE/CVF international conference on computer vision</title>
+		<meeting>the IEEE/CVF international conference on computer vision</meeting>
+		<imprint>
+			<date type="published" when="2021">2021</date>
+			<biblScope unit="page" from="3681" to="3691" />
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b48">
+	<analytic>
+		<title level="a" type="main">The invisible leash: Why rlvr may not escape its origin</title>
+		<author>
+			<persName><forename type="first">Fang</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yejin</forename><surname>Choi</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">2nd AI for Math Workshop@ ICML 2025</title>
+		<imprint/>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b49">
+	<monogr>
+		<author>
+			<persName><forename type="first">Shirong</forename><surname>Xu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hengzhi</forename><surname>He</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Guang</forename><surname>Cheng</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2505.13947</idno>
+		<title level="m">A probabilistic perspective on model collapse</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b50">
+	<analytic>
+		<title level="a" type="main">Dapo: An open-source llm reinforcement learning system at scale</title>
+		<author>
+			<persName><forename type="first">Qiying</forename><surname>Yu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zheng</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ruofei</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yufeng</forename><surname>Yuan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xiaochen</forename><surname>Zuo</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yu</forename><surname>Yue</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Tiantian</forename><surname>Fan</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Gaohong</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Lingjun</forename><surname>Liu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xin</forename><surname>Liu</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+			<biblScope unit="volume">38</biblScope>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b51">
+	<analytic>
+		<title level="a" type="main">Star: Bootstrapping reasoning with reasoning</title>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Zelikman</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yuhuai</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Jesse</forename><surname>Mu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Noah</forename><surname>Goodman</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in Neural Information Processing Systems</title>
+		<imprint>
+			<biblScope unit="volume">35</biblScope>
+			<biblScope unit="page" from="15476" to="15488" />
+			<date type="published" when="2022">2022</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b52">
+	<monogr>
+		<title level="m" type="main">Regurgitative training: The value of real data in training large language models</title>
+		<author>
+			<persName><forename type="first">Jinghui</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dandan</forename><surname>Qiao</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Mochen</forename><surname>Yang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Qiang</forename><surname>Wei</surname></persName>
+		</author>
+		<idno type="arXiv">arXiv:2407.12835</idno>
+		<imprint>
+			<date type="published" when="2024">2024</date>
+		</imprint>
+	</monogr>
+	<note type="report_type">arXiv preprint</note>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b53">
+	<analytic>
+		<title level="a" type="main">Judging llm-as-a-judge with mt-bench and chatbot arena</title>
+		<author>
+			<persName><forename type="first">Lianmin</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Wei-Lin</forename><surname>Chiang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ying</forename><surname>Sheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Siyuan</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhanghao</forename><surname>Wu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Yonghao</forename><surname>Zhuang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zi</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhuohan</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Dacheng</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Eric</forename><surname>Xing</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="j">Advances in neural information processing systems</title>
+		<imprint>
+			<biblScope unit="volume">36</biblScope>
+			<biblScope unit="page" from="46595" to="46623" />
+			<date type="published" when="2023">2023</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+<biblStruct status="extracted" xml:id="b54">
+	<analytic>
+		<title level="a" type="main">How to synthesize text data without model collapse?</title>
+		<author>
+			<persName><forename type="first">Xuekai</forename><surname>Zhu</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Daixuan</forename><surname>Cheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Hengli</forename><surname>Li</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Kaiyan</forename><surname>Zhang</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ermo</forename><surname>Hua</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Xingtai</forename><surname>Lv</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Ning</forename><surname>Ding</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zhouhan</forename><surname>Lin</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Zilong</forename><surname>Zheng</surname></persName>
+		</author>
+		<author>
+			<persName><forename type="first">Bowen</forename><surname>Zhou</surname></persName>
+		</author>
+	</analytic>
+	<monogr>
+		<title level="m">Forty-second International Conference on Machine Learning, ICML</title>
+		<imprint>
+			<date type="published" when="2025">2025</date>
+		</imprint>
+	</monogr>
+</biblStruct>
+
+				</listBibl>
+			</div>
+		</back>
+	</text>
+</TEI>

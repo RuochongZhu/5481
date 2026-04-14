@@ -33,7 +33,8 @@ log = logging.getLogger("research_agent")
 
 BEAT_REQUIREMENTS = {
     1: {
-        "name": "Crisis Exists",
+        "name": "Model Collapse and Contamination Risk",
+        "argument_line": "line_1",
         "categories": ["A", "B", "C"],
         "pairs": ["A-B", "B-C"],
         "missing_titles": [
@@ -43,7 +44,8 @@ BEAT_REQUIREMENTS = {
         ],
     },
     2: {
-        "name": "Partial Measurement Of Web Drift",
+        "name": "Partial Measurability of Web Drift",
+        "argument_line": "line_1",
         "categories": ["D", "H"],
         "pairs": ["D-H"],
         "missing_titles": [
@@ -53,9 +55,10 @@ BEAT_REQUIREMENTS = {
         ],
     },
     3: {
-        "name": "Grounded Ingredients For L_auth",
-        "categories": ["D"],
-        "pairs": [],
+        "name": "L_auth Framework Definition",
+        "argument_line": "bridge",
+        "categories": ["D", "A"],
+        "pairs": ["D-A"],
         "missing_titles": [
             "metric grounding anchor for entropy / divergence",
             "formal bridge from metric ingredients to L_auth",
@@ -63,8 +66,9 @@ BEAT_REQUIREMENTS = {
         ],
     },
     4: {
-        "name": "Verified Human Data For Social Tasks",
-        "categories": ["E", "F", "I", "J"],
+        "name": "Fine-tuning Data Source Affects Social Reasoning",
+        "argument_line": "line_2",
+        "categories": ["F", "I", "J"],
         "pairs": ["F-I", "I-J"],
         "missing_titles": [
             "social-reasoning human-vs-synthetic comparison anchor",
@@ -73,12 +77,24 @@ BEAT_REQUIREMENTS = {
         ],
     },
     5: {
-        "name": "CampusGo As Design Proposal",
-        "categories": ["A", "G"],
-        "pairs": ["A-G"],
+        "name": "Contrastive Fine-tuning Experiment",
+        "argument_line": "line_2",
+        "categories": ["F", "I", "J"],
+        "pairs": ["F-I", "I-J"],
+        "missing_titles": [
+            "contrastive fine-tuning data quality comparison anchor",
+            "synthetic vs human data fine-tuning ablation anchor",
+            "social reasoning evaluation benchmark methodology anchor",
+        ],
+    },
+    6: {
+        "name": "CampusGo as Design Proposal",
+        "argument_line": "proposal",
+        "categories": ["G"],
+        "pairs": [],
         "missing_titles": [
             "platform / provenance precedent for authentic data capture",
-            "accumulation / contamination motivation bridge",
+            "campus behavioral data collection precedent",
             "proposal-scope anchor showing feasibility limits",
         ],
     },
@@ -201,7 +217,7 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
 def _gap_quality_check(gaps: dict) -> dict:
     beats = gaps.get("beats", []) if isinstance(gaps, dict) else []
     return {
-        "passed": isinstance(beats, list) and len(beats) == 5,
+        "passed": isinstance(beats, list) and len(beats) == len(BEAT_REQUIREMENTS),
         "beat_statuses": dict(Counter(
             b.get("status", "unknown")
             for b in beats
@@ -452,7 +468,7 @@ def _run_gap_synthesizer(client, papers: list[dict], metrics: dict,
         retry_role = (
             GAP_SYNTHESIZER
             + "\nReturn minified JSON only. No prose, no markdown, no trailing commentary. "
-              "The JSON must contain exactly 5 beats plus a non-empty overall_assessment."
+              "The JSON must contain exactly 6 beats plus a non-empty overall_assessment."
         )
         retry_task = _build_compact_gap_synthesis_input(metrics, matrix, cat_stats)
         try:
@@ -517,7 +533,7 @@ def _build_compact_gap_synthesis_input(metrics: dict, matrix: dict, cat_stats: d
         for beat, info in BEAT_REQUIREMENTS.items()
     }
     return (
-        "Assess evidence sufficiency for exactly 5 beats.\n"
+        "Assess evidence sufficiency for exactly 6 beats.\n"
         f"Beat requirements: {json.dumps(beat_requirements, ensure_ascii=False)}\n"
         f"Category counts: {json.dumps(cat_summary, ensure_ascii=False)}\n"
         f"Sparse category pairs: {json.dumps(sparse_pairs, ensure_ascii=False)[:1800]}\n"
@@ -771,7 +787,7 @@ def _build_gap_synthesis_input(papers: list[dict], metrics: dict,
     gaps_str = "\n".join(all_gaps[:30])  # Limit to 30
 
     return (
-        f"Assess evidence sufficiency for a 5-beat research paper using this corpus of {len(papers)} papers.\n\n"
+        f"Assess evidence sufficiency for a 6-beat research paper using this corpus of {len(papers)} papers.\n\n"
         f"## Foundational Papers (highest in-degree)\n{found_str}\n\n"
         f"## Category Intersection Matrix\n{matrix_str}\n\n"
         f"## Category Statistics\n{cat_str}\n\n"

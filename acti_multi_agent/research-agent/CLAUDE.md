@@ -7,6 +7,20 @@
 
 PhD literature analysis pipeline for AI data quality / model collapse / data authenticity.
 9-phase pipeline with 5-reviewer evaluation loop and auto-backtrack.
+6-beat dual-argument-line thesis structure (line_1: pretraining risk, line_2: fine-tuning experimental, bridge: L_auth, proposal: CampusGo).
+
+## Beat Structure (6 beats)
+
+| Beat | Title | Argument Line | Categories |
+|------|-------|---------------|------------|
+| 1 | Model Collapse and Contamination Risk | line_1 | A, B, C |
+| 2 | Partial Measurability of Web Drift | line_1 | D, H |
+| 3 | L_auth Framework Definition | bridge | D, A |
+| 4 | Fine-tuning Data Source Affects Social Reasoning | line_2 | F, I, J |
+| 5 | Contrastive Fine-tuning Experiment | line_2 | F, I, J |
+| 6 | CampusGo as Design Proposal | proposal | G |
+
+CRITICAL: Never use Category A (collapse) papers to directly support Beats 4-5 (fine-tuning claims). The two argument lines have independent evidence bases.
 
 ## Quality Gates (Hooks)
 
@@ -25,14 +39,17 @@ PhD literature analysis pipeline for AI data quality / model collapse / data aut
 - 每个 beat 的 spine 必须按 citation 时间顺序排列
 - 每篇论文只能出现在一个 beat 的 spine 或 supporting 中
 - anchor paper 必须是该 beat 引用量最高的论文
+- 论证线分离：line_2 的 beat 不能用 Category A 论文作为直接支撑
 
 ### Before any contradiction scan (P3.7) API call:
 - 只标记真正的分歧，不标记互补发现
 - 每个矛盾必须有双方的具体证据
 - severity 必须是 critical/moderate/minor 之一
+- 每个矛盾必须标注所属 argument_line
 
 ### After Phase 5 evaluation:
-- 如果 overall_score < TARGET_SCORE，自动回退到最弱维度对应的 phase
+- 如果 overall_score < 0.85，自动回退到最弱维度对应的 phase
+- 如果 honesty_score < 0.80，即使 overall 达标也回退到 Phase 4
 - 如果 reviewer 分歧 > 0.3，暂停等待人工确认
 - 永远不删除论文（append-only corpus）
 - 永远不降低 overall_score — 如果改动使分数变差，回滚

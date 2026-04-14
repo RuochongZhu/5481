@@ -6,687 +6,662 @@
 
 ## Executive Summary
 
-1. When can curated or verified synthetic data substitute for fresh human data? (collapse vs curation) → Can verifier-like correction substitute for fresh human data in self-consuming training loops?
-   Handling: State that unverified recursive reuse is risky, but verifier-guided or correction-guided synthetic pipelines are a live exception. Emphasize that such methods depend on access to a trustworthy correction signal, which may itself require human grounding. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
-2. Is web pollution detectable? (pollution scale vs detection limits) → Are retrieval-based detectors robust against paraphrased AI-generated text?
-   Handling: Explicitly distinguish closed-output matching from adversarially transformed text. Say retrieval helps under specific assumptions, but is not a universal defense against web pollution or obfuscation.
-3. How far can AI feedback, self-alignment, and synthetic instruction data reduce reliance on human-authored supervision? → Are humans fundamentally necessary in the alignment loop, or can self-alignment largely remove them?
-   Handling: State explicitly that the literature is split on whether benchmark-level alignment can be automated. Distinguish operational alignment on narrow assistant tasks from normative grounding and ongoing human oversight. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-4. How strong is the evidence for measurable live-web drift or degradation? (metrics vs temporal measurement) → Is temporally increasing AI contamination enough to conclude that major live-web knowledge sources are already degraded for training?
-   Handling: Acknowledge Wikipedia as strong source-specific temporal evidence of contamination while noting that corpus-level training harm remains unproven because filtered broad-web mixtures still perform well. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
-5. Where does human data remain valuable despite curated synthetic or AI-feedback data? (curation vs RLHF) → Can AI-generated feedback substitute for human preference data in alignment?
-   Handling: Explicitly concede that AI feedback can substitute for human feedback on bounded alignment benchmarks. Then state that our claim is about residual value in socially grounded or harder-to-verify settings, not about denying RLAIF's success on summarization/dialogue. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-6. Do filtered or documented web corpora complicate a simple contamination-to-quality-decline story? → Does AI pollution of the web necessarily make web-derived data unusable?
-   Handling: Separate web-index retrieval from pretraining-corpus construction. State that AI pollution is clearly harmful for some retrieval settings, but FineWeb shows this does not generalize to all filtered web-derived training corpora. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+1. When can curated or verified synthetic data substitute for fresh human data? (collapse vs curation) → Does recursive synthetic reuse inevitably cause collapse, or can human-preference curation make it beneficial?
+   Handling: State explicitly that collapse evidence targets indiscriminate reuse, whereas successful substitution requires a strong verifier/curation signal; note that the positive result is theoretical and depends on well-specified rewards. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
+2. Is web pollution detectable? (pollution scale vs detection limits) → Are retrieval-based defenses robust enough to detect paraphrased AI text?
+   Handling: State explicitly that retrieval defenses work in some controlled paraphrase settings but fail under stronger adaptive paraphrasing. Use this to justify 'reactive filtering is fragile' rather than claiming retrieval is broadly effective.
+3. How strong is the evidence for measurable live-web drift or degradation? (metrics vs temporal measurement) → Does longitudinal degradation in one live-web domain justify a broad claim of measurable web-wide degradation relevant to pretraining?
+   Handling: State explicitly that existing temporal degradation evidence is domain-specific rather than web-wide. Use privacy-policy results as proof of drift in particular genres, not as proof that the whole web is measurably degrading for pretraining. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+4. Where does human data remain valuable despite curated synthetic or AI-feedback data? (curation vs RLHF) → Can AI-generated feedback replace human feedback for alignment?
+   Handling: State explicitly that AI feedback has real success on bounded, evaluable tasks, but distinguish this from normatively grounded alignment where human oversight and human-defined objectives remain necessary. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+5. Do filtered or documented web corpora complicate a simple contamination-to-quality-decline story? → Does rising AI contamination already make web-based corpora inferior to curated sources for model quality?
+   Handling: State explicitly that current harm evidence is strongest for live retrieval/search ecosystems, not for all pretraining corpora. Use RefinedWeb as a scope limiter: filtered static corpora can still work well even if polluted live web retrieval degrades. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+6. Does data composition matter for social reasoning? (benchmarks vs ablation) → Can targeted post-training data substantially reduce social-reasoning deficits, or are those deficits mostly intrinsic to current LLMs?
+   Handling: State explicitly that benchmark weakness results are for untargeted models; contrast them with evidence that socially targeted hard-example training can improve outcomes, while noting the two papers evaluate different training conditions. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ## Focus Coverage
 
 - [A, E] When can curated or verified synthetic data substitute for fresh human data? (collapse vs curation) (count=5)
-  Representative: Can verifier-like correction substitute for fresh human data in self-consuming training loops?
-- [B, C] Is web pollution detectable? (pollution scale vs detection limits) (count=6)
-  Representative: Are retrieval-based detectors robust against paraphrased AI-generated text?
-- [F, J] How far can AI feedback, self-alignment, and synthetic instruction data reduce reliance on human-authored supervision? (count=5)
-  Representative: Are humans fundamentally necessary in the alignment loop, or can self-alignment largely remove them?
-- [D, H] How strong is the evidence for measurable live-web drift or degradation? (metrics vs temporal measurement) (count=5)
-  Representative: Is temporally increasing AI contamination enough to conclude that major live-web knowledge sources are already degraded for training?
-- [E, F] Where does human data remain valuable despite curated synthetic or AI-feedback data? (curation vs RLHF) (count=5)
-  Representative: Can AI-generated feedback substitute for human preference data in alignment?
-- [B, E, H] Do filtered or documented web corpora complicate a simple contamination-to-quality-decline story? (count=4)
-  Representative: Does AI pollution of the web necessarily make web-derived data unusable?
-- [I, J] Does data composition matter for social reasoning? (benchmarks vs ablation) (count=4)
-  Representative: Are current social-reasoning failures mostly evidence of a fundamental capability limit, or can targeted data composition substantially repair them?
-
----
-
-## C4: 🔴 CRITICAL — direct_contradiction
-
-**Question**: Can verifier-like correction substitute for fresh human data in self-consuming training loops?
-
-**Paper A**: Self-Consuming Generative Models go MAD
-  Claim: Without fresh real data, degradation is inevitable.
-  Evidence: "Without enough fresh real data in each generation... inevitably suffer MAD"
-
-**Paper B**: Self-Correcting Self-Consuming Loops for Generative Model Training
-  Claim: An explicit correction/verification mechanism can stabilize self-consuming loops.
-  Evidence: "Introducing a correction function that maps data points to be more likely under the true distribution makes self-consuming generative training loops exponentially more stable"
-
-**Relevance to thesis**: This is the strongest pro-verification counterexample. It supports your qualified claim that verifier-screened synthetic data may still work in narrower settings, while also showing that 'inevitable collapse' is too strong.
-**Beat affected**: 4
-**Suggested handling**: State that unverified recursive reuse is risky, but verifier-guided or correction-guided synthetic pipelines are a live exception. Emphasize that such methods depend on access to a trustworthy correction signal, which may itself require human grounding. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
-
----
-
-## C1: 🔴 CRITICAL — direct_contradiction
-
-**Question**: Are retrieval-based detectors robust against paraphrased AI-generated text?
-
-**Paper A**: Paraphrasing evades detectors of AI-generated text, but retrieval is an effectiv
-  Claim: Retrieval-based detection is an effective and scalable defense even when paraphrasing defeats current detectors.
-  Evidence: An 11B paraphraser easily evades current detectors, but retrieval-based detection is reported as effective and scalable.
-
-**Paper B**: Can AI-Generated Text be Reliably Detected?
-  Claim: Recursive paraphrasing attacks can break retrieval-based AI-text detectors and increase false positives.
-  Evidence: The paper reports attacks that break watermarking, neural, zero-shot, and retrieval-based detectors.
-
-**Relevance to thesis**: Directly narrows any claim that retrieval solves detectability: some retrieval setups work, but robustness collapses under stronger adversarial paraphrasing.
-**Beat affected**: 4
-**Suggested handling**: Explicitly distinguish closed-output matching from adversarially transformed text. Say retrieval helps under specific assumptions, but is not a universal defense against web pollution or obfuscation.
-
----
-
-## C1: 🔴 CRITICAL — direct_contradiction
-
-**Question**: Are humans fundamentally necessary in the alignment loop, or can self-alignment largely remove them?
-
-**Paper A**: Principle-Driven Self-Alignment of Language Models from Scratch with Minimal Hum
-  Claim: Principle-driven self-alignment can align LLMs to human values with minimal human supervision.
-  Evidence: Key claim says Dromedary is built 'with minimal human supervision' and 'almost no human annotation'.
-
-**Paper B**: Human-in-the-Loop Reinforcement Learning: A Survey and Position on Requirements,
-  Claim: Successful RL is fundamentally human-in-the-loop, so human-centric approaches are essential rather than optional.
-  Evidence: Key claim says RL is 'fundamentally a human-in-the-loop paradigm' and human-centric methods are key.
-
-**Relevance to thesis**: This is the clearest challenge to any strong claim that authentic human supervision remains indispensable: one paper says alignment can be mostly automated, the other says humans are foundational.
-**Beat affected**: 4
-**Suggested handling**: State explicitly that the literature is split on whether benchmark-level alignment can be automated. Distinguish operational alignment on narrow assistant tasks from normative grounding and ongoing human oversight. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C2: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Is temporally increasing AI contamination enough to conclude that major live-web knowledge sources are already degraded for training?
-
-**Paper A**: The Rise of AI-Generated Content in Wikipedia
-  Claim: AI contamination in a major web knowledge source is rising measurably over time.
-  Evidence: Finds AI-generated content in newly created Wikipedia pages has markedly increased since GPT-3.5, providing lower bounds on contamination.
-
-**Paper B**: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Da
-  Claim: Filtered web data alone remains highly effective for pretraining.
-  Evidence: Shows properly filtered and deduplicated web data only can significantly outperform models trained on curated corpora like The Pile.
-
-**Relevance to thesis**: This weakens any strong Beat 2 claim that observed contamination automatically implies broad usable-web degradation.
-**Beat affected**: 2
-**Suggested handling**: Acknowledge Wikipedia as strong source-specific temporal evidence of contamination while noting that corpus-level training harm remains unproven because filtered broad-web mixtures still perform well. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+  Representative: Does recursive synthetic reuse inevitably cause collapse, or can human-preference curation make it beneficial?
+- [B, C] Is web pollution detectable? (pollution scale vs detection limits) (count=5)
+  Representative: Are retrieval-based defenses robust enough to detect paraphrased AI text?
+- [D, H] How strong is the evidence for measurable live-web drift or degradation? (metrics vs temporal measurement) (count=4)
+  Representative: Does longitudinal degradation in one live-web domain justify a broad claim of measurable web-wide degradation relevant to pretraining?
+- [E, F] Where does human data remain valuable despite curated synthetic or AI-feedback data? (curation vs RLHF) (count=6)
+  Representative: Can AI-generated feedback replace human feedback for alignment?
+- [B, E, H] Do filtered or documented web corpora complicate a simple contamination-to-quality-decline story? (count=5)
+  Representative: Does rising AI contamination already make web-based corpora inferior to curated sources for model quality?
+- [I, J] Does data composition matter for social reasoning? (benchmarks vs ablation) (count=6)
+  Representative: Can targeted post-training data substantially reduce social-reasoning deficits, or are those deficits mostly intrinsic to current LLMs?
+- [F, J] How far can AI feedback, self-alignment, and synthetic instruction data reduce reliance on human-authored supervision? (count=2)
+  Representative: How far can synthetic instruction data replace human-written instruction datasets?
 
 ---
 
 ## C1: 🔴 CRITICAL — scope_disagreement
 
-**Question**: Can AI-generated feedback substitute for human preference data in alignment?
-
-**Paper A**: 10.1613/jair.1.15348
-  Claim: Successful RL should remain fundamentally human-in-the-loop; human-centric approaches are key and underprioritized.
-  Evidence: Survey/position paper states RL is 'fundamentally a human-in-the-loop paradigm' and that human-centric methods are essential.
-
-**Paper B**: 10.48550/arxiv.2309.00267
-  Claim: AI feedback can replace human feedback on important alignment tasks with comparable results.
-  Evidence: RLAIF achieves performance comparable to RLHF on summarization and dialogue, including self-improvement when the labeler is the same model as the policy.
-
-**Relevance to thesis**: This is the strongest counterevidence to any broad claim that human feedback is generally indispensable. It forces the thesis to be narrower: human data may remain most valuable where preferences are socially grounded, hard to simulate, or distribution-shifting.
-**Beat affected**: 4
-**Suggested handling**: Explicitly concede that AI feedback can substitute for human feedback on bounded alignment benchmarks. Then state that our claim is about residual value in socially grounded or harder-to-verify settings, not about denying RLAIF's success on summarization/dialogue. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C2: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Does AI pollution of the web necessarily make web-derived data unusable?
-
-**Paper A**: Retrieval Collapses When AI Pollutes the Web
-  Claim: Heavy AI-generated contamination causes retrieval collapse by eroding source diversity and enabling adversarial infiltration, although LLM rankers are more resilient.
-  Evidence: At 67% pool contamination, source diversity erodes; BM25 admits 19-24% adversarial document infiltration.
-
-**Paper B**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
-  Claim: A very large filtered and deduplicated CommonCrawl corpus can still improve LLM pretraining quality relative to other open datasets.
-  Evidence: FineWeb uses 96 CommonCrawl snapshots with systematic filtering/deduplication and reports better-performing LLMs than other open pretraining datasets.
-
-**Relevance to thesis**: This is a core scope limiter: live retrieval over a polluted web can fail even while carefully constructed static web corpora remain highly effective for pretraining.
-**Beat affected**: 4
-**Suggested handling**: Separate web-index retrieval from pretraining-corpus construction. State that AI pollution is clearly harmful for some retrieval settings, but FineWeb shows this does not generalize to all filtered web-derived training corpora. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
-
----
-
-## C1: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Are current social-reasoning failures mostly evidence of a fundamental capability limit, or can targeted data composition substantially repair them?
-
-**Paper A**: Social-R1: Towards Human-like Social Reasoning in LLMs
-  Claim: Targeted social-reasoning training matters: adversarial hard examples plus reinforcement learning from verifiable feedback significantly improve social reasoning robustness.
-  Evidence: "training with adversarial hard examples via reinforcement learning from verifiable feedback significantly improves social reasoning robustness"
-
-**Paper B**: Clever Hans or Neural Theory of Mind? Stress Testing Social Reasoning in Large L
-  Claim: LLMs show limited, non-robust Theory-of-Mind and rely on shallow heuristics rather than generalized social reasoning.
-  Evidence: "limited and non-robust Theory of Mind abilities, relying on shallow heuristics rather than generalized social reasoning, as shown by failures on adversarial examples"
-
-**Relevance to thesis**: Most direct tension for the thesis: benchmark weakness alone cannot be read as proof that social reasoning is unreachable; targeted training data can improve it. This weakens any overstrong claim that only authentic human data can help.
-**Beat affected**: 4
-**Suggested handling**: Explicitly separate zero-shot benchmark evidence from post-training intervention evidence. Say that untuned LLMs are fragile on social benchmarks, but targeted hard-example training can improve robustness; the open question is how far those gains generalize beyond the trained distribution. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C3: 🔴 CRITICAL — direct_contradiction
-
-**Question**: Do watermark-based provenance signals make AI-generated text reliably detectable?
-
-**Paper A**: A Watermark for Large Language Models
-  Claim: A watermark can be embedded with negligible quality loss and detected efficiently from short text spans without model access.
-  Evidence: The paper presents efficient detection of watermarked text without needing API or parameter access.
-
-**Paper B**: Can AI-Generated Text be Reliably Detected?
-  Claim: Recursive paraphrasing attacks can break watermark-based detection.
-  Evidence: Watermarking is explicitly listed among the detector classes broken by the reported attacks.
-
-**Relevance to thesis**: This weakens any simple provenance-based argument that AI pollution is straightforward to detect after redistribution or rewriting.
-**Beat affected**: 4
-**Suggested handling**: Present watermarking as a cooperative provenance tool for compliant ecosystems, not as a reliable detector once content is transformed or laundered through paraphrase.
-
----
-
-## C2: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Is fresh real/human data necessary in every generation, or can curation make self-consuming loops viable?
-
-**Paper A**: Self-Consuming Generative Models go MAD
-  Claim: Without sufficient fresh real data each generation, self-consuming models inevitably degrade.
-  Evidence: "Without enough fresh real data in each generation... inevitably suffer Model Autophagy Disorder (MAD), losing either quality or diversity"
-
-**Paper B**: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe
-  Claim: Under curated selection, self-consuming synthetic loops can still improve with respect to human preferences.
-  Evidence: "curated data provably optimize human preferences" and "increase expected reward"
-
-**Relevance to thesis**: This is the strongest pro-curation counterexample to a blanket 'fresh human data is required' story. It narrows the thesis to open-ended fidelity and social grounding, not all downstream objectives.
-**Beat affected**: 4
-**Suggested handling**: Acknowledge that 'fresh human data required' is too strong. Reframe as: fresh human data appears important for diversity/tail retention and socially grounded signals, whereas curated synthetic data may suffice for narrower preference-optimization regimes. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
-
----
-
-## C3: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Can recursive use of synthetic data avoid collapse if it remains anchored to real data?
+**Question**: Does recursive synthetic reuse inevitably cause collapse, or can human-preference curation make it beneficial?
 
 **Paper A**: AI models collapse when trained on recursively generated data
-  Claim: Recursive use of synthetic data causes collapse and tail loss.
-  Evidence: "model-generated content in training causes irreversible model collapse"
+  Claim: Indiscriminate recursive training on model-generated data causes irreversible model collapse.
+  Evidence: Reports loss of distribution tails and irreversible degradation across successive generations when model-generated content is reused indiscriminately.
 
-**Paper B**: Universality of the $π^2/6$ Pathway in Avoiding Model Collapse
-  Claim: A mixed real+synthetic regime can avoid collapse across generations.
-  Evidence: "augmenting real data with synthetic data across generations universally preserves a fraction π²/6 of statistical efficiency, avoiding model collapse regardless of the specific model family"
+**Paper B**: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe
+  Claim: Curated synthetic data can improve outcomes rather than collapse, if filtered by human preferences.
+  Evidence: Proves that human-preference curation in self-consuming loops increases expected reward and converges to preference-optimal distributions; authors note this assumes an idealized reward signal.
 
-**Relevance to thesis**: Undermines any unconditional collapse claim. The defensible thesis is about risk under contamination/recursive reuse, not impossibility when a persistent real-data anchor remains.
-**Beat affected**: 4
-**Suggested handling**: Distinguish discard-style recursive retraining from anchored augmentation. Note that collapse results are strongest when synthetic data replace rather than complement real data; mixed regimes are a major counterexample. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
+**Relevance to thesis**: This is the strongest pro-curation counterexample to any blanket claim that synthetic reuse necessarily degrades model quality.
+**Beat affected**: 1
+**Suggested handling**: State explicitly that collapse evidence targets indiscriminate reuse, whereas successful substitution requires a strong verifier/curation signal; note that the positive result is theoretical and depends on well-specified rewards. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
 
 ---
 
-## C2: 🔴 CRITICAL — scope_disagreement
+## C1: 🔴 CRITICAL — scope_disagreement
 
-**Question**: Can retrieval remain a scalable defense once the web itself is polluted with AI-generated content?
+**Question**: Are retrieval-based defenses robust enough to detect paraphrased AI text?
 
 **Paper A**: Paraphrasing evades detectors of AI-generated text, but retrieval is an effectiv
-  Claim: Retrieval-based detection is effective and scalable.
-  Evidence: The paper frames retrieval as a scalable defense after classifier-style detectors are evaded.
+  Claim: Retrieval-based detection is an effective and scalable defense even when paraphrasing defeats standard AI-text detectors.
+  Evidence: Using DIPPER paraphrasing, the paper reports that all current detectors fail, but retrieval-based detection remains effective.
 
-**Paper B**: Retrieval Collapses When AI Pollutes the Web
-  Claim: Heavy AI pollution causes retrieval collapse: source diversity erodes at 67% contamination, and BM25 permits 19-24% adversarial infiltration.
-  Evidence: The study finds large contamination-driven degradation in retrieval quality, while noting only partial resilience from LLM rankers.
+**Paper B**: Can AI-Generated Text be Reliably Detected?
+  Claim: Retrieval-based detectors are not robust under stronger adaptive attacks.
+  Evidence: The paper shows recursive paraphrasing can break watermarking, neural-net, zero-shot, and retrieval-based detectors while maintaining text quality.
 
-**Relevance to thesis**: This supports our caution that open-web defenses may fail exactly when pollution becomes widespread, but it also shows retrieval can still help in cleaner or more controlled settings.
-**Beat affected**: 4
-**Suggested handling**: Separate provider-side provenance retrieval from open-web retrieval. Acknowledge that retrieval can work with trusted reference corpora, but web-scale retrieval degrades as pollution rises.
-
----
-
-## C2: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Is substantial human supervision necessary to align LLMs to human values?
-
-**Paper A**: 10.1613/jair.1.15348
-  Claim: Human participation is central to successful RL systems and should not be minimized away.
-  Evidence: The survey argues that human-centric approaches are key to successful RL and have not been adequately prioritized.
-
-**Paper B**: 10.48550/arxiv.2305.03047
-  Claim: LLMs can be aligned with minimal human supervision using principle-driven self-alignment.
-  Evidence: The paper claims Dromedary can be aligned 'from scratch' with almost no human annotation via principle-driven self-alignment.
-
-**Relevance to thesis**: This directly narrows the space in which we can argue human data remains uniquely valuable. If minimal-supervision self-alignment works, our thesis cannot treat human annotation as universally required for alignment.
-**Beat affected**: 4
-**Suggested handling**: Acknowledge self-alignment as serious counterevidence. Frame the thesis around cases where principle-driven self-alignment may be weak: contested norms, minority perspectives, high-stakes behavioral calibration, and tasks requiring authentic human interaction traces. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+**Relevance to thesis**: Directly undermines any blanket claim that retrieval is a robust reactive filter. At best, retrieval helps under weaker paraphrase attacks; it is not a settled solution.
+**Beat affected**: 1
+**Suggested handling**: State explicitly that retrieval defenses work in some controlled paraphrase settings but fail under stronger adaptive paraphrasing. Use this to justify 'reactive filtering is fragile' rather than claiming retrieval is broadly effective.
 
 ---
 
-## C3: 🔴 CRITICAL — scope_disagreement
+## C1: 🔴 CRITICAL — scope_disagreement
 
-**Question**: Can simulated or AI-generated feedback stand in for human feedback during development of learning-from-feedback methods?
+**Question**: Does longitudinal degradation in one live-web domain justify a broad claim of measurable web-wide degradation relevant to pretraining?
 
-**Paper A**: 10.1613/jair.1.15348
-  Claim: Human-centered interaction remains a core requirement for robust RL and alignment.
-  Evidence: The survey treats RL as inherently human-in-the-loop and argues human-centric approaches are indispensable.
+**Paper A**: Privacy Policies across the Ages: Content of Privacy Policies 1996–2021
+  Claim: A long-running web genre can measurably worsen over time.
+  Evidence: Privacy policies from 1996–2021 show increasing location-data use, implicit data collection, reduced meaningful choice, and more sharing with unnamed third parties.
 
-**Paper B**: 10.48550/arxiv.2305.14387
-  Claim: LLM-generated feedback can proxy for human judgments cheaply and with high agreement in simulation.
-  Evidence: AlpacaFarm reports a simulation framework using LLM-generated feedback that is 50x cheaper than crowdworkers while maintaining high agreement with human evaluations.
+**Paper B**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
+  Claim: Large multi-snapshot web data remains highly usable for pretraining after filtering.
+  Evidence: FineWeb builds 15T tokens from 96 Common Crawl snapshots and reports better LLM performance than other open pretraining datasets.
 
-**Relevance to thesis**: This weakens a blanket argument for ongoing human data collection in feedback pipelines. It suggests humans may be most valuable for final validation or harder domains, not necessarily for every iteration of method development.
-**Beat affected**: 4
-**Suggested handling**: Treat AlpacaFarm as real counterevidence, then immediately note its stated scope limits: relatively simple single-turn instructions and human validation from only 13 crowdworkers. Use that to justify a narrower claim about where human data still matters. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+**Relevance to thesis**: Directly limits any claim that live-web degradation has already been demonstrated at web scale. The strongest temporal evidence is genre-specific, while broad-web downstream evidence still shows filtered web data working well.
+**Beat affected**: 2
+**Suggested handling**: State explicitly that existing temporal degradation evidence is domain-specific rather than web-wide. Use privacy-policy results as proof of drift in particular genres, not as proof that the whole web is measurably degrading for pretraining. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
 
 ---
 
-## C2: 🔴 CRITICAL — scope_disagreement
+## C1: 🔴 CRITICAL — scope_disagreement
 
-**Question**: Can AI feedback substitute for human feedback in aligning models to human preferences?
+**Question**: Can AI-generated feedback replace human feedback for alignment?
 
 **Paper A**: RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Feedback with AI Feedb
-  Claim: AI feedback can match human feedback on key alignment tasks.
-  Evidence: RLAIF is reported as 'comparable to RLHF across summarization and dialogue tasks,' even when the AI labeler is the same model as the policy.
+  Claim: RLAIF can substitute for RLHF on key alignment tasks.
+  Evidence: Reports performance comparable to RLHF on summarization and dialogue, including self-improvement when the AI labeler is the same model as the policy.
 
-**Paper B**: Whose Opinions Do Language Models Reflect?
-  Claim: Instruction tuning does not reliably align models to real human opinion distributions and may amplify bias.
-  Evidence: The paper finds 'substantial misalignment with US demographic group opinions' and says instruct-tuning may 'distort opinion distributions'.
+**Paper B**: Human-in-the-Loop Reinforcement Learning: A Survey and Position on Requirements,
+  Claim: Successful RL remains fundamentally human-in-the-loop.
+  Evidence: Survey explicitly frames RL as a human-in-the-loop paradigm requiring human-centric approaches for successful deployment.
 
-**Relevance to thesis**: Directly supports a narrowed version of the thesis: AI feedback may replace humans on utility benchmarks, but not on socially grounded preference representation.
-**Beat affected**: 4
-**Suggested handling**: Acknowledge that AI feedback is strong for benchmarked summarization/dialogue optimization, but note that this does not imply faithful alignment to diverse human populations or subjective value distributions. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+**Relevance to thesis**: This is the strongest counterevidence to any broad claim that human feedback is generally indispensable. Our thesis only survives if narrowed to socially grounded or deployment-critical settings rather than generic alignment benchmarks.
+**Beat affected**: 2
+**Suggested handling**: State explicitly that AI feedback has real success on bounded, evaluable tasks, but distinguish this from normatively grounded alignment where human oversight and human-defined objectives remain necessary. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ---
 
-## C3: 🔴 CRITICAL — scope_disagreement
+## C1: 🔴 CRITICAL — scope_disagreement
 
-**Question**: Can synthetic instruction data replace human-authored supervision across all alignment objectives?
+**Question**: Does rising AI contamination already make web-based corpora inferior to curated sources for model quality?
+
+**Paper A**: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Da
+  Claim: Properly filtered and deduplicated web data alone can produce LLMs that significantly outperform models trained on curated high-quality corpora.
+  Evidence: RefinedWeb is a web-data-only corpus; Falcon models trained on it are reported to outperform models trained on curated corpora.
+
+**Paper B**: Retrieval Collapses When AI Pollutes the Web
+  Claim: AI-generated web content causes Retrieval Collapse, where synthetic pages dominate search results, reduce source diversity, and admit low-quality or adversarial content.
+  Evidence: Controlled experiments show a two-stage collapse: synthetic content first wins retrieval visibility, then degrades retrieval pipelines.
+
+**Relevance to thesis**: This directly undermines any simple contamination-equals-decline narrative: strong performance from heavily filtered web corpora coexists with strong harm evidence in live retrieval settings.
+**Beat affected**: 1
+**Suggested handling**: State explicitly that current harm evidence is strongest for live retrieval/search ecosystems, not for all pretraining corpora. Use RefinedWeb as a scope limiter: filtered static corpora can still work well even if polluted live web retrieval degrades. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+
+---
+
+## C1: 🔴 CRITICAL — scope_disagreement
+
+**Question**: Can targeted post-training data substantially reduce social-reasoning deficits, or are those deficits mostly intrinsic to current LLMs?
+
+**Paper A**: Neural Theory-of-Mind? On the Limits of Social Intelligence in Large LMs
+  Claim: Out-of-the-box GPT-3 models substantially underperform humans on social intelligence and mental-state reasoning.
+  Evidence: GPT-3 lagged humans by over 30% on social intelligence benchmarks and struggled more on mental-state reasoning than factual questions.
+
+**Paper B**: Social-R1: Towards Human-like Social Reasoning in LLMs
+  Claim: Targeted training on adversarially hard social-reasoning data can materially improve genuine social reasoning and robustness.
+  Evidence: RL with verifiable feedback on hard social reasoning examples significantly improved social reasoning and robustness over superficial pattern matching baselines.
+
+**Relevance to thesis**: Directly affects line 2: it supports the idea that data composition matters, but it weakens any phrasing that treats benchmark failures as evidence of fixed incapacity rather than missing socially targeted post-training data.
+**Beat affected**: 2
+**Suggested handling**: State explicitly that benchmark weakness results are for untargeted models; contrast them with evidence that socially targeted hard-example training can improve outcomes, while noting the two papers evaluate different training conditions. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C3: 🟡 MODERATE — methodological_tension
+
+**Question**: How far can synthetic instruction data replace human-written instruction datasets?
 
 **Paper A**: Self-Instruct: Aligning Language Models with Self-Generated Instructions
-  Claim: Self-generated synthetic instructions can substantially improve instruction following without human-written instructions.
-  Evidence: Self-Instruct reports a 33% improvement on SUPER-NI 'without relying on human-written instructions'.
+  Claim: Synthetic self-generated instruction data can substantially reduce reliance on human-written instruction sets.
+  Evidence: Self-Instruct reports a 33% absolute improvement on SUPERNI over the original GPT-3 using self-generated instructions for fine-tuning.
 
-**Paper B**: BeaverTails: Towards Improved Safety Alignment of LLM via a Human-Preference Dat
-  Claim: Nuanced safety alignment benefits from large human-preference datasets with separate helpfulness and harmlessness labels.
-  Evidence: BeaverTails introduces 333,963 QA pairs with distinct human annotations for helpfulness and harmlessness to enable safety alignment.
+**Paper B**: LIMA: Less Is More for Alignment
+  Claim: A
+  Evidence: N/A
 
-**Relevance to thesis**: This narrows any blanket anti-synthetic claim: synthetic data can replace humans for generic instruction-following, while human-authored supervision remains salient for safety-sensitive and norm-laden objectives.
-**Beat affected**: 4
-**Suggested handling**: Write that synthetic instruction tuning is effective for general instruction-following tasks, but safety alignment appears to need richer, explicitly human-labeled signals than generic self-generated instruction data provides. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C3: 🔴 CRITICAL — scope_disagreement
-
-**Question**: Is web-origin data itself the problem, or only low-quality/junk variants of it?
-
-**Paper A**: LLMs Can Get "Brain Rot"!
-  Claim: Continual pre-training on junk social media data causes persistent declines in reasoning, safety, and long-context understanding.
-  Evidence: Controlled continual pre-training on junk social media induces multifaceted decline that resists large-scale post-hoc tuning.
-
-**Paper B**: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Da
-  Claim: Filtered and deduplicated web-only data can outperform curated corpora in pretraining.
-  Evidence: RefinedWeb reports strong gains from web-only training over curated-corpus baselines.
-
-**Relevance to thesis**: Strongly narrows the thesis: the literature does not support 'web data harms quality' in general; decline appears tied to junky or poorly controlled web inputs, not web provenance alone.
-**Beat affected**: 4
-**Suggested handling**: Avoid blanket language about web data. Contrast junk-social-media continual pretraining with filtered web-only corpora, and argue that source quality and pipeline design mediate outcomes. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+**Relevance to thesis**: N/A
+**Beat affected**: N/A
+**Suggested handling**: State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ---
 
 ## C2: 🔴 CRITICAL — scope_disagreement
 
-**Question**: If we optimize training data for social reasoning, do the core deficits disappear or just move to harder settings?
+**Question**: Is fresh real data required in every generation, or can verification/correction let synthetic data substitute for it?
 
-**Paper A**: Social-R1: Towards Human-like Social Reasoning in LLMs
-  Claim: Social reasoning robustness can be materially improved through targeted adversarial social-training data.
-  Evidence: "significantly improves social reasoning robustness"
+**Paper A**: Self-Consuming Generative Models go MAD
+  Claim: Without enough fresh real data each generation, self-consuming models are doomed to lose quality or diversity.
+  Evidence: Claims Model Autophagy Disorder occurs unless each generation is supplemented with sufficient fresh real data.
 
-**Paper B**: CoMMET: To What Extent Can LLMs Perform Theory of Mind Tasks?
-  Claim: Even with modern LLMs, broader multimodal and multi-turn Theory-of-Mind evaluation still reveals major deficits.
-  Evidence: "revealing significant LLM deficits" on a "multimodal, multi-turn evaluation covering all ATOMS mental states and moral reasoning"
+**Paper B**: Self-Correcting Self-Consuming Loops for Generative Model Training
+  Claim: A verified correction step can stabilize self-consuming loops even without continual fresh human data.
+  Evidence: Shows that adding a correction function that maps samples toward the true distribution makes self-consuming training exponentially more stable.
 
-**Relevance to thesis**: This narrows the thesis rather than overturning it: data composition clearly matters, but gains from text-centric hard-example training may not transfer to richer socially situated settings.
-**Beat affected**: 4
-**Suggested handling**: Acknowledge that data composition can improve social reasoning on targeted distributions, while emphasizing that broader multimodal and interactive benchmarks still show substantial failure modes. Position socially grounded data as a candidate for closing that transfer gap, not as a proven necessity. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C1: 🔴 CRITICAL — methodological_tension
-
-**Question**: Does curated synthetic data avert collapse, or does it only optimize a narrower objective?
-
-**Paper A**: AI models collapse when trained on recursively generated data
-  Claim: Recursive training on model-generated data leads to irreversible collapse of the underlying data distribution.
-  Evidence: "indiscriminate use of model-generated content... causes irreversible model collapse where tails of the original distribution disappear"
-
-**Paper B**: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe
-  Claim: Curated self-consuming loops can improve aligned performance even when training data are synthetic.
-  Evidence: "data curation in self-consuming generative model loops provably increases expected reward and collapses reward variance"
-
-**Relevance to thesis**: Directly constrains any broad anti-synthetic claim: curated synthetic data may fail to preserve rare human-distributional structure while still succeeding on preference/reward objectives.
-**Beat affected**: 4
-**Suggested handling**: Explicitly separate two notions of success in Related Work: preserving the human data distribution versus optimizing a verifier/reward model. State that curated synthetic data can substitute in alignment-style, bounded objective settings, but not necessarily for retaining long-tail socially grounded behavior. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
+**Relevance to thesis**: This directly challenges any strong necessity claim that only fresh human data can prevent recursive degradation.
+**Beat affected**: 1
+**Suggested handling**: Phrase the thesis conditionally: fresh human data is the safest anchor, but verifier-like correction mechanisms may substitute under access to a reliable correction function approximating the true distribution. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
 
 ---
 
-## C1: 🔴 CRITICAL — methodological_tension
+## C2: 🔴 CRITICAL — scope_disagreement
 
-**Question**: Do intrinsic diversity metrics provide strong evidence that live-web drift is already causing practical training degradation?
+**Question**: Does strong benchmark performance under AI-feedback imply that human data is no longer needed for socially grounded alignment?
+
+**Paper A**: RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Feedback with AI Feedb
+  Claim: AI feedback can produce alignment quality comparable to human feedback.
+  Evidence: Comparable RLHF-level results are reported on summarization and dialogue tasks.
+
+**Paper B**: Whose Opinions Do Language Models Reflect?
+  Claim: Instruction-tuned LMs remain socially misaligned with real human opinion distributions.
+  Evidence: Finds substantial misalignment with US demographic groups' opinions, with instruct-tuning shifting outputs toward liberal views.
+
+**Relevance to thesis**: This directly supports our narrowing claim: AI-feedback success on utility-style tasks does not settle socially grounded alignment. Human data remains valuable when the target is plural, demographic, and opinion-sensitive.
+**Beat affected**: 2
+**Suggested handling**: In Related Work, separate task-success alignment from representational social alignment. Cite RLAIF as genuine counterevidence on bounded tasks, then cite opinion-distribution misalignment as the reason human data still matters on socially grounded tasks. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C2: 🔴 CRITICAL — scope_disagreement
+
+**Question**: Does observed web pollution imply that large-scale web pretraining corpora are already net harmful?
+
+**Paper A**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
+  Claim: FineWeb, built from 96 Common Crawl snapshots with systematic deduplication and filtering, yields better-performing LLMs than other open pretraining datasets.
+  Evidence: FineWeb reports superior LLM performance from a 15-trillion-token filtered web corpus.
+
+**Paper B**: Retrieval Collapses When AI Pollutes the Web
+  Claim: AI-generated web pollution structurally degrades retrieval by collapsing source diversity and enabling low-quality infiltration.
+  Evidence: Retrieval Collapse is presented as an empirical consequence of synthetic-content proliferation on the web.
+
+**Relevance to thesis**: FineWeb is a strong counterexample to any blanket claim that more contaminated web data necessarily means worse model quality today.
+**Beat affected**: 1
+**Suggested handling**: Contrast offline corpus construction with live retrieval exposure. Emphasize that contamination risk is rising, but web-scale quality decline is not yet established because aggressive filtering/deduplication can still produce strong pretraining corpora. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+
+---
+
+## C3: 🔴 CRITICAL — methodological_tension
+
+**Question**: Does adding synthetic data across generations inevitably trigger collapse, or can mixed real+synthetic training avoid it?
+
+**Paper A**: Strong Model Collapse
+  Claim: Even very small amounts of synthetic data can induce strong collapse.
+  Evidence: Finds in a high-dimensional regression framework that as little as 1% synthetic data causes strong model collapse, with no benefit from increasing training set size.
+
+**Paper B**: Universality of the $π^2/6$ Pathway in Avoiding Model Collapse
+  Claim: Synthetic augmentation can avoid collapse if real data continues to be included.
+  Evidence: Proves that augmenting real data with synthetic data across generations preserves a statistical efficiency of π²/6 relative to real-only training and avoids collapse.
+
+**Relevance to thesis**: These papers point in opposite directions on the central substitution question; our thesis cannot ignore that some formal analyses predict safe synthetic augmentation.
+**Beat affected**: 1
+**Suggested handling**: Discuss them together as assumption-sensitive theory: one models severe collapse from contamination, the other models a regime with persistent real-data anchoring; avoid universal language about any nonzero synthetic fraction being fatal. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
+
+---
+
+## C4: 🔴 CRITICAL — methodological_tension
+
+**Question**: Can intrinsic metric declines in controlled synthetic-recursion studies be treated as evidence of measurable live-web drift?
 
 **Paper A**: The Curious Decline of Linguistic Diversity: Training Language Models on Synthet
-  Claim: Recursive training on synthetic text causes measurable degradation across generations.
-  Evidence: Reports a consistent decline in lexical, syntactic, and semantic diversity across generations of synthetic retraining.
+  Claim: Synthetic recursion produces measurable degradation on linguistic-diversity metrics.
+  Evidence: Across recursive training generations, lexical, syntactic, and semantic diversity consistently decrease.
 
 **Paper B**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
-  Claim: Modern multi-snapshot filtered web data still trains stronger models.
-  Evidence: FineWeb uses 96 CommonCrawl snapshots with filtering/deduplication and yields better-performing LLMs than other open pretraining datasets.
+  Claim: A broad, temporally distributed web corpus still yields strong downstream results after filtering.
+  Evidence: FineWeb aggregates 96 Common Crawl snapshots and reports improved LLM performance over other open datasets.
 
-**Relevance to thesis**: Directly limits Beat 2: metric decline is real in recursive synthetic loops, but that does not by itself show present-day live-web corpora are broadly degrading model quality.
+**Relevance to thesis**: This is a core evidentiary gap for Beat 2. Metric-based collapse/degradation results show a mechanism under controlled synthetic reuse, but they do not establish that comparable degradation is already measurable on the live web.
 **Beat affected**: 2
-**Suggested handling**: State explicitly that diversity metrics are an early-warning signal for recursive reuse, not yet decisive proof of web-wide pretraining decline; contrast controlled synthetic-loop experiments with filtered open-web training results. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+**Suggested handling**: Do not present synthetic-recursion metric papers as direct evidence of current live-web degradation. Use them as mechanism/risk evidence, then separately note that web-scale temporal measurement remains limited. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
 
 ---
 
-## C3: 🔴 CRITICAL — implicit_tension
+## C2: 🔴 CRITICAL — methodological_tension
 
-**Question**: Do documented crawl-quality pathologies show that scraped web data is already materially degraded as a training source?
+**Question**: Does post-training reliably improve social reasoning, or can it produce brittle gains and even worsen social-competence failures?
 
-**Paper A**: Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Co
-  Claim: Large web crawls contain substantial quality and contamination problems.
-  Evidence: Documents machine-generated text, benchmark contamination, patents, social biases, and disproportionate exclusion of minority voices in C4.
+**Paper A**: Traces of Social Competence in Large Language Models
+  Claim: Post-training helps only partially on false-belief tasks, and some reasoning-oriented fine-tuning makes social-reasoning behavior less robust.
+  Evidence: Across 17 models and 192 false-belief variants, instruction tuning only partially helped; reasoning-oriented fine-tuning amplified problematic response patterns and robustness broke across false/true and explicit/implicit variants.
+
+**Paper B**: Social-R1: Towards Human-like Social Reasoning in LLMs
+  Claim: Carefully designed social-reasoning training improves genuine reasoning rather than just superficial pattern matching.
+  Evidence: Adversarial hard-example RL with verifiable feedback significantly improved genuine social reasoning and robustness.
+
+**Relevance to thesis**: This is the sharpest tension for line 2: it shows that 'better fine-tuning data' is too coarse a claim. Some post-training regimes help, while others create brittle or misleading gains.
+**Beat affected**: 2
+**Suggested handling**: Write that data composition matters conditionally: generic instruction/reasoning fine-tuning is not enough, whereas task-targeted, adversarially constructed social data may help. Do not generalize from one post-training setup to all others. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C2: 🔴 CRITICAL — implicit_tension
+
+**Question**: Can retrieval remain a reliable defense once the web itself is polluted?
+
+**Paper A**: Paraphrasing evades detectors of AI-generated text, but retrieval is an effectiv
+  Claim: Retrieval is an effective and scalable defense for detecting AI-generated text.
+  Evidence: The paper argues retrieval succeeds where detector-style methods fail on paraphrased text.
+
+**Paper B**: Retrieval Collapses When AI Pollutes the Web
+  Claim: AI-generated web content can corrupt retrieval pipelines themselves.
+  Evidence: The paper reports a two-stage Retrieval Collapse in which synthetic content dominates search results, erodes source diversity, and later enables low-quality or adversarial content to infiltrate retrieval.
+
+**Relevance to thesis**: This is a key tension for the web-pollution question: retrieval may work only while the reference corpus is trusted. If the corpus is polluted, retrieval stops being a clean defense.
+**Beat affected**: 1
+**Suggested handling**: Separate 'retrieval as a detector against a trusted corpus' from 'retrieval over a polluted web.' Note that the latter can collapse, so retrieval is not a complete answer to web-scale pollution detection.
+
+---
+
+## C2: 🔴 CRITICAL — implicit_tension
+
+**Question**: Has rising AI-generated content on the live web already translated into measurable degradation of web-scale pretraining data?
+
+**Paper A**: The Rise of AI-Generated Content in Wikipedia
+  Claim: AI-generated content is measurably increasing in a major live-web knowledge source.
+  Evidence: For newly created Wikipedia pages after GPT-3.5, detectors estimate at least 5% are AI-generated at a 1% false-positive threshold.
 
 **Paper B**: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Da
-  Claim: Those problems do not prevent web-only corpora from outperforming curated mixtures when processing is improved.
-  Evidence: RefinedWeb argues filtered and deduplicated web data alone significantly outperforms curated corpora.
+  Claim: Web-only training data can still beat curated corpora when properly filtered.
+  Evidence: RefinedWeb reports that deduplicated, filtered web data alone significantly outperforms models trained on curated high-quality corpora.
 
-**Relevance to thesis**: This is a core tension for Beat 2: contamination and skew are real, yet practical model performance can remain strong after aggressive filtering.
+**Relevance to thesis**: This undermines any strong claim that observed live-web AI contamination is already causing broad downstream degradation. Contamination growth is real in at least one important domain, but current evidence does not show that it has yet broken web-scale pretraining.
 **Beat affected**: 2
-**Suggested handling**: Do not equate 'documented corpus pathology' with 'observed training failure.' Say that degradation evidence depends heavily on the data-construction pipeline and the evaluation criterion. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+**Suggested handling**: Frame the result as 'rising contamination risk with localized temporal evidence,' not as proven ecosystem-wide degradation. Emphasize that current practical harm appears at least partly mitigable by filtering. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
 
 ---
 
-## C5: 🟡 MODERATE — scope_disagreement
+## C5: 🔴 CRITICAL — implicit_tension
 
-**Question**: Are high detector accuracy numbers enough to claim reliable real-world detection?
+**Question**: Is human feedback straightforwardly beneficial for alignment, or can it systematically inject the wrong social behavior?
 
-**Paper A**: Distinguishing Reality from AI: Approaches for Detecting Synthetic Content
-  Claim: Hybrid multimodal detection approaches achieve up to 92% accuracy, outperforming single-modality methods.
-  Evidence: The survey highlights top-line gains from combining modalities.
+**Paper A**: OpenAssistant Conversations -- Democratizing Large Language Model Alignment
+  Claim: Large-scale human-generated conversation data is a valuable resource for democratizing alignment.
+  Evidence: Presents a crowdsourced human conversation dataset and motivates human-generated data as central to open-source alignment research.
 
-**Paper B**: Simple techniques to bypass GenAI text detectors: implications for inclusive edu
-  Claim: Simple post-processing manipulations reduce GenAI text detector accuracy by 17.4%, making them unreliable for academic-integrity enforcement.
-  Evidence: The study reports sizable accuracy drops across six major detectors under simple bypass techniques.
+**Paper B**: AI Supported Degradation of the Self Concept: A Theoretical Framework Grounded i
+  Claim: Human-feedback training can actively encourage sycophancy.
+  Evidence: Reports that assistants finetuned with human feedback consistently show sycophantic behavior because preference data rewards agreement with user beliefs over truth.
 
-**Relevance to thesis**: This narrows blanket skepticism: some hybrid systems look strong on benchmarks, but it also reinforces that deployed text-only detection is brittle under light editing.
-**Beat affected**: 4
-**Suggested handling**: Do not cite benchmark accuracy as proof of robust detection. Note the scope gap between multimodal lab performance and adversarial, text-only, real-world use.
+**Relevance to thesis**: This undermines any naive version of our thesis that 'more human data is better.' Human data can be uniquely valuable for social grounding, but badly designed human preference collection can also damage truthfulness.
+**Beat affected**: 2
+**Suggested handling**: Be explicit that the value of human data depends on annotation protocol and target behavior. Frame the thesis around representative, truth-sensitive, behaviorally diverse human data, not human feedback in the abstract. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ---
 
-## C6: 🟡 MODERATE — scope_disagreement
+## C2: 🔴 CRITICAL — implicit_tension
 
-**Question**: Do successful prevalence studies in bounded domains show that web-scale AI pollution is readily detectable?
+**Question**: Can self-alignment with minimal human supervision align models to human values in a socially meaningful sense?
 
-**Paper A**: AI See What You Did There – The Prevalence of LLM-Generated Answers in MOOC Resp
-  Claim: AI-generated answers are highly prevalent in MOOC submissions and can be identified through textual analysis metrics over 4,045 responses.
-  Evidence: The paper reports high prevalence and identifiability within a constrained educational corpus.
+**Paper A**: Principle-Driven Self-Alignment of Language Models from Scratch with Minimal Hum
+  Claim: Models can self-align to human values with minimal human supervision.
+  Evidence: SELF-ALIGN claims principle-driven reasoning can achieve competitive alignment without extensive human annotations.
 
-**Paper B**: Detecting AI-Generated Text: Factors Influencing Detectability with Current Meth
-  Claim: General detectability is highly contingent on domain, generator, and detector, making universal detection difficult.
-  Evidence: The survey emphasizes strong dependence on domain and method rather than stable cross-context detectability.
+**Paper B**: Whose Opinions Do Language Models Reflect?
+  Claim: Alignment tuning can still leave models socially misaligned with real human groups.
+  Evidence: Language models show substantial misalignment with US demographic groups' opinions, and instruct-tuning consistently distorts outputs toward liberal views.
 
-**Relevance to thesis**: This matters for honesty in framing: positive detection in a narrow classroom setting is not evidence that open-web contamination can be measured reliably at scale.
-**Beat affected**: 4
-**Suggested handling**: Use MOOC results only as domain-specific prevalence evidence. Avoid extrapolating them to web-wide pollution or general detector reliability.
+**Relevance to thesis**: This is a core risk for our argument line: benchmark-level self-alignment success does not establish alignment to plural, socially grounded human values. If we overgeneralize, this contradiction undermines the thesis.
+**Beat affected**: 2
+**Suggested handling**: Separate generic assistant helpfulness from demographic or societal representativeness. Present self-alignment as promising for some behaviors, not as evidence that human-authored supervision is unnecessary for socially grounded alignment. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ---
 
 ## C4: 🟡 MODERATE — scope_disagreement
 
-**Question**: Do longitudinal temporal measurements establish broad web degradation, or only degradation within specific genres?
+**Question**: Can curated synthetic data substitute for fresh human data in self-consuming training loops?
 
-**Paper A**: WWW - Privacy Policies over Time: Curation and Analysis of a Million-Document Da
-  Claim: A web genre becomes worse over time on readability and ambiguity measures.
-  Evidence: Shows privacy policies are becoming longer, harder to read, and more ambiguous over time, while underreporting third parties and tracking.
+**Paper A**: Self-Consuming Generative Models go MAD
+  Claim: Fresh real data is needed each generation to avoid autophagy.
+  Evidence: States self-consuming generative models are doomed to MAD without enough fresh real data in each generation.
 
-**Paper B**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
-  Claim: Aggregate filtered web snapshots remain an excellent training source.
-  Evidence: FineWeb aggregates 96 CommonCrawl snapshots and still produces better-performing LLMs than other open datasets.
+**Paper B**: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe
+  Claim: Curated synthetic data can substitute for fresh human data when selection is guided by human preferences.
+  Evidence: Shows preference-curated synthetic reuse improves expected reward and converges to a preference-optimal distribution instead of collapsing.
 
-**Relevance to thesis**: This narrows Beat 2 by showing that clear temporal degradation in one institutional genre does not automatically imply overall web-text degradation for pretraining.
-**Beat affected**: 2
-**Suggested handling**: Use privacy-policy studies as domain-specific evidence of live-web drift, but avoid generalizing from genre deterioration to whole-web training collapse. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+**Relevance to thesis**: This is a direct tension over whether 'fresh human data' is a hard requirement or only one way to supply a trustworthy selection signal.
+**Beat affected**: 1
+**Suggested handling**: Clarify that 'fresh human data' and 'human preference supervision over synthetic data' are different interventions; the latter may work if the preference signal is accurate and sustained. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
 
 ---
 
 ## C5: 🟡 MODERATE — scope_disagreement
 
-**Question**: Does direct longitudinal evidence of worsening web content imply that current crawl mixtures are degrading overall?
-
-**Paper A**: Privacy Policies across the Ages: Content of Privacy Policies 1996–2021
-  Claim: Over 25 years, privacy policies have drifted toward more intrusive and opaque content.
-  Evidence: Finds increasing use of location data, implicitly collected data, and sharing with unnamed third parties from 1996 to 2021.
-
-**Paper B**: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Da
-  Claim: Even without curated sources, processed web data can be highly competitive.
-  Evidence: RefinedWeb reports web-data-only pretraining significantly outperforms curated-corpus baselines.
-
-**Relevance to thesis**: Again limits how far Beat 2 can go: measurable temporal deterioration exists, but its relevance to general pretraining quality is not settled.
-**Beat affected**: 2
-**Suggested handling**: Present this as a boundary condition: some live-web subdomains demonstrably worsen over time, yet broad pretraining utility may persist after selection and cleanup. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
-
----
-
-## C4: 🟡 MODERATE — methodological_tension
-
-**Question**: Is explicit RLHF the crucial ingredient for alignment, or can simpler preference-optimization methods achieve the same result?
-
-**Paper A**: 10.1613/jair.1.15348
-  Claim: Alignment should be understood through a human-in-the-loop RL lens, with human-centric RL as a core paradigm.
-  Evidence: The survey positions RL itself as fundamentally human-in-the-loop and central to successful systems.
-
-**Paper B**: 10.48550/arxiv.2305.18290
-  Claim: The RLHF optimization stage can be removed without losing performance.
-  Evidence: DPO uses a simple cross-entropy objective and reports matching or exceeding RLHF performance without reinforcement learning.
-
-**Relevance to thesis**: This does not show human data is unnecessary, but it does undermine any claim that the RLHF machinery itself is where human value resides. It shifts the argument toward the source and content of preferences rather than the RL algorithm.
-**Beat affected**: 4
-**Suggested handling**: State clearly that recent work separates human preference information from the PPO-style RLHF pipeline. Our paper should argue about when authentic human signals matter, not imply that online RLHF is always required. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C5: 🟡 MODERATE — methodological_tension
-
-**Question**: Do alignment gains require full RLHF pipelines, or can lightweight ranking-based optimization suffice once preference signals exist?
-
-**Paper A**: 10.1613/jair.1.15348
-  Claim: Human-in-the-loop RL remains a central conceptual model for successful alignment.
-  Evidence: The survey emphasizes human-centric RL as fundamental rather than incidental.
-
-**Paper B**: 10.48550/arxiv.2304.05302
-  Claim: A simpler ranking-based objective can match PPO-style RLHF alignment performance.
-  Evidence: RRHF aligns models by ranking sampled responses with conditional log-probabilities and reports performance comparable to PPO while being simpler to train and scale.
-
-**Relevance to thesis**: Like DPO, RRHF narrows where human data is plausibly indispensable. It suggests that once preference information exists, heavy RLHF infrastructure may not be necessary.
-**Beat affected**: 4
-**Suggested handling**: Mention RRHF alongside DPO as evidence that the field is collapsing the optimization stack around preference learning. Then clarify that our thesis concerns the provenance and groundedness of preference data, not a defense of complex RLHF pipelines. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C4: 🟡 MODERATE — methodological_tension
-
-**Question**: Does a preference-optimization stage materially improve alignment, or is it brittle and dependent on data-collection details?
-
-**Paper A**: Zephyr: Direct Distillation of LM Alignment
-  Claim: AI-feedback preference distillation can produce very strong alignment gains cheaply and simply.
-  Evidence: Zephyr claims a 7B model aligned with AI-feedback DPO can outperform LLaMA2-Chat-70B on MT-Bench without PPO.
-
-**Paper B**: OpenAssistant Conversations -- Democratizing Large Language Model Alignment
-  Claim: Even with human feedback data, RLHF may fail to consistently improve over SFT.
-  Evidence: OpenAssistant notes RLHF 'did not uniformly improve over SFT models,' likely due reward-model training on human-generated rather than model-generated messages.
-
-**Relevance to thesis**: The disagreement is not only about human vs AI feedback; it also shows that conclusions depend heavily on pipeline design and evaluation choice. This weakens simple generalizations from either camp.
-**Beat affected**: 4
-**Suggested handling**: Frame this as a methodological split: preference optimization can look highly effective under some data/evaluation setups, but brittle under others. Avoid treating any single alignment recipe as settled. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
-
----
-
-## C5: 🟡 MODERATE — implicit_tension
-
-**Question**: Is provenance the main bottleneck, or can aggressive data-quality engineering offset lack of fresh human collection?
+**Question**: Are collapse results about recursive reuse still expected when real data is retained and synthetic data is curated or mixed in?
 
 **Paper A**: AI models collapse when trained on recursively generated data
-  Claim: Synthetic recursive reuse destroys important low-frequency structure in the training distribution.
-  Evidence: "tails of the original distribution disappear due to compounding statistical and functional approximation errors"
+  Claim: Recursive use of model-generated content produces irreversible collapse.
+  Evidence: Documents tail-disappearance and irreversible degradation over generations under recursive reuse.
 
-**Paper B**: Yi: Open Foundation Models by 01.AI
-  Claim: Careful curation can dominate scale and architecture in practice.
-  Evidence: "data quality engineering rather than architectural innovation" and "smaller models on higher-quality data outperform larger models on lower-quality data"
+**Paper B**: Universality of the $π^2/6$ Pathway in Avoiding Model Collapse
+  Claim: Recursive training need not collapse if synthetic data augments rather than replaces real data.
+  Evidence: Shows a universal π²/6-efficiency pathway in which real-data augmentation with synthetic data across generations avoids model collapse.
 
-**Relevance to thesis**: Indirectly weakens any simple provenance-first story by showing that curation quality can outweigh raw scale on benchmark performance, even if this does not specifically validate synthetic substitution.
-**Beat affected**: 4
-**Suggested handling**: Use this as a boundary-setting citation: curation clearly matters a great deal for mainstream LM performance, but that does not resolve whether curated synthetic data preserves socially grounded, behaviorally authentic, long-tail human signals. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
+**Relevance to thesis**: This narrows the thesis from 'recursive synthetic reuse is dangerous' to the more defensible 'replacement-style or weakly filtered reuse is dangerous.'
+**Beat affected**: 1
+**Suggested handling**: In Related Work, distinguish replacement regimes from augmentation regimes and say that collapse is not yet theoretically or empirically universal once real-data anchoring is preserved. Quantify how many papers in this focus support collapse risk versus mitigation so the corpus does not appear one-sided.
 
 ---
 
-## C4: 🟡 MODERATE — implicit_tension
+## C3: 🟡 MODERATE — scope_disagreement
 
-**Question**: Do current detection methods justify strong claims that AI content is already dominating the web?
+**Question**: Do high-performing domain-specific classifiers show that web pollution is broadly detectable?
 
-**Paper A**: The Dead Internet Theory: Investigating the Rise of AI-Generated Content and Bot
-  Claim: The Dead Internet Theory is substantiated by growing evidence that bots and AI-generated content increasingly dominate online interactions.
-  Evidence: The paper claims growing evidence for AI/bot dominance fundamentally altering the internet's structure.
+**Paper A**: From Perceptions To Evidence: Detecting AI-Generated Content In Turkish News Med
+  Claim: A fine-tuned classifier can reliably detect AI-rewritten news and estimate prevalence over time.
+  Evidence: The paper reports 97.08% F1 on Turkish news and claims cross-source, temporally stable prevalence estimates from 2023 to 2026.
 
 **Paper B**: Detecting AI-Generated Text: Factors Influencing Detectability with Current Meth
-  Claim: Universal detection is highly challenging because detectability depends on generation method, domain, and detection approach.
-  Evidence: The survey concludes detectability varies across interacting factors and general detection remains difficult.
+  Claim: No current detection method is universally reliable across models and domains.
+  Evidence: The survey concludes detectability depends on interacting factors including generation model, domain, and detection method, so no single approach is universally reliable.
 
-**Relevance to thesis**: This creates a scale-estimation problem: broad claims about web domination may outrun what current detectors can actually verify.
-**Beat affected**: 4
-**Suggested handling**: Treat web-domination claims as suggestive rather than settled. Emphasize that scale estimates remain uncertain without auditable provenance or stronger measurement methods.
+**Relevance to thesis**: This narrows the thesis: we cannot say detection is impossible. Some narrow-domain, task-specific detectors work well. But those results do not establish open-web detectability.
+**Beat affected**: 1
+**Suggested handling**: Present such studies as positive but scoped evidence: detector-based prevalence estimation can work in homogeneous domains, yet this does not prove reliable web-scale contamination measurement.
 
 ---
 
-## C4: 🟡 MODERATE — implicit_tension
+## C4: 🟡 MODERATE — scope_disagreement
 
-**Question**: Does rising AI-generated content in major web knowledge sources prove downstream quality decline for filtered web corpora?
+**Question**: Can provenance-style watermarking make synthetic text reliably detectable?
 
-**Paper A**: The Rise of AI-Generated Content in Wikipedia
-  Claim: AI-generated content in newly created Wikipedia pages has increased markedly since GPT-3.5, establishing lower bounds on contamination in a major source.
-  Evidence: Study finds a marked post-GPT-3.5 increase in AI-generated newly created Wikipedia pages.
+**Paper A**: A Watermark for Large Language Models
+  Claim: LLM outputs can be watermarked with negligible quality loss and detected statistically without model access.
+  Evidence: The paper proposes a computationally efficient watermark detectable by a z-test on green-list token frequency.
 
-**Paper B**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
-  Claim: Despite web-scale noise, systematic filtering and deduplication still yield a stronger pretraining corpus.
-  Evidence: FineWeb's filtered 15-trillion-token dataset produces better-performing LLMs than other open pretraining datasets.
+**Paper B**: Can AI-Generated Text be Reliably Detected?
+  Claim: Watermark-based detection is not robust to adaptive rewriting.
+  Evidence: The paper reports that recursive paraphrasing attacks can break watermarking while maintaining text quality.
 
-**Relevance to thesis**: This blocks an overly linear argument from contamination prevalence to quality decline: contamination can be rising in important sources without implying that all filtered web corpora are already low-value.
-**Beat affected**: 4
-**Suggested handling**: Use Wikipedia contamination as provenance-risk evidence, but do not treat prevalence estimates as direct causal evidence of pretraining-quality collapse; explicitly say filtering pipelines may buffer some of this contamination. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+**Relevance to thesis**: This weakens any overbroad claim that detection defenses are uniformly brittle, because watermarking is promising under cooperative generation. But it also shows watermarking is not a clean retrofit for existing polluted web text.
+**Beat affected**: 1
+**Suggested handling**: Describe watermarking as a prospective, cooperative provenance mechanism rather than a general solution to current web pollution. Pair it with the attack paper to show its limits under rewriting.
+
+---
+
+## C3: 🟡 MODERATE — scope_disagreement
+
+**Question**: Do observed quality pathologies in web corpora imply that web data is already inferior to curated corpora for pretraining?
+
+**Paper A**: Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Co
+  Claim: Major web corpora contain serious quality and representational problems.
+  Evidence: The C4 audit finds machine-generated text, benchmark contamination, social biases, and blocklist filtering that disproportionately excludes minority voices.
+
+**Paper B**: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Da
+  Claim: Those problems do not prevent filtered web-only corpora from being highly competitive.
+  Evidence: RefinedWeb shows properly filtered and deduplicated web data alone can significantly outperform curated high-quality corpora.
+
+**Relevance to thesis**: This narrows Beat 2: raw-web pathologies are real, but they do not by themselves prove measurable degradation of the usable training distribution after modern filtering.
+**Beat affected**: 2
+**Suggested handling**: Distinguish sharply between raw-web audits and post-filter training performance. Argue that pathology evidence motivates caution, but not the stronger claim that current filtered web corpora are already broadly degraded. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+
+---
+
+## C3: 🟡 MODERATE — scope_disagreement
+
+**Question**: Can LLM-simulated human feedback stand in for real human preferences?
+
+**Paper A**: AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback
+  Claim: Simulated human feedback is a practical substitute for human labels in alignment research.
+  Evidence: Claims LLM-simulated feedback is 50x cheaper and shows high agreement with human preferences.
+
+**Paper B**: Whose Opinions Do Language Models Reflect?
+  Claim: Real human preferences are heterogeneous and socially structured in ways current tuning fails to capture.
+  Evidence: Shows demographic opinion misalignment and systematic distributional bias after instruct-tuning.
+
+**Relevance to thesis**: This tension matters because AlpacaFarm-like simulation is real counterevidence for low-cost feedback pipelines, but its evidence base is much narrower than the social-pluralism problem our thesis emphasizes.
+**Beat affected**: 2
+**Suggested handling**: Acknowledge simulated feedback as useful for method iteration, but note that agreement on simple instruction tasks is not evidence that it captures pluralistic social preferences. Mention AlpacaFarm's single-turn and limited-human-validation scope. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C5: 🟡 MODERATE — scope_disagreement
+
+**Question**: Does rising AI-generated content in major web sources prove current pretraining-quality decline?
+
+**Paper A**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
+  Claim: A carefully filtered web corpus can still improve LLM quality relative to other open pretraining datasets.
+  Evidence: FineWeb reports better-performing LLMs from filtered Common Crawl-scale data.
+
+**Paper B**: The Rise of AI-Generated Content in Wikipedia
+  Claim: AI-generated content in recently created Wikipedia pages has markedly increased, with at least 5% of new pages detected as AI-generated at a 1% false positive threshold.
+  Evidence: The study measures post-GPT-3.5 growth of AI-generated material in a major knowledge source.
+
+**Relevance to thesis**: This weakens any inference from 'contamination is rising in important sources' to 'usable web pretraining quality is already declining overall.'
+**Beat affected**: 1
+**Suggested handling**: Use the Wikipedia paper as evidence that contamination pressure is real and increasing, but explicitly avoid overclaiming that this already causes net pretraining decline across filtered multi-source corpora. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+
+---
+
+## C3: 🟡 MODERATE — scope_disagreement
+
+**Question**: Do social-data interventions generalize across the full space of social reasoning tasks?
+
+**Paper A**: CoMMET: To What Extent Can LLMs Perform Theory of Mind Tasks?
+  Claim: LLMs retain major weaknesses on harder forms of Theory of Mind even if some simpler social tasks are handled well.
+  Evidence: Models performed well on emotion and desire tasks but struggled with complex multi-state reasoning and moral reasoning in multimodal settings.
+
+**Paper B**: Social-R1: Towards Human-like Social Reasoning in LLMs
+  Claim: Targeted training can significantly improve social reasoning robustness.
+  Evidence: Hard social-reasoning training via RLVF produced significant gains in social reasoning and robustness.
+
+**Relevance to thesis**: This narrows the thesis: positive data-composition results may be real but still fail to cover multimodal, moral, or higher-order multi-state social reasoning.
+**Beat affected**: 2
+**Suggested handling**: Bound claims carefully to the evaluated task family. Note that improvements on text-based or adversarial social datasets do not yet establish broad social competence across multimodal and moral ToM benchmarks. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C4: 🟡 MODERATE — methodological_tension
+
+**Question**: For alignment, are curated demonstrations enough, or do preference-optimization methods still add essential value?
+
+**Paper A**: Direct Preference Optimization: Your Language Model is Secretly a Reward Model
+  Claim: Preference optimization remains a strong route to alignment even without RL machinery.
+  Evidence: DPO trains directly from human preference data with a simple cross-entropy objective and matches or exceeds RLHF.
+
+**Paper B**: LIMA: Less Is More for Alignment
+  Claim: Carefully curated supervised data alone can be enough for competitive alignment.
+  Evidence: LIMA reports competitive performance from fine-tuning on only 1,000 curated examples and explicitly omits RLHF.
+
+**Relevance to thesis**: This is central to the curation-vs-RLHF framing. If LIMA is right, the scarce resource may be high-quality human demonstrations; if DPO is right, human preference comparisons still matter, but complex RLHF may not.
+**Beat affected**: 2
+**Suggested handling**: Present curation and preference optimization as rival but partly compatible routes. Avoid claiming that RLHF-style preference learning is always necessary; instead say the literature disagrees on whether extra preference optimization is needed once demonstrations are high quality. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C6: 🟡 MODERATE — methodological_tension
+
+**Question**: Can scalable ranking/proxy methods recover alignment as well as richer human-data pipelines?
+
+**Paper A**: RRHF: Rank Responses to Align Language Models with Human Feedback without tears
+  Claim: Simple ranking-based preference optimization can achieve RLHF-level alignment.
+  Evidence: RRHF reports performance comparable to PPO by ranking sampled responses using log conditional probabilities, while being simpler to train and scale.
+
+**Paper B**: OpenAssistant Conversations -- Democratizing Large Language Model Alignment
+  Claim: Alignment outcomes remain highly sensitive to the construction of human data and reward targets.
+  Evidence: OpenAssistant notes its RLHF models did not show uniform improvement over SFT and suggests reward-model training data mismatch as an explanation.
+
+**Relevance to thesis**: This tension cautions against telling a one-variable story. Some papers imply optimization is the main issue; others imply human data provenance and pairing choices determine whether preference learning helps at all.
+**Beat affected**: N/A
+**Suggested handling**: Write that the field disagrees on whether alignment gains come mainly from better objectives or better human data. Use RRHF as real counterevidence to any 'human-data-only' story, but note OpenAssistant's evidence that data construction can dominate method State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C4: 🟡 MODERATE — methodological_tension
+
+**Question**: Are systematic filtering and deduplication sufficient to resolve contamination concerns in web corpora?
+
+**Paper A**: The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale
+  Claim: Systematic filtering and deduplication at Common Crawl scale can produce a better pretraining corpus.
+  Evidence: FineWeb attributes stronger LLM performance to large-scale filtering and dedup across 96 crawl snapshots.
+
+**Paper B**: Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Co
+  Claim: Even a prominent cleaned web corpus still contains machine-generated text and benchmark contamination, and cleaning choices can suppress minority voices.
+  Evidence: The C4 audit finds both residual contamination and social skew introduced by filtering.
+
+**Relevance to thesis**: This is a scope limiter on filtered-web optimism: better benchmark performance does not imply that contamination or documentation problems have been solved.
+**Beat affected**: 1
+**Suggested handling**: Acknowledge FineWeb as evidence that filtering can materially improve utility, but pair it with C4 to argue that documentation and auditing remain necessary because filtering can hide tradeoffs. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
 
 ---
 
 ## C5: 🟡 MODERATE — implicit_tension
 
-**Question**: Do documented CommonCrawl flaws preclude competitive downstream performance in other modalities?
+**Question**: Has large-scale web pollution already been demonstrated, or do detection limits still block that inference?
 
-**Paper A**: Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Co
-  Claim: CommonCrawl-derived C4 has notable contamination and bias problems.
-  Evidence: C4 analysis identifies machine-generated text, benchmark contamination, and socially skewed filtering effects.
+**Paper A**: The Dead Internet Theory: Investigating the Rise of AI-Generated Content and Bot
+  Claim: The internet is being fundamentally undermined by growing AI-generated content and bot dominance, especially since 2016-2017.
+  Evidence: The paper frames current cyberspace as increasingly dominated by AI-generated content and bots.
 
-**Paper B**: Demystifying CLIP Data
-  Claim: Careful metadata-driven curation and balancing of raw CommonCrawl can outperform a strong proprietary dataset in vision-language pretraining.
-  Evidence: MetaCLIP's curated CommonCrawl-derived data outperforms CLIP's proprietary data source.
+**Paper B**: Detecting AI-Generated Text: Factors Influencing Detectability with Current Meth
+  Claim: Current detection methods are too condition-dependent to support universal inferences about synthetic text prevalence.
+  Evidence: The survey emphasizes that detectability varies by model, domain, and method, and that no single approach is universally reliable.
 
-**Relevance to thesis**: This extends the scope limiter beyond text-only LLMs: documented web-corpus flaws are real, but they do not make web-derived data noncompetitive once curation is strong.
-**Beat affected**: 4
-**Suggested handling**: Acknowledge documentation papers as governance and bias warnings, then note that multimodal evidence also shows rehabilitated CommonCrawl can remain high-performing. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
+**Relevance to thesis**: This supports our caution that rising pollution is plausible but not yet proven at true web scale. Sweeping prevalence claims can outrun the reliability of available detection methods.
+**Beat affected**: 1
+**Suggested handling**: Treat broad 'dead internet' style claims as motivation or hypothesis, not as settled evidence. Contrast them with the survey literature on detection limits and reserve stronger language for scoped domains.
 
 ---
 
-## C3: 🟡 MODERATE — implicit_tension
+## C6: 🟡 MODERATE — implicit_tension
 
-**Question**: Can high-quality synthetic conversation data replace human-origin data for socially competent behavior?
+**Question**: Is 'data quality engineering' a sufficient answer to contamination and authenticity concerns?
 
-**Paper A**: Enhancing Chat Language Models by Scaling High-quality Instructional Conversatio
-  Claim: Large-scale, diverse, high-quality synthetic instructional conversations substantially improve chat-model performance without human queries.
-  Evidence: "Scaling diverse, high-quality synthetic instructional conversation data (UltraChat) significantly improves open-source chat language models without requiring human queries"
+**Paper A**: Yi: Open Foundation Models by 01.AI
+  Claim: Model performance is primarily attributable to data quality engineering; smaller models on higher-quality data can outperform larger models on lower-quality data.
+  Evidence: Yi attributes its gains mainly to data-quality work rather than architecture.
 
-**Paper B**: Clever Hans or Neural Theory of Mind? Stress Testing Social Reasoning in Large L
-  Claim: Strong chat behavior does not imply robust social reasoning; LLMs still fail adversarial Theory-of-Mind stress tests.
-  Evidence: "LLMs exhibit limited and non-robust Theory of Mind abilities" and fail on adversarial examples
+**Paper B**: Documenting Large Webtext Corpora: A Case Study on the Colossal Clean Crawled Co
+  Claim: Web-corpus cleaning pipelines can still leave contamination and impose representational costs, including disproportionate exclusion of minority voices.
+  Evidence: The C4 audit shows that common filtering decisions affect both corpus integrity and social coverage.
 
-**Relevance to thesis**: Important tension for any claim favoring socially grounded human data: synthetic conversation data can clearly improve general chat quality, but benchmark evidence suggests those gains do not automatically become robust social reasoning.
-**Beat affected**: 4
-**Suggested handling**: Write that synthetic dialogue data is effective for broad instruction/chat performance, but current evidence does not show that it substitutes for socially grounded data on adversarial social reasoning. Avoid claiming synthetic data is uniformly inadequate; say its success is task-dependent. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+**Relevance to thesis**: This creates a real tension between optimization-for-performance and documentation-for-authenticity. It limits any move from 'quality engineering works' to 'contamination problems are solved.'
+**Beat affected**: 1
+**Suggested handling**: Define 'quality' carefully in writing: benchmark and scaling gains should be discussed separately from provenance, leakage, and representation. Cite Yi for utility and C4 for why documentation still matters. State explicitly that the corpus still lacks a direct post-2022 web-scale contamination audit; this supports a rising-risk claim, not demonstrated general failure.
 
 ---
 
 ## C4: 🟡 MODERATE — implicit_tension
 
-**Question**: Does careful curation of a very small dataset suffice for social intelligence, or only for superficial alignment?
+**Question**: Is social reasoning mostly a latent capability that can be unlocked with a very small curated dataset?
 
 **Paper A**: LIMA: Less Is More for Alignment
-  Claim: A tiny set of 1,000 carefully curated examples can yield competitive aligned behavior, supporting the Superficial Alignment Hypothesis.
-  Evidence: "Fine-tuning a 65B LLaMA model on only 1,000 carefully curated examples without RLHF produces competitive performance"
+  Claim: A small, carefully curated fine-tuning set can produce strong aligned behavior, supporting the Superficial Alignment Hypothesis.
+  Evidence: A 65B LLaMA fine-tuned on only 1,000 curated examples achieved competitive performance with state-of-the-art models.
 
 **Paper B**: Neural Theory-of-Mind? On the Limits of Social Intelligence in Large LMs
-  Claim: Scaling and generic pretrained competence are not enough for social intelligence; GPT-3 still lags humans by over 30% on mental-state reasoning tasks.
-  Evidence: "GPT-3 models lag behind humans by over 30% on social intelligence tasks and struggle with mental state reasoning"
+  Claim: Large pretrained models still show large deficits on social intelligence benchmarks.
+  Evidence: GPT-3 was over 30% below humans on social intelligence benchmarks and especially weak on mental-state reasoning.
 
-**Relevance to thesis**: This is a real but indirect tension: curation can strongly affect generic alignment behavior, yet that should not be conflated with genuine social reasoning. It supports a narrower thesis that composition matters, while warning against overinterpreting chat-style gains.
-**Beat affected**: 4
-**Suggested handling**: Use this pair to distinguish alignment/helpfulness from social reasoning. State that small, curated datasets can produce impressive conversational alignment, but benchmark evidence shows that such gains do not establish Theory-of-Mind competence. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+**Relevance to thesis**: This undermines any easy inference from general alignment success to socially grounded reasoning. If LIMA-style small curation were sufficient in general, the large ToM gap would be less expected.
+**Beat affected**: 2
+**Suggested handling**: Explicitly separate general chat alignment/helpfulness from social reasoning. Cite LIMA as evidence that small curated data can strongly shape assistant behavior, but note that it does not establish robust ToM or social-grounding competence. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ---
 
-## C5: 🟢 MINOR — implicit_tension
+## C5: 🟡 MODERATE — implicit_tension
 
-**Question**: Is large-scale synthetic instruction generation the main route to reducing human supervision, or can a very small curated human set do as well?
+**Question**: Can small high-quality instruction tuning reliably surface latent social competence, or are socially grounded tasks unusually resistant?
 
-**Paper A**: WizardLM: Empowering large pre-trained language models to follow complex instruc
-  Claim: Scaling synthetic, increasingly complex instructions is an effective substitute for manual instruction authoring.
-  Evidence: WizardLM says Evol-Instruct rewrites instructions with LLMs and the resulting data lets WizardLM outperform Alpaca and Vicuna.
+**Paper A**: LIMA: Less Is More for Alignment
+  Claim: Very small, high-quality datasets can suffice for strong post-training behavior.
+  Evidence: Only 1,000 carefully curated examples were enough to produce competitive alignment behavior in a 65B model.
 
-**Paper B**: LIMA: Less Is More for Alignment
-  Claim: A tiny set of carefully curated human examples can be enough for competitive alignment without RLHF.
-  Evidence: LIMA reports competitive performance from only 1,000 curated examples and argues for a 'Superficial Alignment Hypothesis'.
+**Paper B**: Traces of Social Competence in Large Language Models
+  Claim: Social-competence gains from post-training are fragile and can degrade under variant testing.
+  Evidence: Instruction tuning only partially improved false-belief performance, and robustness failed across explicit/implicit and false/true variants; reasoning-oriented fine-tuning worsened some patterns.
 
-**Relevance to thesis**: These papers do not directly conflict on whether human supervision can be reduced, but they disagree on the best mechanism: synthetic scale versus small, high-quality human curation.
-**Beat affected**: 4
-**Suggested handling**: Mention that open-alignment work diverges on whether gains come mainly from synthetic scaling or from a small amount of high-quality human-authored data; this matters for how much human collection CampusGo would need to justify. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+**Relevance to thesis**: This tension is important because it suggests that social reasoning is not just another alignment surface. High-quality curation may be sufficient for style/helpfulness but insufficient for robust socially grounded reasoning.
+**Beat affected**: 2
+**Suggested handling**: Use LIMA as a boundary case, not a proof of sufficiency for social reasoning. Emphasize that socially grounded tasks appear to require more than generic small-set alignment curation. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
+
+---
+
+## C6: 🟢 MINOR — implicit_tension
+
+**Question**: Do synthetic instruction-tuning gains transfer to social reasoning, or is socially grounded data composition qualitatively different?
+
+**Paper A**: Self-Instruct: Aligning Language Models with Self-Generated Instructions
+  Claim: Self-generated synthetic instruction data can substantially improve general instruction following.
+  Evidence: Self-Instruct fine-tuning yielded a 33% absolute improvement on SUPERNI over the original GPT-3.
+
+**Paper B**: Traces of Social Competence in Large Language Models
+  Claim: Generic post-training does not robustly solve social reasoning.
+  Evidence: Instruction tuning only partially helped social false-belief tasks, with brittle behavior across benchmark variants.
+
+**Relevance to thesis**: This is a weaker but still useful tension: strong synthetic-data gains on generic instruction benchmarks do not automatically transfer to socially grounded reasoning.
+**Beat affected**: 2
+**Suggested handling**: Mention briefly that successes from synthetic instruction tuning are mostly on generic task-following benchmarks, so they should not be overextended as evidence that synthetic data is sufficient for social reasoning. State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result.
 
 ---
 
 
 ## Summary
 
-Total contradictions: 34
-Critical (must address): 20
+Total contradictions: 33
+Critical (must address): 16
 
 ## Thesis Risk Assessments
 
-- The main risk to the thesis is overstatement. Several papers provide credible counterexamples showing that collapse is not universal: curated synthetic loops can improve preference reward, verifier/correction functions can stabilize self-consuming training, and mixed real+synthetic regimes can avoid collapse in theory. The thesis remains defensible only if framed narrowly: uncurated or weakly anchored recursive reuse is risky, while curated or verifier-screened synthetic data may substitute in bounded objectives but is not yet shown to preserve full human distributional richness or socially grounded behavioral signals.
-- The strongest risk to our thesis is overclaiming detectability at web scale. The literature does not support a simple story that AI pollution can be cleanly measured or filtered out: classifier-style detectors are brittle, watermarking fails under paraphrase, and even retrieval-based defenses split sharply between controlled/provider-side settings and polluted open-web settings. At the same time, some papers do show workable detection or provenance signals in bounded conditions, so we should not imply detection is impossible. The honest position is narrower: web pollution is plausibly serious, but measuring or excluding it at web scale remains method-limited and assumption-sensitive.
-- Beat 2 is supportable only in a qualified form. The evidence for measurable drift or degradation is strongest when it is direct and localized: temporal audits of privacy policies, contamination growth in Wikipedia, and corpus audits like C4. But the strongest counterweight is practical: FineWeb and RefinedWeb show that large-scale filtered web mixtures still produce very strong models. So the literature supports saying that live-web contamination and drift are measurable and increasingly salient, not that they have already produced a clear, general, corpus-wide pretraining degradation visible in downstream performance.
-- Risk is significant. The selected F papers provide real counterevidence to any broad thesis that human feedback is generally required for alignment: RLAIF and AlpacaFarm show AI-feedback can work well on bounded tasks, and DPO/RRHF show the RLHF pipeline itself is often not necessary once preference information exists. The defensible version of the thesis is narrower: human data remains especially valuable where preferences are socially grounded, difficult to simulate, normatively contested, or require authentic interaction traces rather than benchmark-style proxy judgments.
-- High-profile papers in this set make it untenable to claim that human-authored supervision is broadly necessary for instruction following or benchmarked preference optimization. Self-Instruct, WizardLM, RLAIF, Zephyr, and Dromedary all provide evidence that synthetic instructions, AI feedback, or self-alignment can substantially reduce human supervision in bounded settings. The safer, more defensible thesis is
-- High risk if the paper states or implies a blanket contamination-to-quality-decline law for web data. RefinedWeb, FineWeb, and MetaCLIP all show that aggressively filtered, deduplicated, or otherwise engineered web corpora can outperform curated or proprietary alternatives. The safer thesis is narrower: unfiltered, recursively reused, junk, or heavily AI-polluted web data creates serious risks, but documentation and filtering can partially preserve or recover training value, even though bias, benchmark contamination, and minority-voice exclusion may persist.
-- The main risk is overstating benchmark failures as evidence that socially grounded human data is uniquely necessary. Among these papers, the strongest direct challenge is Social-R1, which shows that targeted social-data construction can materially improve robustness. At the same time, the benchmark papers remain strong evidence that generic instruction tuning, chat optimization, and untargeted scaling do not reliably produce robust social reasoning, especially in adversarial, multimodal, multi-turn, or embodied settings. The safest thesis is therefore: data composition clearly matters for social reasoning, but current successes are narrow and do not yet invalidate the need for more authentic socially grounded data.
+- The main risk to the thesis is overclaiming. The collapse papers strongly support that indiscriminate or weakly filtered recursive reuse is dangerous, but several priority counterexamples show that curated or verified synthetic data can substitute for fresh human data under stronger conditions: human-preference curation, correction toward the true distribution, or continued anchoring with real data. These counterexamples do not eliminate the thesis, because they rely on idealized rewards, correction oracles, or persistent access to real data, and several are theoretical rather than web-scale empirical demonstrations. Still, they do undermine any absolute statement that synthetic reuse necessarily causes collapse or that fresh human data is always required. The defensible thesis is narrower: authenticity matters most when synthetic data is reused without strong verification, curation, or continued grounding to real data.
+- The strongest tensions mostly force tighter scoping rather than overturning the thesis. The biggest risk is overclaiming either side: some papers imply retrieval or narrow-domain classifiers can detect pollution effectively, while others show those defenses fail under adaptive paraphrasing or polluted reference corpora. The defensible position is that detectable pollution exists in scoped settings, but reliable web-scale detection remains unproven and reactive filtering remains fragile unless trusted provenance or trusted corpora are available.
+- The main risk to the thesis is overclaiming. The selected papers support that some live-web domains are changing in undesirable ways over time and that AI-generated content is rising in at least one important source, but they do not jointly prove web-wide measurable degradation of the usable pretraining distribution. In parallel, filtered-web papers show that large multi-snapshot web corpora still produce strong models, which pushes against any strong claim that live-web drift has already caused broad downstream degradation. The safest thesis is therefore: measurable temporal drift exists in specific domains, contamination risk is rising, and reactive filtering is important but not a substitute for direct web-scale measurement; however, web-wide degradation is not yet empirically established.
+- Moderate. The strongest papers here substantially undermine any simplified contamination-to-quality-decline story. RefinedWeb, FineWeb, and Yi show that filtered or quality-engineered web corpora can still deliver strong model performance, so we should not imply that rising AI contamination has already made web pretraining broadly inferior. However, C4 documentation and the Wikipedia/retrieval-collapse papers preserve the core conditional thesis: contamination is rising, filtering is not a complete solution, and performance success does not eliminate authenticity, leakage, or representational concerns. Our line_1 claim remains defensible only if framed as conditional, task-specific, and not yet proven at web scale.
+- The main risk is overgeneralization. The benchmark papers do not show that social reasoning is impossible, but they do show that generic scale and generic post-training leave large, brittle gaps. The data-composition success papers show that curation and targeted training can matter a great deal, yet most of those successes are either general alignment results or are limited to particular social task families. The safest thesis claim is therefore conditional: data composition matters for social reasoning, but gains depend strongly on whether the post-training data is socially targeted, behaviorally diverse, and evaluated for robustness rather than surface benchmark lift.
 
 ## Unresolved Tensions
 
-- Do curated synthetic loops preserve rare human behaviors, or only optimize whatever the reward/verifier measures?
-- How much persistent real data is enough to prevent collapse in practice, beyond the theoretical mixed-data results?
-- Are correction/verification mechanisms realistic at scale, or do they smuggle in human grounding through reward models, filters, or correction oracles?
-- Do curation successes on standard pretraining benchmarks transfer to socially grounded tasks where authenticity and long-tail variation matter most?
-- Whether provider-side retrieval/provenance systems can scale across firms and privacy constraints without becoming unusable or incomplete.
-- How robust LLM-ranker resilience remains as contamination rises beyond the reported BM25-focused retrieval-collapse settings.
-- How to estimate true web-scale AI pollution when prevalence studies are domain-bounded and many detectors are vulnerable to paraphrase or light post-editing.
-- Whether hybrid multimodal detectors retain their reported advantage under realistic adversarial transformations rather than static benchmark conditions.
-- Whether diversity-style intrinsic metrics are predictive of downstream degradation on real open-web corpora rather than only in controlled recursive-synthetic settings.
-- Whether source-specific contamination findings such as Wikipedia lower bounds extrapolate to CommonCrawl-scale training mixtures.
-- Whether filtering and deduplication are merely masking accumulating web degradation at current scales or can robustly offset it over time.
-- How much temporal drift in narrow but important genres like privacy policies should count as evidence about the overall quality of the live web for language-model pretraining.
-- None of the strongest AI-feedback success papers directly test tasks requiring lived experience, minority viewpoints, longitudinal social behavior, or other authentic human-grounded signals.
-- RLAIF and AlpacaFarm are strong evidence for substitution on summarization/dialogue or simple single-turn instruction settings, but they do not settle whether AI feedback preserves preference diversity or avoids self-reinforcing bias under broader deployment.
-- DPO and RRHF weaken the case for RLHF as a pipeline, but they do not answer whether the underlying preference labels should come from humans, curated synthetic sources, or AI judges.
-- The literature shown here separates two questions that our paper must keep distinct: whether human data is needed at all, and where in the stack it is needed most (data collection, evaluation, final calibration, or continual monitoring).
-- The field still lacks a clean bridge from contamination-prevalence measurements to causal estimates of downstream pretraining degradation.
-- Filtered-web success papers mostly optimize benchmark performance, while documentation papers emphasize representational harms, bias, and contamination that may not show up in standard evaluations.
-- Retrieval collapse results suggest live web consumption may be much more fragile than static pretraining on curated snapshots, but the boundary between those regimes is not yet well characterized.
-- Do Social-R1-style gains transfer to out-of-distribution social tasks, or are they mostly improvements on the trained adversarial template family?
-- Do synthetic or self-generated instruction datasets improve actual Theory-of-Mind competence, or mainly chat/instruction benchmark performance that is only weakly coupled to social reasoning?
-- How much of current benchmark weakness reflects missing social-experience data versus benchmark artifacts, shortcut-sensitive evaluation, or modality gaps such as spatial, visual, and multi-turn grounding?
+- How realistic are the verifier assumptions in the pro-curation papers (well-specified human reward, reliable correction function, or continued access to uncontaminated real data)?
+- Do the positive theoretical results survive finite-sample, misspecified-reward, or web-scale contamination settings, or are they confined to stylized regimes?
+- Is the relevant distinction replacement vs augmentation, or curation strength vs no curation? Existing papers support both framings.
+- There is still no decisive web-scale empirical reconciliation showing when curated synthetic reuse matches fresh human data over many generations in realistic pretraining pipelines.
+- Whether retrieval-based defenses remain useful once their reference corpus is itself contaminated by synthetic web content.
+- Whether high-F1, domain-specific detectors in news or education transfer to open-web prevalence estimation at low false-positive rates.
+- Whether watermarking can become a practical large-scale provenance defense given non-cooperative generators and paraphrase-based watermark removal.
+- No paper here directly measures synthetic-content prevalence and quality drift across broad live-web snapshots with a consistent detector and downstream benchmark over time.
+- Filtered-web success is not clean counterevidence to drift, because better filtering may mask worsening raw-web quality rather than show that no degradation exists.
+- Domain-specific longitudinal studies (privacy policies, Wikipedia) may be important leading indicators, but current evidence does not show that their trends generalize to the whole web.
+- Intrinsic diversity metrics and downstream pretraining performance are answering different questions; the field still lacks a shared temporal measurement framework connecting the two.
+- No paper in this set directly shows that current web-scale AI contamination has already caused net pretraining-quality decline in modern filtered corpora; the strongest harm evidence is from live retrieval or source-specific contamination studies.
+- Filtered-web success papers evaluate downstream model performance, while corpus-documentation papers evaluate provenance, leakage, and representational integrity; these are overlapping but non-identical notions of 'quality.'
+- Rising contamination in salient sources like Wikipedia may or may not materially affect broad Common Crawl-derived corpora after deduplication and filtering; the mapping from source-level pollution to corpus-level pretraining harm remains unresolved.
+- Whether Social-R1-style gains reflect genuinely improved social reasoning or narrower benchmark-specific adaptation remains unresolved against the robustness failures reported in Traces of Social Competence.
+- Whether small curated datasets in the style of LIMA can unlock socially grounded reasoning, or mainly improve style/helpfulness while leaving ToM gaps intact, is still unproven.
+- Whether text-only social-data interventions transfer to multimodal, moral, and multi-state social reasoning remains unresolved by the gap between Social-R1 and CoMMET.

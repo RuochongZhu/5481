@@ -306,7 +306,7 @@ def run_auto_loop(state: dict, client, oa, s2, arxiv, lens, max_iterations: int 
     from src.scoring import decide_action, aggregate_reviews
     from src.utils import load_json
 
-    target = float(os.environ.get("TARGET_SCORE", "0.8"))
+    target = float(os.environ.get("TARGET_SCORE", "0.80"))
     log.info(f"Auto-loop: target={target}, max_iterations={max_iterations}")
 
     for iteration in range(1, max_iterations + 1):
@@ -392,9 +392,10 @@ def show_status(state: dict):
         "2": "Classification (A-J)",
         "2.5": "Deep Extraction",
         "3": "Graph + Evidence Check",
-        "3.5": "Narrative Chains",
+        "3.5": "Narrative Chains (6-beat)",
         "3.7": "Contradiction Map",
         "4": "Evidence Inventory",
+        "5": "Evaluation (target ≥ 0.85, honesty ≥ 0.80)",
     }
 
     for p_key in PHASE_ORDER:
@@ -450,33 +451,46 @@ def show_status(state: dict):
 def demo_mode():
     """Print architecture overview without API calls."""
     print("\n" + "="*60)
-    print("  RESEARCH AGENT PIPELINE v2.0 — 7-PHASE ARCHITECTURE")
+    print("  RESEARCH AGENT PIPELINE v3.0 — 6-BEAT DUAL-ARGUMENT-LINE")
     print("="*60)
     print("""
-  Goal: Collect targeted evidence to support a 5-beat paper thesis,
-  then organize it into writing-ready narrative chains with
-  contradiction awareness.
+  Goal: Collect targeted evidence to support a 6-beat paper thesis
+  with dual argument lines, then organize it into writing-ready
+  narrative chains with contradiction awareness.
 
   Paper Thesis:
-  Web-scraped training data is experiencing information degradation,
-  while physically-verified authentic human social behavioral data
-  provides irreplaceable training signals. CampusGo is a running
-  platform designed to produce such data.
+  Training data authenticity, as captured by the proposed L_auth
+  framework, systematically influences model quality — particularly
+  on socially grounded tasks. Two independent argument lines support
+  this claim.
 
-  5-Beat Evidence Chain:
-  ──────────────────────
-  Beat 1 (Crisis §2): Model collapse + web pollution + detection fails
-    → Categories A, B, C
-  Beat 2 (Empirical §4): Web quality measurably declining over time
-    → Categories D, H
-  Beat 3 (Theory §3): L_auth = λ₁·D_KL + λ₂·D_α + λ₃·(1-TTR_r)
-    → Category D
-  Beat 4 (Validation §5): Verified social data > web-scraped
-    → Categories E, F, I, J
-  Beat 5 (Solution §6): CampusGo maps L_auth to platform design
-    → Categories A, G
+  Dual-Argument-Line Structure (6 Beats):
+  ────────────────────────────────────────
 
-  7-Phase Pipeline:
+  Argument Line 1 — Pretraining layer (risk argument):
+    Beat 1 (§2 Collapse): Recursive collapse risk + contamination + detection limits
+      → Categories A, B, C
+    Beat 2 (§4 Web Drift): Partial measurability of web drift
+      → Categories D, H
+
+  Bridge:
+    Beat 3 (§3 L_auth): Stage-agnostic descriptive framework (D1-D4)
+      → Categories D, A
+
+  Argument Line 2 — Fine-tuning layer (experimental argument):
+    Beat 4 (§5 Social Reasoning): Data provenance affects social reasoning
+      → Categories F, I, J
+    Beat 5 (§5 Experiment): Contrastive fine-tuning pilot study
+      → Categories F, I, J
+
+  Proposal:
+    Beat 6 (§6 CampusGo): Motivated design direction for authentic data
+      → Category G
+
+  CRITICAL: Line 1 and Line 2 have independent evidence bases.
+  Never use collapse papers (A) to support fine-tuning claims (4-5).
+
+  9-Phase Pipeline:
   ─────────────────
   Phase 1    Corpus Assembly (NO API KEY)
     Layer 1 → OpenAlex: 24 category-tagged queries
@@ -488,53 +502,32 @@ def demo_mode():
     → Literature Scanner: classify into A-J (10 categories)
     → Batch 10 papers/call, resumable
 
-  Phase 2.5  Deep Extraction (ANTHROPIC_API_KEY)        ← NEW
-    → 7 structured fields per paper: method_type, key_claim,
-      methodology, limitation, what_it_does_NOT_address,
-      dataset_or_benchmark, theoretical_framework
-    → Data foundation for P3.5 and P3.7
+  Phase 2.5  Deep Extraction (ANTHROPIC_API_KEY)
+    → 7 structured fields per paper
 
   Phase 3    Relationship Graph + Evidence Check
     → NetworkX citation graph + graph metrics
-    → Relationship Analyst: refine edges
-    → Gap Synthesizer: assess beat sufficiency
+    → Gap Synthesizer: assess 6-beat sufficiency
 
-  Phase 3.5  Narrative Chains (ANTHROPIC + S2)           ← NEW
-    → Full pairwise citation expansion (200 S2 calls)
-    → Per-beat narrative spine + paragraph outline
-    → Writing-ready Related Work structure
+  Phase 3.5  Narrative Chains (ANTHROPIC + S2)
+    → Full pairwise citation expansion
+    → Per-beat narrative spine with argument line separation
+    → Citation chain verification integration
 
-  Phase 3.7  Contradiction Map (ANTHROPIC_API_KEY)       ← NEW
-    → Identify disagreements between papers
+  Phase 3.7  Contradiction Map (ANTHROPIC_API_KEY)
+    → Identify disagreements per argument line
     → Severity rating: critical / moderate / minor
-    → Suggested handling for each contradiction
 
   Phase 4    Evidence Inventory + Final Reports
-    → Structured evidence list per beat
-    → 5 output reports (md)
+    → Structured evidence list per beat (6 beats)
 
-  Visualizations (--visualize):
-  ─────────────────────────────
-  V1  Category Sunburst (plotly)
-  V2  Citation Force Graph (pyvis)
-  V3  Beat × Category Heatmap (matplotlib)
-  V4  Publication Timeline (plotly)
-  V5  Contradiction Graph (networkx)
-  V6  Beat Sankey Flow (plotly)
-  V7  3D Embedding Cloud (UMAP + plotly)
-
-  6 Specialized Agents:
-  ─────────────────────
-  1. Literature Scanner    — classifies papers into A-J
-  2. Deep Extractor        — extracts 7 structured fields     ← NEW
-  3. Relationship Analyst  — builds citation graph edges
-  4. Gap Synthesizer       — assesses beat evidence strength
-  5. Narrative Analyst     — constructs per-beat story spine   ← NEW
-  6. Contradiction Mapper  — finds disagreements               ← NEW
+  Phase 5    Evaluation (target ≥ 0.85, honesty ≥ 0.80)
+    → 5 reviewers × STORM debate → aggregate → auto-backtrack
 
   To run: set ANTHROPIC_API_KEY in .env, then:
     python main.py --phase 1        # Start with corpus assembly
     python main.py                  # Run full pipeline
+    python main.py --auto           # Auto-loop until target score
     python main.py --visualize      # Generate figures
 """)
     print("="*60 + "\n")
@@ -594,8 +587,8 @@ if __name__ == "__main__":
                         help="Auto-loop: run pipeline → evaluate → backtrack → repeat until target score")
     parser.add_argument("--max-iterations", type=int, default=5,
                         help="Max iterations for --auto mode (default: 5)")
-    parser.add_argument("--target-score", type=float, default=0.8,
-                        help="Target overall score for --auto mode (default: 0.8)")
+    parser.add_argument("--target-score", type=float, default=None,
+                        help="Target overall score for --auto mode (default: from .env or 0.80)")
     parser.add_argument("--import-file", dest="import_file", type=str,
                         help="Import CSV/BibTeX file into data/raw/")
     parser.add_argument("--demo", action="store_true",
@@ -663,7 +656,8 @@ if __name__ == "__main__":
     # Run
     if args.auto:
         log.info("Running auto-loop mode")
-        os.environ["TARGET_SCORE"] = str(args.target_score)
+        if args.target_score is not None:
+            os.environ["TARGET_SCORE"] = str(args.target_score)
         state = run_auto_loop(state, client, oa, s2, arxiv, lens,
                               max_iterations=args.max_iterations)
     elif args.phase:

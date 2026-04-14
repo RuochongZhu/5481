@@ -1,0 +1,938 @@
+{
+  "paperId": "doi:10.48550/arxiv.2510.16657",
+  "title": "Escaping Model Collapse via Synthetic Data Verification: Near-term Improvements and Long-term Convergence",
+  "year": 2025,
+  "source": "s2+supplement_json",
+  "source_pdf_url": "https://arxiv.org/pdf/2510.16657.pdf",
+  "pdf_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/pdfs/doi_10.48550_arxiv.2510.16657.pdf",
+  "pdf_status": "present",
+  "parser_used": "grobid",
+  "parse_status": "parsed",
+  "tei_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/tei/doi_10.48550_arxiv.2510.16657.tei.xml",
+  "structured_path": "/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/data/parsed/structured/doi_10.48550_arxiv.2510.16657.json",
+  "sections": [
+    {
+      "index": 1,
+      "title": "Abstract",
+      "kind": "abstract",
+      "text": "Synthetic data has been increasingly used to train frontier generative models. However, recent studies raise key concerns that iteratively retraining a generative model on its self-generated synthetic data may keep deteriorating model performance, a phenomenon often coined model collapse. In this paper, we investigate ways to modify the synthetic retraining process to avoid model collapse, and even possibly help reverse the trend from collapse to improvement. Our key finding is that by injecting information through an external synthetic data verifier, whether a human or a better model, synthetic retraining will not cause model collapse. Specifically, we situate our theoretical analysis in the fundamental linear regression setting, showing that verifier-guided retraining can yield near-term improvements, but ultimately drives the parameter estimate to the verifier's \"knowledge center\" in the long run. Our theory further predicts that, unless the verifier is perfectly reliable, these early gains will plateau and may even reverse. Indeed, our experiments across linear regression, Variational Autoencoders (VAEs) trained on MNIST, and fining-tuning SmolLM2-135M on the XSUM task confirm these theoretical insights.",
+      "word_count": 172
+    },
+    {
+      "index": 2,
+      "title": "Introduction",
+      "kind": "introduction",
+      "text": "The use of synthetic data has gained significant traction due to its ability to reduce data collection costs and enhance privacy protection, with applications in computer vision (Wood et al., 2021) , healthcare (Azizi et al., 2021; Santangelo et al., 2025) , finance (Potluru et al., 2023) and recently large language models (LLMs) (Chen et al., 2024) . A growing body of work has demonstrated that training with synthetic data can improve model performance in various applications such as image recognition (He et al., 2023; Tremblay et al., 2018) , image generation (Doersch & Zisserman, 2019; Shrivastava et al., 2017; Tian et al., 2023) and language generation (Gunasekar et al., 2023; Guo et al., 2024; Zelikman et al., 2022) . However, recent studies caution that recursively training models on synthetic data alone can lead to a degradation of quality, a phenomenon often coined model collapse (Shumailov et al., 2024; Dohmatob et al., 2024a Dohmatob et al., , 2025 Dohmatob et al., , 2024b;; Alemohammad et al., 2024; Gerstgrasser et al., 2024) . This contrast between empirical success and pessimistic research findings gives rise to a natural question about what might have caused the discrepancy.\n\nIn response to the above question, an important practical observation is that synthetic data are rarely used in raw form in the aforementioned applications. Instead, practitioners often apply filtering steps to remove low-quality synthetic samples before retraining. For example, in natural language generation, synthetic sentences are often screened using grammar checkers or LLM-as-a-judge pipelines (Zheng et al., 2023; Gu et al., 2024) ; in computer vision, synthetic images can be filtered using pretrained discriminators or human annotation (He et al., 2023) ; in recommendation and preference learning, synthetic feedback is often validated against external heuristics or known user signals (Tu et al., 2025; Iskander et al., 2024; Lupidi et al., 2024; Lampis et al., 2023; Zhang et al., 2024) . Common across all these approaches is the use of a knowledgeable \"discriminator\" (henceforth the verifier ) -whether a machine or human -that evaluates and filters out low-quality candidate synthetic samples (i.e., those not passing the discriminator's screening). This observation naturally raises the following research question: Does verifier-based filtering of synthetic data contribute to the observed empirical success of model improvements, and does it prevent model collapse in the long run?\n\nThere has been a growing body of work studying the mechanisms of model collapse, including theoretical analyzes that are often examined in the context of classic parameter estimation problems (Dohmatob et al., 2024a (Dohmatob et al., , 2025;; Gerstgrasser et al., 2024; Dey & Donoho, 2024; Xu et al., 2025; Suresh et al., 2025) . However, these works have all assumed the use of synthetic data without filtering. Only few recent works start to examine how filtered synthetic data affects the performance of iterative retraining, but under idealized assumptions such as access to a perfectly correct verifier (Amin et al., 2025) or highly structured errors in synthetic data (i.e., i.i.d. noise added to binary labels (Feng et al., 2025) ). A realistic and instructive framework for analyzing synthetic retraining of generative models remains still poorly understood. In this paper, we further push the boundary of this important agenda, and examine iterative retraining under imperfect verifiers that filter out low-quality synthetic data based on their (possibly biased) knowledge. We refer to this process as verifier-based synthetic retraining for convenience. Specifically, we seek principled understandings about the empirically observed short-term successes of verifier-based synthetic retraining and analysis about its long-term convergence under iterative retraining.\n\nOur contributions. We start from theoretical investigations and analyze verifier-based synthetic retraining with verified synthetic data on the foundational linear regression model-a canonical setting that has become central to the study of model collapse (e.g., (Dohmatob et al., 2024a (Dohmatob et al., , 2025;; Gerstgrasser et al., 2024; Zhu et al., 2025; Garg et al., 2025) ). 2 We then verify our theoretical insights through thorough empirical studies in real-world generative settings. Our main contributions are summarized as follows:\n\n• Does verified synthetic data improve retraining and, if so, under what conditions? We show that it indeed can, provided the right conditions are met. Through a new form of bias-variance trade-off under data filtering, we characterize the regimes in which verifier-based synthetic retraining leads to strict model improvement, rather than degradation, in the short term (Theorem 3.1). The conditions we identify highlight the mixed effect of synthetic sample size, the verifier's bias and selectivity during filtering, yielding practical insights regarding when verification of synthetic data is beneficial.\n\n• Can the retraining improvement in the short term be sustained in the long run? Our theoretical analysis shows that the answer is No -unless the verifier has no bias. Formally, we show that verifier-based synthetic retraining will converge to the verifier's knowledge center in the long term (Theorem 4.1). This result reveals how the verifier's quality affects the asymptotic dynamics of iterative retraining. Notably, while verifier selectivity influences short-term performance, it does not change the long-run converging point, though it does affect its convergence rate.\n\n• Do the insights from the above theoretical analysis apply to real generative models empirically? Indeed, both simulations of linear regression settings and training Variational Autoencoders (VAEs) on the real-world MNIST data demonstrate that our theoretical insights align with observed training dynamics in these settings. For example, Figure 1 shows how the generative model of VAE can start from a poor model trained on a small number of 500 images and gradually improve from being retrained on filtered synthetic imaged generated by itself, until after 40 iterations of retraining generating sharp images that are visually comparable to a VAE trained directly on the entire MNIST dataset. More quantitative analysis of our empirical studies can be found in Section 5.",
+      "word_count": 958
+    },
+    {
+      "index": 3,
+      "title": "Related Work",
+      "kind": "related_work",
+      "text": "Understanding and mitigating model collapse. Recent work shows that heavy reliance on synthetic data in iterative training can cause model collapse-the degradation of performance when a model is repeatedly retrained on its own synthetic outputs (possibly mixed with real data). 3 Empirical evidence supports this phenomenon: Shumailov et al. (2024) show that recursive training on unfiltered synthetic data induces distribution shift and mode collapse, while Dohmatob et al. (2025) find that even small synthetic proportions can harm performance. In linear settings, Dohmatob et al. (2024a) analyze collapse mechanisms explicitly, and Dohmatob et al. (2024b) connect degradation to altered neural scaling laws.\n\nTo mitigate collapse, prior work broadly explores three strategies. First, accumulating data or gradually increasing the synthetic dataset size across iterations can suppress noise and bound errors (Gerstgrasser et al., 2024; Dey & Donoho, 2024; Xu et al., 2025; Kazdan et al., 2025; Barzilai & Shamir, 2025) . Second, mixing synthetic data with real data stabilizes retraining (Bertrand et al., 2024; Fu et al., 2024 Fu et al., , 2025)) , as performance progressively degrades without sufficient fresh real data (Alemohammad et al., 2024) . Recent studies have even derived optimal mixing ratios to maximize this stabilizing effect (He et al., 2025; Garg et al., 2025) . Finally, algorithmic interventions, such as the token re-sampling procedures proposed by Zhu et al. (2025) , offer alternative pathways to avoid collapse.\n\nUnlike prior work that relies on unfiltered synthetic data, our framework incorporates an external verifier to remove low-quality samples. Such verifiers may be human annotators or stronger teacher models. Filtering is widely used in iterative retraining and has shown empirical success in preventing model degradation and even improving performance (He et al., 2023; Tian et al., 2023; Guo et al., 2024; Zelikman et al., 2022; Zhang et al., 2024; Lampis et al., 2023; Haluptzok et al., 2023; Patwa et al., 2024) . Motivated by this, we develop a principled understanding of when improvement is possible-namely, whether a generative model can leverage the verifier's feedback, embedded in the selected synthetic subset, to achieve sustained gains.\n\nFiltering and selecting synthetic data. While a rich line of empirical work demonstrates that these filtering strategies can improve model performance, theoretical understanding about iterative retraining with filtered synthetic data remains largely unexplored, with only a few recent exceptions. Amin et al. (2025) assume a strong, reliable quality function and focus on how an external labeler aids learning under this fixed filtering mechanism. Feng et al. (2025) study a classification problem and identify a sharp phase transition. However, modeling synthetic data merely as noisy labels abstracts away the structural dependencies between features and labels inherent to true generative processes. Finally, Ferbach et al. (2024) ; Wei & Zhang considers a conceptually similar problem of learning a discrete preference distribution from human feedback by using humans' preferred choices as a filtering strategy. In their population-level analysis, curating synthetic data via an external reward function forces the model distribution to converge to the highest-reward level set, maximizing expected reward but ultimately collapsing in diversity.\n\nSimilar to many of the aforementioned studies above, our theoretical analysis also focuses on linear models (Feng et al., 2025; Dohmatob et al., 2025; Gerstgrasser et al., 2024) . However, our model allows inaccuracy of the verifier in terms of both bias and variance. Errors in the synthetic data primarily stem from the inaccuracy of the generative model itself rather than exogenous noise. We show that model's short-term performance varies smoothly with the verifier's bias, selectivity, and size of synthetic data, rather than exhibiting a sharp phrase transition from complete failure to perfect accuracy as in Feng et al. (2025) . In the long run, the model's performance converges to the verifier's knowledge center whereas verifier's selectivity only affects convergence speed. Our results bridge short-term and long-term perspectives of iterative retraining, illustrating how varied verifier qualities give rise to distinct performances of iterative retraining.\n\nComparison with reward maximization frameworks. While sharing the conceptual similarity of evaluating generated data via an external feedback mechanism, our modeling approach substantially differs from reward maximization frameworks in various aspects, including preference matching (Ferbach et al., 2024; Wei & Zhang) and recent Reinforcement Learning with Verified Rewards (RLVR) (Guo et al., 2024; Yu et al., 2025) .\n\nTheoretically, these methods frame the problem as policy optimization, where the objective is to maximize a provided reward signal. While highly effective for alignment, the definition of a \"good model\" is tied to the specific reward formulation, which may not correspond to recovering the true data-generating distribution.\n\nPractically, reward optimization relies on assigning scalar rewards or pairwise comparison signals (Ouyang et al., 2022) , which are often difficult and noisy to define. For instance, evaluating image quality or open-ended language generation with a single numerical reward is inherently subjective. While recent methods like RLVR avoid this issue by restricting themselves to domains with clearly verifiable rewards (Guo et al., 2025; Wu & Choi; Yu et al., 2025) , many important training settings lack such reliable reward functions. In contrast, we study the widely used \"generate-verify-retrain\" paradigm, which utilizes binary accept/reject filtering. Theoretically, our framework defines a \"good model\" at the parameter level, explicitly modeling the relationship between the verifier's filtering rule and the ground truth. By formalizing this link, we can directly analyze model performance during iterative retraining, even for an imperfect or biased verifier. Practically, this filtering mechanism is less noisy, highly stable, and serves as a core scalable primitive in modern LLM pipelines like DeepSeek-Coder (Guo et al., 2025) .\n\n2 Modeling Verifier-Based Synthetic Retraining: the Linear Regression Case\n\nIn this section, we formalize our model of iterative retraining with verified synthetic data, coined verifier-based synthetic retraining for convenience. Following recent works in this space (Dohmatob et al., 2024a; Gerstgrasser et al., 2024; Garg et al., 2025; Zhu et al., 2025) , we focus on the foundational linear regression setting where the objective is to estimate a high-dimensional coefficient vector θ ⋆ in the following linear model\n\ny = x ⊤ θ ⋆ + ξ,\n\nwhere ξ ∼ N (0, σ 2 ), x ∈ R p , and θ ⋆ ∈ R p is the unknown parameter of interest. We use the standard Mean Squared Error (MSE), i.e., MSE( θ) = E ξ ∥ θ -θ ⋆ ∥ 2 , to evaluate estimators.\n\nModeling the verifier and data filtering rule. Suppose we have access to a verifier that possesses prior knowledge of θ ⋆ , modeled by a knowledge set. Specifically, the verifier's knowledge is described by a spherical ball: B r (θ c ) := θ ∈ R p : ∥θ -θ c ∥ ≤ r , with fixed center θ c and radius r. We assume this knowledge set indeed contains the true parameter, i.e., θ ⋆ ∈ B r (θ c ), but the true parameter θ ⋆ is unknown. The verifier does not reveal θ c or r directly (see modeling motivations below). Instead, it only provides binary feedback indicating whether a given (real or synthetic) data point (x i , y i ) is consistent with the knowledge θ ⋆ ∈ B r (θ c ) or not. Specifically, the verifier outputs Yes if\n\n|y i -x ⊤ i θ c | ≤ r∥x i ∥ + σ c , (1)\n\nand No otherwise. Here σ c is a constant related to the verifier's capability. This filtering rule is motivated by the following bound on expected errors:\n\nE |y i -x ⊤ i θ c | = E |x ⊤ i (θ ⋆ -θ c )+ξ i | ≤ r∥x i ∥+E|ξ i | = r∥x i ∥+ 2 π σ.\n\nSince the true σ might be unknown in practice, σ c serves as an estimate of the true σ.\n\nWe refer to ∆ = ∥θ ⋆ -θ c ∥ as the bias of the verifier, whereas r captures the selectivity of the verifier -the smaller r is, less likely the verifier accepts a data point (x i , y i ). The verifier only needs to provide Yes/No answers based on the above selection rule in equation 1, but does not needs to know the parameter θ c , r of the knowledge set. The motivation of this modeling primarily comes from practice, as explained below.\n\nMotivation of binary feedback from verifiers. We adopt the binary feedback from verifiers mainly for practical reasons. In practice, eliciting simple yes/no feedback is far less noisy and more cost-effective than asking verifiers to directly specify θ c or r. Indeed, in real applications verifiers may not even know these quantities explicitly, which would correspond to model parameters if the verifier is a stronger teacher model or how the human reasons if the verifier is a human. This model choice is also aligned with the widely adopted comparison-based feedback in reinforcement learning from human feedback (RLHF) (Ouyang et al., 2022) . Such binary feedback has become a standard approach in preference alignment for large language models, where LLM raters and human evaluators provide pairwise or accept/reject judgments that effectively guide learning at scale (Wettig et al., 2024) . Although simple, our theory and empirical evaluations both show that this single bit of information for each sample can successfully be injected into the retraining process to improve models.",
+      "word_count": 1550
+    },
+    {
+      "index": 4,
+      "title": "Synthetic Retraining with Verifier-based Filtering We begin with an",
+      "kind": "body",
+      "text": "initial set of real data (X 0 , Y 0 ), where X 0 ∈ R n0×p and Y 0 ∈ R n0 . The initial estimator θ0 is obtained via Ordinary Least Squares (OLS) 4 θ0 = (X 0 ⊤ X 0 ) -1 X 0 ⊤ Y 0 .\n\nWe then proceed with iterative synthetic retraining via the generate-verify-retrain procedure outlined in Figure 2 , the rigorous retraining Scheme 2 and Algorithm 3 are provided in Appendix B.\n\nθk (X k+1 , Y k+1 ) (X k+1 ′ , Y k+1 ′ ) θk+1 Generate Verify Retrain Figure 2: Generate-Verify-Retrain pipeline.\n\nSince learning proceeds through the conditional Y k | X k , synthetic retraining requires specifying the covariate design X k ; labels Y k are then generated conditionally via the model under verifier constraints. In principle, one could construct X k arbitrarily; however, for mathematical clarity, below we describe a targeted though arguably natural design. In particular, we choose to align the synthetic covariates with a fixed orthonormal set {v 1 , . . . , v p } and construct X k in a block-structured form by repeating each v ⊤ j as rows:\n\nX k = ( v 1 , . . . copies of v1 , v 2 , . . . copies of v2 , . . . , v p , . . . copies of vp ) ⊤ . (2)\n\nAfter verifier filtering, each orthogonal direction v j retains exactly n k samples with\n\nn 0 ≤ pn 1 ≤ pn 2 ≤ • • • .\n\nNotably, the estimation of parameter θk+1 using only synthetic data from the model with θk , though with filtering, leads to a Markovian transition θk → θk+1 . The above block design essentially helps \"diagonalize\" the transition operator θk → θk+1 . The conceptual benefit of this covariance design choice is that we remove the rotational variability that arbitrary designs would introduce across iterations and decouple the dynamics along orthogonal directions. In practice, this design mirrors curating data along approximately orthogonal latent spaces or topics (e.g., topical axes like politics, sports, mathematics). However, the choice of covariant X k is not unique: alternatives (e.g., canonical basis, isotropic random directions) can yield similar qualitative conclusions, with potentially different constants or rates. We expect our theoretical insights to generalize to any reasonable design of the covariant X k , though the rigorous proofs may be less tractable for some designs.",
+      "word_count": 415
+    },
+    {
+      "index": 5,
+      "title": "On the Near-Term Improvement under Synthetic Retraining",
+      "kind": "body",
+      "text": "This section investigates the verifier's role in synthetic retraining: does it help, when does it help, and why does it help? We focus on one round and show that verifier-guided retraining can improve performance under mild assumptions. The underlying mechanism is a verifier-induced bias-variance trade-off: filtering synthetic data reduces variance but may introduce bias.",
+      "word_count": 54
+    },
+    {
+      "index": 6,
+      "title": "Source of Improvement: Bias-Variance Trade-off with Verifier's Bias",
+      "kind": "body",
+      "text": "To address the question of when and why verifier-based synthetic retraining improves estimation, we analyze the mean squared error (MSE) of the one-step estimator θ1 in estimating the true regression coefficient θ ⋆ . The MSE admits the following decomposition:\n\nE∥ θ1 -θ ⋆ ∥ 2 = E θ0 Tr Var( θ1 | θ0 ) + E θ0 E θ1 | θ0 -θ ⋆ 2 . (3)\n\nThe first term in equation 3 is the synthetic variance: it captures additional estimation noise from the randomness in synthetic data generation. This variance decreases at rate 1/n 1 with the synthetic sample size n 1 , but is unaffected by the real sample size n 0 . Hence, with abundant synthetic data, this term becomes negligible.\n\nThe second term is the verification error, which measures the deviation of the conditional mean estimator E( θ1 | θ0 ) from θ ⋆ . This error depends both on the accuracy of the verifier (i.e., its potential bias) and the quality of the initial estimator θ0 , which improves with larger n 0 .\n\nTo further disentangle the verification error, we decompose it as\n\nE θ0 E θ1 | θ0 -θ ⋆ 2 = Tr Var E θ1 | θ0 + ∥E[ θ 1 ] -θ ⋆ ∥ 2 . (4)\n\nHere, the first term is the verification variance, reflecting variance reduction achieved by discarding inconsistent synthetic samples, while the second is the verification bias, capturing systematic deviation introduced by verifier bias.\n\nPutting these together, the full decomposition is\n\nE∥ θ 1 -θ ⋆ ∥ 2 = E θ0 Tr Var( θ1 | θ0 ) Synthetic Variance + Tr Var E θ1 | θ0 Verification Variance + ∥E[ θ 1 ] -θ ⋆ ∥ 2 Verification Bias . (5)\n\nThis decomposition highlights the central trade-off: verifier filtering reduces variance but may introduce bias.\n\nVerified synthetic data leads to improvement precisely when the variance reduction outweighs the bias introduced.\n\nIn particular, when the verifier is sufficiently accurate and the synthetic sample size n 1 is large, the MSE of θ1 can be strictly smaller than that of the real-data estimator θ0 .",
+      "word_count": 356
+    },
+    {
+      "index": 7,
+      "title": "Characterizing Improvement in One-Round Retraining",
+      "kind": "body",
+      "text": "The following theorem rigorously quantifies this trade-off for the linear regression model, demonstrating exactly when the one-step estimator θ1 improves or degrades upon the initial baseline. By characterizing the MSE of θ1 , it reveals how synthetic sample size, verifier bias, and verifier selectivity determine the final outcome.\n\nTheorem 3.1. Let {µ j } p j=1 denote the singular values of X 0 , and assume each of them satisfies µ j = Ω( √ n 0 ). 5 Then there exist constants m 1,j , m 3,j ∈ R and m 2,j ∈ (0, 1) for j = 1, . . . , p, as well as a constant L > 0 such that:\n\n1 σ 2 MSE( θ1 ) = p j=1 m 2,j n 1 Synthetic Variance + m 2 1,j + m 1,j m 3,j + m 2 2,j µ 2 j Verification Error + O n -4/3 0 (6)\n\nholds with probability at least 1 -p exp -Ln 1/3 0 , where n 1 denotes the post-verification sample size.\n\nWhile the explicit forms of the constants are deferred to Appendix B, their roles are highly intuitive: m 1,j and m 3,j capture the directional bias between the verifier's knowledge center θ c and the ground truth θ * along the j-th singular direction (vanishing if θ c = θ * ), while m 2,j < 1 quantifies the variance reduction along that direction. Theorem 3.1 mathematically guarantees when verifier-guided retraining improves the model. Since the scaled baseline error is 1 σ 2 MSE( θ0 ) = p j=1 µ -2 j , we can directly compare it to Equation 6. When the verifier is highly accurate (m 1,j , m 3,j ≈ 0), the verification error term becomes dominated by p j=1 m 2 2,j /µ 2 j . Because m 2,j < 1, this verification error is strictly smaller than the real-data error. Thus, whenever the verified synthetic sample size n 1 is sufficiently large to drive the synthetic variance down, MSE( θ1 ) strictly improves upon the baseline. This result highlights why verifier-based retraining is practically useful: in modern machine learning systems where real data collection is costly but generative models or simulators are available, a moderately accurate verifier can filter synthetic samples to effectively amplify limited real-world evidence and substantially reduce estimation error. Conceptually, this offers a sharp departure from classical model collapse literature, which typically models iterative synthetic data purely as a variance-inflating noise source (Shumailov et al., 2024; Alemohammad et al., 2024; Dohmatob et al., 2024a) . Here, we prove that verification transforms synthetic data into a variance-reducing resource, provided the verifier's bias is sufficiently controlled. As we will demonstrate empirically in Section 5, this mechanism is not confined to the linear model; it manifests clearly in complex models such as VAEs and LLMs.",
+      "word_count": 474
+    },
+    {
+      "index": 8,
+      "title": "Iterative Retraining Converges to the Verifier's Knowledge Center",
+      "kind": "body",
+      "text": "Having established that a single round of verifier-based retraining can improve estimation through a bias-variance trade-off, a natural question arises: can this improvement be sustained over multiple rounds, and what is the eventual outcome? To contextualize our long-term analysis within the broader literature on model collapse, we first formalize these widely discussed empirical phenomena within our linear regression setting. Specifically, we define Model Degradation/Collapse as lim sup k→∞ MSE( θk ) > MSE( θ0 ), and Model Improvement as lim sup k→∞ MSE( θk ) < MSE( θ0 ).\n\nOur key finding is that both behaviors can occur in long-term iterative retraining. The outcome depends critically on three factors: the growth rate of synthetic data, the verifier's bias, and the verifier's capability (i.e., its ability to reduce variance). Over time, iterative retraining injects increasingly more verifier knowledge into the estimator, while the contribution from the original data gradually decays. As a result, the verifier and the generative model family eventually dominate the limit behavior, driving the estimator θk toward a fixed point, which corresponds to the verifier's knowledge center θ c . This dynamic gives rise to three distinct phases of long-term behavior: (1) Unbiased verifier: If the verifier is unbiased (i.e., θ c = θ ⋆ ), iterative retraining yields continuous improvement and the estimator converges to the true parameter. (2) Mildly biased verifier: With small bias, iterative retraining can improve performance in the short term by reducing variance, but performance eventually plateaus or deteriorates as verifier bias accumulates.\n\n(3) Strongly biased verifier: With large bias, iterative retraining leads to degradation and may even cause collapse in the limit. Among these, the mildly biased case is the most practically relevant. It highlights a cautionary message: while synthetic retraining can initially boost accuracy, a perfectly unbiased verifier is unrealistic; consequently, this inherent bias will ultimately prevent sustained improvement.\n\nFormally, the following theorem characterizes the long-term behavior of the estimator θk in linear regression under verifier-based synthetic retraining.\n\nTheorem 4.1. There exist synthetic retraining processes (e.g., Algorithm 3) and a constant 0 < ρ < 1 such that:\n\nE∥ θk -θ c ∥ 2 ≤ ρ 2k E∥ θ0 -θ c ∥ 2 + pσ 2 k-1 j=0 ρ 2(k-j)-1 n j . (7)\n\nwhere\n\nn 1 ≤ n 2 ≤ • • • ≤ n k • • • denote the number of verified synthetic samples per direction at each iteration. In particular, if lim k→∞ n k = ∞, then lim k→∞ E∥ θk -θ c ∥ 2 = 0.\n\nThe proof of Theorem 4.1 is provided in Appendix B, utilizing concentration bounds and supermartingale inequalities to establish convergence. Here we focus on the main intuition and highlight the key novelty of our analysis.\n\nThe central observation to establish Theorem 4.1 is that the iterative retraining procedure (see Figure 2 ) induces a Markov process: the next state θk+1 depends only on the current state θk . Formally, the update can be expressed as\n\nθk+1 = T ( θk ) + η k+1 , (8)\n\nwhere T (•) is a deterministic mapping determined by verifier filtering, and η k+1 is a sub-Gaussian noise term due to the randomness of synthetic samples at iteration k + 1. Crucially, we show that T (•) is a contraction mapping, and that the variance of the noise decays at the rate Var(η k+1 ) ≍ 1/n k+1 . This perspective allows us to view equation 8 as a discretized stochastic differential equation (SDE). As n k → ∞, the noise term vanishes and the dynamics are dominated by the deterministic contraction T ( θk ),\n\nwhich drives the recursion toward its fixed point-the verifier's knowledge center θ c . The presence of the verifier is therefore essential: it is precisely what transforms the update rule into a contraction, guaranteeing convergence. By contrast, in prior work on model collapse without a verifier (e.g., Gerstgrasser et al. (2024); Xu et al. ( 2025 )), the update reduces to the identity mapping. In that case, increasing the synthetic sample size can suppress noise accumulation and ensure bounded error (i.e., MSE( θk ) < ∞), but there is no contraction and hence no convergence or sustained improvement. The knowledge extracted from the verifier is precisely what elevates T (•) beyond an identity mapping. Our analysis is the first to formally show that the verifier fundamentally alters the long-term dynamics: it continuously injects knowledge, iteration by iteration, so that the estimator moves closer to θ c over time.\n\nThis contribution also clarifies a common misconception: even with a perfect verifier (θ c = θ ⋆ ) and infinitely many synthetic samples in one iteration, convergence cannot occur in a single step. As shown in Theorem 3.1, while infinite samples remove the synthetic variance term, the verification error term persists. Thus, convergence requires the iterative action of the verifier, which gradually aligns the estimator with the truth.",
+      "word_count": 818
+    },
+    {
+      "index": 9,
+      "title": "Experiments",
+      "kind": "results",
+      "text": "In this section, we validate our theoretical predictions across three settings: a linear regression simulation that is consistent with our analytical assumptions, alongside Variational Autoencoders (VAEs) on MNIST and fine-tuning a pretrained SmolLM2-135M (Allal et al., 2025) on a large-scale news summarization task, which together illustrate practical behavior under iterative retraining and filtering. Across all settings, the empirical results closely align with our theoretical predictions. Experimental code used to generate the results is publicly available at https://github.com/liuqiyuanhhh/Verified-Synthetic-Data .",
+      "word_count": 78
+    },
+    {
+      "index": 10,
+      "title": "Linear Regression on Simulated Data",
+      "kind": "body",
+      "text": "Setting. We consider the linear model y = x ⊤ θ ⋆ + ξ, with ξ ∼ N (0, 1), θ ⋆ ∈ R p , and x ∈ R p . We first fit an OLS estimator on the real dataset (X 0 , Y 0 ), and then perform multiple rounds of synthetic retraining, where the synthetic covariate design is aligned with the right singular vectors of X 0 .\n\nOne-step Synthetic Retraining. Figures 3a and 3b empirically validates Theorem 3.1 by comparing the real-data estimator θ0 with the one-step synthetic estimator θ1 , where color regions reflect different levels of error reduction, measured by log(\n\n|| θ0 -θ ⋆ || || θ1 -θ ⋆ || ).\n\nTheoretical predictions (Figure 3a ) align closely with empirical results (Figure 3b ), validating the sharpness of our bounds. Using 100 real and 800 synthetic samples, we set θ ⋆ = 1 8 and the verifier center θ c = θ ⋆ + ∆ • u, where u is a random unit vector and ∆ controls bias magnitude. The radius r (see equation 1) determines verifier selectivity. These results confirm that synthetic retraining outperforms the baseline under small bias (green region) but degrades under excessive bias (red region), consistent with the predicted short-term bias-variance trade-off. verifier (smaller r) accelerates convergence. Figure 3d presents the unbiased case (∆ = 0), where verifier-based retraining consistently outperforms unfiltered baselines. Together, these findings illustrate how the verifier's contraction effect sustains error reduction and prevents model collapse. Additional experiments confirm that our conclusions are robust to random covariate designs (Appendix D.1) and different verifier shapes (Appendix D.2).",
+      "word_count": 271
+    },
+    {
+      "index": 11,
+      "title": "Extending beyond linear regression, we evaluate our theory on real-world image generation tasks using Variational Autoencoders (VAEs) on the MNIST dataset.",
+      "kind": "body",
+      "text": "Setting and evaluation metrics. Specifically, we adopt Conditional VAEs (CVAEs) to leverage class conditioning and avoid verifier-induced imbalance; otherwise, easily generated digits would dominate the retained synthetic data. To test the bias-variance trade-off and verifier information injection, we initialize the CVAE with only 500 real images (a challenging small dataset scenario). A discriminator, trained on varying amounts of real data alongside an equal number of synthetic samples, serves as the verifier. It assigns a reality probability to each synthetic sample, from which we retain the top 10% per digit. Motivated by our one-step analysis, this 10% threshold optimally balances sample quality against diversity. The CVAE is iteratively retrained on verified data for 40 iterations until performance stabilizes. The synthetic sample size n k follows either a fixed or linear growth schedule. We evaluate generative performance using Fréchet Inception Distance (FID) (Heusel et al., 2017) and the evidence lower bound (ELBO) (Kingma & Welling, 2014) . Appendices C and D.4 provide implementation details and initial sample size ablations.\n\nResults. Since our verifier emphasizes perceptual realism over likelihood calibration, we report FID as the primary metric and defer qualitatively similar ELBO results to Appendix C. As shown in Figure 4a , synthetic retraining with a strong verifier (trained on 60K real images) yields rapid early FID improvement before plateauing, whereas unverified retraining (dashed curves) leads to severe degradation. This validates our theory: early gains arise from the short-term bias-variance trade-off (Theorem 3.1), and the verifier's contraction effect drives convergence to a fixed-though biased-point that substantially improves upon the initial CVAE (Theorem 4.1). The eventual plateau reflects two limitations: training the initial generator on only 500 real images inherently restricts overall diversity, and the standard MLP verifier lacks diversity-preserving mechanisms, introducing selection bias by disproportionately rejecting harder-to-generate modes. For reference, a baseline 0 5 10 15 20 25 30 35 40 Model-Fitting Iteration 40 60 80 100 120 140 FID FID vs Model-Fitting Iteration Verifier training sample size 500 1k 5k 10k 20k 40k 60k (b) Verifier quality. CVAE trained on 60K real images achieves 17.56 FID, whereas the best synthetic model reaches 21.17 after 40 iterations. Figure 4b further shows that with 20K synthetic samples per round, stronger verifiers (trained on more real data) produce larger FID improvements, while weaker ones cause early plateau or even degradation. Qualitative results are shown in Figure 1 , with consistent MNIST-specific FID results reported in Appendix D.3.",
+      "word_count": 402
+    },
+    {
+      "index": 12,
+      "title": "Large-Scale News Summarization",
+      "kind": "body",
+      "text": "Extending beyond image generation, we evaluate our theory on natural-language tasks using the XSUM news-summarization dataset (Narayan et al., 2018) .\n\nSetting and evaluation metrics. We use the the pretrained SmolLM2-135M model (Allal et al., 2025) as our generator, first fine-tuning it on 12.5% of the XSUM training set for one epoch using full-parameter training. While following the base setup of Feng et al. (2025) , we depart from their single-round evaluation by considering a multi-iteration generate-verify-retrain regime to capture how performance evolves over repeated cycles. Given the low-entropy nature of news summarization, we follow the common practice of employing greedy decoding for both generation and evaluation. In each iteration, the model generates synthetic summaries for the training corpus, which are scored using ROUGE-1 against ground-truth references. Acting as an oracle verifier, we select the top 12.5% of these summaries to form the synthetic retraining dataset. The model is then retrained on this subset, and test ROUGE-1 scores are recorded after each iteration.\n\nResults. Figure 5 reports ROUGE-1 scores across 15 rounds for both filtered and unfiltered retraining regimes, while all other experimental conditions remain identical. Under verifier filtering, performance improves monotonically during early iterations before eventually stabilizing. In contrast, the unfiltered baseline fluctuates around its initial score without meaningful improvement. These observed dynamics mirror our MNIST findings and theoretical predictions, demonstrating that our framework scales to natural-language tasks.",
+      "word_count": 229
+    },
+    {
+      "index": 13,
+      "title": "Discussion",
+      "kind": "discussion",
+      "text": "Our study provides a theoretical and empirical characterization of verifier-guided synthetic retraining. We show that the process yields short-term gains by reducing variance through verifier filtering, but in the long run the estimator converges to the verifier's knowledge center. This explains both the promise and the risk of such methods: a high-quality verifier can inject reliable external knowledge, while a biased verifier inevitably steers the model away from the truth. Viewed through the lens of information elicitation, our framework formalizes how external signals are incorporated recursively into training and why the outcome reflects the verifier's information.\n\nMeanwhile, we also acknowledge the limitations of our results.Primarily, our analytical testbed relies on a well-specified parametric setting (linear regression) that assumes the existence of a global, ground-truth optimal parameter θ * . This idealized assumption mathematically abstracts the complex, often competing attributes of a \"good\" generative model-such as sample diversity and generation quality-into a singular distance metric. In practice, while models like LLMs are parametric, they are approximating a true data-generating process that is unknown and highly likely non-parametric. For complex domains like natural language, a singular \"true model\" may not even exist; therefore, defining or evaluating an optimal model remains an open challenge. While our empirical extensions to VAEs and LLMs validate the theory qualitatively, formal generalization to richer models such as exponential families or simple neural network architectures are interesting future directions. Other future venues include developing sharper bounds for nonlinear models, exploring effectiveness of alternative synthetic design strategies beyond block orthogonalization, and studying verifier dynamics in large language models (LLMs) and vision models.\n\nWe will compare the estimator X1 with X0 and formally characterize when data verification enhances or degrades model performance -i.e., when E( X1 -µ) 2 < E( X0 -µ) 2 or not. Our key finding is that X1 introduces the core bias-variance trade-off that underpins model improvement or degradation. We will characterize the MSE of X1 which reveals how key quantities such as the real and synthetic sample size, the verifier's bias and variance will decide performance of the filtering strategy. These insights provide intuition for extending verifier-guided re-training to more complex settings.\n\nWe first review some notation and key results for the truncated normal distribution, which will be used in the subsequent sections. Consider a one-dimensional normal distribution X ∼ N (µ, σ 2 ) and let X ′ be its truncated version restricted to the interval [a, b] . The distribution of X ′ is the called the truncated normal distribution,\n\ndenoted as X ′ ∼ N (x|µ, σ 2 ) • 1 {a<x<b} .\n\nThe mean and variance of the truncated normal distribution X ′ are given analytically:\n\nE[X ′ |µ] = µ -σ ϕ( b-µ σ ) -ϕ( a-µ σ ) Φ( b-µ σ ) -Φ( a-µ σ ) := µ + σm 1 ( a -µ σ , b -µ σ ) Var(X ′ |µ) = σ 2   1 - b-µ σ ϕ( b-µ σ ) -a-µ σ ϕ( a-µ σ ) Φ( b-µ σ ) -Φ( a-µ σ ) - ϕ( b-µ σ ) -ϕ( a-µ σ ) Φ( b-µ σ ) -Φ( a-µ σ ) 2   := σ 2 m 2 ( a -µ σ , b -µ σ ) ( 9\n\n)\n\nwhere ϕ(x) and Φ(x) denote the standard normal density and cumulative distribution functions, respectively. Standardizing X via Z := X-µ σ and setting\n\nα = a -µ σ , β = b -µ σ , (10)\n\nthe expression in equation 9 become:\n\nE[Z ′ ] = m 1 (α, β) Var(Z ′ ) = m 2 (α, β) (11)\n\nwhere Z ′ ∼ N (x|0, 1) • 1 {α<x<β} is the standardized truncated normal distribution. For convenience, we write N trunc (α, β) := N (x|0, 1) • 1 {α<x<β} . Thus, m 1 and m 2 correspond to the first and second central moments of the standardized truncated normal distribution. In addition, we also define the third central moment of the standardized truncated normal distribution:\n\nm 3 (α, β) := E(Z ′ -EZ ′ ) 3 = - (β 2 -1)ϕ(β) -(α 2 -1)ϕ(α) (Φ(β) -Φ(α)) - 3(ϕ(β) -ϕ(α))(βϕ(β) -αϕ(α)) (Φ(β) -Φ(α)) 2 - 2(ϕ(β) -ϕ(α)) 3 (Φ(β) -Φ(α)) 3 . ( 12\n\n)\n\nIn particular, 0 < m 2 (α, β) < 1 for any α < β and m 1 (α, β) = m 3 (α, β) = 0 if α + β = 0.\n\nA.2 Characterization of E( X1 -µ) 2 , Bias-Variance Trade-off, and Model Improvement Theorem A.1. Assume that n 1 > n 0 ≥ 100. Then there exists constant K, depending only on α and β, such that\n\n1 σ 2 E( X1 -µ) 2 - m 2 (α, β) n 1 Synthetic Variance -m 2 1 (α, β) + m 2 2 (α, β) + m 3 (α, β)m 1 (α, β) n 0 Verification Bias+Variance < K 1 n 1 n 1/3 0 + 1 n 3/2 0 ( 13\n\n)\n\nholds with probability at least 1 -exp -1 2 n 1/3 0 .\n\nProof of Theorem A.1. It will be convenient to reparameterize the sample mean estimators by centering them around the true mean. Specifically, we define the residuals:\n\nϵ 1 := X0 -µ σ , ϵ 1 ∼ N (0, 1 n 0 ). (14)\n\nNote that X1 is the mean of n 1 i.i.d. samples from the truncated normal distribution N (x| X0 , σ 2 ) • 1 {a<x<b} .\n\nThe MSE of X1 can be decomposed as follows:\n\nE[( X1 -µ) 2 ] = E X0 E X1 | X0 ( X1 -µ) 2 = E X0 Var( X1 |, X0 ) + E[ X1 | X0 ] -µ 2 = σ 2 E X0 m 2 (α -ϵ 1 , β -ϵ 1 ) n 1 + E X0 ( X0 -µ -σm 1 (α -ϵ 1 , β -ϵ 1 )) 2 = σ 2 n 1 E ϵ1 [m 2 (α -ϵ 1 , β -ϵ 1 )] + σ 2 E ϵ1 (m 1 (α -ϵ 1 , β -ϵ 1 ) + ϵ 1 ) 2 (15)\n\nFor the first term in 15, we consider the event\n\nE 1 := |ϵ 1 | < n -1/3 0 , the function m 2 (•, •) is Lipschitz continuous in a neighborhood of (α, β), so we have |m 2 (α -ϵ 1 , β -ϵ 1 ) -m 2 (α, β)| = |ϵ 1 | • m (1) 2 (α -ξ, β -ξ) < M 1 n 1/3 0 , (16)\n\nfor some ξ ∈ (0, ϵ 1 ), where we define\n\nM 1 := sup |ξ|< 1 100 1 3 m (1) 2 (α -ξ, β -ξ) ,\n\nand M 1 is a constant independent of n 0 as long as n 0 ≥ 100. Event E 1 hold with high probability:\n\nP |ϵ 1 | < n -1/3 0 > 1 - exp - n 1/3 0 2 π/2 • n 1/6 0 > 1 - exp - n 1/3 0 2 π/2 • 100 1/6 > 1 -exp - n 1/3 0 2 .\n\nThen we consider then second term in 15. The Taylor expansion of the function\n\nm 1 (ϵ 1 ) := m 1 (α -ϵ 1 , β -ϵ 1 )\n\nup to the third-order terms is:\n\nm 1 (ϵ 1 ) = m 1 (α, β) -[1 -m 2 (α, β)] ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 + 1 6 m (3) 1 (ξ)ϵ 3 1 , for some ξ ∈ (0, ϵ 1 ), (17)\n\nwhere m\n\n(3) 1 (ξ) denotes the third derivative of m 1 evaluated at some point between 0 and ϵ 1 . Then we can get\n\nE ϵ1 (m 1 (α -ϵ 1 , β -ϵ 1 ) + ϵ 1 ) 2 = E m 1 (α, β) + m 2 (α, β)ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 + 1 6 m (3) 1 (ξ)ϵ 3 1 2 = m 2 1 (α, β) + m 2 2 (α, β) + m 1 (α, β)m 3 (α, β) n 0 + 3m 2 3 (α, β) 4n 2 0 + E m 1 (α, β) + m 2 (α, β)ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 m (3) 1 (ξ) 3 ϵ 3 1 + E m (3) 2 1 (ξ) 36 ϵ 6 1 . (18)\n\nFirst, using the fact that there exists constant M that only depends on α and β, such that |m\n\n1 (x)| < M for any x, we have:\n\nE m 1 (α, β) + m 2 (α, β)ϵ 1 + 1 2 m 3 (α, β)ϵ 2 1 m (3) 1 (ξ) 3 ϵ 3 1 ≤ E |m 1 (α, β)| + m 2 (α, β)|ϵ 1 | + 1 2 |m 3 (α, β)|ϵ 2 1 • M 3 |ϵ 1 | 3 = E M 3 |m 1 (α, β)||ϵ 1 | 3 + M 3 m 2 (α, β)|ϵ 1 | 4 + M 6 |m 3 (α, β)||ϵ 1 | 5 ≤ K 1 n 3/2 0 .\n\nfor some constant K 1 depending only on α and β.\n\nSecondly, the last term in equation 18 is bounded by:\n\nE   m (3) 1 2 (ξ) 36 ϵ 6 1   ≤ M 2 36 E[ϵ 6 1 ] = 5M 2 σ 6 12n 3 0 ≤ K 2 n 3 0 , for some constant K 2 .\n\nSo the second term in 15 is bounded by\n\nE ϵ1 (m 1 (α -ϵ 1 , β -ϵ 1 ) + ϵ 1 ) 2 -m 2 1 (α, β) - m 2 2 (α, β) + m 1 (α, β)m 3 (α, β) n 0 < K n 3/2 0 (19)\n\nfor some constant K.\n\nCombining 15, 16, and 19 completes the proof.",
+      "word_count": 1682
+    },
+    {
+      "index": 14,
+      "title": "A.3 Iterative Retraining and Long-Term Dynamics in One-Dimensional Gaussian Mean Estimation",
+      "kind": "body",
+      "text": "Now consider the verifier-guided synthetic retraining in the Gaussian mean estimation setting. The iterative retraining process can be described by the following algorithm.\n\nAlgorithm 1 Iterative Verifier-Guided Retraining for Gaussian Mean Estimation\n\n1: Input: Initial estimate X0 from real data 2: for k = 0, 1, 2, . . . do 3: Draw ξ i i.i.d.\n\n∼ N (0, σ 2 ) and construct synthetic samples\n\nX k i = Xk + ξ i . 4:\n\nRetain points with a < X k i < b, yielding n k verified samples {X ′k i : i = 1, 2, . . . n k }.\n\n5:\n\nXk+1 ← 1 n k n k i=1 X ′k i . 6: end for Algorithm 1 defines a Markov process { X0 , X1 , . . . Xk , . . . }, where the conditional distribution p( Xk+1 | Xk ) is given by p( Xk+1 | Xk ) : Xk+1 = Xk + σ n k i=1 ξ ′k+1 i n k , ξ ′k+1 i i.i.d ∼ N trunc ( a -Xk σ , b -Xk σ ) (20)\n\nThe following theorem summarizes these findings:\n\nTheorem A.2. Let Xk be the Markov process determined by equation 20 with initial condition\n\nX0 ∼ N (0, σ 2 n 0 ),\n\nand assume n k is non-decreasing in k. Then the following statements hold:\n\n• If |a|, |b| < ∞, there exists a constant 0 < ρ < 1 such that, E Xk - a + b 2 2 ≤ ρ 2k E( X0 - a + b 2 ) 2 + k-1 j=0 ρ 2(k-j)-1 n j . Moreover, if lim k→∞ n k = ∞, lim k→∞ E| Xk -a+b 2 | 2 = 0. • If -∞ = a < b < ∞, then lim inf k→∞ Xk = -∞. If -∞ < a < b = ∞, then lim sup k→∞ Xk = ∞. Proof of Theorem A.2. Define ϵ k = Xk -µ σ , (21)\n\nwhich represents the standardized error of the estimator Xk . It is easy to see that ϵ k ∈ [α, β] ⇔ Xk ∈ [a, b], where α, β are defined in equation 10. Therefore, it suffices to consider the standardized process {ϵ k , k = 0, 1, 2, . . .}. equation 20 can be standardized as:\n\nϵ k+1 = ϵ k + n k i=1 ξ ′k+1 i n k , ξ ′k+1 i ∼ N trunc (α -ϵ k , β -ϵ k ) , (22)\n\nFor convenience, we shift the noise terms ξ ′k+1 i in equation 22 to have mean zero. Therefore, we introduce\n\nT α,β (x) := x + E Z α -x ≤ Z ≤ β -x , v α,β (x) := Var Z α -x ≤ Z ≤ β -x . (23)\n\nwhere Z ∼ N (0, 1).\n\nTherefore, equation 22 can be rewritten as\n\nϵ k+1 = T α,β (ϵ k ) + η k+1 (24)\n\nwhere\n\nη k+1 = 1 n k n k i=1 ξ ′k+1 i -Eξ ′k+1 i\n\nis the average of independent mean zero noise in equation 22. In particular, we have\n\nE[η k+1 | F k ] = 0, Var(η k+1 | F k ) = v α,β (ϵ k ) n k .\n\nwhere F k := σ(ϵ 0 , η 1 , . . . , η k ) and n k is the (post-filtering) batch size at round k.\n\nIt is easy to see that\n\nT α,β (x) = x + m 1 (α -x, β -x), v α,β (x) = m 2 (α -x, β -x), T ′ α,β (x) = v α,β (x).\n\nWe first consider |a|, |b| < ∞. In this case, we first show that the derterministic part T α,β (x) in equation 24 is a global contraction. Since -∞ < α < β < ∞, we have\n\nsup x∈R T ′ α,β (x) = sup x∈R Var Z | α -x ≤ Z ≤ β -x = Var Z | |Z| < | α + β 2 | := ρ < 1.\n\nTherefore, T α,β (x) is a global contraction. By the contractive mapping theorem that T α,β (x) has a unique fixed point x * , which solves x * = T α,β (x * ). It is easy to see that\n\nx * = T α,β (x * ) =⇒ x * = x * + E(Z α -x * ≤ Z ≤ β -x * ) =⇒ x * = α + β 2 . ( 25\n\n)\n\nBy the mean-value theorem,\n\n|T α,β (ϵ k ) - α + β 2 | ≤ ρ |ϵ k - α + β 2 |. Let V k := (ϵ k -α+β 2 ) 2 , we have E V k+1 | ϵ k = (T α,β (ϵ k ) - α + β 2 ) 2 + v α,β (ϵ k ) n k ≤ ρ 2 (ϵ k - α + β 2 ) 2 + ρ n k .\n\nTaking expectations yields\n\nEV k+1 ≤ ρ 2 EV k + ρ n k . (26)\n\nUnrolling equation 26,\n\nEV k ≤ ρ 2k EV 0 + ρ k-1 j=0 ρ 2(k-1-j) n j . ( 27\n\n)\n\nIt is easy to see that\n\nEV k ≤ ρ 2k EV 0 + ρ k-1 j=0 ρ 2(k-1-j) n 0 < ρ 2k EV 0 + ρ n 0 (1 -ρ 2 )\n\n.\n\nTherefore, by the Cauchy-Schwarz inequality, lim k→∞ Eϵ 2 k < ∞ easily follows. Moreover, when n k → ∞, let g i := ρ 2i and a j := 1/n j → 0. A standard ℓ 1 -convolution argument shows (g * a) k := k-1\n\nj=0 g k-1-j a j = k-1 j=0 ρ 2(k-1-j) nj → 0. Therefore lim k→∞ EV k = lim k→∞ E(ϵ k -α+β\n\n2 ) 2 = 0. Now we consider the case -∞ = a < b < ∞ (equivalently -∞ = α < β < ∞). We will show that lim inf k→∞ ϵ k = -∞ a.s.. Let t k := β -ϵ k and the recursion equation 24 can be rewritten for t k :\n\nt k+1 = t k + λ(t k ) -η k+1 , where λ(t k ) = -E(Z|Z < β -ϵ k ) = E[Z | Z ≥ -t k ].\n\nConsider the hitting time τ M := inf{k : t k ≥ M } for any M > 0. Fix M > 0 and define\n\nm(M ) := min t≤M λ(t) = E[Z | Z ≥ -M ] > 0,\n\nwhich is strictly positive the fact that λ(t) > 0 and λ(t) is a decreasing function. On the event {τ M > K} we have t j < M for j = 0, . . . , K -1, hence λ(t j ) ≥ m(M ). Summing the recursion yields\n\nt K = t 0 + K-1 j=0 λ(t j ) - K-1 j=0 η j+1 ≥ t 0 + K m(M ) -S K , where S K := K-1 j=0 η j+1 and t 0 = β -ϵ 0 is F 0 -measurable (hence random). Therefore, {τ M > K} ⊆ S K ≥ t 0 + K m(M ) -M . (28)\n\nDefine the (random) burn-in index\n\nK 0 := 2(M -t 0 ) m(M ) .\n\nThen for all K ≥ K 0 ,\n\nt 0 + K m(M ) -M ≥ m(M ) 2 K,\n\nand equation 28 gives, conditionally on F 0 ,\n\n{τ M > K} ⊆ S K ≥ m(M ) 2 K , for all K ≥ K 0 . (29)\n\nNext, we will show that S K is a sub-exponential random variable in event {τ M > K}.\n\nSince S K = K-1 j=0 η j+1 = K-1 j=0 1 nj nj i=1 ξ ′j+1 i -Eξ ′j+1 i , we will first show that ξ ′j+1 i -Eξ ′j+1 i is sub-exponential.\n\nSince ξ ′j+1 i ∼ N trunc (-∞, β -ϵ j ) = N trunc (-∞, t j ), on the event {τ M > K} we have\n\nξ ′j+1 i -Eξ ′j+1 i < t j -E[Z | Z < t j ] ≤ M -E[Z | Z < M ] := b(M ) < ∞.\n\nThe above inequality follows from the fact that t -E[Z | Z < t] is an increasing function of t and t j < M for j = 0, . . . , K -1 on the event {τ M > K}. In addition, Var(ξ ′j+1 i ) = Var(Z|Z < t j ) ≤ 1. Therefore,\n\nξ ′j+1 i -Eξ ′j+1 i is mean zero, bounded above by b(M ) with Var ξ ′j+1 i -Eξ ′j+1 i < 1. By Bennet/Bernstein MGF inequality, we have log Ee λ(ξ ′j+1 i -Eξ ′j+1 i ) ≤ λ 2 2(1 -b(M )λ/3) , for 0 < λ < 3 b(M ) . This shows that ξ ′j+1 i -Eξ ′j+1 i is sub-exponential with parameters SE(1, 2b(M )/3).\n\nBy standard properties of sub-exponential random variables,\n\nη j+1 = 1 nj nj i=1 ξ ′j+1 i -Eξ ′j+1 i is SE(1/n j , 2b(M )/(3n j )) and S K = K-1 j=0 η j+1 is SE( K-1 j=0 1/n j , 2b(M )/(3n 1\n\n)) since n j is nondecreasing. Therefore, for any t > 0 we have tail bound\n\nP (S K ≥ t) ≤ exp - 1 2 min{ t 2 K-1 j=0 1/n j , n 1 t 2b(M ) } ≤ exp - 1 2 min{ n 1 t 2 K , n 1 t 2b(M ) } . (30)\n\nUse the tail bound equation 30 in equation 29, we have Generate: Synthetic covariates X k+1 are constructed (details below), and responses are generated as:\n\nP (τ M > K | F 0 ) ≤ P S K ≥ m(M ) 2 K ≤ exp -c(M )n 1 K ( 31\n\nY k+1 = X k+1 θk + ξ k+1 , ξ k+1 ∼ N (0, σ 2 I) 4: Verify: Each synthetic sample (x k+1 i , y k+1 i ) of (X k+1 , Y k+1\n\n) is filtered by the verifier Condition equation 1, retaining only the verified subset (X k+1 ′ , Y k+1 ′ ).",
+      "word_count": 1762
+    },
+    {
+      "index": 15,
+      "title": "5:",
+      "kind": "body",
+      "text": "Retrain: A new OLS estimator is computed using only the verified data:\n\nθk+1 = (X k+1 ′ ⊤ X k+1 ′ ) -1 X k+1 ′ ⊤ Y k+1 ′ 6: end for\n\nGiven the orthogonality of {v j } in the block design equation 2, the OLS estimator decomposes into a set of one-dimensional problems, each estimating the coordinate of θ along direction v j . In particular, choosing {v j } as the right singular vectors of the real data matrix X 0 yields the cleanest interpretation, making explicit how verifier bias, synthetic sample size, and noise variance interact. Accordingly, the retraining procedure can be formalized as follows:\n\nAlgorithm 3 Iterative Verifier-Guided Retraining in Linear Regression\n\n1: Input: Real data (X 0 , Y 0 ) 2: Compute initial estimator θ0 = (X 0 ⊤ X 0 ) -1 X 0 ⊤ Y 0 3: Let X 0 = U ΣV ⊤ be the SVD of X 0 , with right singular vectors V = (v 1 , . . . , v p ) 4: for k = 0, 1, 2, . . . do 5:\n\nfor j = 1, . . . , p do 6:\n\nConstruct synthetic design matrix X k+1,j with all rows equal to v ⊤ j 7:\n\nGenerate synthetic responses Y k+1,j = X k+1,j θk + ξ k+1,j , where ξ k+1,j ∼ N (0, σ 2 I) 8:\n\nApply verifier to each (x k+1,j i , y k+1,j i ) and retain valid samples satisfying\n\n|y k+1,j i -(x k+1,j i ) ⊤ θ c | ≤ r∥x k+1,j i ∥ + σ c , (33) 9:\n\nyielding n k verified samples (x ′k+1,j i , y ′k+1,j i ).\n\n10:\n\nCompute one-dimensional estimator θk+1,proj,j = ȳ′ k+1,j\n\n11:\n\nend for 12:\n\nUpdate overall estimator:\n\nθk+1 = p j=1 v j θk+1,proj,j (35)\n\n13: end for Proof of Theorem 3.1. We consider the one dimensional projection estimator of θ1,proj,j defined in equation 34.\n\nThe filter condition equation 33 is equivalent to:\n\n|σξ 1,j i + v ⊤ j ( θ0 -θ c )| ≤ r + σ c ⇐⇒ y 1,j i = σξ 1,j i + v ⊤ j θ0 ∈ -r - σ c σ + v ⊤ j θ c , r + σ c σ + v ⊤ j θ c . ( 36\n\n) Note that θ0 ∼ N (θ ⋆ , (X 0 ⊤ X 0 ) -1 σ 2 ) and v j is the j-th right singular vector of X 0 , therefore v ⊤ j θ0 ∼ N (v ⊤ j θ ⋆ , σ 2 µ -2 j )\n\n. Therefore, θ1,proj,j = ȳ′1,j correspond to the verifier-filtered mean estimator of a onedimensional Gaussian mean estimation problem with true mean v ⊤ j θ, variance σ 2 µ -2 j and filtering interval -r -σc σ + v ⊤ j θ c , r + σc σ + v ⊤ j θ c . Let\n\nα j := -r -σ c + v ⊤ j (θ c -θ ⋆ ) σ , β j := r + σ c + v ⊤ j (θ c -θ ⋆ ) σ . (37)\n\nUnder the assumption µ j = ω( √ n 0 ), there exists a constant L > 0, such that µ 2 j > Ln 0 for all j = 1, . . . , p. Therefore, by Theorem A.1, there exists constant K j depending only on α j , β j such that if n 1 > n 0 ≥ 100,\n\n1 σ 2 E( θ1,proj,j -v ⊤ j θ ⋆ ) 2 - m 2 (α j , β j ) n 1 -m 2 1 (α j , β j ) + m 2 2 (α j , β j ) + m 3 (α j , β j )m 1 (α j , β j ) µ 2 j < K j 1 n 1 n 1/3 0 + 1 n 3/2 0 (38)\n\nwill hold with probability at least 1 -exp(-Ln 1/3 0 ). m 1 , m 2 , m 3 are defined in equation 11 and equation 12. By equation 35, we have θ1,proj,j =\n\nv ⊤ j θ1 . In addition, since V = (v 1 , v 2 , . . . , v p ) is an orthonormal matrice, we have p j=1 E( θ1,proj,j -v ⊤ j θ ⋆ ) 2 = p j=1 E(v ⊤ j θ1 -v ⊤ j θ ⋆ ) 2 = E||V ⊤ ( θ1 -θ ⋆ )|| 2 = E∥ θ1 -θ ⋆ | 2 . (39)\n\nTherefore, by summing over j on both sides of equation 38 and using simple union bound, we have\n\n1 σ 2 E|| θ1 -θ ⋆ || 2 - p j=1      m 2,j n 1 Synthetic Variance + m 2 1,j + m 1,j m 3,j + m 2 2,j µ 2 j Verification Error      < K 1 n 1 n 1/3 0 + 1 n 3/2 0 (40)\n\nwith K = max j K j and m 1,j := m 1 (α j , β j ), m 2,j := m 2 (α j , β j ), m 3,j := m 3 (α j , β j ).\n\nProof of Theorem 4.1. We consider the transition dynamics of θk in Algorithm 3. Since we designed X k+1,j to be the rank one matrix correspond to singular vector v j , therefore equation 34 can be rewritten as\n\nθk+1,proj,j = v ⊤ j θk + σ n k n k i=1 ξ ′k+1,j i ( 41\n\n)\n\nwhere ξ ′k+1,j i is the truncated noise term after verification. By equation 33, we have\n\nξ ′k+1,j i i.i.d ∼ N trunc - r σ - σ c σ -v ⊤ j θk -θ c σ , r σ + σ c σ -v ⊤ j θk -θ c σ . (42)\n\nWe consider the rotated standardized estimator\n\nϵ k j := v ⊤ j θk -θ c σ equivalently ϵ k := V ⊤ θk -θ c σ .\n\nSince θk+1,proj,j = v ⊤ j θk+1 by equation 35, equation 41 can be standardized as\n\nϵ k+1 j = ϵ k j + n k i=1 ξ ′k+1,j i n k , ξ ′k+1,j i i.i.d ∼ N trunc -β -ϵ k j , β -ϵ k j (43)\n\nwhere β = r σ + σc σ . We note that equation 43 is exactly the same dynamics we consider in the proof of Theorem A.2 with β = -α < ∞. In other words, the evolution of the iterative estimator ϵ k is diagonal and each cordinates follows the same dynamics as the one dimensional gaussian iterative mean estimator. From Theorem A.2, we known that there exists a constant ρ < 1 such that\n\nE∥ϵ k j ∥ 2 ≤ ρ 2k E∥ϵ 0 j ∥ 2 + k-1 j=0 ρ 2(k-j)-1 n j , j = 1, 2, . . . , p.\n\nThis implies that\n\nE∥ θk -θ c ∥ 2 ≤ ρ 2k E∥ θ0 -θ c ∥ 2 + pσ 2 k-1 j=0 ρ 2(k-j)-1 n j .",
+      "word_count": 1228
+    },
+    {
+      "index": 16,
+      "title": "D.1 Random Synthetic Data in Linear Regression",
+      "kind": "body",
+      "text": "In the main text, the synthetic covariates were aligned with a fixed orthonormal basis to simplify analysis and make the retraining dynamics easier to interpret. To show that the observed behavior is not tied to this structured design, we repeat the same iterative retraining experiment using fully random synthetic covariates sampled i.i.d. from a standard Gaussian distribution.\n\nFigure 7 presents the results, corresponding directly to the lower two panels in Figure 3 of the main text, but under the random-design setting. The qualitative behavior remains the same: with a well-specified verifier, retraining contracts toward the verifier's knowledge center and avoids collapse, whereas unfiltered retraining diverges. This confirms that the verifier-induced stability and improvement patterns hold beyond the orthonormal-design assumption.",
+      "word_count": 119
+    },
+    {
+      "index": 17,
+      "title": "D.2 Different Verifier Shapes",
+      "kind": "body",
+      "text": "We further analyze how different geometric choices of the verifier region affect the acceptance rule and the resulting retraining dynamics. For any region R θ around a center θ c , a synthetic point (x, y) is accepted whenever there exists a parameter perturbation ∆ in the region that can explain y, i.e.\n\ny = x ⊤ (θ c + ∆) + ξ, ∆ ∈ R θ .\n\nThis leads to the general acceptance requirement\n\n|y -x ⊤ θ c | ≤ sup ∆∈R θ |x ⊤ ∆| + σ c .\n\nDifferent verifier shapes correspond to different support functions sup ∆∈R θ |x ⊤ ∆|.\n\n(1) Ellipsoidal verifier. Consider the anisotropic ellipsoid\n\nR θ = θ : (θ -θ c ) ⊤ A(θ -θ c ) ≤ r 2 , A ≻ 0. Let ∆ = θ -θ c . Changing variables ∆ = A -1/2 u with ∥u∥ 2 ≤ r yields sup ∆ ⊤ A∆≤r 2 |x ⊤ ∆| = r∥A -1/2 x∥ 2 = r √ x ⊤ A -1 x.\n\nThus the acceptance condition becomes\n\n|y -x ⊤ θ c | ≤ r √ x ⊤ A -1 x + σ c .\n\n(2) Polyhedral ℓ 1 verifier. For the ℓ 1 knowledge region\n\nR θ = {∥θ -θ c ∥ 1 ≤ r},\n\nthe perturbation satisfies ∥∆∥ 1 ≤ r. Using Hölder duality,\n\nsup ∥∆∥1≤r |x ⊤ ∆| = r∥x∥ ∞ .\n\nThe corresponding acceptance rule is\n\n|y -x ⊤ θ c | ≤ r∥x∥ ∞ + σ c .\n\nAlthough ellipsoidal and ℓ 1 (polyhedral) regions induce different forms of acceptance sets, both yield the same qualitative retraining behavior: θ(k) consistently move toward the verifier center θ c . The empirical trajectories under both shapes are shown in Figure 8 .",
+      "word_count": 298
+    },
+    {
+      "index": 18,
+      "title": "D.3 MNIST-Specific FID Evaluation",
+      "kind": "results",
+      "text": "The standard Fréchet Inception Distance (FID) is widely used in generative modeling, including on MNIST, following prior work such as Dai & Wipf (2019) ; Leontev et al. (2020); Chan & Sithungu (2024) . Nonetheless, we agree that Inception embeddings are not tailored to handwritten digits and may not fully capture perceptual similarity on MNIST.\n\nTo address this point, we introduce a MNIST-specific FID variant. We train a lightweight convolutional network directly on MNIST classification, and compute FID using the penultimate-layer activations as the embedding space. This produces a domain-appropriate FID measure while preserving the same statistical structure as the original metric. These results confirm that our conclusions are robust to the choice of embedding and do not depend on the use of vanilla FID.\n\nResults. Figures 9a and 9b report the new FID scores under our retraining framework for all verifier sizes. Consistent with the standard FID curves in the main paper.\n\n0 5 10 15 20 25 30 35 40 Iteration 0 500 1000 1500 2000 2500 3000 3500 FID FID vs Iteration VAE training sample size 2k 5k 20k Linear growth (10k 256k) Filtered Unfiltered (a) MNIST-specific FID over retraining iterations. 5 10 15 20 25 30 35 40 Iteration 0 20 40 60 80 100 120 140 FID FID vs Iteration VAE training sample size (filtered) 2k 5k 20k Linear growth (10k 256k)\n\n(b) Zoom-in view for filtered runs. Figure 9 : MNIST-specific FID using our MNIST-trained feature embedding. Both results confirm that our conclusions remain unchanged when replacing standard FID with a domain-specific metric.",
+      "word_count": 259
+    },
+    {
+      "index": 19,
+      "title": "D.4 Different Initial Sample Sizes",
+      "kind": "body",
+      "text": "We assess the robustness of verifier-guided retraining by varying the number of real MNIST images used to train the initial CVAE (1k, 2k, 3k, 4k, 60k). For small and medium initial sample sizes, verifier filtering yields clear early FID improvements and then stabilizes performance, whereas unfiltered retraining quickly degrades. When the generator is initialized on all 60k real images, verifier filtering no longer improves FID over the initial model, but it still effectively prevents the severe collapse observed under unfiltered retraining.\n\nWe perform our main experiments in a low-real-data regime (e.g., with 500 initial images), where the verifier, having been trained on a much larger subset of MNIST, holds strictly more external knowledge than the generator. According to our theory, this is exactly the regime in which verifier-guided retraining should provide true improvement rather than simple stabilization, because the verifier contributes additional information. In contrast, when the generator is initialized on the full 60k training images, the verifier would need access to an even stronger source of external information to achieve improvement; otherwise it can only prevent collapse. For this reason, the small initial sample size serves as the most informative regime for highlighting the verifier's knowledge-injection effect and demonstrating the improvement phenomena predicted by our theoretical framework.",
+      "word_count": 208
+    }
+  ],
+  "references": [
+    {
+      "index": 1,
+      "title": "Self-consuming generative models go mad",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Sina Alemohammad",
+        "Josue Casco-Rodriguez",
+        "Lorenzo Luzi",
+        "Ahmed Imtiaz Humayun",
+        "Hossein Babaei",
+        "Daniel Lejeune",
+        "Ali Siahkoohi",
+        "Richard Baraniuk"
+      ],
+      "raw_text": "Self-consuming generative models go mad Sina Alemohammad Josue Casco-Rodriguez Lorenzo Luzi Ahmed Imtiaz Humayun Hossein Babaei Daniel Lejeune Ali Siahkoohi Richard Baraniuk The Twelfth International Conference on Learning Representations 2024"
+    },
+    {
+      "index": 2,
+      "title": "Smollm2: When smol goes big -data-centric training of a small language model",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Loubna Ben Allal",
+        "Anton Lozhkov",
+        "Elie Bakouch",
+        "Guilherme Gabriel Martín Blázquez",
+        "Lewis Penedo",
+        "Andrés Tunstall",
+        "Hynek Marafioti",
+        "Agustín Kydlíček"
+      ],
+      "raw_text": "Smollm2: When smol goes big -data-centric training of a small language model Loubna Ben Allal Anton Lozhkov Elie Bakouch Guilherme Gabriel Martín Blázquez Lewis Penedo Andrés Tunstall Hynek Marafioti Agustín Kydlíček Vaibhav Piqueres Lajarín Joshua Srivastav Caleb Lochner Xuan-Son Fahlgren Clémentine Nguyen Ben Fourrier Hugo Burtenshaw Haojun Larcher Cyril Zhao Zakka Colin Mathieu Morlon Leandro Raffel Thomas Von Werra Wolf 2025"
+    },
+    {
+      "index": 3,
+      "title": "Escaping collapse: The strength of weak data for large language model training",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Kareem Amin",
+        "Sara Babakniya",
+        "Alex Bie",
+        "Weiwei Kong",
+        "Umar Syed",
+        "Sergei Vassilvitskii"
+      ],
+      "raw_text": "Escaping collapse: The strength of weak data for large language model training Kareem Amin Sara Babakniya Alex Bie Weiwei Kong Umar Syed Sergei Vassilvitskii arXiv:2502.08924 2025 arXiv preprint"
+    },
+    {
+      "index": 4,
+      "title": "Can synthetic data be a proxy for real clinical trial data? a validation study",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Zahra Azizi",
+        "Chaoyi Zheng",
+        "Lucy Mosquera",
+        "Louise Pilote",
+        "Khaled El Emam"
+      ],
+      "raw_text": "Can synthetic data be a proxy for real clinical trial data? a validation study Zahra Azizi Chaoyi Zheng Lucy Mosquera Louise Pilote Khaled El Emam BMJ open 11 4 43497 2021"
+    },
+    {
+      "index": 5,
+      "title": "When models don't collapse",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Daniel Barzilai",
+        "Ohad Shamir"
+      ],
+      "raw_text": "When models don't collapse Daniel Barzilai Ohad Shamir arXiv:2505.19046 On the consistency of iterative mle 2025 arXiv preprint"
+    },
+    {
+      "index": 6,
+      "title": "On the stability of iterative retraining of generative models on their own data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Quentin Bertrand",
+        "Joey Avishek",
+        "Alexandre Bose",
+        "Marco Duplessis",
+        "Gauthier Jiralerspong",
+        "Gidel"
+      ],
+      "raw_text": "On the stability of iterative retraining of generative models on their own data Quentin Bertrand Joey Avishek Alexandre Bose Marco Duplessis Gauthier Jiralerspong Gidel ICLR 2024"
+    },
+    {
+      "index": 7,
+      "title": "Evaluating the suitability of inception score and fréchet inception distance as metrics for quality and diversity in image generation",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Adrian Derrick",
+        "Siphesihle Chan",
+        "Sithungu Philezwini"
+      ],
+      "raw_text": "Evaluating the suitability of inception score and fréchet inception distance as metrics for quality and diversity in image generation Adrian Derrick Siphesihle Chan Sithungu Philezwini Proceedings of the 2024 7th International Conference on Computational Intelligence and Intelligent Systems the 2024 7th International Conference on Computational Intelligence and Intelligent Systems 2024"
+    },
+    {
+      "index": 8,
+      "title": "On the diversity of synthetic data and its impact on training large language models",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Abdul Hao Chen",
+        "Xiang Waheed",
+        "Yidong Li",
+        "Jindong Wang",
+        "Bhiksha Wang",
+        "Raj",
+        "Marah I Abdin"
+      ],
+      "raw_text": "On the diversity of synthetic data and its impact on training large language models Abdul Hao Chen Xiang Waheed Yidong Li Jindong Wang Bhiksha Wang Raj Marah I Abdin arXiv:2410.15226 International Conference on Learning Representations Bin Dai David Wipf 2024. 2019 arXiv preprint Diagnosing and enhancing vae models"
+    },
+    {
+      "index": 9,
+      "title": "Universality of the π 2 /6 pathway in avoiding model collapse",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Apratim Dey",
+        "David Donoho"
+      ],
+      "raw_text": "Universality of the π 2 /6 pathway in avoiding model collapse Apratim Dey David Donoho arXiv:2410.22812 2024 arXiv preprint"
+    },
+    {
+      "index": 10,
+      "title": "Sim2real transfer learning for 3d human pose estimation: motion to the rescue",
+      "doi": "",
+      "year": "2019",
+      "authors": [
+        "Carl Doersch",
+        "Andrew Zisserman"
+      ],
+      "raw_text": "Sim2real transfer learning for 3d human pose estimation: motion to the rescue Carl Doersch Andrew Zisserman Advances in Neural Information Processing Systems 32 2019"
+    },
+    {
+      "index": 11,
+      "title": "Model collapse demystified: The case of regression",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Julia Kempe"
+      ],
+      "raw_text": "Model collapse demystified: The case of regression Elvis Dohmatob Yunzhen Feng Julia Kempe Advances in Neural Information Processing Systems 37 2024"
+    },
+    {
+      "index": 12,
+      "title": "A tale of tails: Model collapse as a change of scaling laws",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "A tale of tails: Model collapse as a change of scaling laws Elvis Dohmatob Yunzhen Feng Pu Yang Francois Charton Julia Kempe PMLR International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 13,
+      "title": "Strong model collapse",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Elvis Dohmatob",
+        "Yunzhen Feng",
+        "Arjun Subramonian",
+        "Julia Kempe"
+      ],
+      "raw_text": "Strong model collapse Elvis Dohmatob Yunzhen Feng Arjun Subramonian Julia Kempe The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 14,
+      "title": "Beyond model collapse: Scaling up with synthesized data requires verification",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Yunzhen Feng",
+        "Elvis Dohmatob",
+        "Pu Yang",
+        "Francois Charton",
+        "Julia Kempe"
+      ],
+      "raw_text": "Beyond model collapse: Scaling up with synthesized data requires verification Yunzhen Feng Elvis Dohmatob Pu Yang Francois Charton Julia Kempe The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 15,
+      "title": "Self-consuming generative models with curated data provably optimize human preferences",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Damien Ferbach",
+        "Quentin Bertrand",
+        "Joey Bose",
+        "Gauthier Gidel"
+      ],
+      "raw_text": "Self-consuming generative models with curated data provably optimize human preferences Damien Ferbach Quentin Bertrand Joey Bose Gauthier Gidel Advances in Neural Information Processing Systems 37 2024"
+    },
+    {
+      "index": 16,
+      "title": "Towards theoretical understandings of self-consuming generative models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shi Fu",
+        "Sen Zhang",
+        "Yingjie Wang",
+        "Xinmei Tian",
+        "Dacheng Tao"
+      ],
+      "raw_text": "Towards theoretical understandings of self-consuming generative models Shi Fu Sen Zhang Yingjie Wang Xinmei Tian Dacheng Tao PMLR International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 17,
+      "title": "A theoretical perspective: How to prevent model collapse in self-consuming training loops",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Shi Fu",
+        "Yingjie Wang",
+        "Yuzhu Chen",
+        "Xinmei Tian",
+        "Dacheng Tao"
+      ],
+      "raw_text": "A theoretical perspective: How to prevent model collapse in self-consuming training loops Shi Fu Yingjie Wang Yuzhu Chen Xinmei Tian Dacheng Tao The Thirteenth International Conference on Learning Representations 2025"
+    },
+    {
+      "index": 18,
+      "title": "Preventing model collapse under overparametrization: Optimal mixing ratios for interpolation learning and ridge regression",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Anvit Garg",
+        "Sohom Bhattacharya",
+        "Pragya Sur"
+      ],
+      "raw_text": "Preventing model collapse under overparametrization: Optimal mixing ratios for interpolation learning and ridge regression Anvit Garg Sohom Bhattacharya Pragya Sur arXiv:2509.22341 2025 arXiv preprint"
+    },
+    {
+      "index": 19,
+      "title": "Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Matthias Gerstgrasser",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Rafael Rafailov",
+        "Tomasz Korbak",
+        "Henry Sleight",
+        "Rajashree Agrawal",
+        "John Hughes"
+      ],
+      "raw_text": "Is model collapse inevitable? breaking the curse of recursion by accumulating real and synthetic data Matthias Gerstgrasser Rylan Schaeffer Apratim Dey Rafael Rafailov Tomasz Korbak Henry Sleight Rajashree Agrawal John Hughes Dhruv Bhandarkar Pai Andrey Gromov First Conference on Language Modeling (COLM) 2024"
+    },
+    {
+      "index": 20,
+      "title": "A survey on llm-as-a-judge",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jiawei Gu",
+        "Xuhui Jiang",
+        "Zhichao Shi",
+        "Hexiang Tan",
+        "Xuehao Zhai",
+        "Chengjin Xu",
+        "Wei Li",
+        "Yinghan Shen"
+      ],
+      "raw_text": "Jiawei Gu Xuhui Jiang Zhichao Shi Hexiang Tan Xuehao Zhai Chengjin Xu Wei Li Yinghan Shen Shengjie Ma Honghao Liu arXiv:2411.15594 A survey on llm-as-a-judge 2024 arXiv preprint"
+    },
+    {
+      "index": 21,
+      "title": "Textbooks are all you need",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Suriya Gunasekar",
+        "Yi Zhang",
+        "Jyoti Aneja",
+        "Caio César",
+        "Teodoro Mendes",
+        "Allie Del Giorno",
+        "Sivakanth Gopi",
+        "Mojan Javaheripi"
+      ],
+      "raw_text": "Suriya Gunasekar Yi Zhang Jyoti Aneja Caio César Teodoro Mendes Allie Del Giorno Sivakanth Gopi Mojan Javaheripi Piero Kauffmann Gustavo De Rosa Olli Saarikivi arXiv:2306.11644 Textbooks are all you need 2023 arXiv preprint"
+    },
+    {
+      "index": 22,
+      "title": "Deepseek-coder: When the large language model meets programming-the rise of code intelligence",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Qihao Daya Guo",
+        "Dejian Zhu",
+        "Zhenda Yang",
+        "Kai Xie",
+        "Wentao Dong",
+        "Guanting Zhang",
+        "Xiao Chen",
+        "Y Bi"
+      ],
+      "raw_text": "Deepseek-coder: When the large language model meets programming-the rise of code intelligence Qihao Daya Guo Dejian Zhu Zhenda Yang Kai Xie Wentao Dong Guanting Zhang Xiao Chen Y Bi Wu Li 2024 CoRR"
+    },
+    {
+      "index": 23,
+      "title": "Deepseek-r1 incentivizes reasoning in llms through reinforcement learning",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Dejian Daya Guo",
+        "Haowei Yang",
+        "Junxiao Zhang",
+        "Peiyi Song",
+        "Qihao Wang",
+        "Runxin Zhu",
+        "Ruoyu Xu",
+        "Shirong Zhang"
+      ],
+      "raw_text": "Deepseek-r1 incentivizes reasoning in llms through reinforcement learning Dejian Daya Guo Haowei Yang Junxiao Zhang Peiyi Song Qihao Wang Runxin Zhu Ruoyu Xu Shirong Zhang Xiao Ma Bi Nature 645 8081 2025"
+    },
+    {
+      "index": 24,
+      "title": "Language models can teach themselves to program better",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Patrick Haluptzok",
+        "Matthew Bowers",
+        "Adam Tauman",
+        "Kalai"
+      ],
+      "raw_text": "Language models can teach themselves to program better Patrick Haluptzok Matthew Bowers Adam Tauman Kalai The Eleventh International Conference on Learning Representations 2023"
+    },
+    {
+      "index": 25,
+      "title": "Golden ratio weighting prevents model collapse",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Hengzhi He",
+        "Shirong Xu",
+        "Guang Cheng"
+      ],
+      "raw_text": "Hengzhi He Shirong Xu Guang Cheng arXiv:2502.18049 Golden ratio weighting prevents model collapse 2025 arXiv preprint"
+    },
+    {
+      "index": 26,
+      "title": "Is synthetic data from generative models ready for image recognition",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Ruifei He",
+        "Shuyang Sun",
+        "Xin Yu",
+        "Chuhui Xue",
+        "Wenqing Zhang",
+        "Philip Torr",
+        "Song Bai",
+        "Xiaojuan Qi"
+      ],
+      "raw_text": "Is synthetic data from generative models ready for image recognition Ruifei He Shuyang Sun Xin Yu Chuhui Xue Wenqing Zhang Philip Torr Song Bai Xiaojuan Qi The Eleventh International Conference on Learning Representations 2023"
+    },
+    {
+      "index": 27,
+      "title": "Gans trained by a two time-scale update rule converge to a local nash equilibrium",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Martin Heusel",
+        "Hubert Ramsauer",
+        "Thomas Unterthiner",
+        "Bernhard Nessler",
+        "Sepp Hochreiter"
+      ],
+      "raw_text": "Gans trained by a two time-scale update rule converge to a local nash equilibrium Martin Heusel Hubert Ramsauer Thomas Unterthiner Bernhard Nessler Sepp Hochreiter Advances in neural information processing systems 2017 30"
+    },
+    {
+      "index": 28,
+      "title": "Quality matters: Evaluating synthetic data for tool-using llms",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Shadi Iskander",
+        "Sofia Tolmach",
+        "Ori Shapira",
+        "Nachshon Cohen",
+        "Zohar Karnin"
+      ],
+      "raw_text": "Quality matters: Evaluating synthetic data for tool-using llms Shadi Iskander Sofia Tolmach Ori Shapira Nachshon Cohen Zohar Karnin Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing the 2024 Conference on Empirical Methods in Natural Language Processing 2024"
+    },
+    {
+      "index": 29,
+      "title": "Collapse or thrive: Perils and promises of synthetic data in a self-generating world",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Joshua Kazdan",
+        "Rylan Schaeffer",
+        "Apratim Dey",
+        "Matthias Gerstgrasser",
+        "Rafael Rafailov",
+        "David L Donoho",
+        "Sanmi Koyejo"
+      ],
+      "raw_text": "Collapse or thrive: Perils and promises of synthetic data in a self-generating world Joshua Kazdan Rylan Schaeffer Apratim Dey Matthias Gerstgrasser Rafael Rafailov David L Donoho Sanmi Koyejo Forty-second International Conference on Machine Learning 2025"
+    },
+    {
+      "index": 30,
+      "title": "Auto-encoding variational bayes",
+      "doi": "",
+      "year": "2014",
+      "authors": [
+        "P Diederik",
+        "Max Kingma",
+        "Welling"
+      ],
+      "raw_text": "Auto-encoding variational bayes P Diederik Max Kingma Welling International Conference on Learning Representations (ICLR) 2014"
+    },
+    {
+      "index": 31,
+      "title": "Bridging the gap: Enhancing the utility of synthetic data via post-processing techniques",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Andrea Lampis",
+        "Eugenio Lomurno",
+        "Matteo Matteucci"
+      ],
+      "raw_text": "Bridging the gap: Enhancing the utility of synthetic data via post-processing techniques Andrea Lampis Eugenio Lomurno Matteo Matteucci arXiv:2305.10118 2023 arXiv preprint"
+    },
+    {
+      "index": 32,
+      "title": "Quality metrics of variational autoencoders",
+      "doi": "",
+      "year": "2020",
+      "authors": [
+        "Mikhail Leontev",
+        "Alexander Mikheev",
+        "Kirill Sviatov",
+        "Sergey Sukhov"
+      ],
+      "raw_text": "Quality metrics of variational autoencoders Mikhail Leontev Alexander Mikheev Kirill Sviatov Sergey Sukhov 2020 International Conference on Information Technology and Nanotechnology (ITNT) IEEE 2020"
+    },
+    {
+      "index": 33,
+      "title": "Source2synth: Synthetic data generation and curation grounded in real data sources",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alisia Lupidi",
+        "Carlos Gemmell",
+        "Nicola Cancedda",
+        "Jane Dwivedi-Yu",
+        "Jason Weston",
+        "Jakob Foerster",
+        "Roberta Raileanu",
+        "Maria Lomeli"
+      ],
+      "raw_text": "Source2synth: Synthetic data generation and curation grounded in real data sources Alisia Lupidi Carlos Gemmell Nicola Cancedda Jane Dwivedi-Yu Jason Weston Jakob Foerster Roberta Raileanu Maria Lomeli arXiv:2409.08239 2024 arXiv preprint"
+    },
+    {
+      "index": 34,
+      "title": "Don't give me the details, just the summary! Topicaware convolutional neural networks for extreme summarization",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Shashi Narayan",
+        "Shay B Cohen",
+        "Mirella Lapata"
+      ],
+      "raw_text": "Don't give me the details, just the summary! Topicaware convolutional neural networks for extreme summarization Shashi Narayan Shay B Cohen Mirella Lapata Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing the 2018 Conference on Empirical Methods in Natural Language Processing Brussels, Belgium 2018"
+    },
+    {
+      "index": 35,
+      "title": "Training language models to follow instructions with human feedback",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Long Ouyang",
+        "Jeffrey Wu",
+        "Xu Jiang",
+        "Diogo Almeida",
+        "Carroll Wainwright",
+        "Pamela Mishkin",
+        "Chong Zhang",
+        "Sandhini Agarwal"
+      ],
+      "raw_text": "Training language models to follow instructions with human feedback Long Ouyang Jeffrey Wu Xu Jiang Diogo Almeida Carroll Wainwright Pamela Mishkin Chong Zhang Sandhini Agarwal Katarina Slama Alex Ray Advances in neural information processing systems 35 2022"
+    },
+    {
+      "index": 36,
+      "title": "Enhancing low-resource llms classification with peft and synthetic data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Parth Patwa",
+        "Simone Filice",
+        "Zhiyu Chen",
+        "Giuseppe Castellucci",
+        "Oleg Rokhlenko",
+        "Shervin Malmasi"
+      ],
+      "raw_text": "Enhancing low-resource llms classification with peft and synthetic data Parth Patwa Simone Filice Zhiyu Chen Giuseppe Castellucci Oleg Rokhlenko Shervin Malmasi 2024 CoRR"
+    },
+    {
+      "index": 37,
+      "title": "Synthetic data applications in finance",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Daniel Vamsi K Potluru",
+        "Andrea Borrajo",
+        "Niccolò Coletta",
+        "Yousef Dalmasso",
+        "Elizabeth El-Laham",
+        "Mohsen Fons",
+        "Sriram Ghassemi",
+        "Vikesh Gopalakrishnan"
+      ],
+      "raw_text": "Daniel Vamsi K Potluru Andrea Borrajo Niccolò Coletta Yousef Dalmasso Elizabeth El-Laham Mohsen Fons Sriram Ghassemi Vikesh Gopalakrishnan Eleonora Gosai Kreačić arXiv:2401.00081 Synthetic data applications in finance 2023 arXiv preprint"
+    },
+    {
+      "index": 38,
+      "title": "How good is your synthetic data? synthro, a dashboard to evaluate and benchmark synthetic tabular data",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Gabriele Santangelo",
+        "Giovanna Nicora",
+        "Riccardo Bellazzi",
+        "Arianna Dagliati"
+      ],
+      "raw_text": "How good is your synthetic data? synthro, a dashboard to evaluate and benchmark synthetic tabular data Gabriele Santangelo Giovanna Nicora Riccardo Bellazzi Arianna Dagliati BMC Medical Informatics and Decision Making 25 1 89 2025"
+    },
+    {
+      "index": 39,
+      "title": "Position: Model collapse does not mean what you think",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Rylan Schaeffer",
+        "Joshua Kazdan",
+        "Alvan",
+        "Caleb Arulandu",
+        "Sanmi Koyejo"
+      ],
+      "raw_text": "Position: Model collapse does not mean what you think Rylan Schaeffer Joshua Kazdan Alvan Caleb Arulandu Sanmi Koyejo arXiv:2503.03150 2025 arXiv preprint"
+    },
+    {
+      "index": 40,
+      "title": "Learning from simulated and unsupervised images through adversarial training",
+      "doi": "",
+      "year": "2017",
+      "authors": [
+        "Ashish Shrivastava",
+        "Tomas Pfister",
+        "Oncel Tuzel",
+        "Joshua Susskind",
+        "Wenda Wang",
+        "Russell Webb"
+      ],
+      "raw_text": "Learning from simulated and unsupervised images through adversarial training Ashish Shrivastava Tomas Pfister Oncel Tuzel Joshua Susskind Wenda Wang Russell Webb Proceedings of the IEEE conference on computer vision and pattern recognition the IEEE conference on computer vision and pattern recognition 2017"
+    },
+    {
+      "index": 41,
+      "title": "Ai models collapse when trained on recursively generated data",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Ilia Shumailov",
+        "Zakhar Shumaylov",
+        "Yiren Zhao",
+        "Nicolas Papernot",
+        "Ross Anderson",
+        "Yarin Gal"
+      ],
+      "raw_text": "Ai models collapse when trained on recursively generated data Ilia Shumailov Zakhar Shumaylov Yiren Zhao Nicolas Papernot Ross Anderson Yarin Gal Nature 631 8022 2024"
+    },
+    {
+      "index": 42,
+      "title": "Rate of model collapse in recursive training",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Ananda Theertha Suresh",
+        "Andrew Thangaraj",
+        "Aditya Nanda",
+        "Kishore Khandavally"
+      ],
+      "raw_text": "Rate of model collapse in recursive training Ananda Theertha Suresh Andrew Thangaraj Aditya Nanda Kishore Khandavally The 28th International Conference on Artificial Intelligence and Statistics 2025"
+    },
+    {
+      "index": 43,
+      "title": "Stablerep: Synthetic images from text-to-image models make strong visual representation learners",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Yonglong Tian",
+        "Lijie Fan",
+        "Phillip Isola",
+        "Huiwen Chang",
+        "Dilip Krishnan"
+      ],
+      "raw_text": "Stablerep: Synthetic images from text-to-image models make strong visual representation learners Yonglong Tian Lijie Fan Phillip Isola Huiwen Chang Dilip Krishnan Advances in Neural Information Processing Systems 36 2023"
+    },
+    {
+      "index": 44,
+      "title": "Training deep networks with synthetic data: Bridging the reality gap by domain randomization",
+      "doi": "",
+      "year": "2018",
+      "authors": [
+        "Jonathan Tremblay",
+        "Aayush Prakash",
+        "David Acuna",
+        "Mark Brophy",
+        "Varun Jampani"
+      ],
+      "raw_text": "Training deep networks with synthetic data: Bridging the reality gap by domain randomization Jonathan Tremblay Aayush Prakash David Acuna Mark Brophy Varun Jampani Proceedings of the IEEE conference on computer vision and pattern recognition workshops the IEEE conference on computer vision and pattern recognition workshops 2018 Cem Anil, Thang To, Eric Cameracci, Shaad Boochoon, and Stan Birchfield"
+    },
+    {
+      "index": 45,
+      "title": "Resofilter: Fine-grained synthetic data filtering for large language models through data-parameter resonance analysis",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Zeao Tu",
+        "Xiangdi Meng",
+        "Yu He",
+        "Zihan Yao",
+        "Tianyu Qi",
+        "Jun Liu",
+        "Ming Li"
+      ],
+      "raw_text": "Resofilter: Fine-grained synthetic data filtering for large language models through data-parameter resonance analysis Zeao Tu Xiangdi Meng Yu He Zihan Yao Tianyu Qi Jun Liu Ming Li Findings of the Association for Computational Linguistics: NAACL 2025 2025"
+    },
+    {
+      "index": 46,
+      "title": "Self-consuming generative models with adversarially curated data",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Xiukun Wei",
+        "Xueru Zhang"
+      ],
+      "raw_text": "Self-consuming generative models with adversarially curated data Xiukun Wei Xueru Zhang Fortysecond International Conference on Machine Learning"
+    },
+    {
+      "index": 47,
+      "title": "Qurating: Selecting high-quality data for training language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Alexander Wettig",
+        "Aatmik Gupta",
+        "Saumya Malik",
+        "Danqi Chen"
+      ],
+      "raw_text": "Qurating: Selecting high-quality data for training language models Alexander Wettig Aatmik Gupta Saumya Malik Danqi Chen Forty-first International Conference on Machine Learning 2024"
+    },
+    {
+      "index": 48,
+      "title": "Fake it till you make it: face analysis in the wild using synthetic data alone",
+      "doi": "",
+      "year": "2021",
+      "authors": [
+        "Erroll Wood",
+        "Tadas Baltrušaitis",
+        "Charlie Hewitt",
+        "Sebastian Dziadzio",
+        "Thomas J Cashman",
+        "Jamie Shotton"
+      ],
+      "raw_text": "Fake it till you make it: face analysis in the wild using synthetic data alone Erroll Wood Tadas Baltrušaitis Charlie Hewitt Sebastian Dziadzio Thomas J Cashman Jamie Shotton Proceedings of the IEEE/CVF international conference on computer vision the IEEE/CVF international conference on computer vision 2021"
+    },
+    {
+      "index": 49,
+      "title": "The invisible leash: Why rlvr may not escape its origin",
+      "doi": "",
+      "year": "",
+      "authors": [
+        "Fang Wu",
+        "Yejin Choi"
+      ],
+      "raw_text": "The invisible leash: Why rlvr may not escape its origin Fang Wu Yejin Choi 2nd AI for Math Workshop@ ICML 2025"
+    },
+    {
+      "index": 50,
+      "title": "A probabilistic perspective on model collapse",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Shirong Xu",
+        "Hengzhi He",
+        "Guang Cheng"
+      ],
+      "raw_text": "Shirong Xu Hengzhi He Guang Cheng arXiv:2505.13947 A probabilistic perspective on model collapse 2025 arXiv preprint"
+    },
+    {
+      "index": 51,
+      "title": "Dapo: An open-source llm reinforcement learning system at scale",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Qiying Yu",
+        "Zheng Zhang",
+        "Ruofei Zhu",
+        "Yufeng Yuan",
+        "Xiaochen Zuo",
+        "Yu Yue",
+        "Tiantian Fan",
+        "Gaohong Liu"
+      ],
+      "raw_text": "Dapo: An open-source llm reinforcement learning system at scale Qiying Yu Zheng Zhang Ruofei Zhu Yufeng Yuan Xiaochen Zuo Yu Yue Tiantian Fan Gaohong Liu Lingjun Liu Xin Liu Advances in Neural Information Processing Systems 2025 38"
+    },
+    {
+      "index": 52,
+      "title": "Star: Bootstrapping reasoning with reasoning",
+      "doi": "",
+      "year": "2022",
+      "authors": [
+        "Eric Zelikman",
+        "Yuhuai Wu",
+        "Jesse Mu",
+        "Noah Goodman"
+      ],
+      "raw_text": "Star: Bootstrapping reasoning with reasoning Eric Zelikman Yuhuai Wu Jesse Mu Noah Goodman Advances in Neural Information Processing Systems 35 2022"
+    },
+    {
+      "index": 53,
+      "title": "Regurgitative training: The value of real data in training large language models",
+      "doi": "",
+      "year": "2024",
+      "authors": [
+        "Jinghui Zhang",
+        "Dandan Qiao",
+        "Mochen Yang",
+        "Qiang Wei"
+      ],
+      "raw_text": "Regurgitative training: The value of real data in training large language models Jinghui Zhang Dandan Qiao Mochen Yang Qiang Wei arXiv:2407.12835 2024 arXiv preprint"
+    },
+    {
+      "index": 54,
+      "title": "Judging llm-as-a-judge with mt-bench and chatbot arena",
+      "doi": "",
+      "year": "2023",
+      "authors": [
+        "Lianmin Zheng",
+        "Wei-Lin Chiang",
+        "Ying Sheng",
+        "Siyuan Zhuang",
+        "Zhanghao Wu",
+        "Yonghao Zhuang",
+        "Zi Lin",
+        "Zhuohan Li"
+      ],
+      "raw_text": "Judging llm-as-a-judge with mt-bench and chatbot arena Lianmin Zheng Wei-Lin Chiang Ying Sheng Siyuan Zhuang Zhanghao Wu Yonghao Zhuang Zi Lin Zhuohan Li Dacheng Li Eric Xing Advances in neural information processing systems 36 2023"
+    },
+    {
+      "index": 55,
+      "title": "How to synthesize text data without model collapse?",
+      "doi": "",
+      "year": "2025",
+      "authors": [
+        "Xuekai Zhu",
+        "Daixuan Cheng",
+        "Hengli Li",
+        "Kaiyan Zhang",
+        "Ermo Hua",
+        "Xingtai Lv",
+        "Ning Ding",
+        "Zhouhan Lin"
+      ],
+      "raw_text": "How to synthesize text data without model collapse? Xuekai Zhu Daixuan Cheng Hengli Li Kaiyan Zhang Ermo Hua Xingtai Lv Ning Ding Zhouhan Lin Zilong Zheng Bowen Zhou Forty-second International Conference on Machine Learning, ICML 2025"
+    }
+  ],
+  "section_count": 19,
+  "reference_count": 55,
+  "error": "",
+  "updated_at": "2026-04-12T19:09:26.344270+00:00"
+}

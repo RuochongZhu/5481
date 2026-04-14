@@ -28,11 +28,12 @@ CAT_NAMES = {
 }
 
 BEAT_CATS = {
-    "Beat 1: Crisis": ["A", "B", "C"],
-    "Beat 2: Empirical": ["D", "H"],
-    "Beat 3: Theory": ["D"],
-    "Beat 4: Validation": ["E", "F", "I", "J"],
-    "Beat 5: Solution": ["A", "G"],
+    "Beat 1: Collapse": ["A", "B", "C"],
+    "Beat 2: Web Drift": ["D", "H"],
+    "Beat 3: L_auth": ["D", "A"],
+    "Beat 4: Social Reasoning": ["F", "I", "J"],
+    "Beat 5: Experiment": ["F", "I", "J"],
+    "Beat 6: CampusGo": ["G"],
 }
 
 CAT_COLORS = {

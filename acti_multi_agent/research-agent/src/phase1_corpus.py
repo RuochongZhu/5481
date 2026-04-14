@@ -8,7 +8,7 @@ import math
 import re
 from pathlib import Path
 from .api_client import ArxivClient, CrossrefClient, LensClient, OpenAlexClient, S2Client
-from .importers import import_file
+from .importers import detect_format, import_file
 from .dedup import deduplicate
 from .paper_identity import (
     extract_source_ids,
@@ -456,14 +456,26 @@ def _run_manual_imports(raw_dir: str) -> tuple[list[dict], list[str]]:
     """Scan raw_dir for CSV/BibTeX files and import them."""
     imported = []
     files_imported = []
-    skip = {"openalex_results.json", "s2_citation_expansion.json", "arxiv_results.json"}
+    skip = {"openalex_results.json", "lens_results.json", "s2_citation_expansion.json", "arxiv_results.json"}
 
     for fname in sorted(os.listdir(raw_dir)):
-        if fname in skip or fname.endswith(".json"):
+        if fname in skip:
             continue
         ext = os.path.splitext(fname)[1].lower()
         if ext in (".csv", ".bib", ".ris"):
             fpath = os.path.join(raw_dir, fname)
+            log.info(f"  Importing: {fname}")
+            try:
+                papers = import_file(fpath)
+                imported.extend(papers)
+                files_imported.append(fname)
+                log.info(f"    → {len(papers)} papers")
+            except Exception as e:
+                log.error(f"    → Import failed: {e}")
+        elif ext in (".json", ""):
+            fpath = os.path.join(raw_dir, fname)
+            if detect_format(fpath) != "supplement_json":
+                continue
             log.info(f"  Importing: {fname}")
             try:
                 papers = import_file(fpath)
@@ -614,6 +626,12 @@ def _select_core_corpus(corpus: list[dict], config_dir: str) -> list[dict]:
         cites = int(paper.get("citationCount", 0) or 0)
         pid = paper.get("paperId")
         forced = forced_inclusions.get(pid)
+        inline_category = (paper.get("query_category") or "").strip()
+        if not forced and paper.get("manual_core_include") and inline_category in CORE_TARGETS:
+            forced = {
+                "category": inline_category,
+                "reason": (paper.get("manual_core_reason") or "").strip(),
+            }
         scores = {cat: _score_paper_for_category(text, year, cites, cat) for cat in CORE_TARGETS}
         query_category = paper.get("query_category")
         if query_category in scores and scores[query_category] > 0:

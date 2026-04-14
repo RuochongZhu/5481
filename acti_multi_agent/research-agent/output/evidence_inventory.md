@@ -1,162 +1,184 @@
 # Evidence Inventory by Beat
 
-## Beat 1: Crisis Exists
+## Beat 1: Model Collapse and Contamination Risk
 
-The crisis case starts with direct demonstrations that recursive training on synthetic outputs degrades models. The strongest anchor is the Nature paper on model collapse, which establishes the phenomenon empirically and theoretically. The Curse of Recursion sharpens the mechanism by showing that rare information is forgotten first, making collapse visible as loss of tail knowledge. Self-Consuming Generative Models go MAD extends the problem beyond language to generative modeling more broadly. The theoretical prevention paper then clarifies that avoiding collapse requires favorable conditions, especially around access to real or well-controlled data, and those conditions cannot be assumed in open-web pipelines. Self-correcting loops show that active safeguards can help, which reinforces the premise that the uncontrolled default is unsafe. Finally, the homogenization paper gives an observable output-level symptom: models become more average, which is what a collapse trajectory should look like before total failure.
+Keep the beat explicitly three-step: collapse risk -> tentative contamination-pressure evidence -> reactive filtering limits. Make the scope admission unavoidable before any category-B bridge: the literature strongly supports risk from indiscriminate recursive reuse, not the claim that all synthetic data is harmful. Name the counterevidence directly: pi^2/6 mixed real+synthetic pathway, self-correcting loops, and curated synthetic-data regimes. For category B, use cautious language such as 'emerging', 'domain-specific', and 'not yet universal proof'; avoid saying the web is definitively contaminated at training-relevant scale. For category C, avoid saying detection is impossible; the stronger claim is that watermarking and other detectors are fragile under paraphrase or low-effort manipulation, even if retrieval or provenance-aware defenses can still help in narrower settings. Do not import any fine-tuning evidence from categories F, I, or J.
 
-- **AI models collapse when trained on recursively generated data (2024)**
-  Role: Anchor paper establishing that recursive training can cause model collapse
-  Finding: Provides combined empirical and theoretical evidence that repeated training on model-generated data degrades distributional fidelity and amplifies errors, especially in low-probability regions.
-- **The Curse of Recursion (2023)**
-  Role: Shows the mechanism of forgetting under synthetic-data reuse
-  Finding: Demonstrates that recursive training causes models to forget rare or tail information, linking collapse to a memorization-over-generalization dynamic.
-- **Self-Consuming Generative Models go MAD (2023)**
-  Role: Cross-domain empirical confirmation in generative modeling
-  Finding: Shows autophagous training loops in generative image models can induce degeneration and instability, indicating collapse is not limited to one model family.
-- **A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training (2025)**
-  Role: Formalizes when collapse risk appears and when it can be avoided
-  Finding: Develops a theoretical framework explaining why some self-consuming setups collapse and others do not, emphasizing that prevention depends on conditions unlikely to be guaranteed on the open web.
-- **Self-Correcting Self-Consuming Loops for Generative Model Training (2024)**
-  Role: Shows that mitigation requires active correction rather than passive reuse
-  Finding: Introduces a self-correcting mechanism that stabilizes self-consuming loops, implying collapse is a real baseline risk unless interventions are added.
-- **ChatGPT is incredible (at being average) (2025)**
-  Role: Supplies a behavioral signature of homogenization
-  Finding: Argues that LLM outputs trend toward average, clichéd responses, offering a qualitative manifestation of the same homogenization predicted by collapse theory.
+- **Ilia Shumailov et al. 2023**
+  Role: Introduces the core collapse mechanism: recursive training on generated data makes models forget low-probability regions of the original distribution.
+  Finding: Training on model-generated content causes irreversible model collapse where tails of the original content distribution disappear across multiple model families.
+- **Josue Casco-Rodriguez et al. 2023**
+  Role: Extends the collapse story into the go-MAD framework, specifying that insufficient fresh real data leads to quality or diversity degradation across generations.
+  Finding: Without enough fresh real data in each generation, self-consuming generative models are doomed to Model Autophagy Disorder (MAD), losing quality or diversity.
+- **Ilia Shumailov et al. 2024**
+  Role: Serves as the beat's anchor by establishing collapse under recursively generated training data and foregrounding irreversible tail loss as the central failure mode.
+  Finding: Indiscriminate use of model-generated content in training causes irreversible model collapse where tails of the original content distribution disappear across successive generation
+- **Apratim Dey et al. 2024**
+  Role: Provides the required counterpoint: mixed real-plus-synthetic training can avoid collapse, so the evidence supports a narrower warning about unmanaged recursive reuse rather than a blanket rejection of synthetic data.
+  Finding: Augmenting real data with synthetic data across generations universally preserves a statistical efficiency of π²/6 relative to using only real data, avoiding model collapse.
+- **Weixin Liang et al. 2025**
+  Role: Offers one of the strongest domain-specific measurements of contamination pressure by quantifying LLM usage in scientific writing, while still falling short of proving universal web-scale contamination.
+  Finding: Up to 22.5% of computer science papers showed LLM modification by September 2024, demonstrating academic text contamination at population scale.
+- **Elvis Dohmatob et al. 2024**
+  Role: Supports Beat 1 via category A
+  Finding: Even as little as 1% synthetic data in the training corpus causes strong model collapse where increasing training set size no longer improves performance.
 
 Remaining gaps:
-  ⚠ Need tighter integration between collapse theory and direct web-pollution prevalence evidence.
-  ⚠ Need stronger real-world estimates of how much current training data is already contaminated by AI-generated text and images.
-  ⚠ Need more cross-domain evidence connecting theoretical collapse metrics to production-scale foundation-model pipelines.
+  ⚠ Fallback generated after evidence inventory parse failure: evidence inventory invalid: 'suggested_paper_outline' must be a non-empty object
+  ⚠ The corpus strongly supports that recursive synthetic reuse can cause collapse and that contamination risk is rising, but it only supports a cautious mitigation claim: collapse is avoidable in mixed or curated regimes, and the practical thresholds for web-scale failure remain unresolved.
 
 ---
 
-## Beat 2: Web Drift Is Partially Measurable
+## Beat 2: Web Drift and Limits of Reactive Filtering
 
-This beat can support a cautious but important claim: web drift is measurable in principle, though not yet causally pinned on post-2022 AI contamination at full web scale. Dataset and pipeline papers such as Demystifying CLIP Data, RedPajama, and Yi show that provenance, filtering, and quality controls are already concrete engineering objects. That means temporal and source-based auditing is feasible. The homogenization paper adds a plausible signal family at the output level, while The GenAI Future of Consumer Research explains why one should expect average-trap dynamics once synthetic content becomes widespread. The model-collapse anchor then turns these measurements from merely descriptive indicators into variables with strategic significance. The resulting chain is not a direct proof of web-scale AI-induced drift after 2022, but it does justify the stronger methodological claim that such drift is partially measurable and should be studied with provenance plus diversity metrics.
+Keep the claim explicitly narrow. This beat is about partial measurability of drift, not demonstrated web-wide contamination or failure. State plainly that no post-2022 web-scale contamination audit exists in the corpus. Use the D-category papers only to motivate why proxies are fragile and indirect. Then pivot to H-category longitudinal studies as the strongest direct evidence of change over time, especially the privacy-policy line and web-evolution archive work. In the final paragraph, juxtapose risk signals (C4 artifacts, shrinking data commons, Wikipedia AI-content growth) with required counterevidence (RefinedWeb and FineWeb), so the conclusion is: drift and curation pressure are measurable in parts, risk is rising, but filtered web corpora still produce strong models and the literature here does not prove web-wide pretraining degradation.
 
-- **Demystifying CLIP Data (2023)**
-  Role: Shows that data quality and curation are measurable and materially important
-  Finding: Reverse-engineers a major multimodal dataset pipeline and shows that curation choices strongly affect data quality, making provenance and filtering operational variables rather than abstractions.
-- **RedPajama: an Open Dataset for Training Large Language Models (2024)**
-  Role: Provides transparent web-scale corpus infrastructure for reproducible auditing
-  Finding: Offers an open large-scale language-model dataset with documented sourcing and processing, enabling temporal and provenance-aware inspection of web data composition.
-- **Yi: Open Foundation Models by 01.AI (2024)**
-  Role: Evidence that large-scale training pipelines already depend on explicit data-engineering choices
-  Finding: Describes extensive data processing and curation for foundation models, supporting the claim that web quality is not only measurable but actively managed in practice.
-- **ChatGPT is incredible (at being average) (2025)**
-  Role: Provides a candidate downstream signature of contamination or homogenization
-  Finding: Identifies output averaging and cliché formation as observable symptoms, suggesting that entropy/diversity-style drift measures are plausible even if not yet standardized.
-- **The GenAI Future of Consumer Research (2025)**
-  Role: Frames drift as a broader socio-technical trajectory rather than a narrow benchmark issue
-  Finding: Articulates a democratization-to-average-trap-to-collapse trajectory, motivating why changes in web content quality should be tracked longitudinally.
-- **AI models collapse when trained on recursively generated data (2024)**
-  Role: Supplies the reason measurement matters
-  Finding: Shows that if synthetic reuse rises over time, measurable corpus drift is not just descriptive noise but a potential causal precursor to collapse.
+- **Yoon Mi Oh et al. 2022**
+  Role: Establishes the measurement caution: corpus-level diversity or complexity signals can be tracked, but metric choice is sensitive to sampling and corpus size, so any drift claim should begin with bounded proxies rather than sweeping web-wide conclusions.
+  Finding: Traditional corpus-based complexity indices (Type-Token Ratio, word-level Entropy) are more prone to fluctuation with corpus size changes than newer indices (Word Information Densi
+- **Ryan Amos et al. 2021**
+  Role: Provides a concrete long-span web measurement case by curating a million-document privacy-policy corpus and showing systematic temporal drift in length, readability, and ambiguity.
+  Finding: Privacy policies are becoming longer, harder to read, and more ambiguous over time, while severely underreporting usage of third parties and tracking technologies.
+- **Isabel Wagner et al. 2023**
+  Role: Strengthens the longitudinal evidence with a 1996-2021 content analysis showing increasing use of location data, implicit collection, limited user choice, and growing third-party sharing; this is the beat's anchor example of measurable web drift.
+  Finding: Despite GDPR and CCPA, privacy policies show increasing use of location data, implicit data collection, lack of meaningful choice, and growing data sharing with unnamed third parti
+- **Vibhor Agarwal et al. 2022**
+  Role: Widens the frame from one document genre to 25+ years of web evolution, showing shifts in dominant site types and platform composition across the web archive.
+  Finding: Over 25+ years, web content has shifted from news and education-related websites toward streaming media and social networking sites, with major changes in dominant platforms.
+- **Guilherme Penedo et al. 2023**
+  Role: Supplies the required counterevidence: with careful filtering and deduplication, web-only data can still train strong LLMs, so observed drift is not decisive proof that web corpora are already unusable.
+  Finding: Properly filtered and deduplicated web data alone can produce LLMs that significantly outperform models trained on curated high-quality corpora.
+- **Sergei Koltcov et al. 2020**
+  Role: Supports Beat 2 via category D
+  Finding: The minimum of Renyi entropy coincides with the true number of topics in labelled collections, providing a principled way to analyze regularization effects on topic models.
 
 Remaining gaps:
-  ⚠ No direct post-2022 web-scale contamination audit cleanly linking temporal drift to AI-generated content reuse.
-  ⚠ Weak bridge between corpus-quality measurement papers and collapse-specific papers.
-  ⚠ Need standardized entropy, diversity, and provenance metrics that can distinguish AI contamination from ordinary domain shift or SEO churn.
+  ⚠ Fallback generated after evidence inventory parse failure: evidence inventory invalid: 'suggested_paper_outline' must be a non-empty object
+  ⚠ Support is partial, which is acceptable for this beat. The corpus can support that drift is measurable through proxies and that filtering/curation can still yield strong web corpora, but it cannot support a strong causal claim that post-2022 AI content has already contaminated the web at model-relevant scale. Category H is small, D-H linkage is sparse, and B/C literature still leaves prevalence thresholds and downstream effects open.
 
 ---
 
-## Beat 3: L_auth Is a Grounded Synthesis
+## Beat 3: L_auth as a Stage-Agnostic Descriptive Framework
 
-L_auth is grounded because it is not introduced as a free-floating new metric; it synthesizes three already-supported literatures. First, collapse theory says outcomes depend on the mix and quality of recursively reused versus non-recursive data. Second, curation papers show that provenance and quality can be observed in actual datasets and pipelines. Third, homogenization work suggests downstream symptoms that such a variable should predict. The theoretical prevention paper provides the main logic: the relevant quantity is not simply synthetic share, but the effective availability of high-quality non-collapsing signal. Curated-data and π²/6 pathway papers refine that logic by showing authenticity must be weighted and conditional, not binary. Demystifying CLIP Data and RedPajama contribute the operational side by showing how source, filtering, and curation information can be attached to real corpora. ChatGPT is incredible (at being average) gives an output-level pattern against which the construct could be validated. Together, these papers make L_auth a grounded synthesis rather than an ad hoc term.
+Frame L_auth as a stage-agnostic descriptive synthesis, not a discovered law. Make the architecture explicit: D1 Provenance Ratio and D4 Social Behavioral Diversity are upstream design-level inputs; D2 Lexical Diversity and D3 Entropy are downstream measurable outcomes. The strongest evidence chain in the selected papers is D1 to D2/D3, especially via The Curious Decline of Linguistic Diversity. The evidence base for D4 is materially thinner and more conceptual, so say that openly rather than overstating it. Do not describe L_auth as a detection tool. Also note that D2 and D3 are related rather than fully independent, with the entropy-TTR paper implying possible redundancy; this is exactly why weight calibration should be stated as future work rather than implied to be solved already.
 
-- **A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training (2025)**
-  Role: Primary theoretical foundation for an authenticity-weighted construct
-  Finding: Shows that collapse risk depends on training conditions, especially the availability and role of non-recursive high-quality data, which directly motivates an authenticity-weighted variable.
-- **Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences (2024)**
-  Role: Shows why curation quality must be part of the construct, not just real-vs-synthetic source labels
-  Finding: Proves that self-consuming training can remain beneficial when synthetic data are strongly curated against human preferences, implying that authenticity should be modeled as graded and quality-sensitive.
-- **Universality of the π²/6 Pathway in Avoiding Model Collapse (2024)**
-  Role: Supports mixture-based formulations of authenticity
-  Finding: Shows that augmenting real data with synthetic data can avoid collapse under a universal pathway, supporting a weighted rather than binary conception of authentic content share.
-- **Demystifying CLIP Data (2023)**
-  Role: Provides observable proxy variables for the construct
-  Finding: Demonstrates that data quality, provenance, and curation can be operationalized in real pipelines, offering measurable inputs for an authenticity score.
-- **RedPajama: an Open Dataset for Training Large Language Models (2024)**
-  Role: Provides the corpus substrate on which L_auth-like measurement could be computed
-  Finding: Supplies a transparent large-scale dataset context in which source composition and filtering decisions can be tracked and reproduced.
-- **ChatGPT is incredible (at being average) (2025)**
-  Role: Provides an output-side validation target for the construct
-  Finding: Offers homogenization as an expected downstream symptom if an authenticity-weighted training environment deteriorates, giving L_auth a plausible behavioral correlate.
+- **Ilia Shumailov et al. 2023**
+  Role: Establishes the provenance-side motivation for D1 by showing that recursive training on generated data removes tail support and reduces diversity across generations.
+  Finding: Training on model-generated content causes irreversible model collapse where tails of the original content distribution disappear across multiple model families.
+- **Yanzhu Guo et al. 2024**
+  Role: Provides the main empirical bridge from provenance to outcomes by showing that synthetic retraining is accompanied by declines in lexical, syntactic, and semantic diversity.
+  Finding: Recursively training language models on synthetic text generated by predecessors causes consistent decreases in lexical, syntactic, and semantic diversity of outputs.
+- **Yoon Mi Oh et al. 2022**
+  Role: Grounds D2 metric choice by showing that common corpus complexity measures vary in robustness, motivating careful use of lexical-diversity indicators rather than naive reliance on raw TTR-style counts.
+  Finding: Traditional corpus-based complexity indices (Type-Token Ratio, word-level Entropy) are more prone to fluctuation with corpus size changes than newer indices (Word Information Densi
+- **Sergei Koltcov et al. 2020**
+  Role: Supports D3 by treating Renyi entropy as an informative structural statistic, showing that entropy can track meaningful organization changes even if the setting is topic modeling rather than language-model pretraining.
+  Finding: The minimum of Renyi entropy coincides with the true number of topics in labelled collections, providing a principled way to analyze regularization effects on topic models.
+- **Pablo Rosillo-Rodes et al. 2025**
+  Role: Links D2 and D3 by showing a consistent empirical and analytic relation between word entropy and type-token ratio, supporting their joint inclusion while also signaling potential overlap and the need for future calibration.
+  Finding: There exists a consistent empirical functional relation between word entropy and type-token ratio across gigaword corpora, analytically derivable from Zipf's and Heaps' laws in the
+- **Sergei Koltcov et al. 2020**
+  Role: Supports Beat 3 via category D
+  Finding: Topic model outputs exhibit self-similar behavior under cluster number variation, enabling renormalization-based optimization of topic count selection.
 
 Remaining gaps:
-  ⚠ Need a formal definition of L_auth with explicit variables, units, and calibration procedure.
-  ⚠ Need direct empirical validation that L_auth predicts collapse or homogenization better than simpler metrics such as synthetic-share percentage.
-  ⚠ Need benchmarks spanning text, image, and multimodal corpora to test whether L_auth generalizes across domains.
+  ⚠ Fallback generated after evidence inventory parse failure: evidence inventory invalid: 'suggested_paper_outline' must be a non-empty object
+  ⚠ The bridge is conceptually defensible but not empirically validated as a law. D has enough material to motivate measurable ingredients, and A/E/I give a rationale for provenance, diversity, and entropy-like dimensions, but the corpus does not yet show that the four dimensions form a validated, predictive, stage-agnostic metric system.
 
 ---
 
-## Beat 4: L_auth Can Be Tested Experimentally
+## Beat 4: Social Reasoning and Data Provenance
 
-An experimental program follows naturally from the existing literature. The recursive-training papers tell us what to manipulate: the proportion and quality of generated data reintroduced into training. The forgetting paper tells us what to measure: tail recall, diversity loss, and degradation of rare knowledge. Theoretical work says these outcomes should depend on boundary conditions, which is exactly where L_auth becomes useful as a structured treatment variable. Dataset-pipeline papers show that provenance and curation features can be tracked well enough to build controlled train/test regimes. Finally, self-correcting loops provide a ready-made intervention arm, allowing the experiment to compare low-L_auth recursive training, high-L_auth curated training, and corrected-recursion training. That makes beat 4 stronger than a speculative methods section: it is a falsifiable program built directly out of the current evidence base.
+Keep Beat 4 clearly separate from collapse literature. The defensible chain is: social reasoning is a real post-training weak spot; curated human data can be disproportionately high leverage; provenance changes socially meaningful outputs; and bounded-task counterevidence prevents any universal claim that human data always wins. The final sentence of the beat should explicitly narrow the thesis to socially grounded, norm-sensitive behavior rather than alignment overall.
 
-- **AI models collapse when trained on recursively generated data (2024)**
-  Role: Defines the basic experimental manipulation and expected failure mode
-  Finding: Establishes recursive training on generated data as a controllable intervention with measurable degradation outcomes.
-- **The Curse of Recursion (2023)**
-  Role: Specifies sensitive dependent variables for evaluation
-  Finding: Shows that rare-event forgetting is an early and informative collapse indicator, suggesting concrete evaluation metrics for an L_auth experiment.
-- **Self-Correcting Self-Consuming Loops for Generative Model Training (2024)**
-  Role: Provides a positive-control intervention arm
-  Finding: Demonstrates a stabilizing mechanism for self-consuming loops, enabling experiments that compare unmanaged recursion against corrected recursion.
-- **A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training (2025)**
-  Role: Supplies hypotheses about boundary conditions
-  Finding: Predicts that collapse outcomes depend on data quality and training conditions, which can be encoded as experimentally varied L_auth levels.
-- **Demystifying CLIP Data (2023)**
-  Role: Shows how to instrument provenance and curation variables in practice
-  Finding: Provides evidence that curation attributes can be recovered and manipulated, making authenticity-weighted dataset construction experimentally feasible.
-- **RedPajama: an Open Dataset for Training Large Language Models (2024)**
-  Role: Offers a reproducible large-scale corpus base for implementation
-  Finding: Supports the feasibility of building transparent train/validation splits where source composition and contamination controls can be documented.
+- **Maarten Sap et al. 2022**
+  Role: Establishes why social reasoning is the right downstream target: even strong LLMs lag on mental-state and norm-sensitive tasks, so this capability cannot be assumed from pretraining alone.
+  Finding: Out-of-the-box GPT-3 models lag behind humans by over 30% on social intelligence benchmarks and struggle with mental state reasoning compared to factual questions.
+- **Chunting Zhou et al. 2023**
+  Role: Anchor paper for Beat 4: LIMA shows that a small, carefully curated human-authored set can drive large alignment gains, making data provenance a high-leverage post-training variable.
+  Finding: Fine-tuning a 65B LLaMA model on only 1,000 carefully curated examples without RLHF produces competitive performance with state-of-the-art models, supporting the Superficial Alignm
+- **Shibani Santurkar et al. 2023**
+  Role: Shows that post-training data source changes socially meaningful outputs, not just generic helpfulness: instruction tuning shifts whose opinions the model appears to reflect.
+  Finding: Language models exhibit substantial misalignment with US demographic groups' opinions, and instruct-tuning distorts opinion distributions with consistent biases toward liberal view
+- **Rafael Rafailov et al. 2023**
+  Role: Provides the clean methodological hinge: DPO simplifies preference optimization so feedback-source comparisons become more interpretable than full RLHF stacks.
+  Finding: Direct Preference Optimization enables training language models from human preferences with a simple cross-entropy loss, matching or exceeding RLHF without reinforcement learning.
+- **Harrison Lee et al. 2023**
+  Role: Provides required counterevidence: AI feedback can match RLHF on bounded dialogue and summarization tasks, so the claim must stay narrower than universal human-data superiority.
+  Finding: RLAIF achieves comparable performance to RLHF across summarization and dialogue tasks, and can enable LLM self-improvement even when the AI labeler is the same model as the policy.
+- **Carl Orge Retzlaff et al. 2024**
+  Role: Supports Beat 4 via category F
+  Finding: Reinforcement learning is fundamentally a human-in-the-loop paradigm requiring human-centric approaches for successful deployment.
 
 Remaining gaps:
-  ⚠ No standard benchmark yet combines recursive exposure, provenance labels, and downstream collapse metrics in one public protocol.
-  ⚠ Need clearer methods for estimating hidden synthetic contamination in ostensibly human corpora.
-  ⚠ Need longitudinal experiments large enough to separate collapse effects from normal scaling-law improvements or domain adaptation.
+  ⚠ Fallback generated after evidence inventory parse failure: evidence inventory invalid: 'suggested_paper_outline' must be a non-empty object
+  ⚠ This beat can support only the narrower claim. The F/I/J evidence base is large enough to argue that provenance and behavioral diversity matter for socially grounded fine-tuning, but not that human data is always superior. The crucial exemplars named in the target argument line are not verifiable from the supplied metadata, so the corpus presently supports a cautious version better than a headline claim.
 
 ---
 
-## Beat 5: Mitigation Requires Curation and Provenance, Not Simple Filtering
+## Beat 5: Contrastive Fine-Tuning Experiment
 
-The solution beat should argue against simplistic detector-first or filter-only strategies and toward a layered curation regime. The theoretical prevention paper says collapse avoidance depends on conditions, which makes one-off cleanup inadequate. Curated synthetic data can still be useful, but only when quality control is strong enough to preserve human-preference signal. Self-correcting loops and the π²/6 pathway suggest two complementary tactics: active correction during recursive training and maintaining a sufficiently strong stream of real data. Demystifying CLIP Data, Yi, and RedPajama then move the argument from theory to operations by showing that provenance, curation, and transparent dataset construction are implementable. The resulting logic is that mitigation is not merely about detecting AI text after the fact; it is about preserving authentic signal through source-aware data governance, reproducible corpus construction, and controlled synthetic augmentation.
+Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.
 
-- **A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training (2025)**
-  Role: Main theoretical guide for prevention strategy
-  Finding: Argues that prevention is possible only under specific conditions tied to data composition and training design, implying governance and curation are first-order requirements.
-- **Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences (2024)**
-  Role: Supports curated synthetic data as a conditional solution
-  Finding: Shows that synthetic data need not be harmful if aggressively curated against human preferences, reframing the solution as selective reuse rather than blanket prohibition.
-- **Self-Correcting Self-Consuming Loops for Generative Model Training (2024)**
-  Role: Supports active correction mechanisms
-  Finding: Demonstrates that self-consuming loops can be stabilized by explicit corrective procedures, suggesting monitoring and intervention can reduce collapse risk.
-- **Universality of the π²/6 Pathway in Avoiding Model Collapse (2024)**
-  Role: Supports mixed real-plus-synthetic training as a viable design principle
-  Finding: Provides theoretical evidence that adding sufficient real data alongside synthetic data can preserve model quality, favoring mixture management over naive filtering.
-- **Demystifying CLIP Data (2023)**
-  Role: Supports provenance-aware data governance
-  Finding: Shows that data pipeline transparency and curation materially affect quality, implying prevention must begin at collection and filtering stages.
-- **Yi: Open Foundation Models by 01.AI (2024)**
-  Role: Shows operational feasibility of large-scale data governance
-  Finding: Documents a real foundation-model pipeline where extensive data engineering is already central, indicating that provenance-heavy mitigation is practical at scale.
-- **RedPajama: an Open Dataset for Training Large Language Models (2024)**
-  Role: Supports open auditing and reproducibility as mitigation infrastructure
-  Finding: Provides a transparent corpus basis for contamination audits, mitigation ablations, and shared evaluation protocols.
+- **Maarten Sap et al. 2019**
+  Role: Establishes Social IQa as a demanding evaluation target, which is why the pilot uses social reasoning rather than only generic chat benchmarks.
+  Finding: Large pretrained language models achieve only up to 65% accuracy on Social IQA compared to nearly 90% human performance, showing social commonsense reasoning remains challenging fo
+- **Chunting Zhou et al. 2023**
+  Role: Anchor paper for Beat 5: LIMA is the clearest precedent that data quality and curation can matter enough to justify a provenance-sensitive fine-tuning contrast.
+  Finding: Fine-tuning a 65B LLaMA model on only 1,000 carefully curated examples without RLHF produces competitive performance with state-of-the-art models, supporting the Superficial Alignm
+- **Rafael Rafailov et al. 2023**
+  Role: Defines the pilot's methodological hinge: DPO keeps the optimization recipe simple enough that differences between data conditions remain interpretable.
+  Finding: Direct Preference Optimization enables training language models from human preferences with a simple cross-entropy loss, matching or exceeding RLHF without reinforcement learning.
+- **Lewis Tunstall et al. 2023**
+  Role: Provides the strongest competitive synthetic baseline: AI-feedback distillation can produce strong chat alignment, which is why the pilot must be framed as a directional test rather than a foregone human-data victory.
+  Finding: Distilled direct preference optimization from AI feedback on a 7B model achieves chat alignment competitive with 70B models and proprietary systems without sampling-based RL.
+- **Maarten Sap et al. 2022**
+  Role: Broader theory-of-mind benchmark evidence showing that social reasoning deficits persist in strong LLMs.
+  Finding: Out-of-the-box GPT-3 models lag behind humans by over 30% on social intelligence benchmarks and struggle with mental state reasoning compared to factual questions.
+- **Carl Orge Retzlaff et al. 2024**
+  Role: Supports Beat 5 via category F
+  Finding: Reinforcement learning is fundamentally a human-in-the-loop paradigm requiring human-centric approaches for successful deployment.
 
 Remaining gaps:
-  ⚠ Need robust provenance standards that work across text, image, audio, and multimodal web data.
-  ⚠ Need evidence on cost, scalability, and incentive compatibility of curation-heavy defenses for frontier model developers.
-  ⚠ Need stronger comparisons between provenance-aware governance and detector-only or watermark-only approaches under adversarial adaptation.
+  ⚠ Fallback generated after evidence inventory parse failure: evidence inventory invalid: 'suggested_paper_outline' must be a non-empty object
+  ⚠ The corpus can justify a pilot experiment and can plausibly deliver directional support, but it does not look sufficient to claim robust validation of a high/medium/low L_auth contrastive study on social reasoning benchmarks. Category I is small and very recent, direct F-I-J integration is sparse, and the supplied evidence does not reveal a canonical controlled paper that already ties provenance, behavioral diversity, and social benchmarks together.
+
+---
+
+## Beat 6: CampusGo Proposal
+
+Beat 6 should read as requirements engineering, not validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a system would need to satisfy.
+
+- **N. Eagle et al. 2006**
+  Role: Provides the broad feasibility precedent: mobile sensing can capture rich human behavioral traces over time.
+  Finding: Mobile phone sensing can capture complex social systems through continuous collection of machine-sensed behavioral data from human interactions.
+- **Rui Wang et al. 2014**
+  Role: Narrows that feasibility claim into the university setting by showing that continuous smartphone sensing can characterize student behavior in a campus environment.
+  Finding: Continuous smartphone sensing reveals significant correlations between objective behavioral sensor data and mental well-being and academic performance outcomes among college studen
+- **Shayne Longpre et al. 2024**
+  Role: Anchor paper for Beat 6: AI data authenticity, consent, and provenance are currently fragmented, so any collection platform needs these design requirements baked in from the start.
+  Finding: Existing data provenance solutions for AI training are fragmented and a unified framework integrating authenticity, consent, and provenance metadata is urgently needed.
+- **Andreas Köpf et al. 2023**
+  Role: Provides the bridge from collection to downstream use: intentionally gathered human conversations can become alignment corpora, so a CampusGo-style platform is not just sensing infrastructure but a potential data-generation pathway.
+  Finding: A large-scale open-source dataset of human-generated conversations for LLM alignment can be crowdsourced to democratize RLHF research.
+- **Neha Gupta et al. 2023**
+  Role: Adds the stewardship boundary: contributors must remain stakeholders in how sensitive data are curated and reused, which keeps CampusGo proposal-framed rather than extractive.
+  Finding: The CARE principles framework reveals hidden costs of archaeological data ecosystems borne by Indigenous communities and repositions Indigenous peoples as active stewards of their 
+- **Anne Bowser et al. 2020**
+  Role: Supports Beat 6 via category G
+  Finding: Citizen science projects perform well in data quality assessment and governance but often lack open data access, documentation, and interoperability.
+
+Remaining gaps:
+  ⚠ Fallback generated after evidence inventory parse failure: evidence inventory invalid: 'suggested_paper_outline' must be a non-empty object
+  ⚠ The proposal is motivated but not validated. Category G has enough material to justify building a provenance-rich social interaction platform, but the graph is highly disconnected from A/E/I, so the corpus does not show that a CampusGo-like system will actually optimize D1 and D4 in a way that improves downstream model quality. This beat can only support a design direction.
 
 ---
 
 ## Suggested Paper Structure
 
-- section_1_crisis: ~6 papers, 4-5 pages
-- section_2_measurement: ~6 papers, 3-4 pages
-- section_3_synthesis: ~6 papers, 3-4 pages
-- section_4_experiment: ~6 papers, 4-5 pages
-- section_5_solution: ~7 papers, 3-4 pages
+- section_1_model_collapse_and_contamination_risk: ~6 papers, TBD pages
+- section_2_partial_measurability_of_web_drift: ~6 papers, TBD pages
+- section_3_l_auth_framework_definition: ~6 papers, TBD pages
+- section_4_fine-tuning_data_source_affects_social_reasoning: ~6 papers, TBD pages
+- section_5_contrastive_fine-tuning_experiment: ~6 papers, TBD pages
+- section_6_campusgo_as_design_proposal: ~6 papers, TBD pages

@@ -4,87 +4,106 @@
 
 ---
 
-## Beat 1: Crisis Exists 🟢 strong
+## Beat 1: Model Collapse and Contamination Risk 🟢 strong
 
-Supporting papers: 64
-Key papers present: A Closer Look at Model Collapse: From a Generalization-to-Memorization Perspective, A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training, Self-Correcting Self-Consuming Loops for Generative Model Training
-Key papers MISSING: The Curse of Recursion: Training on Generated Data Makes Models Forget, Self-Consuming Generative Models Go MAD
-Weakness: Collapse theory and detection-limit evidence are strong, but pollution-scale evidence is newer, domain-specific, and not yet tightly integrated with the collapse literature; the corpus graph is very sparse, so the crisis argument is cumulative rather than tightly chained.
+Supporting papers: 21
+Key papers present: Self-Consuming Generative Models go MAD, Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe, A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Train, How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model, The Curse of Recursion: Training on Generated Data Makes Models Forget
+Weakness: The corpus strongly supports that recursive synthetic reuse can cause collapse and that contamination risk is rising, but it only supports a cautious mitigation claim: collapse is avoidable in mixed or curated regimes, and the practical thresholds for web-scale failure remain unresolved.
 
 Evidence chain:
-  → A Closer Look at Model Collapse: From a Generalization-to-Memorization Perspective shows why recursive reuse can shift learning from generalization toward memorization.
-  → A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training formalizes the collapse risk and clarifies that prevention requires conditions not guaranteed on the open web.
-  → Category B papers collectively show rising exposure to AI-content pollution and retrieval contamination, even if prevalence estimates are fragmented by domain.
-  → Category C papers show reactive filtering, watermarking, and detector-based defenses are brittle, domain-bound, or vulnerable to adversarial adaptation.
+  → Self-Consuming Generative Models go MAD establishes recursive degeneration under self-consuming training.
+  → The Curse of Recursion: Training on Generated Data Makes Models Forget shows forgetting and diversity loss from generated-data reuse.
+  → How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model quantifies degradation rather than treating collapse as a purely anecdotal risk.
+  → Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe shows curated real data can mitigate or delay collapse.
+  → A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Train narrows the claim: collapse is real, but not universal under curation and mixed-data assumptions.
 
 ---
 
-## Beat 2: Web Drift Is Partially Measurable 🟡 adequate
+## Beat 2: Web Drift and Limits of Reactive Filtering 🟡 adequate
 
-Supporting papers: 24
-Key papers MISSING: A direct post-2022 web-scale AI-content contamination audit linking temporal drift to synthetic reuse
-Weakness: This beat supports only a cautious claim. Category H gives time-based web-quality measurement and Category D gives candidate entropy/diversity signatures, but H skews older, D is recent, and D-H have zero direct bridges. The corpus cannot directly prove that post-2022 AI-generated content caused observed web drift at web scale.
+Supporting papers: 12
+Key papers MISSING: DataComp-LM: In Search of the Next Generation of Training Sets for Language Models, FineWeb: Decanting the Web for the Finest Text Data at Scale
+Weakness: Support is partial, which is acceptable for this beat. The corpus can support that drift is measurable through proxies and that filtering/curation can still yield strong web corpora, but it cannot support a strong causal claim that post-2022 AI content has already contaminated the web at model-relevant scale. Category H is small, D-H linkage is sparse, and B/C literature still leaves prevalence thresholds and downstream effects open.
 
 Evidence chain:
-  → Category H papers establish that temporal changes in web quality can be measured over time.
-  → Category D papers provide entropy, diversity, and related signal families that could register contamination or homogenization.
-  → Weak B-H bridging and zero D-H bridging mean the literature supports partial measurability in principle, not a clean causal measurement of AI-driven web drift after 2022.
+  → Category D papers provide proxy-style measurements for web drift and authenticity-related signals.
+  → Category B papers document rising AI-generated content prevalence in parts of the web and scholarly ecosystems.
+  → Category C papers show reactive detection and watermarking are limited and fragile under paraphrase, editing, and deployment shift.
+  → Category H papers indicate filtered web corpora can still be useful for strong model training.
+  → Taken together, the evidence supports measurable drift risk, not web-scale causal proof of contamination damage.
 
 ---
 
-## Beat 3: L_auth Is a Grounded Synthesis 🟡 adequate
+## Beat 3: L_auth as a Stage-Agnostic Descriptive Framework 🟡 adequate
+
+Supporting papers: 13
+Key papers present: Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe, A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Train
+Weakness: The bridge is conceptually defensible but not empirically validated as a law. D has enough material to motivate measurable ingredients, and A/E/I give a rationale for provenance, diversity, and entropy-like dimensions, but the corpus does not yet show that the four dimensions form a validated, predictive, stage-agnostic metric system.
+
+Evidence chain:
+  → Collapse papers in A motivate why authenticity-related properties of training data matter.
+  → Proxy and measurement work in D contributes observable ingredients for provenance, lexical diversity, and entropy-style signals.
+  → Dataset quality and provenance papers in E and I justify adding behavioral and source-side dimensions.
+  → The synthesis supports L_auth as a descriptive organizing framework.
+  → The corpus does not validate L_auth as a universal predictive law, so the claim must remain explicitly modest.
+
+---
+
+## Beat 4: Social Reasoning and Data Provenance 🟡 adequate
 
 Supporting papers: 14
-Key papers present: A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training
-Weakness: The corpus is sufficient to justify L_auth as a synthesis of existing metric ingredients, not as a validated new law or novelty claim. Category D is adequate in size but very recent and lightly cited, so operationalization is ahead of validation.
+Key papers MISSING: Less Is More for Alignment (LIMA), AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback, Constitutional AI / RLAIF-style AI-feedback paper
+Weakness: This beat can support only the narrower claim. The F/I/J evidence base is large enough to argue that provenance and behavioral diversity matter for socially grounded fine-tuning, but not that human data is always superior. The crucial exemplars named in the target argument line are not verifiable from the supplied metadata, so the corpus presently supports a cautious version better than a headline claim.
 
 Evidence chain:
-  → A-category theory papers identify information loss, mode shrinkage, and distributional degradation as core ingredients of recursive-reuse failure.
-  → High A-D bridging suggests the metric literature can be connected to collapse theory rather than being purely ad hoc.
-  → Category D papers provide the entropy/diversity-style components needed to define L_auth.
-  → Because these components are not yet jointly validated at scale, L_auth should be framed as a grounded construct for analysis, not a proven standalone theorem.
+  → Category F papers supply the main evidence that socially grounded or instruction-following performance is sensitive to fine-tuning data choice.
+  → Category J papers show that AI feedback can substitute for human feedback on bounded optimization tasks.
+  → Category I papers add recent provenance and diversity-focused evidence relevant to social reasoning transfer.
+  → Together these categories support the narrow conclusion that curated human data appears especially valuable for socially grounded tasks.
+  → This line is properly separated from collapse evidence: A has zero direct edges to F, I, and J.
 
 ---
 
-## Beat 4: Verified Human Social Data Matters 🟡 adequate
+## Beat 5: Contrastive Fine-Tuning Experiment 🟠 weak
 
-Supporting papers: 63
-Key papers present: Self-Improving Diffusion Models with Synthetic Data, Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences
-Key papers MISSING: Social IQa: Commonsense Reasoning about Social Interactions
-Weakness: The literature supports a narrower claim than a broad human-over-synthetic conclusion. It suggests that socially grounded tasks likely benefit from verified human data and that curated synthetic data can work in bounded settings, but there is little direct authenticated-human-versus-synthetic head-to-head evidence on social-behavioral tasks. Intersections among I, F, E, and J are also sparse.
+Supporting papers: 9
+Key papers MISSING: Less Is More for Alignment (LIMA), AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback
+Weakness: The corpus can justify a pilot experiment and can plausibly deliver directional support, but it does not look sufficient to claim robust validation of a high/medium/low L_auth contrastive study on social reasoning benchmarks. Category I is small and very recent, direct F-I-J integration is sparse, and the supplied evidence does not reveal a canonical controlled paper that already ties provenance, behavioral diversity, and social benchmarks together.
 
 Evidence chain:
-  → Category I papers define socially grounded evaluation targets where authentic interaction patterns plausibly matter.
-  → Category J ablation and fine-tuning papers show that data source, curation, and filtering can materially change downstream performance.
-  → Category F papers support the continuing value of human-produced data, while Category E papers reinforce that data quality matters at least as much as raw quantity.
-  → The synthetic-data side is narrowed by papers such as Self-Improving Diffusion Models with Synthetic Data and Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences, which support curated or verifier-screened synthetic use in bounded regimes rather than indiscriminate reuse.
+  → Category I papers provide the closest ingredients for authenticity-aware data partitioning.
+  → Category F papers provide social reasoning benchmarks and task sensitivity.
+  → Category J papers provide AI-feedback comparison baselines for bounded-task substitution.
+  → These components are enough for a pilot directional result.
+  → They are not enough for a definitive validation of the full experimental claim.
 
 ---
 
-## Beat 5: CampusGo As Motivated Proposal 🟡 adequate
+## Beat 6: CampusGo Proposal 🟠 weak
 
-Supporting papers: 43
-Key papers present: A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training, Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences
-Weakness: This beat is supportable only as proposal framing. Category G provides platform/design precedents and Category A motivates the need for fresh authentic data, but there are zero A-G bridges, so the literature does not validate CampusGo specifically or show that such a platform will solve contamination at scale.
+Supporting papers: 7
+Weakness: The proposal is motivated but not validated. Category G has enough material to justify building a provenance-rich social interaction platform, but the graph is highly disconnected from A/E/I, so the corpus does not show that a CampusGo-like system will actually optimize D1 and D4 in a way that improves downstream model quality. This beat can only support a design direction.
 
 Evidence chain:
-  → A-category collapse papers motivate the strategic value of accumulating fresh, authentic, non-recursive data sources.
-  → Category G papers show that platforms can be designed to gather verified, user-linked, or quality-controlled contributions.
-  → The combined literature justifies CampusGo as a plausible response pattern and research design direction, not as an inevitable or literature-proven solution.
+  → Category G papers make platform-mediated, provenance-aware data collection plausible.
+  → Category I motivates why provenance and social behavioral diversity are worth optimizing.
+  → Category E suggests that dataset design choices can matter for downstream quality.
+  → The resulting evidence supports CampusGo as a motivated collection strategy.
+  → It does not validate CampusGo as a solved intervention or performance-improving system.
 
 ---
 
 ## Overall Assessment
-The corpus supports the paper thesis if it is written cautiously. Beat 1 is strong: collapse risk and the limits of reactive detection/filtering are well supported, with pollution-scale evidence adequate but less mature. Beat 2 is only adequate for a partial claim: the corpus supports measurable drift and contamination proxies, but not a direct post-2022 web-scale causal proof. Beat 3 is adequate if L_auth is framed as a synthesis of known metric ingredients rather than a novelty claim. Beat 4 is adequate for the narrower claim that verified human social data appears especially valuable for socially grounded tasks while curated synthetic data may still work in bounded settings. Beat 5 is adequate only as motivation for a design proposal, not as proof that CampusGo will work. The main global weakness is corpus integration: 168 papers but only 61 edges, 127 components, and 111 isolated nodes means the argument depends on stitching adjacent literatures together rather than following a dense, cumulative citation chain.
+The corpus is sufficient for a cautious 6-beat paper, but unevenly. Argument Line 1 is the strongest part: Beat 1 is genuinely strong, and Beat 2 is adequate if the claim stays explicitly non-causal and proxy-based. Beat 3 works as a conceptual bridge, not as a validated theory. Argument Line 2 is supportable only in a narrower form: Beat 4 is adequate for the claim that provenance and social behavioral diversity matter especially for socially grounded tasks, but Beat 5 is only weak as a validation beat and Beat 6 is weak as an application beat. The cleanest structural result is argument-line separation: Category A has zero direct edges to F, I, and J, so the fine-tuning argument is not being improperly propped up by pretraining collapse papers. The main vulnerability is not lack of any evidence, but lack of direct, mature, named exemplars linking provenance-controlled fine-tuning to social reasoning outcomes and then to a concrete collection platform.
 
 ## Missing Papers (search suggestions)
 
-- **The Curse of Recursion: Training on Generated Data Makes Models Forget**: This is the clearest canonical anchor for Beat 1. It directly supports the recursive-reuse collapse thesis and would strengthen the paper's ability to cite a field-defining result rather than a cluster of adjacent newer theory papers.
-  Search: `Shumailov Curse of Recursion training on generated data makes models forget`
-- **Self-Consuming Generative Models Go MAD**: This is a key complementary collapse paper that strengthens the empirical/theoretical case that self-consuming loops degrade model quality and helps triangulate Beat 1 beyond a single collapse framing.
-  Search: `Alemohammad Self-Consuming Generative Models Go MAD`
-- **Social IQa: Commonsense Reasoning about Social Interactions**: If absent, this is the most important missing anchor for Beat 4 because it grounds the socially oriented evaluation claim in an established human-annotated benchmark rather than only recent low-citation papers.
-  Search: `Social IQa Commonsense Reasoning about Social Interactions`
+- **Less Is More for Alignment (LIMA)**: Central for Beat 4 because it is the canonical evidence that a small amount of carefully curated human data can be disproportionately valuable in instruction/fine-tuning. Without it, the human-curation side of the fine-tuning argument is under-anchored.
+  Search: `Search for 'LIMA less is more for alignment curated human data instruction tuning social reasoning'.`
+- **AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback**: Important for Beats 4-5 because it provides a concrete bounded-task comparison point for when synthetic or automated feedback can substitute for human feedback. It helps narrow the claim instead of overstating human-data superiority.
+  Search: `Search for 'AlpacaFarm learn from human feedback AI feedback bounded tasks benchmark'.`
+- **DataComp-LM: In Search of the Next Generation of Training Sets for Language Models**: Important for Beat 2 and indirectly Beat 3 because it strengthens the filtered-web-corpus side of the story with a recognized data curation benchmark, helping support the claim that web data can remain useful under strong filtering even as drift risk rises.
+  Search: `Search for 'DataComp-LM filtered web corpus curation language models training data quality'.`
 
 ## Strongest Narrative Thread
-A Closer Look at Model Collapse: From a Generalization-to-Memorization Perspective → A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training → Self-Correcting Self-Consuming Loops for Generative Model Training → Self-Improving Diffusion Models with Synthetic Data → Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences
+Self-Consuming Generative Models go MAD → The Curse of Recursion: Training on Generated Data Makes Models Forget → How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model → Self-Consuming Generative Models with Curated Data Provably Optimize Human Prefe → A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Train

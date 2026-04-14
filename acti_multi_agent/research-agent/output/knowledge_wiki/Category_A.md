@@ -1,60 +1,60 @@
 # Category A
 
-> 65 nodes in this community
+> 61 nodes in this community
 
 ## Key Nodes
 
-- **Crisis Exists** (beat, degree=74)
-- **Platform Solution** (beat, degree=57)
-- **Category A** (category, degree=41)
-- **lens** (layer, degree=40)
-- **lens** (source, degree=39)
-- **Category C** (category, degree=25)
-- **Category B** (category, degree=22)
-- **Category G** (category, degree=16)
+- **Model Collapse and Contamination Risk** (beat, degree=70)
+- **L_auth Framework Definition** (beat, degree=62)
+- **Category D** (category, degree=44)
+- **Category A** (category, degree=38)
+- **Self-Consuming Generative Models go MAD** (paper, degree=31)
+- **The Curse of Recursion: Training on Generated Data Makes Models Forget** (paper, degree=26)
+- **s2_citation** (layer, degree=26)
+- **A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training Loops** (paper, degree=26)
 
 ## Member Nodes
 
-- Crisis Exists [beat]
-- Platform Solution [beat]
+- Model Collapse and Contamination Risk [beat]
+- L_auth Framework Definition [beat]
+- Category D [category]
 - Category A [category]
-- lens [layer]
-- lens [source]
-- Category C [category]
-- Category B [category]
-- Category G [category]
-- ("AI-generated content" OR "synthetic text" OR "LLM-generated answers" OR "bot dominance") AND (prevalence OR fraction OR contamination OR pollution OR share) AND (web OR internet OR online) AND year_published:[2020 TO 2026] [query]
-- s2 [source]
+- Self-Consuming Generative Models go MAD [paper]
+- The Curse of Recursion: Training on Generated Data Makes Models Forget [paper]
+- s2_citation [layer]
+- A Theoretical Perspective: How to Prevent Model Collapse in Self-consuming Training Loops [paper]
+- Self-Consuming Generative Models with Curated Data Provably Optimize Human Preferences [paper]
+- Strong Model Collapse [paper]
+- AI models collapse when trained on recursively generated data [paper]
+- How Bad is Training on Synthetic Data? A Statistical Analysis of Language Model Collapse [paper]
+- Universality of the $π^2/6$ Pathway in Avoiding Model Collapse [paper]
+- A Closer Look at Model Collapse: From a Generalization-to-Memorization Perspective [paper]
+- Self-Improving Diffusion Models with Synthetic Data [paper]
+- Self-Correcting Self-Consuming Loops for Generative Model Training [paper]
+- SIGMA: Scalable Spectral Insights for LLM Model Collapse [paper]
+- Model Non-Collapse: Minimax Bounds for Recursive Discrete Distribution Estimation [paper]
+- Self-Consuming Generative Models Go MAD [paper]
+- s2+arxiv [source]
+- Large Language Models Suffer From Their Own Output: An Analysis of the Self-Consuming Training Loop [paper]
+- Escaping Model Collapse via Synthetic Data Verification: Near-term Improvements and Long-term Convergence [paper]
+- Neon: Negative Extrapolation From Self-Training Improves Image Generation [paper]
+- Learning by Surprise: Surplexity for Mitigating Model Collapse in Generative AI [paper]
+- Stabilizing Self-Consuming Diffusion Models with Latent Space Filtering [paper]
+- Demystifying Synthetic Data in LLM Pre-training: A Systematic Study of Scaling Laws, Benefits, and Pitfalls [paper]
+- The Alignment Game: A Theory of Long-Horizon Alignment Through Recursive Curation [paper]
+- Convergence Dynamics and Stabilization Strategies of Co-Evolving Generative Models [paper]
+- Epistemic diversity across language models mitigates knowledge collapse [paper]
+- AI-generated data contamination erodes pathological variability and diagnostic reliability [paper]
 - Recursive Training Loops in LLMs: How training data properties modulate distribution shift in generated data? [paper]
-- Synthetic Collapse: The Global Risk of Information Inbreeding in AI Ecosystems [paper]
-- Loss Distribution Collapse: A Structural Theory of Dataset Degradation [paper]
-- Loss Distribution Collapse: A Structural Theory of Dataset Degradation [paper]
+- LLMs Can Get "Brain Rot"! [paper]
 - Recursive Training Loops in LLMs: How training data properties modulate distribution shift in generated data? [paper]
 - Retrieval Collapses When AI Pollutes the Web [paper]
-- Efficient Perplexity Bound and Ratio Matching in Discrete Diffusion Language Models [paper]
-- Consent in Crisis: The Rapid Decline of the AI Data Commons [paper]
-- Retrieval Collapses When AI Pollutes the Web [paper]
-- How Users Perceive and React to Labeled AI-Generated Content on Social Media: A Longitudinal Study of Cognitive and Emotional Effects [paper]
-- CurveMark: Detecting AI-Generated Text via Probabilistic Curvature and Dynamic Semantic Watermarking. [paper]
-- Verbalized Sampling: How to Mitigate Mode Collapse and Unlock LLM Diversity [paper]
-- BitMark: Watermarking Bitwise Autoregressive Image Generative Models [paper]
-- Dealing with Synthetic Data Contamination in Online Continual Learning [paper]
-- Understanding the Impact of AI Generated Content on Social Media: The Pixiv Case [paper]
-- People Are Skeptical of Headlines Labeled as AI-Generated, Even if True or Human-Made, Because They Assume Full AI Automation [paper]
-- People Are Skeptical of Headlines Labeled as AI-Generated, Even if True or Human-Made, Because They Assume Full AI Automation [paper]
-- Enabled Data Provenance Framework for Transparent AI Model Training Pipelines [paper]
-- Data stewardship and curation practices in AI-based genomics and automated microscopy image analysis for high-throughput screening studies: promoting robust and ethical AI applications. [paper]
-- WWW - Privacy Policies over Time: Curation and Analysis of a Million-Document Dataset [paper]
-- Generalising from Self-Produced Data: Model Training Beyond Human Constraints [paper]
-- AI See What You Did There – The Prevalence of LLM-Generated Answers in MOOC Responses [paper]
-- From Perceptions To Evidence: Detecting AI-Generated Content In Turkish News Media With A Fine-Tuned Bert Classifier [paper]
-- Assessing the Prevalence of AI-Generated Content in Leading Runet News Media [paper]
-- AnalysisArchitects@DravidianLangTech 2025: BERT Based Approach For Detecting AI Generated Product Reviews In Dravidian Languages [paper]
-- Can AI-Generated Text be Reliably Detected? [paper]
-- Reality mining: sensing complex social systems [paper]
-- StudentLife: assessing mental health, academic performance and behavioral trends of college students using smartphones [paper]
-- A Sustainable AI Economy Needs Data Deals That Work for Generators [paper]
-- Threats to conservation from artificial-intelligence-generated wildlife images and videos. [paper]
+- Loss Distribution Collapse: A Structural Theory of Dataset Degradation [paper]
+- Loss Distribution Collapse: A Structural Theory of Dataset Degradation [paper]
+- openalex+s2+arxiv [source]
+- self-consuming generative models MAD autophagy [query]
+- The Curious Decline of Linguistic Diversity: Training Language Models on Synthetic Text [paper]
+- Authorship Impersonation via LLM Prompting does not Evade Authorship Verification Methods [paper]
 
 ---
 

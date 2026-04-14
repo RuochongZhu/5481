@@ -321,21 +321,32 @@ def _agent_run_via_rest(role: str, task: str, model: str, max_tokens: int) -> st
         json=body,
         timeout=timeout_sec,
     )
+    resp_text = resp.text[:300]
+    resp_text_l = resp.text.lower()
 
     if resp.status_code == 404:
         raise ModelNotFound(
             f"Model '{model}' not found. Check MODEL_FAST / MODEL_DEEP in .env. "
-            f"Original error: {resp.text[:300]}"
+            f"Original error: {resp_text}"
         )
     if resp.status_code in (401, 403):
         raise APIKeyMissing(
             f"Anthropic API authentication failed (HTTP {resp.status_code}). "
-            f"Original error: {resp.text[:300]}"
+            f"Original error: {resp_text}"
         )
     if resp.status_code == 529:
         raise QuotaExhausted(
             f"Anthropic API overloaded (HTTP 529). Try again later. "
-            f"Original error: {resp.text[:300]}"
+            f"Original error: {resp_text}"
+        )
+    if resp.status_code == 400 and (
+        "credit balance is too low" in resp_text_l
+        or "purchase credits" in resp_text_l
+        or "plans & billing" in resp_text_l
+    ):
+        raise QuotaExhausted(
+            f"Anthropic API credits exhausted (HTTP 400). "
+            f"Original error: {resp_text}"
         )
 
     resp.raise_for_status()
