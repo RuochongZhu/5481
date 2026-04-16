@@ -37,6 +37,13 @@ BEAT_REQUIREMENTS = {
         "argument_line": "motivation",
         "categories": ["A", "B", "C"],
         "pairs": ["A-B", "B-C"],
+        "required_papers": [
+            {
+                "paperId": "s2:155aec5cff650263a4c71136f97570611d1bba7a",
+                "label": "The Curse of Recursion: Training on Generated Data Makes Models Forget",
+                "match_substrings": ["curse of recursion"],
+            },
+        ],
         "missing_titles": [
             "web-scale contamination measurement anchor",
             "detector fragility / reactive filtering limit anchor",
@@ -70,6 +77,13 @@ BEAT_REQUIREMENTS = {
         "argument_line": "primary",
         "categories": ["F", "I", "J"],
         "pairs": ["F-I", "I-J"],
+        "required_papers": [
+            {
+                "paperId": "doi:10.48550/arxiv.2212.08073",
+                "label": "Constitutional AI: Harmlessness from AI Feedback",
+                "match_substrings": ["constitutional ai"],
+            },
+        ],
         "missing_titles": [
             "social-reasoning human-vs-synthetic comparison anchor",
             "fine-tune composition ablation anchor for social tasks",
@@ -103,6 +117,28 @@ BEAT_REQUIREMENTS = {
         "argument_line": "adversarial",
         "categories": ["K"],
         "pairs": [],
+        "required_papers": [
+            {
+                "paperId": "doi:10.48550/arxiv.2408.03314",
+                "label": "Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters",
+                "match_substrings": ["scaling llm test-time compute optimally"],
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2201.11903",
+                "label": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+                "match_substrings": ["chain-of-thought prompting elicits reasoning"],
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2501.12948",
+                "label": "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning",
+                "match_substrings": ["deepseek-r1"],
+            },
+            {
+                "paperId": "doi:10.48550/arxiv.2501.19393",
+                "label": "s1: Simple test-time scaling",
+                "match_substrings": ["s1: simple test-time scaling", "simple test-time scaling"],
+            },
+        ],
         "missing_titles": [
             "inference-time scaling anchor for social reasoning",
             "test-time compute or chain-of-thought explanation anchor",
@@ -472,6 +508,7 @@ def _run_gap_synthesizer(client, papers: list[dict], metrics: dict,
         )
         result = _parse_json_object(raw)
         ensure_gap_analysis_valid(result)
+        result = _reconcile_gap_assessment(result, papers)
         _log_gap_synthesizer_summary(result)
         return result
     except Exception as first_error:
@@ -492,12 +529,13 @@ def _run_gap_synthesizer(client, papers: list[dict], metrics: dict,
             )
             result = _parse_json_object(raw)
             ensure_gap_analysis_valid(result)
+            result = _reconcile_gap_assessment(result, papers)
             log.info("Gap Synthesizer generated valid JSON after compact retry")
             _log_gap_synthesizer_summary(result)
             return result
         except Exception as second_error:
             log.error(f"Gap Synthesizer failed after retry: {second_error}")
-            return _fallback_gap_synthesis(metrics, matrix, cat_stats, second_error)
+            return _fallback_gap_synthesis(papers, metrics, matrix, cat_stats, second_error)
 
 
 def _log_gap_synthesizer_summary(result: dict):
@@ -540,6 +578,7 @@ def _build_compact_gap_synthesis_input(metrics: dict, matrix: dict, cat_stats: d
             "name": info["name"],
             "categories": info["categories"],
             "pairs": info["pairs"],
+            "required_papers": [item["label"] for item in info.get("required_papers", [])],
         }
         for beat, info in BEAT_REQUIREMENTS.items()
     }
@@ -554,12 +593,13 @@ def _build_compact_gap_synthesis_input(metrics: dict, matrix: dict, cat_stats: d
     )
 
 
-def _fallback_gap_synthesis(metrics: dict, matrix: dict, cat_stats: dict, error: Exception) -> dict:
+def _fallback_gap_synthesis(papers: list[dict], metrics: dict, matrix: dict, cat_stats: dict, error: Exception) -> dict:
     category_counts = {
         cat: stats.get("count", 0)
         for cat, stats in cat_stats.items()
         if cat != "X"
     }
+    required_presence = _compute_required_paper_presence(papers)
     beats = []
     weakest = []
     for beat, info in BEAT_REQUIREMENTS.items():
@@ -594,13 +634,31 @@ def _fallback_gap_synthesis(metrics: dict, matrix: dict, cat_stats: dict, error:
         if not weakness_parts:
             weakness_parts.append("no major structural weakness detected in fallback heuristic")
 
+        present_labels = [
+            item["label"]
+            for item in required_presence.get(beat, {}).get("present", [])
+        ]
+        missing_labels = [
+            item["label"]
+            for item in required_presence.get(beat, {}).get("missing", [])
+        ]
+        fallback_missing = list(missing_labels)
+        for title in info["missing_titles"]:
+            if len(fallback_missing) >= 2:
+                break
+            if title not in fallback_missing:
+                fallback_missing.append(title)
+
         beats.append({
             "beat": beat,
             "name": info["name"],
             "status": status,
             "supporting_papers": total,
-            "key_papers_present": [f"{cat}={counts[cat]}" for cat in info["categories"] if counts[cat] > 0],
-            "key_papers_missing": info["missing_titles"][:2] if status != "strong" else [],
+            "key_papers_present": (
+                present_labels
+                + [f"{cat}={counts[cat]}" for cat in info["categories"] if counts[cat] > 0]
+            ),
+            "key_papers_missing": fallback_missing[:2] if status != "strong" else [],
             "weakness": "; ".join(weakness_parts),
             "evidence_chain": [
                 f"Category support counts: {', '.join(f'{cat}={counts[cat]}' for cat in info['categories'])}",
@@ -627,9 +685,14 @@ def _fallback_gap_synthesis(metrics: dict, matrix: dict, cat_stats: dict, error:
         if len(missing) >= 3:
             break
         counts = [category_counts.get(cat, 0) for cat in info["categories"]]
+        required_missing = required_presence.get(beat, {}).get("missing", [])
         if any(count < 8 for count in counts):
             missing.append({
-                "title": info["missing_titles"][0],
+                "title": (
+                    required_missing[0]["label"]
+                    if required_missing else
+                    info["missing_titles"][0]
+                ),
                 "why_needed": f"Beat {beat} lacks dense coverage in categories {', '.join(info['categories'])}.",
                 "search_suggestion": f"targeted search for {' / '.join(info['categories'])} anchors supporting Beat {beat}",
             })
@@ -797,11 +860,22 @@ def _build_gap_synthesis_input(papers: list[dict], metrics: dict,
             all_gaps.append(f"  [{cat}] {g}")
     gaps_str = "\n".join(all_gaps[:30])  # Limit to 30
 
+    present_required = _compute_required_paper_presence(papers)
+    required_summary = {
+        str(beat): {
+            "present": [item["label"] for item in presence["present"]],
+            "missing": [item["label"] for item in presence["missing"]],
+        }
+        for beat, presence in present_required.items()
+        if presence["present"] or presence["missing"]
+    }
+
     return (
         f"Assess evidence sufficiency for a 7-beat research paper using this corpus of {len(papers)} papers.\n\n"
         f"## Foundational Papers (highest in-degree)\n{found_str}\n\n"
         f"## Category Intersection Matrix\n{matrix_str}\n\n"
         f"## Category Statistics\n{cat_str}\n\n"
+        f"## Required Paper Presence\n{json.dumps(required_summary, ensure_ascii=False, indent=2)}\n\n"
         f"## Per-Category Gaps (what papers leave unaddressed)\n{gaps_str}\n\n"
         f"## Graph Summary\n"
         f"  Nodes: {metrics.get('total_nodes', 0)}, Edges: {metrics.get('total_edges', 0)}\n"
@@ -809,6 +883,99 @@ def _build_gap_synthesis_input(papers: list[dict], metrics: dict,
         f"  Edge types: {metrics.get('edge_type_counts', {})}\n\n"
         f"Assess each beat's evidence strength. Identify missing key papers and the strongest narrative thread."
     )
+
+
+def _normalize_text_match(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+
+
+def _paper_matches_requirement(paper: dict, requirement: dict) -> bool:
+    if not isinstance(paper, dict) or not isinstance(requirement, dict):
+        return False
+
+    required_id = (requirement.get("paperId") or "").strip().lower()
+    if required_id:
+        aliases = {
+            str(alias).strip().lower()
+            for alias in (
+                [paper.get("paperId"), paper.get("canonical_id"), *(paper.get("alias_ids") or [])]
+            )
+            if alias
+        }
+        if required_id in aliases:
+            return True
+
+    title_norm = _normalize_text_match(paper.get("title", ""))
+    for raw_substring in requirement.get("match_substrings", []) or []:
+        needle = _normalize_text_match(raw_substring)
+        if needle and needle in title_norm:
+            return True
+
+    label = _normalize_text_match(requirement.get("label", ""))
+    return bool(label and label in title_norm)
+
+
+def _compute_required_paper_presence(papers: list[dict]) -> dict[int, dict[str, list[dict]]]:
+    presence = {}
+    for beat, info in BEAT_REQUIREMENTS.items():
+        present = []
+        missing = []
+        for requirement in info.get("required_papers", []) or []:
+            if any(_paper_matches_requirement(paper, requirement) for paper in papers):
+                present.append(requirement)
+            else:
+                missing.append(requirement)
+        presence[beat] = {"present": present, "missing": missing}
+    return presence
+
+
+def _reconcile_gap_assessment(result: dict, papers: list[dict]) -> dict:
+    if not isinstance(result, dict):
+        return result
+
+    presence = _compute_required_paper_presence(papers)
+    beats = result.get("beats")
+    if not isinstance(beats, list):
+        return result
+
+    for beat_entry in beats:
+        if not isinstance(beat_entry, dict):
+            continue
+        beat_num = beat_entry.get("beat")
+        if beat_num not in presence:
+            continue
+
+        present_labels = [item["label"] for item in presence[beat_num]["present"]]
+        missing_labels = [item["label"] for item in presence[beat_num]["missing"]]
+
+        present_existing = [
+            label for label in (beat_entry.get("key_papers_present") or [])
+            if label not in present_labels
+        ]
+        missing_existing = [
+            label for label in (beat_entry.get("key_papers_missing") or [])
+            if label not in present_labels and label not in missing_labels
+        ]
+
+        beat_entry["key_papers_present"] = present_labels + present_existing
+        beat_entry["key_papers_missing"] = missing_labels + missing_existing
+
+    if isinstance(result.get("missing_papers"), list):
+        filtered_missing = []
+        present_labels = {
+            req["label"]
+            for beat_presence in presence.values()
+            for req in beat_presence["present"]
+        }
+        for item in result["missing_papers"]:
+            if not isinstance(item, dict):
+                continue
+            if item.get("title") in present_labels:
+                continue
+            filtered_missing.append(item)
+        result["missing_papers"] = filtered_missing
+
+    return result
 
 
 # ---------------------------------------------------------------------------

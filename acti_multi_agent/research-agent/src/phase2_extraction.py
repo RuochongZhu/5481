@@ -20,6 +20,7 @@ def run_phase2(state: dict, state_path: str, base_dir: str, client) -> dict:
     proc_dir = os.path.join(base_dir, "data", "processed")
     config_dir = os.path.join(base_dir, "config")
     manual_overrides = _load_manual_category_overrides(config_dir)
+    manual_metadata_overrides = _load_manual_metadata_overrides(config_dir)
     # Prefer filtered corpus_200.json if available, else fall back to full corpus
     corpus_path = os.path.join(proc_dir, "corpus_200.json")
     if not os.path.exists(corpus_path):
@@ -35,7 +36,15 @@ def run_phase2(state: dict, state_path: str, base_dir: str, client) -> dict:
 
     # Step 1: Classification
     if not is_step_complete(state, 2, "classification"):
-        classified = _run_classification(state, state_path, client, corpus, proc_dir, manual_overrides)
+        classified = _run_classification(
+            state,
+            state_path,
+            client,
+            corpus,
+            proc_dir,
+            manual_overrides,
+            manual_metadata_overrides,
+        )
         state = complete_step(state, state_path, 2, "classification", {
             "papers_classified": len(classified),
             "total_papers": total,
@@ -67,7 +76,8 @@ def run_phase2(state: dict, state_path: str, base_dir: str, client) -> dict:
 
 
 def _run_classification(state: dict, state_path: str, client, corpus: list[dict],
-                        proc_dir: str, manual_overrides: dict[str, dict]) -> list[dict]:
+                        proc_dir: str, manual_overrides: dict[str, dict],
+                        manual_metadata_overrides: dict[str, dict]) -> list[dict]:
     """Classify papers in batches via Literature Scanner agent."""
     classified_path = os.path.join(proc_dir, "classified.json")
     corpus_fingerprint = _corpus_fingerprint(corpus)
@@ -85,6 +95,7 @@ def _run_classification(state: dict, state_path: str, client, corpus: list[dict]
         log.info(f"Resuming classification from index {start_idx} ({len(classified)} already done)")
     else:
         classified = []
+        start_idx = 0
         if start_idx > 0 or os.path.exists(classified_path):
             if stored_fingerprint and stored_fingerprint != corpus_fingerprint:
                 log.info("Corpus changed since previous classification run — restarting from scratch")
@@ -138,6 +149,7 @@ def _run_classification(state: dict, state_path: str, client, corpus: list[dict]
             classified.extend(batch)
 
         _apply_manual_category_overrides(batch, manual_overrides)
+        _apply_manual_metadata_overrides(batch, manual_metadata_overrides)
 
         # Save progress after each batch
         atomic_write_json(classified_path, classified)
@@ -169,6 +181,20 @@ def _load_manual_category_overrides(config_dir: str) -> dict[str, dict]:
     return overrides
 
 
+def _load_manual_metadata_overrides(config_dir: str) -> dict[str, dict]:
+    cfg_path = os.path.join(config_dir, "manual_metadata_overrides.json")
+    if not os.path.exists(cfg_path):
+        return {}
+
+    cfg = load_json(cfg_path)
+    overrides = {}
+    for item in cfg.get("papers", []):
+        pid = (item.get("paperId") or "").strip()
+        if pid:
+            overrides[pid] = dict(item)
+    return overrides
+
+
 def _apply_manual_category_overrides(papers: list[dict], overrides: dict[str, dict]):
     if not overrides:
         return
@@ -196,6 +222,28 @@ def _apply_manual_category_overrides(papers: list[dict], overrides: dict[str, di
 
     if applied:
         log.info(f"  Applied {applied} manual category overrides")
+
+
+def _apply_manual_metadata_overrides(papers: list[dict], overrides: dict[str, dict]):
+    if not overrides:
+        return
+
+    protected_keys = {"paperId"}
+    applied = 0
+    for paper in papers:
+        pid = paper.get("paperId")
+        if pid not in overrides:
+            continue
+        override = overrides[pid]
+        for key, value in override.items():
+            if key in protected_keys:
+                continue
+            paper[key] = value
+        paper["manual_metadata_override"] = True
+        applied += 1
+
+    if applied:
+        log.info(f"  Applied {applied} manual metadata overrides")
 
 
 def _corpus_fingerprint(corpus: list[dict]) -> str:

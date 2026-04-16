@@ -71,8 +71,12 @@ def load_json(filepath: str):
 
 
 def is_active_paper(paper: dict) -> bool:
-    """Return False for papers explicitly pruned from the v2 pipeline."""
-    return not (paper.get("v2_pruned") is True or paper.get("pruned") is True)
+    """Return False for papers explicitly pruned or superseded in the v2 pipeline."""
+    return not (
+        paper.get("v2_pruned") is True
+        or paper.get("pruned") is True
+        or bool((paper.get("duplicate_of") or "").strip())
+    )
 
 
 def filter_active_papers(papers: list[dict]) -> list[dict]:

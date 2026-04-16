@@ -27,6 +27,22 @@ TYPE_PRIORITY = {
     "competing_mechanism": 4,
 }
 
+ARGUMENT_LINE_BUCKETS = {
+    "motivation": ("pretraining", "Pretraining / Motivation"),
+    "framework": ("fine_tuning", "Fine-tuning / Post-training"),
+    "primary": ("fine_tuning", "Fine-tuning / Post-training"),
+    "core_contribution": ("fine_tuning", "Fine-tuning / Post-training"),
+    "cross-line": ("cross_line", "Cross-line"),
+    "adversarial": ("adversarial", "Adversarial / Competing Mechanisms"),
+}
+
+ARGUMENT_LINE_BUCKET_ORDER = (
+    "pretraining",
+    "fine_tuning",
+    "cross_line",
+    "adversarial",
+)
+
 FALLBACK_FOCUS_HEURISTICS = {
     ("A", "E"): {
         "question": "Can curated synthetic data or correction mechanisms prevent collapse without fresh human data every round?",
@@ -666,12 +682,42 @@ def _build_review_summary(contradictions: list[dict], unresolved_tensions: list[
         for item in focus_summary
     ]
 
+    line_coverage = []
+    for bucket_key in ARGUMENT_LINE_BUCKET_ORDER:
+        bucket_items = []
+        label = bucket_key.replace("_", " ").title()
+        source_questions = []
+        for item in contradictions:
+            item_bucket, item_label = _argument_line_bucket(item.get("argument_line", ""))
+            if item_bucket != bucket_key:
+                continue
+            bucket_items.append(item)
+            label = item_label
+            source_question = item.get("source_question", "")
+            if source_question and source_question not in source_questions:
+                source_questions.append(source_question)
+        if bucket_items:
+            line_coverage.append({
+                "bucket": bucket_key,
+                "label": label,
+                "count": len(bucket_items),
+                "source_questions": source_questions[:4],
+                "representative_question": bucket_items[0].get("question", ""),
+            })
+
     return {
         "must_address_limiters": top_limiters,
         "focus_coverage": focus_coverage,
+        "line_coverage": line_coverage,
         "unresolved_tensions": unresolved_tensions[:8],
         "structural_limitations": (structural_limitations or [])[:6],
     }
+
+
+def _argument_line_bucket(argument_line: str) -> tuple[str, str]:
+    """Collapse detailed argument lines into reviewer-facing buckets."""
+    key = str(argument_line or "").strip()
+    return ARGUMENT_LINE_BUCKETS.get(key, ("cross_line", "Cross-line"))
 
 
 def _select_contradiction_input_papers(papers: list[dict], categories: list[str],
@@ -1159,6 +1205,22 @@ def _generate_contradiction_report(contradictions: dict, classified: list[dict],
             lines.append(f"   Handling: {item.get('handling', 'N/A')}")
         lines.append("")
 
+    line_coverage = review_summary.get("line_coverage", [])
+    if line_coverage:
+        lines.append("## Argument-Line Coverage\n")
+        for item in line_coverage:
+            lines.append(
+                f"- {item.get('label', 'N/A')} "
+                f"(count={item.get('count', 0)})"
+            )
+            source_questions = item.get("source_questions", [])
+            if source_questions:
+                lines.append(f"  Focuses: {' | '.join(source_questions)}")
+            representative = item.get("representative_question", "")
+            if representative:
+                lines.append(f"  Representative: {representative}")
+        lines.append("")
+
     focus_summary = contradictions.get("focus_summary", [])
     if focus_summary:
         lines.append("## Focus Coverage\n")
@@ -1171,34 +1233,53 @@ def _generate_contradiction_report(contradictions: dict, classified: list[dict],
             lines.append(f"  Representative: {item.get('representative_question', 'N/A')}")
         lines.append("\n---\n")
 
+    structural_limitations = review_summary.get("structural_limitations") or contradictions.get("structural_limitations", [])
+    if structural_limitations:
+        lines.append("## Structural Limitations\n")
+        for item in structural_limitations:
+            lines.append(f"- {item}")
+        lines.append("")
+
     severity_icons = {"critical": "🔴", "moderate": "🟡", "minor": "🟢"}
+    grouped = {bucket: [] for bucket in ARGUMENT_LINE_BUCKET_ORDER}
+    for item in contradictions.get("contradictions", []):
+        bucket, _label = _argument_line_bucket(item.get("argument_line", ""))
+        grouped.setdefault(bucket, []).append(item)
 
-    for c in contradictions.get("contradictions", []):
-        cid = c.get("id", "?")
-        severity = c.get("severity", "?")
-        icon = severity_icons.get(severity, "❓")
-        ctype = c.get("type", "?")
+    for bucket_key in ARGUMENT_LINE_BUCKET_ORDER:
+        items = grouped.get(bucket_key, [])
+        if not items:
+            continue
+        _bucket, bucket_label = _argument_line_bucket(items[0].get("argument_line", ""))
+        lines.append(f"## {bucket_label}\n")
 
-        lines.append(f"## {cid}: {icon} {severity.upper()} — {ctype}\n")
-        lines.append(f"**Question**: {c.get('question', 'N/A')}\n")
+        for c in items:
+            cid = c.get("id", "?")
+            severity = c.get("severity", "?")
+            icon = severity_icons.get(severity, "❓")
+            ctype = c.get("type", "?")
 
-        pa = c.get("paper_a", {})
-        pb = c.get("paper_b", {})
-        pa_paper = by_id.get(pa.get("paperId", ""), {})
-        pb_paper = by_id.get(pb.get("paperId", ""), {})
+            lines.append(f"### {cid}: {icon} {severity.upper()} — {ctype}\n")
+            lines.append(f"**Source focus**: {c.get('source_question', 'N/A')}")
+            lines.append(f"**Question**: {c.get('question', 'N/A')}\n")
 
-        lines.append(f"**Paper A**: {pa_paper.get('title', pa.get('paperId', '?'))[:80]}")
-        lines.append(f"  Claim: {pa.get('claim', 'N/A')}")
-        lines.append(f"  Evidence: {pa.get('evidence', 'N/A')}\n")
+            pa = c.get("paper_a", {})
+            pb = c.get("paper_b", {})
+            pa_paper = by_id.get(pa.get("paperId", ""), {})
+            pb_paper = by_id.get(pb.get("paperId", ""), {})
 
-        lines.append(f"**Paper B**: {pb_paper.get('title', pb.get('paperId', '?'))[:80]}")
-        lines.append(f"  Claim: {pb.get('claim', 'N/A')}")
-        lines.append(f"  Evidence: {pb.get('evidence', 'N/A')}\n")
+            lines.append(f"**Paper A**: {pa_paper.get('title', pa.get('paperId', '?'))[:80]}")
+            lines.append(f"  Claim: {pa.get('claim', 'N/A')}")
+            lines.append(f"  Evidence: {pa.get('evidence', 'N/A')}\n")
 
-        lines.append(f"**Relevance to thesis**: {c.get('relevance_to_thesis', 'N/A')}")
-        lines.append(f"**Beat affected**: {c.get('beat_affected', 'N/A')}")
-        lines.append(f"**Suggested handling**: {c.get('suggested_handling', 'N/A')}\n")
-        lines.append("---\n")
+            lines.append(f"**Paper B**: {pb_paper.get('title', pb.get('paperId', '?'))[:80]}")
+            lines.append(f"  Claim: {pb.get('claim', 'N/A')}")
+            lines.append(f"  Evidence: {pb.get('evidence', 'N/A')}\n")
+
+            lines.append(f"**Relevance to thesis**: {c.get('relevance_to_thesis', 'N/A')}")
+            lines.append(f"**Beat affected**: {c.get('beat_affected', 'N/A')}")
+            lines.append(f"**Suggested handling**: {c.get('suggested_handling', 'N/A')}\n")
+            lines.append("---\n")
 
     # Summary
     total = contradictions.get("total_found", 0)

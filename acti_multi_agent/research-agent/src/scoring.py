@@ -125,13 +125,17 @@ def count_papers_per_category(classified: list[dict]) -> dict[str, int]:
 
 
 def count_strong_papers(classified: list[dict], beat: int) -> int:
-    """Count papers with high confidence in a beat's categories."""
+    """Count strong-support papers in a beat's categories.
+
+    Manual overrides are treated as strong evidence because they reflect
+    explicit post-classification curation for required anchors.
+    """
     classified = filter_active_papers(classified)
     cats = BEAT_CATEGORIES.get(beat, [])
     return sum(
         1 for p in classified
         if p.get("primary_category") in cats
-        and p.get("confidence") in ("high", "medium")
+        and p.get("confidence") in ("high", "medium", "manual")
     )
 
 
@@ -709,6 +713,16 @@ def _build_contradiction_reviewer_context(data: dict, limit: int = 6000) -> str:
                     f"{stance_labels.get('ambiguous', 'ambiguous')}:{stance_counts.get('ambiguous', 0)}"
                 )
 
+    line_coverage = review_summary.get("line_coverage", [])
+    if line_coverage:
+        lines.append("Argument-line coverage:")
+        for item in line_coverage[:6]:
+            lines.append(
+                f"- {item.get('label', 'N/A')} | count={item.get('count', 0)} | "
+                f"focuses={item.get('source_questions', [])} | "
+                f"representative={item.get('representative_question', 'N/A')}"
+            )
+
     tensions = review_summary.get("unresolved_tensions") or data.get("unresolved_tensions") or []
     if tensions:
         lines.append("Unresolved tensions:")
@@ -723,9 +737,10 @@ def _build_contradiction_reviewer_context(data: dict, limit: int = 6000) -> str:
 
     if contradictions:
         lines.append("Representative contradictions:")
-        for item in contradictions[:10]:
+        for item in contradictions[:12]:
             lines.append(
-                f"- {item.get('source_question', 'N/A')} | {item.get('type', 'N/A')} | "
+                f"- line={item.get('argument_line', 'N/A')} | "
+                f"{item.get('source_question', 'N/A')} | {item.get('type', 'N/A')} | "
                 f"{item.get('paper_a', {}).get('paperId', 'N/A')} vs {item.get('paper_b', {}).get('paperId', 'N/A')} | "
                 f"{item.get('question', 'N/A')} | handling={item.get('suggested_handling', 'N/A')[:260]}"
             )

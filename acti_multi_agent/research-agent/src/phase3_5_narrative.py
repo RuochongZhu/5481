@@ -55,6 +55,7 @@ BEAT_PRIORITY_PAPERS = {
         "doi:10.18653/v1/d19-1454",
         "doi:10.18653/v1/2022.emnlp-main.248",
         "doi:10.48550/arxiv.2305.11206",
+        "doi:10.48550/arxiv.2212.08073",
         "doi:10.48550/arxiv.2303.17548",
         "doi:10.48550/arxiv.2305.18290",
         "doi:10.48550/arxiv.2309.00267",
@@ -79,9 +80,12 @@ BEAT_PRIORITY_PAPERS = {
         "doi:10.1017/aap.2022.33",
     ],
     7: [
+        "doi:10.48550/arxiv.2408.03314",
         "doi:10.48550/arxiv.2201.11903",
         "doi:10.48550/arxiv.2203.11171",
         "doi:10.48550/arxiv.2001.08361",
+        "doi:10.48550/arxiv.2501.12948",
+        "doi:10.48550/arxiv.2501.19393",
     ],
 }
 
@@ -136,12 +140,17 @@ BEAT_NARRATIVE_GUIDANCE = {
         "Acknowledge: 3B model may not amplify data quality differences sufficiently. "
         "Acknowledge: D1 and D4 co-vary in this design, cannot separate independent contributions. "
         "This beat shares categories F, I, J with Beat 4 but focuses on experimental methodology. "
+        "Treat LIMA as a cross-beat anchor, not unique proof for Beat 5: in Beat 4 it motivates why post-training "
+        "data quality matters, while in Beat 5 it only justifies the plausibility of a provenance-sensitive contrast. "
         "Explicitly state that the pilot holds inference-time compute fixed because self-consistency, structured "
         "chain-of-thought, and DEL-ToM-style inference-time scaling are live rival explanations that the paper "
         "cannot apportion away after the fact."
     ),
     6: (
         "Beat 6 should present CampusGo as a deployed provenance-aware core contribution, not merely a proposal. "
+        "ANCHOR-CONTRIBUTION RELATIONSHIP: Longpre et al. (2024) is the problem-diagnosis anchor, not the solution itself. "
+        "CampusGo should be framed as one concrete operationalization of authenticity, consent, and provenance requirements "
+        "for post-training social-reasoning data, not as fulfillment of the entire agenda or as validated downstream impact. "
         "Use platform and provenance precedents to frame the implementation and governance requirements, "
         "but do not claim CampusGo or any platform solution is validated as improving downstream model performance. "
         "Acknowledge: G-category literature is from adjacent domains (citizen science, biomedicine, "
@@ -318,7 +327,7 @@ STRUCTURED_BEAT_SPECS = {
             },
         ],
         "writing_notes":
-            "Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. State explicitly that the pilot fixes inference-time compute, prompt/interface conditions, and retrieval usage precisely because self-consistency, structured CoT, and DEL-ToM-style inference-time scaling are live rival explanations; the corpus does not let the paper apportion causal weight among those mechanisms after the fact. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.",
+            "Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. Handle LIMA explicitly as a cross-beat paper: in Beat 4 it supports the broader claim that curation matters, while in Beat 5 it only motivates why a provenance-sensitive intervention is worth testing. State explicitly that the pilot fixes inference-time compute, prompt/interface conditions, and retrieval usage precisely because self-consistency, structured CoT, and DEL-ToM-style inference-time scaling are live rival explanations; the corpus does not let the paper apportion causal weight among those mechanisms after the fact. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.",
     },
     6: {
         "anchor": "doi:10.48550/arxiv.2404.12691",
@@ -391,7 +400,7 @@ STRUCTURED_BEAT_SPECS = {
             },
         ],
         "writing_notes":
-            "Beat 6 should read as deployed requirements engineering, not downstream validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a deployed system would need to satisfy.",
+            "Beat 6 should read as deployed requirements engineering, not downstream validation. Longpre et al. (2024) is the diagnosis anchor that names the broken properties of present AI data pipelines; CampusGo is positioned as one concrete operationalization of those requirements for socially grounded post-training data, not as proof that the full authenticity agenda is solved. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a deployed system would need to satisfy.",
     },
 }
 
