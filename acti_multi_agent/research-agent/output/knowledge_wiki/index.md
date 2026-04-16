@@ -2,33 +2,31 @@
 
 > Agent-readable graph wiki. Start here before scanning raw corpus files.
 
-**266 nodes · 1283 edges · 8 communities**
+**230 nodes · 933 edges · 6 communities**
 
 ## Communities
 
-- [[Category J]] — 92 nodes
-- [[Category X]] — 77 nodes
-- [[Category A]] — 61 nodes
-- [[SampleMix: A Sample-wise Pre-training Data Mixing Strategey ]] — 15 nodes
-- [[Can AI-Generated Text be Reliably Detected?]] — 12 nodes
-- [[Can Small Training Runs Reliably Guide Data Curation? Rethin]] — 5 nodes
-- [[A Theoretical Framework for Statistical Evaluability of Gene]] — 2 nodes
-- [[Verbalized Sampling: How to Mitigate Mode Collapse and Unloc]] — 2 nodes
+- [[Category D]] — 67 nodes
+- [[Category F]] — 57 nodes
+- [[Category C]] — 53 nodes
+- [[Category H]] — 32 nodes
+- [[Category I]] — 16 nodes
+- [[Category X]] — 5 nodes
 
 ## Top Hubs
 
-- Model Collapse and Contamination Risk (beat, degree=70)
-- Partial Measurability of Web Drift (beat, degree=65)
-- L_auth Framework Definition (beat, degree=62)
-- openalex (layer, degree=62)
-- Category E (category, degree=52)
+- openalex (layer, degree=48)
 - Fine-tuning Data Source Affects Social Reasoning (beat, degree=47)
 - Contrastive Fine-tuning Experiment (beat, degree=47)
-- Category D (category, degree=44)
-- Category A (category, degree=38)
-- lens (layer, degree=36)
-- lens (source, degree=35)
-- openalex (source, degree=34)
-- Category F (category, degree=32)
-- Self-Consuming Generative Models go MAD (paper, degree=31)
-- The Curse of Recursion: Training on Generated Data Makes Models Forget (paper, degree=26)
+- Model Collapse and Contamination Risk (beat, degree=44)
+- lens (layer, degree=43)
+- lens (source, degree=41)
+- Partial Measurability of Web Drift (beat, degree=38)
+- L_auth Framework Definition (beat, degree=36)
+- Category F (category, degree=27)
+- Category E (category, degree=25)
+- openalex (source, degree=25)
+- Category D (category, degree=24)
+- Category B (category, degree=23)
+- Category G (category, degree=19)
+- Category I (category, degree=19)

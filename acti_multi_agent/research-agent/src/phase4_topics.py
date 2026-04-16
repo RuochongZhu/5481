@@ -11,7 +11,7 @@ from .api_client import agent_run, BRAIN_PHASE4_EVIDENCE, S2Client
 from .phase_contracts import ensure_evidence_inventory_valid
 from .prompts import TOPIC_SCORER
 from .state_manager import complete_step, is_step_complete
-from .utils import atomic_write_json, load_json
+from .utils import atomic_write_json, load_json, filter_active_papers
 
 log = logging.getLogger("research_agent")
 
@@ -43,7 +43,7 @@ def run_phase4(state: dict, state_path: str, base_dir: str, client,
 
     evidence = load_json(evidence_path)
     narrative_chains = load_json(narrative_path) if os.path.exists(narrative_path) else []
-    classified = load_json(classified_path) if os.path.exists(classified_path) else []
+    classified = filter_active_papers(load_json(classified_path)) if os.path.exists(classified_path) else []
 
     # Step 1: Generate evidence inventory per beat
     if not is_step_complete(state, 4, "score_gaps"):
@@ -104,7 +104,7 @@ def _build_evidence_inventory(client, evidence: dict, classified: list[dict],
         cat_summaries[cat] = papers[:10]
 
     task = (
-        f"Generate a structured evidence inventory for a 6-beat research paper.\n\n"
+        f"Generate a structured evidence inventory for a 7-beat research paper.\n\n"
         f"## Evidence Sufficiency Analysis\n{beats_summary}\n\n"
         f"## Top Papers by Category\n{json.dumps(cat_summaries, indent=2, ensure_ascii=False)[:4000]}\n\n"
         f"For each beat, identify the 5-8 most important papers and the logical chain connecting them."
@@ -113,7 +113,7 @@ def _build_evidence_inventory(client, evidence: dict, classified: list[dict],
     try:
         raw = agent_run(client, role=TOPIC_SCORER, task=task, model=BRAIN_PHASE4_EVIDENCE, max_tokens=8192)
         result = _parse_json_object(raw)
-        result = _ground_evidence_inventory(result, evidence, classified)
+        result = _ground_evidence_inventory(result, evidence, classified, narrative_chains)
         ensure_evidence_inventory_valid(result)
         log.info("Evidence inventory generated")
         return result
@@ -123,12 +123,12 @@ def _build_evidence_inventory(client, evidence: dict, classified: list[dict],
         retry_role = (
             TOPIC_SCORER
             + "\nReturn minified JSON only. No prose, no markdown, no trailing commentary. "
-              "The JSON must contain exactly 6 evidence_inventory entries and a non-empty suggested_paper_outline object."
+              "The JSON must contain exactly 7 evidence_inventory entries and a non-empty suggested_paper_outline object."
         )
         try:
             raw = agent_run(client, role=retry_role, task=retry_task, model=BRAIN_PHASE4_EVIDENCE, max_tokens=4096)
             result = _parse_json_object(raw)
-            result = _ground_evidence_inventory(result, evidence, classified)
+            result = _ground_evidence_inventory(result, evidence, classified, narrative_chains)
             ensure_evidence_inventory_valid(result)
             log.info("Evidence inventory generated after compact retry")
             return result
@@ -152,7 +152,7 @@ def _compact_inventory_task(beats: list[dict], cat_summaries: dict) -> str:
         for cat, papers in cat_summaries.items()
     }
     return (
-        "Generate a contract-compliant evidence inventory for exactly 6 beats.\n"
+        "Generate a contract-compliant evidence inventory for exactly 7 beats.\n"
         f"Beat analysis: {json.dumps(beats, ensure_ascii=False)[:1500]}\n"
         f"Top papers by category: {json.dumps(slim_categories, ensure_ascii=False)[:2500]}\n"
         "Each beat must include non-empty core_papers and a concise narrative."
@@ -258,7 +258,7 @@ def _fallback_evidence_inventory(evidence: dict, classified: list[dict], error: 
 
         beat_info = evidence_beats.get(beat, {})
         remaining_gaps = [
-            f"Fallback generated after evidence inventory parse failure: {error}",
+            "Inventory was synthesized conservatively from corpus-grounded papers after the structured generator returned an invalid schema.",
         ]
         weakness = beat_info.get("weakness")
         if weakness:
@@ -279,25 +279,29 @@ def _fallback_evidence_inventory(evidence: dict, classified: list[dict], error: 
         f"section_{beat}_{BEAT_TITLES[beat].lower().replace(' ', '_')}": {
             "papers": len(inventory[beat - 1]["core_papers"]),
             "pages": "TBD",
-            "note": "fallback inventory; revise after successful Phase 4 retry",
+            "note": "conservative grounded inventory; revise after a cleaner structured generation pass if needed",
         }
         for beat in range(1, NUM_BEATS + 1)
     }
     return {
         "evidence_inventory": inventory,
         "suggested_paper_outline": outline,
-        "fallback_warning": f"Evidence inventory retry failed: {error}",
+        "fallback_warning": (
+            "Evidence inventory was rebuilt from narrative chains and classified metadata after "
+            f"a schema-validation failure: {error}"
+        ),
     }
 
 
-def _ground_evidence_inventory(result: dict, evidence: dict, classified: list[dict]) -> dict:
+def _ground_evidence_inventory(result: dict, evidence: dict, classified: list[dict],
+                               narrative_chains: list[dict] | None = None) -> dict:
     """Replace hallucinated inventory entries with actual corpus-grounded papers."""
     if not isinstance(result, dict):
         return result
 
     inventory = result.get("evidence_inventory")
     if not isinstance(inventory, list):
-        return result
+        inventory = []
 
     by_id = {p.get("paperId", ""): p for p in classified if p.get("paperId")}
     by_title = {
@@ -319,12 +323,25 @@ def _ground_evidence_inventory(result: dict, evidence: dict, classified: list[di
         for idx, item in enumerate(evidence.get("beats", []), start=1)
         if isinstance(item, dict) and str(item.get("beat", idx)).isdigit()
     }
-
-    grounded_inventory = []
-    for beat_entry in inventory:
+    chain_by_beat = {
+        int(chain.get("beat", 0)): chain
+        for chain in (narrative_chains or [])
+        if isinstance(chain, dict) and str(chain.get("beat", 0)).isdigit()
+    }
+    inventory_by_beat = {}
+    for idx, beat_entry in enumerate(inventory, start=1):
         if not isinstance(beat_entry, dict):
             continue
-        beat = int(beat_entry.get("beat", 0) or 0)
+        beat = beat_entry.get("beat", idx)
+        beat = int(beat) if str(beat).isdigit() else idx
+        if 1 <= beat <= NUM_BEATS and beat not in inventory_by_beat:
+            inventory_by_beat[beat] = beat_entry
+
+    grounded_inventory = []
+    for beat in range(1, NUM_BEATS + 1):
+        beat_entry = inventory_by_beat.get(beat, {"beat": beat})
+        beat_info = evidence_beats.get(beat, {})
+        chain = chain_by_beat.get(beat, {})
         allowed_cats = list(BEAT_CATEGORY_HINTS.get(beat, []))
         grounded_core = []
         seen_ids = set()
@@ -367,6 +384,58 @@ def _ground_evidence_inventory(result: dict, evidence: dict, classified: list[di
             seen_ids.add(paper_id)
 
         if len(grounded_core) < 5:
+            for item in chain.get("spine", []) or []:
+                if not isinstance(item, dict):
+                    continue
+                paper = by_id.get(item.get("paperId", ""))
+                if not paper:
+                    continue
+                paper_id = paper.get("paperId", "")
+                if not paper_id or paper_id in seen_ids:
+                    continue
+                grounded_core.append({
+                    "paperId": paper_id,
+                    "title": paper.get("title", ""),
+                    "role": item.get("role_in_narrative") or f"Structured spine paper for Beat {beat}",
+                    "key_finding": str(
+                        paper.get("key_claim")
+                        or paper.get("one_sentence_contribution")
+                        or paper.get("abstract", "")[:180]
+                        or "Narrative-chain grounded candidate paper."
+                    )[:180],
+                    "citation_note": _citation_note(paper),
+                })
+                seen_ids.add(paper_id)
+                if len(grounded_core) >= 5:
+                    break
+
+        if len(grounded_core) < 5:
+            for item in chain.get("supporting", []) or []:
+                if not isinstance(item, dict):
+                    continue
+                paper = by_id.get(item.get("paperId", ""))
+                if not paper:
+                    continue
+                paper_id = paper.get("paperId", "")
+                if not paper_id or paper_id in seen_ids:
+                    continue
+                grounded_core.append({
+                    "paperId": paper_id,
+                    "title": paper.get("title", ""),
+                    "role": item.get("role") or f"Structured supporting paper for Beat {beat}",
+                    "key_finding": str(
+                        paper.get("key_claim")
+                        or paper.get("one_sentence_contribution")
+                        or paper.get("abstract", "")[:180]
+                        or "Narrative-chain grounded candidate paper."
+                    )[:180],
+                    "citation_note": _citation_note(paper),
+                })
+                seen_ids.add(paper_id)
+                if len(grounded_core) >= 5:
+                    break
+
+        if len(grounded_core) < 5:
             for cat in allowed_cats:
                 for paper in by_cat.get(cat, []):
                     paper_id = paper.get("paperId", "")
@@ -388,19 +457,55 @@ def _ground_evidence_inventory(result: dict, evidence: dict, classified: list[di
                 "citation_note": "No usable citation",
             })
 
-        beat_info = evidence_beats.get(beat, {})
+        remaining_gaps = beat_entry.get("remaining_gaps")
+        if not isinstance(remaining_gaps, list):
+            remaining_gaps = []
+        weakness = beat_info.get("weakness")
+        if weakness and str(weakness) not in [str(item) for item in remaining_gaps]:
+            remaining_gaps.append(str(weakness))
+
         grounded_inventory.append({
             "beat": beat,
-            "title": beat_entry.get("title") or beat_info.get("name") or BEAT_TITLES.get(beat, f"Beat {beat}"),
-            "argument_line": beat_entry.get("argument_line"),
-            "core_papers": grounded_core[:8],
-            "narrative": beat_entry.get("narrative") or (
-                "Grounded evidence inventory synthesized from actual corpus papers."
+            "title": (
+                beat_entry.get("title")
+                or beat_info.get("name")
+                or chain.get("beat_name")
+                or BEAT_TITLES.get(beat, f"Beat {beat}")
             ),
-            "remaining_gaps": beat_entry.get("remaining_gaps", []),
+            "argument_line": (
+                beat_entry.get("argument_line")
+                or beat_info.get("argument_line")
+                or chain.get("argument_line")
+            ),
+            "core_papers": grounded_core[:8],
+            "narrative": (
+                beat_entry.get("narrative")
+                or chain.get("writing_notes")
+                or "Grounded evidence inventory synthesized from actual corpus papers."
+            ),
+            "remaining_gaps": remaining_gaps,
         })
 
     result["evidence_inventory"] = grounded_inventory
+    existing_outline = result.get("suggested_paper_outline")
+    existing_outline = existing_outline if isinstance(existing_outline, dict) else {}
+    generated_outline = {}
+    for beat_entry in grounded_inventory:
+        if not isinstance(beat_entry, dict) or not beat_entry.get("beat"):
+            continue
+        beat_num = int(beat_entry["beat"])
+        beat_title = BEAT_TITLES.get(beat_num, f"beat_{beat_num}")
+        key = next(
+            (name for name in existing_outline if name.startswith(f"section_{beat_num}_")),
+            f"section_{beat_num}_{beat_title.lower().replace(' ', '_')}",
+        )
+        existing_section = existing_outline.get(key, {})
+        generated_outline[key] = {
+            "papers": len(beat_entry.get("core_papers", []) or []),
+            "pages": existing_section.get("pages", "TBD"),
+            "note": existing_section.get("note") or "grounded inventory; convert to prose after beat-level review",
+        }
+    result["suggested_paper_outline"] = generated_outline
     return result
 
 

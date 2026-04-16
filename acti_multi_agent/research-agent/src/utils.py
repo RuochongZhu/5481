@@ -70,6 +70,16 @@ def load_json(filepath: str):
         return json.load(f)
 
 
+def is_active_paper(paper: dict) -> bool:
+    """Return False for papers explicitly pruned from the v2 pipeline."""
+    return not (paper.get("v2_pruned") is True or paper.get("pruned") is True)
+
+
+def filter_active_papers(papers: list[dict]) -> list[dict]:
+    """Filter out pruned papers while preserving order."""
+    return [paper for paper in papers if isinstance(paper, dict) and is_active_paper(paper)]
+
+
 def stable_fingerprint(value) -> str:
     """Return a stable SHA1 fingerprint for JSON-serializable values."""
     payload = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))

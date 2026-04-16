@@ -8,7 +8,7 @@ import os
 import re
 from collections import Counter
 
-from .utils import load_json, atomic_write_json
+from .utils import load_json, atomic_write_json, filter_active_papers
 from .api_client import REVIEWER_BRAINS, agent_run
 
 log = logging.getLogger("research_agent")
@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config.beat_definitions import (
     BEAT_CATEGORIES, BEAT_NAMES, ARGUMENT_LINES, NUM_BEATS,
-    CATEGORY_TARGETS, HONESTY_CONSTRAINTS,
+    CATEGORY_TARGETS, HONESTY_CONSTRAINTS, CATEGORY_SEQUENCE,
 )
 
 # Target paper counts per category (re-exported for backward compat)
@@ -27,20 +27,19 @@ from config.beat_definitions import (
 # Reviewer prompts (inline — these mirror the slash commands but as system prompts)
 REVIEWER_PROMPTS = {
     "narrative": (
-        "You are the Narrative Reviewer. Evaluate whether the 6-beat dual-argument-line evidence chain "
+        "You are the Narrative Reviewer. Evaluate whether the 7-beat evidence chain "
         "provides a defensible, writing-ready structure for related-work prose. "
-        "The paper has two independent argument lines: "
-        "Line 1 (pretraining risk: Beats 1-2) and Line 2 (fine-tuning experimental: Beats 4-5), "
-        "connected by a Bridge (Beat 3: L_auth) and ending with a Proposal (Beat 6: CampusGo). "
+        "The paper has motivation beats (1-2), a framework beat (3), a primary evidence line (4-5), "
+        "a deployed core-contribution beat (6), and an adversarial scoping beat (7). "
         "IMPORTANT: You are evaluating a literature organization pipeline output, NOT finished prose. "
         "The pipeline produces narrative chains (spine + supporting papers per beat) and a writing outline "
         "with paragraph structure and transitions. Score based on: "
         "(1) each beat has a clear anchor paper and 3-6 spine papers in citation order where direct internal citations exist, "
         "or else an explicit thematic progression with a stated reason, "
         "(2) transitions between spine papers are justified, "
-        "(3) argument line separation is maintained (no collapse papers supporting fine-tuning claims), "
-        "(4) weak beats (2, 5, 6) explicitly admit their limitations rather than forcing certainty, "
-        "(5) the overall 6-beat structure reads as a coherent dual-line argument. "
+        "(3) motivation beats do not become the direct evidence base for the primary line, "
+        "(4) weak beats (2, 5, 6, 7) explicitly admit their limitations rather than forcing certainty, "
+        "(5) the overall 7-beat structure reads as a coherent, scoped argument. "
         "Do NOT penalize beats for having thin evidence if the pipeline honestly flags the weakness. "
         "Do NOT require finished prose quality — evaluate the structural defensibility of the chain. "
         "Output STRICT JSON: {\"beat\": N, \"narrative_score\": 0.X, \"checklist\": [0/1,0/1,0/1,0/1,0/1], "
@@ -57,17 +56,25 @@ REVIEWER_PROMPTS = {
     ),
     "gap": (
         "You are the Gap Reviewer. Evaluate whether the gap/evidence analysis honestly distinguishes supported "
-        "beats from unsupported beats across both argument lines. The gap output is diagnostic, not a novelty-sales "
+        "beats from unsupported beats across the full structure. The gap output is diagnostic, not a novelty-sales "
         "pitch. Reward accurate identification of missing literature, weak evidence chains, and overclaim risk. "
-        "Check that Beat 5 (experiment) has appropriate methodology literature and Beat 6 (CampusGo) stays proposal-framed. "
+        "Check that Beat 5 has appropriate methodology literature, Beat 6 does not confuse deployment with validation, "
+        "and Beat 7 honestly surfaces competing mechanisms. "
         "Output STRICT JSON: {\"gap_credibility_score\": 0.X, \"checklist\": [0/1,0/1,0/1,0/1,0/1], "
         "\"closest_existing_work\": [...], \"gap_refinement_suggestion\": \"...\", \"risk_assessment\": \"Low/Medium/High\"}"
     ),
     "coverage": (
-        "You are the Coverage Checker. Count papers per category (A-J), compare with targets, and judge whether "
-        "each of the 6 beats has enough credible support. Penalize heavy X spillover, empty categories, and "
-        "single-paper beats. Check that Beats 4-5 (fine-tuning line) have independent evidence from Beats 1-2 "
-        "(pretraining line). Targets: A:30 B:17 C:12 D:22 E:22 F:17 G:12 H:12 I:12 J:12. "
+        "You are the Coverage Checker. Evaluate coverage against the migrated 7-beat paper structure, not the old "
+        "two-line structure. Motivation beats (1-2) are allowed to be thinner and more heterogeneous than the "
+        "primary evidence line, so do NOT score this as if every category must reach the same density. "
+        "Count papers per category (A-K), compare with targets, and judge whether each of the 7 beats has enough "
+        "credible support for its current rhetorical role. Penalize heavy X spillover, empty categories, and "
+        "single-paper beats. Check that Beats 4-5 have independent evidence from Beats 1-2, and that Beat 7 has "
+        "real Category K coverage. Treat these as the highest-priority active targets after migration: "
+        "A:8 C:5 E:10 K:8. Treat F:17 G:12 I:12 J:12 as core-support targets that should remain strong. "
+        "Treat B/D/H shortfalls as softer motivation-coverage warnings unless they directly break a beat. "
+        "If a paper was retrieved for a target category and retains that target as a secondary category, you may "
+        "treat it as partial coverage evidence rather than a total miss. "
         "Output STRICT JSON: {\"coverage_score\": 0.X, \"checklist\": [0/1,0/1,0/1,0/1,0/1], "
         "\"category_counts\": {...}, \"underfilled\": [...], \"补搜_queries\": [...]}"
     ),
@@ -75,9 +82,10 @@ REVIEWER_PROMPTS = {
         "You are the Honesty Reviewer. Check whether the final evidence outputs stay within what the corpus "
         "actually supports. Key checks: (1) Beat 1 must not claim all synthetic data is harmful — only "
         "indiscriminate recursive reuse. (2) Beat 2 must not claim web-wide degradation is demonstrated — "
-        "only rising risk. (3) Beat 3 must frame L_auth as a synthesis, not a validated law. (4) Beats 4-5 "
+        "only rising risk. (3) Beat 3 must frame L_auth as a scoped framework, not a validated law. (4) Beats 4-5 "
         "must not claim human data is universally indispensable — only especially valuable for socially "
-        "grounded tasks. (5) Beat 6 must stay proposal-framed. Penalize extrapolation from indirect papers, "
+        "grounded tasks. (5) Beat 6 must not confuse deployment with validated model gains. "
+        "(6) Beat 7 must present inference-time scaling and related mechanisms as genuine alternatives. Penalize extrapolation from indirect papers, "
         "unsupported causal leaps, and claims that ignore contradictions. "
         "Output STRICT JSON: {\"honesty_score\": 0.X, \"checklist\": [0/1,0/1,0/1,0/1,0/1], "
         "\"overselling_detected\": [...], \"what_author_should_admit\": \"...\"}"
@@ -107,6 +115,7 @@ SCORE_KEYS = {
 
 def count_papers_per_category(classified: list[dict]) -> dict[str, int]:
     """Count papers in each category."""
+    classified = filter_active_papers(classified)
     counts = Counter()
     for p in classified:
         cat = p.get("primary_category", "X")
@@ -117,6 +126,7 @@ def count_papers_per_category(classified: list[dict]) -> dict[str, int]:
 
 def count_strong_papers(classified: list[dict], beat: int) -> int:
     """Count papers with high confidence in a beat's categories."""
+    classified = filter_active_papers(classified)
     cats = BEAT_CATEGORIES.get(beat, [])
     return sum(
         1 for p in classified
@@ -126,13 +136,14 @@ def count_strong_papers(classified: list[dict], beat: int) -> int:
 
 
 def count_empty_categories(classified: list[dict]) -> int:
-    """Count how many of A-J have zero papers."""
+    """Count how many of A-K have zero papers."""
     counts = count_papers_per_category(classified)
-    return sum(1 for cat in "ABCDEFGHIJ" if counts.get(cat, 0) == 0)
+    return sum(1 for cat in CATEGORY_SEQUENCE if counts.get(cat, 0) == 0)
 
 
 def compute_data_scores(classified: list[dict]) -> dict:
     """Compute data-driven scores (no LLM calls)."""
+    classified = filter_active_papers(classified)
     counts = count_papers_per_category(classified)
     beat_support_counts = {
         str(beat): count_strong_papers(classified, beat)
@@ -179,7 +190,7 @@ def run_reviewer(client, reviewer_name: str, base_dir: str) -> dict:
     analysis_dir = os.path.join(base_dir, "analysis")
 
     # Build context for the reviewer
-    classified = load_json(os.path.join(proc_dir, "classified.json"))
+    classified = filter_active_papers(load_json(os.path.join(proc_dir, "classified.json")))
     ranked_classified = sorted(classified, key=lambda x: x.get("citationCount", 0), reverse=True)
     data_scores = compute_data_scores(classified)
     paper_title_lookup = {
@@ -314,7 +325,47 @@ def aggregate_reviews(reviews: dict) -> dict:
 # Auto-loop decision logic
 # ---------------------------------------------------------------------------
 
-def decide_action(aggregated: dict) -> dict:
+def _has_placeholders(base_dir: str) -> bool:
+    """Check whether fallback placeholders remain in key analysis artifacts."""
+    analysis_dir = os.path.join(base_dir, "analysis")
+    paths = [
+        os.path.join(analysis_dir, "narrative_chains.json"),
+        os.path.join(analysis_dir, "evidence_inventory.json"),
+        os.path.join(analysis_dir, "gaps_ranked.json"),
+        os.path.join(analysis_dir, "contradictions.json"),
+    ]
+    markers = ("fallback:", "no candidate paper found", "retry failed", "fallback warning")
+
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        try:
+            payload = json.dumps(load_json(path), ensure_ascii=False).lower()
+        except Exception:
+            continue
+        if any(marker in payload for marker in markers):
+            return True
+    return False
+
+
+def _category_k_focus_covered(base_dir: str) -> bool:
+    """Require the contradiction map to include the Category K focus question with >=3 papers."""
+    path = os.path.join(base_dir, "analysis", "contradictions.json")
+    if not os.path.exists(path):
+        return False
+    try:
+        contradictions = load_json(path)
+    except Exception:
+        return False
+    focus_summary = contradictions.get("focus_summary", [])
+    for item in focus_summary:
+        categories = item.get("categories", [])
+        if "K" in categories and int(item.get("candidate_papers", item.get("count", 0)) or 0) >= 3:
+            return True
+    return False
+
+
+def decide_action(aggregated: dict, base_dir: str | None = None, data_scores: dict | None = None) -> dict:
     """Based on scores, decide what to do next.
 
     Returns: {"action": "done|backtrack|human", "target_phase": "1|2|3|3.5|3.7", "reason": "..."}
@@ -342,6 +393,31 @@ def decide_action(aggregated: dict) -> dict:
                 "score": honesty_score,
                 "reason": f"Overall score {score} ≥ {target_score}, but honesty {honesty_score:.2f} < {honesty_min}. "
                           f"Backtracking to Phase 4 to reduce overselling.",
+            }
+        category_k_count = int((data_scores or {}).get("category_counts", {}).get("K", 0))
+        if category_k_count < 3:
+            return {
+                "action": "backtrack",
+                "target_phase": "1",
+                "weakest": "coverage",
+                "score": category_k_count,
+                "reason": f"Overall score passes, but Category K active coverage is only {category_k_count}; need at least 3 papers before completion.",
+            }
+        if base_dir and not _category_k_focus_covered(base_dir):
+            return {
+                "action": "backtrack",
+                "target_phase": "3.7",
+                "weakest": "contradiction",
+                "score": aggregated["individual_scores"].get("contradiction", 0),
+                "reason": "Overall score passes, but the Category K contradiction focus is not populated with enough evidence.",
+            }
+        if base_dir and _has_placeholders(base_dir):
+            return {
+                "action": "backtrack",
+                "target_phase": "4",
+                "weakest": "gap",
+                "score": aggregated["individual_scores"].get("gap", 0),
+                "reason": "Overall score passes, but fallback placeholders remain in analysis artifacts.",
             }
         return {"action": "done", "reason": f"Overall score {score} ≥ {target_score}. Pipeline complete."}
 
@@ -410,10 +486,10 @@ def _format_data_scores_context(data_scores: dict) -> str:
         spread = "category_range=unavailable"
 
     empty = data_scores.get("empty_categories", data_scores.get("category_balance", "?"))
-    empty_note = "all A-J populated" if empty == 0 else f"{empty} empty categories"
+    empty_note = "all A-K populated" if empty == 0 else f"{empty} empty categories"
     return (
         "Data summary: "
-        f"evidence_coverage={data_scores.get('evidence_coverage', '?')}/6; "
+        f"evidence_coverage={data_scores.get('evidence_coverage', '?')}/{NUM_BEATS}; "
         f"beat_support_counts={data_scores.get('beat_support_counts', {})}; "
         f"empty_categories={empty} ({empty_note}); "
         f"avg_fill_rate={data_scores.get('avg_fill_rate', '?')}; "
@@ -428,51 +504,84 @@ def _build_narrative_reviewer_context(data: list[dict], paper_title_lookup: dict
     if not isinstance(data, list):
         return json.dumps(data, ensure_ascii=False)[:limit]
 
-    lines = []
+    beat_map = {}
     for beat in data:
         if not isinstance(beat, dict):
             continue
         beat_num = beat.get("beat", "?")
+        beat_map[beat_num] = beat
+
+    lines = ["Narrative structure summary:"]
+    if beat_map:
+        lines.append(
+            "Beats 1-2 motivate the problem, Beat 3 defines the framework, "
+            "Beats 4-5 carry the primary evidence line, Beat 6 presents deployed infrastructure, "
+            "and Beat 7 narrows causal claims by surfacing genuine competing mechanisms."
+        )
+
+    beat6 = beat_map.get(6)
+    beat7 = beat_map.get(7)
+    if isinstance(beat6, dict) and isinstance(beat7, dict):
+        beat6_notes = re.sub(r"\s+", " ", str(beat6.get("writing_notes", "")).strip())[:180]
+        beat7_notes = re.sub(r"\s+", " ", str(beat7.get("writing_notes", "")).strip())[:220]
+        lines.append(
+            "Critical bridge 6->7: Beat 6 is feasibility/requirements only, so Beat 7 must explicitly state "
+            "that downstream gains cannot be attributed to provenance alone because inference-time scaling, "
+            "structured deliberation, supervision, and steering remain live alternatives."
+        )
+        if beat6_notes:
+            lines.append(f"Beat 6 scope note={beat6_notes}")
+        if beat7_notes:
+            lines.append(f"Beat 7 scope note={beat7_notes}")
+
+    lines.append("Beat roster:")
+    for beat_num in range(1, NUM_BEATS + 1):
+        beat = beat_map.get(beat_num)
+        if not isinstance(beat, dict):
+            lines.append(f"Beat {beat_num} missing from narrative output.")
+            continue
+
         beat_name = beat.get("beat_name", "Unknown beat")
         line = beat.get("argument_line", "unknown")
         anchor = beat.get("anchor_paper", {}) or {}
         anchor_id = anchor.get("paperId", "")
-        anchor_title = paper_title_lookup.get(anchor_id, anchor_id)
+        anchor_title = paper_title_lookup.get(anchor_id, anchor_id) or anchor_id
+        anchor_why = re.sub(r"\s+", " ", str(anchor.get("why", "")).strip())[:160]
         spine = beat.get("spine", []) or []
         supporting = beat.get("supporting", []) or []
         paragraphs = beat.get("paragraph_outline", []) or []
 
-        lines.append(f"Beat {beat_num} [{line}] {beat_name}")
-        lines.append(f"  anchor={anchor_title}")
-        lines.append(f"  spine_count={len(spine)} supporting_count={len(supporting)} paragraph_count={len(paragraphs)}")
-
-        if spine:
-            lines.append("  spine:")
-            for item in spine[:6]:
-                pid = item.get("paperId", "")
-                title = paper_title_lookup.get(pid, pid)
-                role = str(item.get("role_in_narrative", "")).strip()
-                transition = str(item.get("transition_to_next", "")).strip()
-                ordering_basis = str(item.get("ordering_basis", "")).strip()
-                ordering_note = str(item.get("ordering_note", "")).strip()
-                role = re.sub(r"\s+", " ", role)[:140]
-                transition = re.sub(r"\s+", " ", transition)[:120]
-                ordering_note = re.sub(r"\s+", " ", ordering_note)[:120]
-                lines.append(f"    - {title} | role={role}")
-                if ordering_basis:
-                    lines.append(f"      basis={ordering_basis}")
-                if ordering_note:
-                    lines.append(f"      note={ordering_note}")
-                if transition:
-                    lines.append(f"      transition={transition}")
-
-        if paragraphs:
-            topics = [re.sub(r"\s+", " ", str(p.get('topic', '')).strip())[:80] for p in paragraphs[:4]]
-            lines.append("  paragraph_topics=" + " | ".join(t for t in topics if t))
+        spine_titles = []
+        transitions = []
+        for item in spine[:3]:
+            pid = item.get("paperId", "")
+            title = paper_title_lookup.get(pid, pid)
+            title = re.sub(r"\s+", " ", str(title).strip())[:48]
+            if title:
+                spine_titles.append(title)
+            transition = re.sub(r"\s+", " ", str(item.get("transition_to_next", "")).strip())[:90]
+            if transition:
+                transitions.append(transition)
 
         notes = re.sub(r"\s+", " ", str(beat.get("writing_notes", "")).strip())
+        note_limit = 160 if beat_num in (6, 7) else 110
+        roster_line = (
+            f"Beat {beat_num} [{line}] {beat_name} | anchor={anchor_title[:72]} | "
+            f"spine={len(spine)} support={len(supporting)} paragraphs={len(paragraphs)}"
+        )
+        lines.append(roster_line)
+        if spine_titles:
+            lines.append("  chain=" + " -> ".join(spine_titles))
+        if anchor_why and beat_num in (6, 7):
+            lines.append(f"  anchor_why={anchor_why}")
+        if transitions:
+            transition_limit = 2 if beat_num in (1, 2, 3, 4, 5) else 3
+            lines.append("  transitions=" + " | ".join(transitions[:transition_limit]))
+        if paragraphs and beat_num in (5, 6, 7):
+            topics = [re.sub(r"\s+", " ", str(p.get('topic', '')).strip())[:70] for p in paragraphs[:2]]
+            lines.append("  paragraph_topics=" + " | ".join(t for t in topics if t))
         if notes:
-            lines.append(f"  writing_notes={notes[:260]}")
+            lines.append(f"  writing_notes={notes[:note_limit]}")
 
     text = "\n".join(lines).strip()
     return text[:limit] if text else json.dumps(data, ensure_ascii=False)[:limit]
@@ -514,16 +623,33 @@ def _build_evidence_inventory_reviewer_context(data: dict, paper_title_lookup: d
     if not isinstance(inventory, list):
         return json.dumps(data, ensure_ascii=False)[:limit]
 
-    lines = []
+    beat_map = {}
     for beat in inventory:
         if not isinstance(beat, dict):
             continue
+        beat_num = beat.get("beat", "?")
+        beat_map[beat_num] = beat
+
+    lines = ["Evidence inventory summary:"]
+    beat7 = beat_map.get(7)
+    if isinstance(beat7, dict):
+        lines.append(
+            "Beat 7 must stay visible here because it is an adversarial scoping beat: the point is to show "
+            "live alternative mechanisms, not to balance the thesis rhetorically."
+        )
+
+    for beat_num in range(1, NUM_BEATS + 1):
+        beat = beat_map.get(beat_num)
+        if not isinstance(beat, dict):
+            lines.append(f"Beat {beat_num} missing from evidence inventory.")
+            continue
+
         lines.append(
             f"Beat {beat.get('beat', '?')} {beat.get('title', 'Unknown')} | "
             f"core_papers={len(beat.get('core_papers', []) or [])}"
         )
         core_titles = []
-        for item in (beat.get("core_papers", []) or [])[:6]:
+        for item in (beat.get("core_papers", []) or [])[:4]:
             if not isinstance(item, dict):
                 continue
             pid = item.get("paperId", "")
@@ -532,10 +658,17 @@ def _build_evidence_inventory_reviewer_context(data: dict, paper_title_lookup: d
             lines.append("  core=" + " | ".join(re.sub(r"\s+", " ", str(t).strip())[:80] for t in core_titles))
         narrative = re.sub(r"\s+", " ", str(beat.get("narrative", "")).strip())
         if narrative:
-            lines.append(f"  narrative={narrative[:220]}")
-        gaps = beat.get("remaining_gaps", []) or []
+            note_limit = 240 if beat_num in (6, 7) else 140
+            lines.append(f"  narrative={narrative[:note_limit]}")
+        gaps = [
+            g for g in (beat.get("remaining_gaps", []) or [])
+            if "schema" not in str(g).lower()
+            and "fallback" not in str(g).lower()
+            and "retry" not in str(g).lower()
+        ]
         if gaps:
-            lines.append("  remaining_gaps=" + " | ".join(re.sub(r"\s+", " ", str(g).strip())[:120] for g in gaps[:3]))
+            gap_limit = 180 if beat_num == 7 else 120
+            lines.append("  remaining_gaps=" + " | ".join(re.sub(r"\s+", " ", str(g).strip())[:gap_limit] for g in gaps[:2]))
 
     text = "\n".join(lines).strip()
     return text[:limit] if text else json.dumps(data, ensure_ascii=False)[:limit]

@@ -18,7 +18,7 @@ from .paper_identity import build_alias_lookup, canonicalize_paper_ref, extract_
 from .phase_contracts import ensure_narrative_chains_valid
 from .prompts import NARRATIVE_ANALYST
 from .state_manager import complete_step, is_step_complete, save_state
-from .utils import atomic_write_json, load_json
+from .utils import atomic_write_json, load_json, filter_active_papers
 
 log = logging.getLogger("research_agent")
 
@@ -78,6 +78,11 @@ BEAT_PRIORITY_PAPERS = {
         "doi:10.5334/cstp.303",
         "doi:10.1017/aap.2022.33",
     ],
+    7: [
+        "doi:10.48550/arxiv.2201.11903",
+        "doi:10.48550/arxiv.2203.11171",
+        "doi:10.48550/arxiv.2001.08361",
+    ],
 }
 
 BEAT_DEEMPHASIZED_PAPERS = {
@@ -110,14 +115,14 @@ BEAT_NARRATIVE_GUIDANCE = {
         "Explicitly state: no post-2022 web-scale contamination audit exists in the corpus."
     ),
     3: (
-        "Beat 3 defines L_auth as a stage-agnostic descriptive framework with four dimensions: "
+        "Beat 3 defines L_auth as a fine-tuning-focused descriptive framework with four dimensions: "
         "Provenance Ratio (D1), Lexical Diversity (D2), Entropy (D3), Social Behavioral Diversity (D4). "
         "D1 and D4 are design-level inputs; D2 and D3 are measurable emergent outcomes. "
-        "End on scope limits: L_auth is a synthesis of metric ingredients, not a validated standalone law. "
+        "End on scope limits: L_auth is a synthesis of metric ingredients for post-training data composition, not a validated standalone law or stage-agnostic result. "
         "Weight calibration is explicitly future work."
     ),
     4: (
-        "Beat 4 belongs to Argument Line 2 (fine-tuning). Its evidence base is INDEPENDENT of Beat 1's "
+        "Beat 4 belongs to the primary post-training evidence line. Its evidence base is independent of Beat 1's "
         "collapse mechanism. Do NOT use pretraining collapse papers to support fine-tuning claims. "
         "Balance human-data value against bounded synthetic success cases (RLAIF, AlpacaFarm, Zephyr). "
         "The defensible claim is narrower: human data appears especially valuable for socially grounded tasks, "
@@ -130,14 +135,22 @@ BEAT_NARRATIVE_GUIDANCE = {
         "Use 'initial evidence suggests' not 'demonstrates'. "
         "Acknowledge: 3B model may not amplify data quality differences sufficiently. "
         "Acknowledge: D1 and D4 co-vary in this design, cannot separate independent contributions. "
-        "This beat shares categories F, I, J with Beat 4 but focuses on experimental methodology."
+        "This beat shares categories F, I, J with Beat 4 but focuses on experimental methodology. "
+        "Explicitly state that the pilot holds inference-time compute fixed because self-consistency, structured "
+        "chain-of-thought, and DEL-ToM-style inference-time scaling are live rival explanations that the paper "
+        "cannot apportion away after the fact."
     ),
     6: (
-        "Beat 6 must stay proposal-framed. Use platform and provenance precedents as motivation for a design "
-        "proposal, not proof that CampusGo or any platform solution is already validated. "
-        "Use proposal verbs: 'motivates' 'suggests' 'points toward' 'frames requirements for'. "
+        "Beat 6 should present CampusGo as a deployed provenance-aware core contribution, not merely a proposal. "
+        "Use platform and provenance precedents to frame the implementation and governance requirements, "
+        "but do not claim CampusGo or any platform solution is validated as improving downstream model performance. "
         "Acknowledge: G-category literature is from adjacent domains (citizen science, biomedicine, "
         "Indigenous data governance), not directly from AI training data collection."
+    ),
+    7: (
+        "Beat 7 is adversarial scoping. Build a short chain around competing mechanisms such as inference-time scaling, "
+        "test-time compute, chain-of-thought, extended thinking, and model scale. The beat should succeed by narrowing "
+        "the thesis to fixed-compute data-composition effects where appropriate, not by dismissing these alternatives."
     ),
 }
 
@@ -258,7 +271,7 @@ STRUCTURED_BEAT_SPECS = {
             ("doi:10.48550/arxiv.2305.11206", "doi:10.48550/arxiv.2305.18290"):
                 "Once data quality is treated as the intervention, the method must stay simple enough that condition-to-condition differences remain interpretable.",
             ("doi:10.48550/arxiv.2305.18290", "doi:10.48550/arxiv.2310.16944"):
-                "With a controlled preference objective in place, the strongest next baseline is Zephyr, which applies AI-feedback distillation on top of a DPO-style alignment recipe.",
+                "With a controlled preference objective in place, the strongest next baseline is Zephyr, which applies AI-feedback distillation on top of a DPO-style alignment recipe while still leaving inference-time compute fixed so rival decoding explanations can be named explicitly later.",
         },
         "paragraphs": [
             {
@@ -305,7 +318,7 @@ STRUCTURED_BEAT_SPECS = {
             },
         ],
         "writing_notes":
-            "Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.",
+            "Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. State explicitly that the pilot fixes inference-time compute, prompt/interface conditions, and retrieval usage precisely because self-consistency, structured CoT, and DEL-ToM-style inference-time scaling are live rival explanations; the corpus does not let the paper apportion causal weight among those mechanisms after the fact. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.",
     },
     6: {
         "anchor": "doi:10.48550/arxiv.2404.12691",
@@ -322,11 +335,11 @@ STRUCTURED_BEAT_SPECS = {
             "doi:10.1145/2632048.2632054":
                 "Narrows that feasibility claim into the university setting by showing that continuous smartphone sensing can characterize student behavior in a campus environment.",
             "doi:10.48550/arxiv.2404.12691":
-                "Anchor paper for Beat 6: AI data authenticity, consent, and provenance are currently fragmented, so any collection platform needs these design requirements baked in from the start.",
+                "Anchor paper for Beat 6: AI data authenticity, consent, and provenance are currently fragmented, so a deployed CampusGo-style collection platform needs these requirements baked in from the start.",
             "doi:10.48550/arxiv.2304.07327":
                 "Provides the bridge from collection to downstream use: intentionally gathered human conversations can become alignment corpora, so a CampusGo-style platform is not just sensing infrastructure but a potential data-generation pathway.",
             "doi:10.1017/aap.2022.33":
-                "Adds the stewardship boundary: contributors must remain stakeholders in how sensitive data are curated and reused, which keeps CampusGo proposal-framed rather than extractive.",
+                "Adds the stewardship boundary: contributors must remain stakeholders in how sensitive data are curated and reused, which keeps CampusGo deployed-but-scoped rather than extractive or overclaimed.",
         },
         "transitions": {
             ("doi:10.1007/s00779-005-0046-3", "doi:10.1145/2632048.2632054"):
@@ -345,7 +358,7 @@ STRUCTURED_BEAT_SPECS = {
                     "doi:10.1007/s00779-005-0046-3",
                     "doi:10.1145/2632048.2632054",
                 ],
-                "opening_sentence": "The proposal should start with feasibility only: adjacent mobile-sensing work shows that campus-scale behavioral collection is technically plausible, not that it is automatically appropriate for AI training data.",
+                "opening_sentence": "The beat should start with implementation feasibility only: adjacent mobile-sensing work shows that campus-scale behavioral collection is technically plausible, not that deployment alone proves model-training value.",
             },
             {
                 "topic": "AI-specific provenance requirements define the proposal core",
@@ -357,12 +370,12 @@ STRUCTURED_BEAT_SPECS = {
                 "opening_sentence": "What turns simple sensing into a defensible proposal is the provenance layer plus a downstream use case: authenticity, consent, and governance must be designed together, and OpenAssistant shows that intentionally collected human conversations can in fact become alignment data.",
             },
             {
-                "topic": "Stewardship requirements keep CampusGo proposal-framed",
+                "topic": "Stewardship requirements keep CampusGo deployed but carefully scoped",
                 "papers": [
                     "doi:10.5334/cstp.303",
                     "doi:10.1017/aap.2022.33",
                 ],
-                "opening_sentence": "The final move is a scope limit: stewardship principles show why CampusGo can only be presented as a motivated design direction and not as a validated intervention.",
+                "opening_sentence": "The final move is a scope limit: stewardship principles show why CampusGo can be presented as a deployed provenance-aware platform, but not as a validated intervention for downstream model gains.",
             },
         ],
         "supporting": [
@@ -378,7 +391,7 @@ STRUCTURED_BEAT_SPECS = {
             },
         ],
         "writing_notes":
-            "Beat 6 should read as requirements engineering, not validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a system would need to satisfy.",
+            "Beat 6 should read as deployed requirements engineering, not downstream validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a deployed system would need to satisfy.",
     },
 }
 
@@ -395,7 +408,7 @@ def run_phase3_5(state: dict, state_path: str, base_dir: str, client,
         log.error("classified.json not found. Run Phase 2 first.")
         return state
 
-    classified = load_json(classified_path)
+    classified = filter_active_papers(load_json(classified_path))
     log.info(f"Phase 3.5: building narrative chains for {len(classified)} papers")
 
     # Load verified citation chains from check_citations.py if available
@@ -620,6 +633,7 @@ def _build_narrative_chains(client, classified: list[dict],
                 selected_papers,
                 citation_map,
             )
+            result = _normalize_spine_metadata(result)
             result["beat"] = beat_num
             result["beat_name"] = beat_name
             result["paper_count"] = len(beat_papers)
@@ -747,16 +761,16 @@ def _run_narrative_agent(client, beat_num: int, beat_name: str, categories: list
 
     # Argument line separation constraint
     line_warning = ""
-    if argument_line == "line_2":
+    if argument_line == "primary":
         line_warning = (
-            "\nCRITICAL CONSTRAINT: This beat belongs to Argument Line 2 (fine-tuning). "
-            "Do NOT use Category A (collapse) papers as direct support. "
-            "The fine-tuning argument line has its own independent evidence base.\n"
+            "\nCRITICAL CONSTRAINT: This beat belongs to the primary evidence line. "
+            "Do NOT use motivation papers as direct support for the post-training claim. "
+            "The primary line must stand on its own evidence base.\n"
         )
-    elif argument_line == "line_1":
+    elif argument_line == "motivation":
         line_warning = (
-            "\nCRITICAL CONSTRAINT: This beat belongs to Argument Line 1 (pretraining). "
-            "Do NOT use fine-tuning-specific papers (Categories F, I, J) as direct support.\n"
+            "\nCRITICAL CONSTRAINT: This beat is motivation only. "
+            "Do NOT present it as the direct evidence base for the primary post-training claim.\n"
         )
 
     # Honesty constraints
@@ -964,6 +978,40 @@ def _ensure_narrative_beat_valid(result: dict) -> dict:
     if not isinstance(paragraphs, list) or not paragraphs:
         raise ValueError("narrative beat missing non-empty paragraph_outline")
 
+    return result
+
+
+def _normalize_spine_metadata(result: dict) -> dict:
+    """Ensure each spine item has explicit ordering/transition metadata for reviewers."""
+    if not isinstance(result, dict):
+        return result
+
+    spine = result.get("spine")
+    if not isinstance(spine, list):
+        return result
+
+    normalized = []
+    total = len(spine)
+    for idx, item in enumerate(spine, start=1):
+        if not isinstance(item, dict):
+            continue
+        fixed = dict(item)
+        next_exists = idx < total
+        if next_exists:
+            fixed.setdefault("ordering_basis", "thematic_progression")
+            fixed.setdefault(
+                "ordering_note",
+                "Order is justified by the argument progression rather than a verified internal citation chain.",
+            )
+            fixed.setdefault(
+                "transition_to_next",
+                "The next paper narrows, extends, or qualifies this claim while keeping the beat within its supported scope.",
+            )
+        else:
+            fixed.setdefault("transition_to_next", "")
+        normalized.append(fixed)
+
+    result["spine"] = normalized
     return result
 
 

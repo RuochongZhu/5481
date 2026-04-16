@@ -1,0 +1,996 @@
+# Pipeline v2 Migration Spec (Repo-Aligned)
+# Target: `acti_multi_agent/research-agent/`
+# Executor: Local Claude Code / Codex with full repo access
+
+---
+
+## 0. Document Role
+
+This file replaces the earlier mix of:
+- migration ideas
+- partial implementation guesses
+- snapshot observations from a specific run
+
+The goal of this version is different:
+- keep the paper-level repositioning decision
+- preserve the useful project-specific context that was added later
+- remove assumptions that do not match the current `research-agent/` codebase
+- turn the document into an execution spec that can actually drive the migration
+
+Use this document as the implementation brief.
+Do **not** treat old generated outputs in `analysis/` or `output/` as source-of-truth.
+
+---
+
+## 1. Migration Goal
+
+The paper is being repositioned from:
+
+```text
+old: line_1 (pretraining risk) ← bridge (L_auth) → line_2 (fine-tuning) + proposal (CampusGo)
+```
+
+to:
+
+```text
+new: motivation (Beats 1-2) → framework (Beat 3) → primary (Beats 4-5) → core_contribution (Beat 6) + adversarial (Beat 7)
+```
+
+Concrete implications:
+
+1. Beats 1-2 remain in the paper, but they are no longer independent argument lines.
+2. Beat 3 drops the stage-agnostic claim and becomes fine-tuning-focused.
+3. Beats 4-5 become the single primary evidence line.
+4. Beat 6 is no longer a pure proposal beat; CampusGo is now a deployed core contribution.
+5. Beat 7 is added to search for and surface competing explanations, especially inference-time scaling.
+6. Category K is added for those competing explanations.
+
+Short thesis version:
+
+```text
+Post-training data provenance, especially the proportion of authentic human social interaction data, influences social reasoning performance. L_auth describes this data-composition effect, and CampusGo operationalizes it as a deployed provenance-aware collection platform. The strength of this effect relative to inference-time scaling remains an open empirical question.
+```
+
+---
+
+## 2. Repo-Validated Corrections
+
+These points were checked against the current repository and should override earlier assumptions.
+
+### 2.1 Retrieval is not driven by `beat.search_queries`
+
+Phase 1 currently reads:
+- `config/search_queries.json`
+- `config/lens_queries.json`
+- `config/seed_papers.json`
+
+and also relies on hardcoded logic in:
+- `src/phase1_corpus.py`
+  - `CORE_TARGETS`
+  - `CATEGORY_KEYWORDS`
+  - `CATEGORY_GROUP_RULES`
+
+Therefore:
+- adding Beat 7 only to `updated_beat_definitions.json` is **not** enough
+- adding Category K only to prompts is **not** enough
+
+### 2.2 Runtime logic keys off `argument_line`, not `role`
+
+Human-readable fields such as `role` or `background_motivation` are fine as descriptive metadata, but the actual runtime behavior currently depends on:
+- `config/beat_definitions.py`
+- `ARGUMENT_LINES`
+- explicit string checks in phase modules such as `line_1`, `line_2`, `bridge`, `proposal`
+
+Therefore:
+- the canonical runtime migration must update `argument_line`
+- if a new `role` field is added, it is secondary metadata only
+
+### 2.3 `updated_beat_definitions.json` is a blueprint, not the runtime source
+
+The runtime single source of truth is:
+- `config/beat_definitions.py`
+
+`updated_beat_definitions.json` is still useful as the design blueprint, but changing it alone will not change pipeline behavior.
+
+### 2.4 Many artifacts mentioned in the old spec are generated outputs
+
+These are generated and should be regenerated, not hand-edited:
+- `analysis/intersection_matrix.json`
+- `analysis/gaps_ranked.json`
+- `analysis/narrative_chains.json`
+- `analysis/contradictions.json`
+- `analysis/evidence_inventory.json`
+- `analysis/evaluation_result.json`
+
+Implementation rule:
+- change the code/config that produces them
+- rerun the relevant phases
+- do not patch these output files directly except for debugging
+
+### 2.5 `--resume` alone will not pick up new Phase 1 searches
+
+Once Phase 1 steps are marked completed in `state.json`, `--resume` skips them.
+
+Therefore:
+- do **not** rely on `python main.py --phase 1 --resume` to pick up new Category K queries
+- you must reset Phase 1 state, usually via `reset_phase_tree(...)`, and rerun Phase 1
+
+### 2.6 The stop condition is inconsistent in current code
+
+Current repo state:
+- `main.py` auto-loop bootstrap default uses `TARGET_SCORE` fallback `0.80`
+- `src/scoring.py::decide_action()` defaults to `TARGET_SCORE = 0.85`
+- `src/scoring.py::decide_action()` also enforces `HONESTY_MIN = 0.80`
+
+Therefore:
+- the migration should normalize this policy instead of assuming the older `0.75` number
+- recommended final policy: `TARGET_SCORE = 0.85`, `HONESTY_MIN = 0.80`
+
+### 2.7 Category K does not belong only in one place
+
+`updated_beat_definitions.json` does not currently contain a standalone taxonomy block for categories.
+
+Category K must be added consistently to:
+- `config/categories.json`
+- `config/beat_definitions.py`
+- retrieval configs
+- prompts
+- Phase 1 scoring logic
+- any user-facing docs or visualizations that enumerate categories
+
+### 2.8 Pruning is not implemented today
+
+No current phase automatically understands:
+- `pruned`
+- `v2_pruned`
+
+Therefore:
+- adding a flag to `classified.json` is not sufficient
+- phases that read classified papers must actively filter those flagged records
+
+### 2.9 Snapshot stats are not invariants
+
+The later supplement included useful project context, but values like:
+- graph node counts
+- edge counts
+- current reviewer scores
+- current iteration result
+
+are run-specific snapshots, not migration invariants.
+
+Do not hardcode them into logic.
+
+---
+
+## 3. Target Structure After Migration
+
+### 3.1 Canonical `argument_line` values
+
+After migration, the canonical runtime values should be:
+
+```text
+motivation
+framework
+primary
+core_contribution
+adversarial
+```
+
+This is a breaking rename from:
+
+```text
+line_1
+bridge
+line_2
+proposal
+```
+
+### 3.2 Beat Mapping
+
+| Beat | New `argument_line` | Role in paper | Primary categories |
+|------|---------------------|---------------|--------------------|
+| 1 | `motivation` | collapse risk as background motivation | A, B, C |
+| 2 | `motivation` | web drift as background motivation | D, H |
+| 3 | `framework` | fine-tuning-focused L_auth description | D, A |
+| 4 | `primary` | data provenance and social reasoning | F, I, J |
+| 5 | `primary` | pilot experiment at fixed inference-time compute | F, I, J |
+| 6 | `core_contribution` | deployed CampusGo platform | G |
+| 7 | `adversarial` | competing explanations / honest scoping | K |
+
+### 3.3 Category K
+
+Category K definition:
+
+```text
+Alternative Mechanisms / Competing Explanations
+```
+
+Scope:
+- inference-time scaling
+- chain-of-thought / extended thinking
+- test-time compute
+- model scale effects on social reasoning
+- architectural mechanisms that improve social reasoning without changing training data composition
+
+Paper role:
+- Section 6.2 limitations / honest scoping
+- not something to dismiss
+- something to surface before reviewers do
+
+### 3.4 Thesis statement
+
+Recommended replacement:
+
+```json
+"Training data authenticity, as captured by the proposed L_auth framework, influences post-training outcomes on socially grounded tasks. CampusGo operationalizes this insight as a deployed, open-source data collection platform with verifiable provenance and consent by design. The relative contribution of training-data composition versus inference-time scaling remains an open empirical question."
+```
+
+### 3.5 Beat 7 object
+
+Recommended Beat 7 blueprint:
+
+```json
+{
+  "beat": 7,
+  "title": "Competing Explanations and Honest Scoping",
+  "argument_line": "adversarial",
+  "claim": "Inference-time scaling, model scale effects, and synthetic social training data provide alternative or complementary mechanisms for social reasoning improvement. L_auth is scoped to training-data-composition effects at fixed inference-time compute.",
+  "primary_categories": ["K"],
+  "secondary_categories": ["I", "J"],
+  "search_queries": [
+    "chain-of-thought theory of mind",
+    "inference-time scaling social reasoning",
+    "test-time compute social cognition ToM",
+    "model scale social reasoning emergence",
+    "o3 social reasoning evaluation",
+    "DeepSeek R1 social reasoning evaluation",
+    "extended thinking perspective taking social",
+    "compute optimal reasoning data quality interaction"
+  ],
+  "honesty_constraints": [
+    "Do NOT dismiss inference-time scaling",
+    "Present it as a genuine competing mechanism",
+    "If evidence shows strong social-reasoning gains from inference-time scaling alone, narrow L_auth to data-composition effects at fixed compute"
+  ]
+}
+```
+
+### 3.6 Pruning targets
+
+Active target counts after demotion of motivation beats:
+
+- `A`: 8
+- `C`: 5
+- `E`: 10
+- `K`: 8
+
+No pruning:
+- `F`
+- `G`
+- `I`
+- `J`
+
+Optional light pruning if needed:
+- `H`
+
+---
+
+## 4. Mandatory File Changes
+
+This migration is larger than a 3-file prompt rewrite.
+
+### 4.1 Config and schema layer
+
+| Path | Required change |
+|------|-----------------|
+| `updated_beat_definitions.json` | Rewrite thesis statement, rename argument lines, add Beat 7, update Beat 6 deployed framing, drop Beat 3 stage-agnostic language, add v2 global constraints. |
+| `config/beat_definitions.py` | Mirror runtime structure exactly: add Beat 7, add Category K, rename `ARGUMENT_LINES`, update `LINE_SEPARATION`, shrink A/C/E targets, set `NUM_BEATS = 7`, add Beat 7 honesty/counterevidence. |
+| `config/categories.json` | Add Category K, update category count language from A-J to A-K, sync target-count descriptions for A/C/E/K. |
+
+### 4.2 Retrieval layer
+
+| Path | Required change |
+|------|-----------------|
+| `config/search_queries.json` | Add Category K OpenAlex/arXiv queries; add any targeted human-vs-synthetic social reasoning queries if they remain a high-priority gap. |
+| `config/lens_queries.json` | Add Category K Lens supplementation queries. |
+| `config/seed_papers.json` | Add resolved or best-known Category K seed papers; also use this file for durable placeholder resolution when appropriate. |
+| `src/phase1_corpus.py` | Extend `CORE_TARGETS`, `CATEGORY_KEYWORDS`, `CATEGORY_GROUP_RULES`, and any A-J comments/messages to A-K; lower A/C/E targets and add K target. |
+
+### 4.3 Prompt layer
+
+| Path | Required change |
+|------|-----------------|
+| `src/prompts.py` | Update every 6-beat / A-J / old-thesis reference; add Category K; replace contexts for `GAP_SYNTHESIZER`, `NARRATIVE_ANALYST`, `CONTRADICTION_MAPPER`, `TOPIC_SCORER`; update `DEEP_EXTRACTOR` thesis context. |
+
+### 4.4 Phase logic and contracts
+
+| Path | Required change |
+|------|-----------------|
+| `src/phase_contracts.py` | Gap, narrative, and evidence-inventory validators must accept the new final shape. Final state should expect exactly 7 beats, not 5/6. |
+| `src/phase3_graph.py` | Update `BEAT_REQUIREMENTS`, beat names, argument lines, retry prompts, and exactly-6-beat checks; add Beat 7 requirement; filter `v2_pruned` papers before graph/gap analysis. |
+| `src/phase3_5_narrative.py` | Update guidance dictionaries, priority papers, line-specific warnings, and Beat 6 framing; add Beat 7 logic; update `line_1`/`line_2` checks to `motivation`/`primary`; filter `v2_pruned`. |
+| `src/phase3_7_contradiction.py` | Add contradiction type `competing_mechanism`; add a focus config for Category K; update argument-line labels; filter `v2_pruned`; generated `focus_coverage` should now include the new question. |
+| `src/phase4_topics.py` | All 6-beat prompt text, retry text, fallback loops, and report generation must become 7-beat aware; filter `v2_pruned`. |
+| `src/phase5_evaluate.py` | Replace hardcoded `6 beats` strings with `NUM_BEATS`; make report/log output match final policy. |
+| `src/scoring.py` | Update reviewer prompts, coverage logic, category enumeration A-K, empty-category counting, target-score policy, Beat 6/7 honesty text, and `decide_action()` gating. |
+
+### 4.5 User-facing runtime docs and display helpers
+
+| Path | Required change |
+|------|-----------------|
+| `main.py` | Update `show_status()`, `demo_mode()`, and any 6-beat / old-thesis strings; normalize target-score wording. |
+| `src/visualize.py` | Add Category K and Beat 7 labels so figures remain consistent. |
+| `CLAUDE.md` | Update beat structure, category count, argument-line names, and quality-gate wording. |
+
+### 4.6 Files that should mostly auto-sync
+
+| Path | Note |
+|------|------|
+| `src/knowledge_base.py` | Usually no direct logic change needed because it imports `BEAT_CATEGORIES`, `BEAT_NAMES`, and `ARGUMENT_LINES`. |
+| `run_codex_parallel.py` | Should pick up taxonomy updates once `config/categories.json` is synced. |
+
+---
+
+## 5. Detailed Change Rules
+
+### 5.1 `updated_beat_definitions.json`
+
+Required decisions:
+
+1. Rename argument lines:
+   - `line_1` -> `motivation`
+   - `bridge` -> `framework`
+   - `line_2` -> `primary`
+   - `proposal` -> `core_contribution`
+   - add `adversarial`
+
+2. Beats 1-2:
+   - keep them as beats
+   - mark them as background motivation only
+   - explicitly state they are not independent evidence lines
+
+3. Beat 3:
+   - remove stage-agnostic claim
+   - frame as descriptive framework for fine-tuning data authenticity
+   - pretraining operationalization becomes future work
+
+4. Beat 5:
+   - add fixed-compute honesty constraint
+   - mention optional DPO/preference-learning variant
+
+5. Beat 6:
+   - reflect deployed status
+   - open protocol / dataset release plan is allowed
+   - but do not turn deployment into downstream-model validation
+
+6. Beat 7:
+   - add new adversarial beat
+   - only Category K is primary
+
+7. Add a `v2_changes` block in `global_constraints`:
+   - pretraining beats demoted to motivation
+   - stage-agnostic claim dropped
+   - CampusGo upgraded to core contribution
+   - adversarial beat added
+
+### 5.2 `config/beat_definitions.py`
+
+This file must be the exact runtime mirror.
+
+Minimum required changes:
+
+```python
+BEAT_CATEGORIES[7] = ["K"]
+BEAT_SECONDARY_CATEGORIES[7] = ["I", "J"]
+BEAT_NAMES[7] = "Competing Explanations and Honest Scoping"
+
+ARGUMENT_LINES = {
+    1: "motivation",
+    2: "motivation",
+    3: "framework",
+    4: "primary",
+    5: "primary",
+    6: "core_contribution",
+    7: "adversarial",
+}
+
+CATEGORY_TARGETS["A"] = 8
+CATEGORY_TARGETS["C"] = 5
+CATEGORY_TARGETS["E"] = 10
+CATEGORY_TARGETS["K"] = 8
+
+NUM_BEATS = 7
+```
+
+Also update:
+- `LINE_SEPARATION`
+- `MUST_CITE_COUNTEREVIDENCE`
+- `HONESTY_CONSTRAINTS`
+
+Recommended `LINE_SEPARATION` intent:
+- `motivation` papers must not be used as direct evidence for the `primary` line
+- `primary` line must stand on its own
+- `framework`, `core_contribution`, and `adversarial` can bridge and scope, but not erase that separation
+
+### 5.3 `config/categories.json`
+
+Add Category K here.
+
+This file matters because:
+- helper tooling reads it
+- docs and supporting scripts use it
+
+Do not leave it at 10 categories while runtime and prompts move to 11.
+
+### 5.4 `src/prompts.py`
+
+This file needs a full pass, not spot fixes.
+
+Required prompt-level changes:
+
+1. `LITERATURE_SCANNER`
+   - taxonomy becomes 11 categories A-K
+   - add Category K definition
+
+2. `GAP_SYNTHESIZER`
+   - entire structure description rewritten to 7 beats
+   - Beat 1-2 are motivation only
+   - Beat 7 is adversarial, not thesis-supporting
+   - output format must allow beats 1-7 and new `argument_line` values
+
+3. `NARRATIVE_ANALYST`
+   - same 7-beat context
+   - Beat 1-2 compressed aggressively
+   - Beat 6 should reflect deployment status
+   - Beat 7 succeeds by honest scoping, not defense
+
+4. `CONTRADICTION_MAPPER`
+   - add `competing_mechanism`
+   - include new argument-line values
+   - make it explicit that some findings are scope limiters rather than simple contradictions
+
+5. `TOPIC_SCORER`
+   - 7-beat structure
+   - Beat 7 inventory support
+   - Category K references
+
+6. `DEEP_EXTRACTOR`
+   - thesis context updated to post-training provenance + deployed CampusGo
+
+### 5.5 `src/phase1_corpus.py`
+
+This file is the biggest hidden dependency.
+
+The old spec underestimated it.
+
+Required changes:
+
+1. `CORE_TARGETS`
+   - add `K`
+   - shrink `A`, `C`, `E`
+
+2. `CATEGORY_KEYWORDS`
+   - add keyword anchors for K
+   - examples:
+     - `inference-time scaling`
+     - `test-time compute`
+     - `chain-of-thought`
+     - `extended thinking`
+     - `theory of mind`
+     - `social reasoning`
+     - `model scale`
+
+3. `CATEGORY_GROUP_RULES`
+   - add a K group rule so targeted retrieval is not too noisy
+
+4. comments and selection messages
+   - change `A-J` language to `A-K`
+
+Without this file, Category K retrieval and scoring will remain weak even if prompts change.
+
+### 5.6 `src/phase_contracts.py`
+
+Current validators still say:
+- `5 or 6 beats`
+
+Final migration state should validate against:
+- exactly `7` beats for gap synthesis
+- exactly `7` beats for narrative chains
+- exactly `7` beats for evidence inventory
+
+If you choose a temporary transitional contract during development, make it short-lived.
+The final branch should not keep `5 or 6 beats`.
+
+### 5.7 `src/phase3_graph.py`
+
+Required changes:
+
+1. add Beat 7 to `BEAT_REQUIREMENTS`
+2. rename argument-line labels throughout
+3. replace exact-6-beat retry text
+4. update gap-quality checks
+5. filter `v2_pruned` papers before:
+   - graph build
+   - intersection matrix
+   - category stats
+   - gap synthesis
+
+Important:
+- do not edit `gaps_ranked.json` by hand
+- regenerate it by rerunning Phase 3
+
+### 5.8 `src/phase3_5_narrative.py`
+
+This file has a lot of baked-in 6-beat assumptions.
+
+Required changes:
+
+1. update `BEAT_NARRATIVE_GUIDANCE`
+2. update `BEAT_PRIORITY_PAPERS`
+3. add Beat 7
+4. replace explicit `line_1` / `line_2` warnings with `motivation` / `primary`
+5. update Beat 6 wording from pure proposal to deployed core contribution
+6. keep an honesty boundary:
+   - deployed != validated effect on downstream model performance
+7. filter `v2_pruned`
+
+Beat 6 guidance after migration should be:
+- concrete about deployment and provenance pipeline
+- concrete about dataset/protocol release plans if true
+- still careful not to overclaim training efficacy
+
+### 5.9 `src/phase3_7_contradiction.py`
+
+Generated `contradictions.json` is not the place to edit source logic.
+
+Actual source changes belong here.
+
+Required changes:
+
+1. add contradiction type:
+
+```text
+competing_mechanism
+```
+
+2. add a new contradiction focus configuration for Category K
+
+Preferred focus question:
+
+```text
+Does inference-time scaling reduce the importance of training data quality for social reasoning?
+```
+
+3. include Category K papers in selection and focus summaries
+4. use `argument_line = "adversarial"` for pure competing-mechanism findings
+5. filter `v2_pruned`
+
+Desired output behavior:
+- `focus_coverage` should include the new question
+- generated contradictions can now include Category K scope-limiters
+
+### 5.10 `src/phase4_topics.py`
+
+Current problems:
+- prompt text still says `6-beat`
+- compact retry hardcodes `exactly 6 beats`
+- fallback loops iterate over `NUM_BEATS`, but messaging is stale
+
+Required changes:
+- update all user/model-facing wording
+- ensure fallback and retry logic expect 7 beats
+- filter `v2_pruned`
+
+### 5.11 `src/phase5_evaluate.py` and `src/scoring.py`
+
+These two files need to be treated together.
+
+Required changes in `src/phase5_evaluate.py`:
+- replace `/6 beats` with `/{NUM_BEATS} beats` or equivalent
+
+Required changes in `src/scoring.py`:
+
+1. reviewer prompts:
+   - 7 beats
+   - new structure
+   - Beat 7 expectations
+
+2. category coverage logic:
+   - count A-K
+   - update empty-category counting to include K
+
+3. support counting:
+   - ignore `v2_pruned`
+
+4. final decision policy:
+   - normalize `TARGET_SCORE` and `HONESTY_MIN`
+   - `done` must require more than overall score
+
+Recommended final `done` gate:
+- `overall_score >= TARGET_SCORE`
+- `honesty_score >= HONESTY_MIN`
+- Category K active paper count >= 3
+- new contradiction focus question populated with >= 3 papers
+- placeholder papers resolved
+
+### 5.12 `main.py`, `src/visualize.py`, `CLAUDE.md`
+
+These files are not core logic, but if they stay stale they will keep confusing future runs.
+
+Required changes:
+
+- `main.py`
+  - `show_status()`
+  - `demo_mode()`
+  - old 6-beat strings
+  - target-score wording
+
+- `src/visualize.py`
+  - add Category K color/name
+  - add Beat 7 label
+
+- `CLAUDE.md`
+  - update beat table
+  - update category count
+  - update argument-line names
+  - update quality-gate wording
+
+---
+
+## 6. Search Additions
+
+### 6.1 Category K queries
+
+These should be added to retrieval config files, not just the beat blueprint.
+
+Recommended K query set:
+
+```text
+K1: chain-of-thought theory of mind
+K2: inference-time scaling social reasoning
+K3: test-time compute social cognition ToM
+K4: o3 social reasoning evaluation
+K5: DeepSeek R1 social reasoning evaluation
+K6: extended thinking perspective taking social
+K7: model scale social reasoning emergence
+K8: compute optimal reasoning data quality interaction
+```
+
+### 6.2 Placeholder resolution queries
+
+Resolve these before final reruns:
+
+```text
+Social-R1 social reasoning 2026
+CoMMET theory of mind 2026
+Traces social competence language model 2026
+```
+
+For each, capture:
+- full author list
+- DOI or arXiv ID
+- training data composition
+- benchmark/evaluation details
+- whether inference-time scaling is part of the method
+
+### 6.3 Optional gap-filling searches
+
+Still useful if direct D1 -> social reasoning evidence remains thin:
+
+```text
+synthetic human fine-tuning social reasoning comparison
+synthetic dialogue fine-tuning theory of mind
+human data synthetic data ablation social reasoning
+data provenance fine-tuning social cognition
+```
+
+Governance support for deployed CampusGo can also be updated if needed, but it is secondary to Category K.
+
+---
+
+## 7. Pruning Policy
+
+### 7.1 Canonical flag names
+
+Use one convention only:
+
+```json
+{
+  "v2_pruned": true,
+  "v2_prune_reason": "..."
+}
+```
+
+Do not mix:
+- `pruned`
+- `v2_pruned`
+
+Pick one and implement filtering consistently.
+
+Recommended choice:
+- `v2_pruned`
+- `v2_prune_reason`
+
+### 7.2 Keep-lists
+
+Category A keep-list:
+- Shumailov2023
+- Shumailov2024
+- CascoRodriguez2023
+- DeyDonoho2024
+- Gillman2024
+- Fu2025
+- Ferbach2024
+- Guo2024
+
+Category C keep-list:
+- Kirchenbauer2023
+- Krishna2023
+- Sadasivan2023
+- Perkins2024
+- Yu2026
+
+Category E keep-list:
+- direct data-quality -> downstream-performance papers
+- RefinedWeb
+- FineWeb
+- DataComp-LM
+- Dodge2021 / C4 audit
+- any E paper with direct social-reasoning relevance
+
+### 7.3 Where pruning must take effect
+
+At minimum, filter pruned papers from:
+- Phase 3 graph and gap analysis
+- Phase 3.5 narrative chain selection
+- Phase 3.7 contradiction scan
+- Phase 4 evidence inventory
+- Phase 5 scoring and coverage counts
+
+Deep extraction can still process them if needed; pruning is an analysis-scope decision, not deletion.
+
+### 7.4 Timing rule
+
+Do **not** apply pruning flags before rerunning Phase 2 if those flags only live in generated `classified.json`, because Phase 2 reruns can overwrite that file.
+
+Preferred options:
+
+1. implement pruning as a deterministic post-Phase-2 step and re-run it every time
+2. or apply pruning after Phase 2 rerun and before Phase 3 rerun
+
+This is safer than hand-editing `classified.json` once and then losing the flags later.
+
+---
+
+## 8. Placeholder Resolution Policy
+
+The placeholder problem should be solved in a durable source, not only in generated outputs.
+
+Preferred durable sources:
+- `config/seed_papers.json`
+- a manual import file in `data/raw/`
+- any explicit metadata-normalization step added to the pipeline
+
+Avoid this failure mode:
+- manually patch `classified.json`
+- rerun Phase 1 or 2
+- lose the metadata
+
+Minimum required placeholder set:
+- `SocialR12026`
+- `CoMMET2026`
+- `TracesOfSocialCompetence2026`
+
+Before final evaluation, all three should have:
+- verified authors
+- verified DOI or arXiv ID
+- enough metadata for classification and contradiction handling
+
+---
+
+## 9. Execution Sequence
+
+This replaces the earlier sequence that relied on `--resume` for new searches.
+
+### Step 1: Update blueprint and runtime config
+
+Edit:
+- `updated_beat_definitions.json`
+- `config/beat_definitions.py`
+- `config/categories.json`
+
+### Step 2: Update retrieval sources
+
+Edit:
+- `config/search_queries.json`
+- `config/lens_queries.json`
+- `config/seed_papers.json`
+- `src/phase1_corpus.py`
+
+### Step 3: Update prompts and phase logic
+
+Edit:
+- `src/prompts.py`
+- `src/phase_contracts.py`
+- `src/phase3_graph.py`
+- `src/phase3_5_narrative.py`
+- `src/phase3_7_contradiction.py`
+- `src/phase4_topics.py`
+- `src/phase5_evaluate.py`
+- `src/scoring.py`
+
+### Step 4: Update human-facing docs and displays
+
+Edit:
+- `main.py`
+- `src/visualize.py`
+- `CLAUDE.md`
+
+### Step 5: Resolve placeholder metadata
+
+Use a durable source, not just generated files.
+
+### Step 6: Reset Phase 1 and downstream phases
+
+Do not rely on `--resume`.
+
+Use repo-supported reset behavior:
+- `src/state_manager.py::reset_phase_tree(...)`
+- and, if needed, the output invalidation logic in `main.py`
+
+### Step 7: Rerun Phase 1 and Phase 2
+
+Goal:
+- pick up Category K
+- refresh classification under the new taxonomy
+
+### Step 8: Apply pruning flags
+
+Apply deterministic `v2_pruned` flags to the refreshed classified corpus.
+
+### Step 9: Rerun Phase 2.5 through Phase 5
+
+Preferred order:
+
+```text
+2.5 -> 3 -> 3.5 -> 3.7 -> 4 -> 5
+```
+
+Phase `3.8` embeddings remain optional and unchanged unless you want updated figures.
+
+### Step 10: Verify acceptance criteria
+
+Use the checklist below.
+
+---
+
+## 10. Acceptance Criteria
+
+### 10.1 Structural criteria
+
+- `NUM_BEATS == 7`
+- runtime `ARGUMENT_LINES` use the new names
+- Beat 7 exists everywhere it should
+- Category K exists everywhere it should
+
+### 10.2 Retrieval and classification criteria
+
+- Category K active paper count >= 3
+- placeholder papers resolved
+- Phase 1 no longer assumes only A-J
+
+### 10.3 Analysis criteria
+
+- `analysis/intersection_matrix.json` contains K row/column after rerun
+- `analysis/narrative_chains.json` contains Beat 7
+- Beat 1-2 spines are visibly shorter than before
+- `analysis/contradictions.json` includes the new competing-mechanism focus
+- `analysis/evidence_inventory.json` contains 7 beats
+
+### 10.4 Evaluation criteria
+
+- `done` is impossible while Category K is missing
+- `done` is impossible while placeholders are unresolved
+- report/log strings no longer say `/6 beats`
+
+### 10.5 Corpus integrity criteria
+
+- no paper records are deleted
+- pruned papers are retained but flagged
+- phases 3-5 operate on active papers only
+
+---
+
+## 11. Verification Commands
+
+These are sanity checks, not full tests.
+
+### 11.1 Find stale 6-beat assumptions
+
+```bash
+rg -n "6-beat|6 beats|5 or 6 beats|A-J" \
+  /Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/src \
+  /Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/main.py \
+  /Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/CLAUDE.md
+```
+
+Expected:
+- no active-runtime hits that still describe the final migrated system incorrectly
+
+### 11.2 Check Category K coverage in source files
+
+```bash
+rg -n "\"K\"|Category K|A-K" \
+  /Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/config \
+  /Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/src \
+  /Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/CLAUDE.md
+```
+
+Expected:
+- `config/categories.json`
+- `config/beat_definitions.py`
+- retrieval configs
+- prompts
+- phase logic
+- scoring / docs
+
+### 11.3 Check final artifacts
+
+After rerun, verify:
+- `analysis/gaps_ranked.json`
+- `analysis/narrative_chains.json`
+- `analysis/contradictions.json`
+- `analysis/evidence_inventory.json`
+- `analysis/evaluation_result.json`
+
+all reflect 7 beats.
+
+---
+
+## 12. Invariants
+
+These should not change during the migration.
+
+1. Corpus is append-only.
+   - never delete paper records
+   - only add flags or regenerate derived files
+
+2. Phase ordering remains:
+
+```text
+1 -> 2 -> 2.5 -> 3 -> 3.5 -> 3.7 -> 3.8 -> 4 -> 5
+```
+
+3. Retrieval stack remains:
+- OpenAlex
+- Semantic Scholar
+- Lens
+- arXiv
+
+4. Citation-chain verification mechanism remains unchanged.
+
+5. State save/load and resumability remain unchanged.
+
+6. CampusGo being deployed does **not** justify claims of validated downstream performance.
+
+7. Category K is an honesty/scoping addition, not a thesis-support category in disguise.
+
+---
+
+## 13. Final Implementation Notes
+
+The most important corrections versus the earlier document are:
+
+1. This is not a prompt-only migration.
+2. Retrieval must be updated at config plus Phase 1 scoring level.
+3. Contracts, scoring, and contradiction focus logic all need code changes.
+4. Generated artifacts must be regenerated, not hand-edited.
+5. `--resume` is not a valid way to pick up new Phase 1 queries.
+6. Stop conditions must be strengthened so the pipeline cannot declare success without adversarial coverage.
+
+If there is a conflict between:
+- an old generated output
+- an old note in this file
+- and the current checked repository code
+
+the repository code wins, and this document should be updated again rather than forcing the code to fit stale assumptions.

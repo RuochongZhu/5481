@@ -7,176 +7,204 @@
 ## Beat 1: Model Collapse and Contamination Risk
 
 **Anchor paper**: AI models collapse when trained on recursively generated data
-  Why: This is the clearest high-signal anchor for Beat 1 because it consolidates the recursive-reuse literature into a widely recognized mixed empirical-theoretical statement: indiscriminate training on recursively generated data can cause irreversible collapse, especially through loss of distribution tails. It supports the beat's opening claim without forcing the stronger and unsupported claim that all synthetic data is harmful.
+  Why: It is the clearest high-visibility synthesis of the recursive-reuse collapse mechanism and is the best anchor for stating the narrow motivation claim: indiscriminate self-reuse can erase distributional tails, which motivates concern without implying that all synthetic-data use is harmful.
 
 **Narrative spine** (6 papers):
 
   1. [2023] The Curse of Recursion: Training on Generated Data Makes Models Forget
-     Role: Introduces the core collapse mechanism: recursive training on generated data makes models forget low-probability regions of the original distribution.
+     Role: Opens the beat with the basic mechanism: recursive training on model outputs can make generative models forget rare but important parts of the original distribution.
      Basis: thematic_progression
-     → Follow-up work sharpens this into a more operational condition, arguing that the key danger is self-consuming training without enough fresh real data entering each generation.
-  2. [2023] Self-Consuming Generative Models go MAD
-     Role: Extends the collapse story into the go-MAD framework, specifying that insufficient fresh real data leads to quality or diversity degradation across generations.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Nature 2024 then turns this from an early warning into a more consolidated empirical-and-theoretical statement about indiscriminate recursive reuse.
+  2. [2024] AI models collapse when trained on recursively generated data
+     Role: Anchor paper that sharpens the motivation: recursive synthetic reuse can cause irreversible tail loss and homogenization under uncontrolled retraining.
+     Basis: thematic_progression
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → But the relevant claim must be narrowed before leaving the lab setting: the collapse literature mainly establishes risk under poorly controlled self-reuse, not universal failure of all synthetic-data regimes.
+  3. [2024] Self-Correcting Self-Consuming Loops for Generative Model Training
+     Role: Explicit scope-limiting counterevidence: self-consuming loops can be stabilized if correction is introduced, so collapse is conditional rather than inevitable.
      Basis: verified_citation
-     → Taken together, these early results motivate a broader synthesis: recursive reuse is risky not as a slogan, but as a generational distribution-shift process.
-  3. [2024] AI models collapse when trained on recursively generated data
-     Role: Serves as the beat's anchor by establishing collapse under recursively generated training data and foregrounding irreversible tail loss as the central failure mode.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → With that limitation stated, the next question is not whether synthetic data always fails, but whether real information environments are accumulating enough machine-generated material for uncontrolled reuse to become plausible.
+  4. [2025] Quantifying Large Language Model Usage in Scientific Papers
+     Role: Provides a bounded real-world bridge by showing measurable LLM-written or LLM-modified contamination in one concrete corpus, scientific papers.
      Basis: thematic_progression
-     → Crucially, however, this literature mainly proves risk under indiscriminate recursive reuse, not universal synthetic-data failure; later work makes that scope limit explicit by showing stable mixed-data regimes.
-  4. [2024] Universality of the $π^2/6$ Pathway in Avoiding Model Collapse
-     Role: Provides the required counterpoint: mixed real-plus-synthetic training can avoid collapse, so the evidence supports a narrower warning about unmanaged recursive reuse rather than a blanket rejection of synthetic data.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Evidence outside specific corpora remains incomplete, yet retrieval studies suggest that even partial contamination can be amplified by downstream systems.
+  5. [2026] Retrieval Collapses When AI Pollutes the Web
+     Role: Supplies the strongest category-B system-level bridge: in retrieval pipelines, contaminated pools can yield much higher contaminated exposure, though this is still a pipeline-specific result rather than proof of universal web-scale contamination.
      Basis: verified_citation
-     → Once narrowed in that way, the next question becomes empirical rather than theoretical: are real information environments accumulating enough synthetic content for recursive exposure to become a practical pretraining concern?
-  5. [2025] Quantifying Large Language Model Usage in Scientific Papers
-     Role: Offers one of the strongest domain-specific measurements of contamination pressure by quantifying LLM usage in scientific writing, while still falling short of proving universal web-scale contamination.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → If contamination can enter and then be amplified by retrieval, a natural response is filtering; the final step asks how reliable detector-based filtering actually is under adaptation.
+  6. [2023] Paraphrasing evades detectors of AI-generated text, but retrieval is a
+     Role: Closes on the limits of reactive filtering: detector-only approaches can be defeated by paraphrasing, while retrieval-based defenses recover some robustness, so detection is fragile rather than impossible.
      Basis: thematic_progression
-     → Because these contamination measurements remain partial and environment-specific, the literature also asks whether reactive filtering can reliably keep synthetic text out of future corpora.
-  6. [2023] Can AI-Generated Text be Reliably Detected?
-     Role: Closes the chain on the limits of reactive filtering by showing that many detector families can be broken under recursive paraphrasing, making post hoc cleanup fragile rather than impossible.
-     Basis: thematic_progression
-     → Overall, the strongest Beat 1 conclusion is conditional: recursive synthetic reuse is a real pretraining risk, contamination pressure is increasingly plausible but not yet universally proven, and detector-based filtering is an unstable last line of defense.
+     → This motivation beat should therefore end on a scoped takeaway: recursive synthetic reuse is a plausible risk mechanism, contamination signals exist in bounded environments, and current filtering defenses remain conditional and attack-sensitive.
 
 **Paragraph structure**:
 
-  ¶1: Recursive synthetic reuse can cause collapse, but the evidence supports a narrower claim about indiscriminate reuse rather than universal synthetic-data failure.
-    Opening: "Recent work has made a strong case that recursively training models on their own outputs can collapse the learned distribution, especially by erasing rare but important tails, while also showing that this risk is conditional rather than universal."
+  ¶1: Recursive synthetic reuse can collapse models under indiscriminate retraining, but the literature itself already shows that this is a conditional risk rather than a blanket indictment of all synthetic data.
+    Opening: "The model-collapse literature motivates caution about recursive synthetic reuse, while also supplying its own first scope limit: the strongest failure results concern uncontrolled self-recycling, not every pipeline that mixes in generated data."
     - The Curse of Recursion: Training on Generated Data Makes Mod (2023)
-    - Self-Consuming Generative Models go MAD (2023)
     - AI models collapse when trained on recursively generated dat (2024)
-    - Universality of the $π^2/6$ Pathway in Avoiding Model Collap (2024)
     - Self-Correcting Self-Consuming Loops for Generative Model Tr (2024)
     - Self-Consuming Generative Models with Curated Data Provably  (2024)
-  ¶2: Evidence that contamination pressure is building in information environments is emerging, but it remains partial, measurement-specific, and not yet a proof of universal web-scale contamination.
-    Opening: "The bridge from collapse theory to current pretraining risk is more tentative: available studies indicate rising exposure to machine-generated content in scientific writing and parts of the web, but the evidence is still domain-specific and incomplete."
+    - Self-Improving Diffusion Models with Synthetic Data (2024)
+  ¶2: The bridge from collapse theory to real information environments is suggestive but incomplete: several studies report measurable contamination in specific corpora and systems, yet they do not prove universal web-scale takeover.
+    Opening: "Outside controlled retraining loops, the evidence base is thinner and more domain-specific, but it does indicate growing contamination pressure in scientific text, newly created webpages, and retrieval pipelines."
     - Quantifying Large Language Model Usage in Scientific Papers (2025)
     - 74% of New Webpages Include AI Content (Study of 900k Pages) (2025)
     - More Articles Are Now Created by AI Than Humans (2025)
     - Retrieval Collapses When AI Pollutes the Web (2026)
-  ¶3: Reactive filtering is an important mitigation idea, but the detector literature shows that it is brittle under paraphrase and simple evasion tactics.
-    Opening: "A natural response to contamination pressure is to detect and filter AI-generated text after the fact, yet the strongest detector studies suggest this defense is only partially reliable once adversaries or even routine rewriting enter the loop."
-    - A Watermark for Large Language Models (2023)
-    - Can AI-Generated Text be Reliably Detected? (2023)
+  ¶3: Reactive filtering is therefore relevant but not decisive: detectors can succeed in constrained settings, yet adversarial rewriting and domain shifts make detector-only governance brittle.
+    Opening: "A natural response is to detect and filter synthetic content, but the detection literature mostly points to a moving-target defense: useful in scoped domains, breakable under paraphrase or distribution shift, and not a clean substitute for upstream control."
     - Paraphrasing evades detectors of AI-generated text, but retr (2023)
-    - Simple techniques to bypass GenAI text detectors: implicatio (2024)
+    - A Watermark for Large Language Models (2023)
+    - Detecting AI-Generated Text: Factors Influencing Detectabili (2025)
+    - Distinguishing Reality from AI: Approaches for Detecting Syn (2024)
+    - Detecting AI-Generated Code Assignments Using Perplexity of  (2024)
+    - Phishing Detection 2.0: A Natural Language Processing Approa (2023)
 
-**Writing notes**: Keep the beat explicitly three-step: collapse risk -> tentative contamination-pressure evidence -> reactive filtering limits. Make the scope admission unavoidable before any category-B bridge: the literature strongly supports risk from indiscriminate recursive reuse, not the claim that all synthetic data is harmful. Name the counterevidence directly: pi^2/6 mixed real+synthetic pathway, self-correcting loops, and curated synthetic-data regimes. For category B, use cautious language such as 'emerging', 'domain-specific', and 'not yet universal proof'; avoid saying the web is definitively contaminated at training-relevant scale. For category C, avoid saying detection is impossible; the stronger claim is that watermarking and other detectors are fragile under paraphrase or low-effort manipulation, even if retrieval or provenance-aware defenses can still help in narrower settings. Do not import any fine-tuning evidence from categories F, I, or J.
+**Writing notes**: Keep this beat explicitly motivational. Do not present pretraining collapse papers as direct proof of the paper's later post-training claim. State the scope boundary in plain language: the literature mainly shows that indiscriminate recursive reuse is risky; it does not show that all synthetic data is harmful. In paragraph 1, foreground counterevidence rather than burying it: self-correcting loops, curated self-consuming training, and controlled synthetic guidance all show pathways that avoid collapse. The requested mixed real-plus-synthetic pi^2/6 counterexample is not present in the provided paper set, so add that exact citation during manuscript drafting; this chain currently represents that limiting idea with the available self-correcting and curated-data papers. In paragraph 2, be honest that contamination evidence is domain-specific and partly detector-dependent; say that scientific writing, sampled webpages, and retrieval systems show pressure signals, but universal web contamination is not established. In paragraph 3, avoid saying detection is impossible: watermarking and narrow-domain classifiers can work, yet paraphrasing and domain variation make reactive filtering fragile under adversarial conditions. Omit social-perception papers here unless framed as downstream consequences rather than proof of contamination prevalence. Use the final sentence to hand off to later beats by saying this literature motivates upstream controls and careful evaluation, not that it already validates downstream performance harms.
 
 ---
 
 ## Beat 2: Partial Measurability of Web Drift
 
 **Anchor paper**: Privacy Policies across the Ages: Content of Privacy Policies 1996–2021
-  Why: It is the strongest direct longitudinal content study in the set: a large, curated 25-year web genre analysis that shows measurable drift while remaining appropriately domain-bounded rather than claiming web-wide contamination.
+  Why: It is the clearest anchor for this beat because it operationalizes long-horizon content drift in a large, curated slice of the web, while still making the key scope point: measurable change is visible in a bounded genre, not equivalent to proof of web-wide contamination.
 
 **Narrative spine** (6 papers):
 
   1. [2022] Towards robust complexity indices in linguistic typology
-     Role: Establishes the measurement caution: corpus-level diversity or complexity signals can be tracked, but metric choice is sensitive to sampling and corpus size, so any drift claim should begin with bounded proxies rather than sweeping web-wide conclusions.
+     Role: Opens with the measurement problem: corpus-level drift is only observable through proxy metrics, and those proxies vary in robustness to corpus size and content changes.
      Basis: thematic_progression
-     → Because the corpus contains no post-2022 web-scale contamination audit, the literature moves from abstract proxy robustness to longitudinal web archives where change can be observed directly within a stable document genre.
-  2. [2021] WWW - Privacy Policies over Time: Curation and Analysis of a Million-D
-     Role: Provides a concrete long-span web measurement case by curating a million-document privacy-policy corpus and showing systematic temporal drift in length, readability, and ambiguity.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → If drift metrics are themselves fragile, the next question is what kinds of degradation they might actually detect when text production becomes more synthetic.
+  2. [2024] The Curious Decline of Linguistic Diversity: Training Language Models 
+     Role: Shows that recursive synthetic training can reduce lexical, syntactic, and semantic diversity, motivating why diversity-style proxies are worth monitoring while stopping short of any claim about the open web.
      Basis: thematic_progression
-     → Extending this curated privacy-policy line, later work deepens the content analysis and shows that the drift is not only stylistic but also substantive.
-  3. [2023] Privacy Policies across the Ages: Content of Privacy Policies 1996–202
-     Role: Strengthens the longitudinal evidence with a 1996-2021 content analysis showing increasing use of location data, implicit collection, limited user choice, and growing third-party sharing; this is the beat's anchor example of measurable web drift.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → But synthetic-recursion experiments are not web audits, so the argument must move from laboratory-style proxy behavior to longitudinal observations of real web domains.
+  3. [2021] WWW - Privacy Policies over Time: Curation and Analysis of a Million-D
+     Role: Provides a large curated longitudinal web subcorpus in which content change can actually be tracked over time, making web drift measurable in at least one stable genre.
+     Basis: thematic_progression
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → That longitudinal setup is then extended by later work, which confirms that the observed changes persist across a longer historical window.
+  4. [2023] Privacy Policies across the Ages: Content of Privacy Policies 1996–202
+     Role: Anchor paper: confirms substantial multi-decade content evolution in privacy policies, giving the beat its strongest concrete example of measurable but genre-bounded web drift.
      Basis: verified_citation
-     → Taken together, these genre-specific findings motivate a broader question: do similarly large shifts appear in the web's overall sectoral composition and platform ecology?
-  4. [2022] "Way back then": A Data-driven View of 25+ years of Web Evolution
-     Role: Widens the frame from one document genre to 25+ years of web evolution, showing shifts in dominant site types and platform composition across the web archive.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Even so, one genre cannot stand in for the whole web, so the literature next broadens to macro-level observations about how the web's composition changes over time.
+  5. [2022] "Way back then": A Data-driven View of 25+ years of Web Evolution
+     Role: Broadens from a single document genre to macro web evolution, showing long-run shifts in the kinds of sites that dominate attention and therefore plausibly alter what crawls collect.
      Basis: thematic_progression
-     → But longitudinal web evolution studies still do not quantify synthetic contamination rates, so the narrative turns to crawl-construction work that inspects present-day pretraining corpora and tests whether filtered web data remains usable.
-  5. [2023] The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora w
-     Role: Supplies the required counterevidence: with careful filtering and deduplication, web-only data can still train strong LLMs, so observed drift is not decisive proof that web corpora are already unusable.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Those broad shifts matter for language-model training only indirectly; the operational question is what actually enters crawled corpora and how filtering changes that picture.
+  6. [2021] Documenting Large Webtext Corpora: A Case Study on the Colossal Clean 
+     Role: Bridges observation to practice by showing that a major crawl-derived corpus can contain benchmark leakage, machine-generated text, and skew introduced by filtering choices, while still not constituting a post-2022 web-scale contamination audit.
      Basis: thematic_progression
-     → Building on this web-only curation result, later work scales the pipeline across many Common Crawl snapshots and again reports strong performance, reinforcing the need for a narrow conclusion.
-  6. [2024] The FineWeb Datasets: Decanting the Web for the Finest Text Data at Sc
-     Role: Closes on curation practice rather than proof of failure: systematic large-scale filtering over 96 Common Crawl snapshots yields better-performing pretraining data, implying that measurable drift creates rising risk and curation pressure, not demonstrated web-wide degradation.
-     Basis: verified_citation
-     → Therefore, the literature supports only a partial and indirect measurability claim: some drift and access changes are observable, but no post-2022 web-scale contamination audit in this corpus establishes web-wide pretraining degradation.
+     → Later web-only curation work, especially RefinedWeb and FineWeb, complicates any simple decline story: filtered web data can still train strong models, so the narrow conclusion is partial and indirect measurability of rising risk rather than demonstrated web-wide contamination.
 
 **Paragraph structure**:
 
-  ¶1: Proxy metrics can register distributional change, but only indirectly and with substantial dependence on metric robustness.
-    Opening: "Because no post-2022 web-scale contamination audit exists in the corpus, this section begins with measurement proxies: work on corpus complexity, entropy, and topic-structure diagnostics shows that distributional change can be tracked, but only through metrics whose stability and interpretability must be handled carefully."
+  ¶1: Measurement proxies can indicate drift, but only indirectly and with substantial dependence on metric choice.
+    Opening: "Before asking whether the web is drifting in ways relevant to pretraining, the literature first shows that drift is observable only through imperfect textual proxies whose stability depends on the metric and setting."
     - Towards robust complexity indices in linguistic typology (2022)
+    - The Curious Decline of Linguistic Diversity: Training Langua (2024)
     - Analyzing the Influence of Hyper-parameters and Regularizers (2020)
-    - Renormalization Analysis of Topic Models (2020)
-  ¶2: Longitudinal archive studies show clear web drift in bounded domains and broad platform composition, without directly measuring web-wide synthetic contamination.
-    Opening: "More concrete evidence comes from longitudinal web observations: privacy-policy archives and long-range web-history analyses show that web content and attention patterns have shifted substantially over time, but these studies remain domain-specific or structural rather than direct contamination audits."
+    - Entropy and type-token ratio in gigaword corpora (2025)
+  ¶2: Longitudinal studies of bounded web slices show real content change over time, but the evidence is genre-specific rather than web-wide.
+    Opening: "Once the measurement caveat is clear, longitudinal web studies do find substantial change—but mostly in curated subdomains where repeated observation is feasible."
     - WWW - Privacy Policies over Time: Curation and Analysis of a (2021)
     - Privacy Policies across the Ages: Content of Privacy Policie (2023)
     - "Way back then": A Data-driven View of 25+ years of Web Evol (2022)
     - Evolution of diversity and dominance of companies in online  (2021)
-  ¶3: Crawl-curation studies reveal present-day risk signals, yet also show that filtered web corpora still train strong models.
-    Opening: "Current pretraining-corpus work sharpens the picture but keeps the conclusion narrow: corpus audits find artifacts, governance constraints, and bounded signs of AI-text growth, while RefinedWeb and FineWeb demonstrate that carefully filtered web data still supports strong language models."
+    - Event Detection in Wikipedia Edit History Improved by Docume (2021)
+  ¶3: Crawl-curation papers reveal localized contamination, access, and filtering issues, yet newer filtered web datasets remain strong, so the conclusion stays narrow.
+    Opening: "When the focus shifts from observing change to building pretraining corpora, the evidence becomes operational: some crawls contain leakage or synthetic content and the accessible web is changing, but improved filtering still produces highly effective web-only datasets."
     - Documenting Large Webtext Corpora: A Case Study on the Colos (2021)
+    - The Rise of AI-Generated Content in Wikipedia (2024)
+    - Consent in Crisis: The Rapid Decline of the AI Data Commons (2024)
     - The RefinedWeb Dataset for Falcon LLM: Outperforming Curated (2023)
     - The FineWeb Datasets: Decanting the Web for the Finest Text  (2024)
-    - Consent in Crisis: The Rapid Decline of the AI Data Commons (2024)
-    - The Rise of AI-Generated Content in Wikipedia (2024)
 
-**Writing notes**: Keep the claim explicitly narrow. This beat is about partial measurability of drift, not demonstrated web-wide contamination or failure. State plainly that no post-2022 web-scale contamination audit exists in the corpus. Use the D-category papers only to motivate why proxies are fragile and indirect. Then pivot to H-category longitudinal studies as the strongest direct evidence of change over time, especially the privacy-policy line and web-evolution archive work. In the final paragraph, juxtapose risk signals (C4 artifacts, shrinking data commons, Wikipedia AI-content growth) with required counterevidence (RefinedWeb and FineWeb), so the conclusion is: drift and curation pressure are measurable in parts, risk is rising, but filtered web corpora still produce strong models and the literature here does not prove web-wide pretraining degradation.
+**Writing notes**: Use this beat strictly as background motivation, not as direct evidence for any primary post-training claim. The clean argumentative arc is: proxy fragility -> bounded longitudinal drift -> crawl-curation implications. Be explicit that category D is method-thin for web drift specifically: these papers mainly justify why diversity/entropy proxies are partial instruments, not direct measurements of contamination. State clearly that synthetic-text studies show what proxy degradation could look like, but they do not demonstrate that the open web has already undergone the same process. Likewise, the privacy-policy and web-evolution papers show measurable temporal change in specific genres or macro site composition, not web-wide pretraining degradation. The C4 paper provides concrete motivation that crawl contents can include leakage, machine-generated text, and filtering bias, but it is still a corpus case study rather than a web-scale contamination audit. Include the required counterevidence plainly: RefinedWeb and FineWeb show that filtered web data still trains strong models, so observed drift signals do not by themselves prove collapse or unusable pretraining data. End the beat with the narrow scope boundary: measurable drift is partial and indirect, and no post-2022 web-scale contamination audit exists in the corpus.
 
 ---
 
 ## Beat 3: L_auth Framework Definition
 
 **Anchor paper**: The Curious Decline of Linguistic Diversity: Training Language Models on Synthetic Text
-  Why: It is the clearest bridge paper for this beat: it connects synthetic-data provenance to measured declines in lexical, syntactic, and semantic diversity, linking collapse-style concerns to the metric ingredients later assembled into L_auth.
+  Why: It is the clearest bridge paper for this beat: it connects an upstream data-composition choice (synthetic versus human text) to downstream changes in linguistic diversity, which lets L_auth define Provenance Ratio as a design input and Lexical Diversity/Entropy as emergent outcomes without overstating a universal law.
 
-**Narrative spine** (5 papers):
+**Narrative spine** (6 papers):
 
   1. [2023] The Curse of Recursion: Training on Generated Data Makes Models Forget
-     Role: Establishes the provenance-side motivation for D1 by showing that recursive training on generated data removes tail support and reduces diversity across generations.
+     Role: Introduces the core framework pressure: when generated data is fed back into training, tail information disappears, motivating L_auth's D1 Provenance Ratio as an upstream composition variable rather than a mere bookkeeping detail.
      Basis: thematic_progression
-     → If recursive synthetic reuse can erase distributional tails, the next question is how that loss appears in observable language statistics rather than only in abstract collapse arguments.
-  2. [2024] The Curious Decline of Linguistic Diversity: Training Language Models 
-     Role: Provides the main empirical bridge from provenance to outcomes by showing that synthetic retraining is accompanied by declines in lexical, syntactic, and semantic diversity.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → That theoretical warning is not enough for a framework by itself, so the next step is broader empirical confirmation that recursive synthetic training can systematically compress a model's support.
+  2. [2024] AI models collapse when trained on recursively generated data
+     Role: Provides the broader empirical collapse result that makes provenance-sensitive data composition a serious framework ingredient; it grounds D1 as a plausible fine-tuning design axis and cautions that narrow source loops can erase rare cases.
      Basis: thematic_progression
-     → Once diversity decline is visible empirically, the literature turns to a harder measurement question: which indices are stable enough to summarize that change without being dominated by corpus-size artifacts?
-  3. [2022] Towards robust complexity indices in linguistic typology
-     Role: Grounds D2 metric choice by showing that common corpus complexity measures vary in robustness, motivating careful use of lexical-diversity indicators rather than naive reliance on raw TTR-style counts.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Once provenance is treated as an upstream knob, the framework needs observable downstream consequences; the most relevant next move is to track whether linguistic diversity actually declines as synthetic share rises.
+  3. [2024] The Curious Decline of Linguistic Diversity: Training Language Models 
+     Role: Operational bridge from provenance to measurable outcomes: recursive training on synthetic text is shown to reduce lexical, syntactic, and semantic diversity, motivating D2 and D3 as emergent summaries of authenticity-sensitive data composition.
      Basis: thematic_progression
-     → This caution about lexical metrics motivates adding entropy-based summaries, so that L_auth does not depend on a single family of diversity statistics.
-  4. [2020] Analyzing the Influence of Hyper-parameters and Regularizers of Topic 
-     Role: Supports D3 by treating Renyi entropy as an informative structural statistic, showing that entropy can track meaningful organization changes even if the setting is topic modeling rather than language-model pretraining.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → But if diversity is going to serve as a framework outcome, L_auth must be careful about which diversity indices are robust enough to use across corpora and domains.
+  4. [2022] Towards robust complexity indices in linguistic typology
+     Role: Supplies the measurement discipline for D2 by showing that some traditional corpus indices are unstable under corpus-size and content variation, while newer lexical-diversity measures are more robust; this justifies treating lexical diversity as a designed metric family rather than a single fragile score.
      Basis: thematic_progression
-     → From there, the key issue is how entropy relates back to lexical-diversity measures, since L_auth includes both and must avoid pretending they are fully independent.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Lexical diversity alone is not sufficient, however; L_auth needs a second emergent axis that captures uncertainty or spread in the token distribution without collapsing it into the same statistic.
   5. [2025] Entropy and type-token ratio in gigaword corpora
-     Role: Links D2 and D3 by showing a consistent empirical and analytic relation between word entropy and type-token ratio, supporting their joint inclusion while also signaling potential overlap and the need for future calibration.
+     Role: Clarifies the D2-D3 separation by showing that type-token ratio and word entropy are related but not identical corpus summaries; this supports L_auth's choice to keep Lexical Diversity and Entropy as complementary emergent outcomes rather than merge them.
      Basis: thematic_progression
-     → Taken together, these papers justify L_auth as a grounded synthesis of provenance and diversity ingredients, but not yet as a calibrated standalone law.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → With that distinction in place, the framework can borrow a concrete entropy-oriented measurement precedent, while still admitting that calibration across tasks remains unresolved.
+  6. [2020] Analyzing the Influence of Hyper-parameters and Regularizers of Topic 
+     Role: Provides a usable precedent for D3: Renyi-entropy-based analysis can reveal structure and sensitivity in modeled text collections, supporting entropy as a practical ingredient in L_auth even though the exact weighting of entropy against the other dimensions is still open.
+     Basis: thematic_progression
+     → From here the framework should stop at synthesis: L_auth is a fine-tuning-oriented descriptive scheme for post-training data composition, not a validated standalone law, not stage-agnostic, and not yet equipped with calibrated cross-dimension weights.
 
 **Paragraph structure**:
 
-  ¶1: Why L_auth needs a provenance input dimension (D1)
-    Opening: "Recursive-training studies make clear that any descriptive framework for synthetic-data effects must track provenance explicitly, because the fraction of fresh human data versus model-generated reuse changes whether distributions remain stable or collapse."
+  ¶1: D1 Provenance Ratio as a design-level input: recursive synthetic training changes support, but those effects are modulated by curation and correction rather than fixed by law.
+    Opening: "L_auth begins upstream: in fine-tuning, the proportion of human versus model-generated material is a composition choice, and recursive-training papers show that this choice can reshape the support and rarity structure a model retains."
     - The Curse of Recursion: Training on Generated Data Makes Mod (2023)
     - AI models collapse when trained on recursively generated dat (2024)
-    - Self-Consuming Generative Models go MAD (2023)
-    - A Theoretical Perspective: How to Prevent Model Collapse in  (2025)
-  ¶2: From provenance shifts to measurable outcome dimensions (D2 lexical diversity, D3 entropy)
-    Opening: "The main bridge to L_auth comes from work showing that synthetic retraining is associated with observable diversity decline, together with metric papers clarifying which lexical and entropy-based summaries are robust enough to describe that shift."
+    - Self-Correcting Self-Consuming Loops for Generative Model Tr (2024)
+    - Self-Consuming Generative Models with Curated Data Provably  (2024)
+    - Self-Improving Diffusion Models with Synthetic Data (2024)
+    - Neon: Negative Extrapolation From Self-Training Improves Ima (2025)
+  ¶2: D2 Lexical Diversity as an emergent outcome, with only indirect support for D4 Social Behavioral Diversity; current evidence shows diversity shifts under source changes, but D4 remains the thinnest dimension in this set.
+    Opening: "The framework then separates upstream composition from downstream observation: if provenance and source breadth change, the first effects we can measure reliably are shifts in lexical and distributional diversity rather than a single authenticity score."
     - The Curious Decline of Linguistic Diversity: Training Langua (2024)
     - Towards robust complexity indices in linguistic typology (2022)
+    - Lexical and Statistical Analysis of Bangla Newspaper and Lit (2025)
+    - Lexical Diversity of Czech L2 Texts at Different Proficiency (2025)
+    - Training Models on Dialects of Translationese Shows How Lexi (2026)
+    - AI-generated data contamination erodes pathological variabil (2026)
+  ¶3: D3 Entropy as a complementary emergent outcome and explicit scope limit: entropy-based summaries are useful ingredients, but finite-sample evaluability and cross-dimension weighting remain open.
+    Opening: "Entropy gives L_auth a second emergent axis alongside lexical diversity, but the literature supports it mainly as a practical measurement ingredient, not as proof of a universal authenticity law."
+    - Entropy and type-token ratio in gigaword corpora (2025)
     - Analyzing the Influence of Hyper-parameters and Regularizers (2020)
     - Renormalization Analysis of Topic Models (2020)
-    - Entropy and type-token ratio in gigaword corpora (2025)
-  ¶3: D4 as a motivated but thinner dimension, and the scope limits of L_auth
-    Opening: "A smaller and more conceptual literature suggests that provenance also affects social or behavioral variety, but this dimension is currently less directly operationalized than lexical diversity or entropy and should be presented as a motivated design input rather than a settled metric."
-    - Self-Consuming Generative Models with Curated Data Provably  (2024)
-    - ChatGPT is incredible (at being average) (2025)
-    - The GenAI Future of Consumer Research (2025)
+    - A Theoretical Framework for Statistical Evaluability of Gene (2026)
+    - Entropy-Aware On-Policy Distillation of Language Models (2026)
+    - Efficient Perplexity Bound and Ratio Matching in Discrete Di (2025)
 
-**Writing notes**: Frame L_auth as a stage-agnostic descriptive synthesis, not a discovered law. Make the architecture explicit: D1 Provenance Ratio and D4 Social Behavioral Diversity are upstream design-level inputs; D2 Lexical Diversity and D3 Entropy are downstream measurable outcomes. The strongest evidence chain in the selected papers is D1 to D2/D3, especially via The Curious Decline of Linguistic Diversity. The evidence base for D4 is materially thinner and more conceptual, so say that openly rather than overstating it. Do not describe L_auth as a detection tool. Also note that D2 and D3 are related rather than fully independent, with the entropy-TTR paper implying possible redundancy; this is exactly why weight calibration should be stated as future work rather than implied to be solved already.
+**Writing notes**: Write this beat as a careful synthesis, not a discovery claim. Define L_auth explicitly as a fine-tuning-focused descriptive framework with four dimensions: D1 Provenance Ratio and D4 Social Behavioral Diversity are ex ante data-composition inputs; D2 Lexical Diversity and D3 Entropy are ex post measurable outcomes. The strongest evidence in this set supports a pathway from provenance shifts to diversity shifts in post-training or recursive retraining settings. Be explicit that D4 is the least directly evidenced dimension here: the available papers mainly speak to curation, source breadth, and human-preference structure rather than a settled behavioral-diversity metric. Use the robust-complexity and entropy papers to justify metric families, not to claim a validated weighting scheme. End by stating plainly that L_auth is not a detection tool, not a validated standalone law, not stage-agnostic, and not yet calibrated for cross-dimension weights; extending operationalization to pretraining and learning the weights are
 
 ---
 
 ## Beat 4: Fine-tuning Data Source Affects Social Reasoning
 
 **Anchor paper**: LIMA: Less Is More for Alignment
-  Why: Anchor paper for Beat 4: LIMA shows that a small, carefully curated human-authored set can drive large alignment gains, making data provenance a high-leverage post-training variable.
+  Why: LIMA is the cleanest source-sensitive anchor in this set: it shows that a small amount of carefully curated human post-training data can substantially shift assistant behavior, making data provenance and curation central variables. That makes it a useful hinge between social-reasoning evaluations and later counterevidence from synthetic or AI-feedback pipelines.
 
 **Narrative spine** (5 papers):
 
@@ -219,7 +247,6 @@
     - Direct Preference Optimization: Your Language Model is Secre (2023)
     - AlpacaFarm: A Simulation Framework for Methods that Learn fr (2023)
     - RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Fe (2023)
-    - Zephyr: Direct Distillation of LM Alignment (2023)
 
 **Writing notes**: Keep Beat 4 clearly separate from collapse literature. The defensible chain is: social reasoning is a real post-training weak spot; curated human data can be disproportionately high leverage; provenance changes socially meaningful outputs; and bounded-task counterevidence prevents any universal claim that human data always wins. The final sentence of the beat should explicitly narrow the thesis to socially grounded, norm-sensitive behavior rather than alignment overall.
 
@@ -246,7 +273,7 @@
      Role: Defines the pilot's methodological hinge: DPO keeps the optimization recipe simple enough that differences between data conditions remain interpretable.
      Basis: verified_citation
      Note: Verified by check_citations.py: Zephyr cites DPO.
-     → With a controlled preference objective in place, the strongest next baseline is Zephyr, which applies AI-feedback distillation on top of a DPO-style alignment recipe. [verified citation order]
+     → With a controlled preference objective in place, the strongest next baseline is Zephyr, which applies AI-feedback distillation on top of a DPO-style alignment recipe while still leaving inference-time compute fixed so rival decoding explanations can be named explicitly later. [verified citation order]
   4. [2023] Zephyr: Direct Distillation of LM Alignment
      Role: Provides the strongest competitive synthetic baseline: AI-feedback distillation can produce strong chat alignment, which is why the pilot must be framed as a directional test rather than a foregone human-data victory.
 
@@ -266,14 +293,14 @@
     - RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Fe (2023)
     - Zephyr: Direct Distillation of LM Alignment (2023)
 
-**Writing notes**: Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.
+**Writing notes**: Beat 5 must stay method-and-pilot framed. The clearest inspectable chain is benchmark sensitivity -> LIMA as quality-sensitive precedent -> DPO as controlled optimization method -> Zephyr as the strongest AI-feedback baseline, with AlpacaFarm and RLAIF used as supporting narrowing evidence rather than as extra spine detours. State explicitly that the pilot fixes inference-time compute, prompt/interface conditions, and retrieval usage precisely because self-consistency, structured CoT, and DEL-ToM-style inference-time scaling are live rival explanations; the corpus does not let the paper apportion causal weight among those mechanisms after the fact. End on limitations, not victory language: a 3B model may not separate data conditions sharply, D1 and D4 co-vary in the design, and the strongest non-human baselines come from bounded alignment tasks rather than dedicated social-reasoning comparisons.
 
 ---
 
-## Beat 6: CampusGo as Design Proposal
+## Beat 6: CampusGo as Deployed Core Contribution
 
 **Anchor paper**: Position: Data Authenticity, Consent, & Provenance for AI are all broken: what will it take to fix them?
-  Why: This paper most directly frames the design requirements relevant to CampusGo by arguing that AI data authenticity, consent, and provenance are currently fragmented and need unified treatment. It motivates a platform proposal without implying that any platform solution, including CampusGo, is already validated.
+  Why: It is the closest paper to CampusGo's claimed contribution: it names authenticity, consent, and provenance as broken properties in AI data pipelines, letting the beat present CampusGo as deployed infrastructure that operationalizes these requirements without overstating evidence about downstream model performance.
 
 **Narrative spine** (5 papers):
 
@@ -288,34 +315,86 @@
      Note: No direct internal citation edge was found; order is justified by the argument progression rather than by a verified citation chain.
      → Once campus collection looks feasible, the key question becomes not sensing alone but how authenticity, consent, and provenance should be represented for AI use. [thematic progression; no verified internal citation edge]
   3. [2024] Position: Data Authenticity, Consent, & Provenance for AI are all brok
-     Role: Anchor paper for Beat 6: AI data authenticity, consent, and provenance are currently fragmented, so any collection platform needs these design requirements baked in from the start.
+     Role: Anchor paper for Beat 6: AI data authenticity, consent, and provenance are currently fragmented, so a deployed CampusGo-style collection platform needs these requirements baked in from the start.
      Basis: thematic_progression
      Note: No direct internal citation edge was found; order is justified by the argument progression rather than by a verified citation chain.
-     → Once provenance requirements are explicit, the next question is whether intentionally collected human interaction data can actually flow into alignment pipelines; OpenAssistant provides that bridge. [thematic progression; no verified internal citation edge]
-  4. [2023] OpenAssistant Conversations -- Democratizing Large Language Model Alig
-     Role: Provides the bridge from collection to downstream use: intentionally gathered human conversations can become alignment corpora, so a CampusGo-style platform is not just sensing infrastructure but a potential data-generation pathway.
+  4. [2023] The CARE Principles and the Reuse, Sharing, and Curation of Indigenous
+     Role: Adds the stewardship boundary: contributors must remain stakeholders in how sensitive data are curated and reused, which keeps CampusGo deployed-but-scoped rather than extractive or overclaimed.
      Basis: thematic_progression
      Note: No direct internal citation edge was found; order is justified by the argument progression rather than by a verified citation chain.
-     → A usable human-data pipeline is still not enough unless contributors remain visible as ongoing stakeholders in reuse and curation decisions. [thematic progression; no verified internal citation edge]
-  5. [2023] The CARE Principles and the Reuse, Sharing, and Curation of Indigenous
-     Role: Adds the stewardship boundary: contributors must remain stakeholders in how sensitive data are curated and reused, which keeps CampusGo proposal-framed rather than extractive.
+  5. [2020] Still in Need of Norms: The State of the Data in Citizen Science
+     Role: Structured Beat 6 spine paper.
 
 **Paragraph structure**:
 
   ¶1: Campus-situated collection is technically plausible
-    Opening: "The proposal should start with feasibility only: adjacent mobile-sensing work shows that campus-scale behavioral collection is technically plausible, not that it is automatically appropriate for AI training data."
+    Opening: "The beat should start with implementation feasibility only: adjacent mobile-sensing work shows that campus-scale behavioral collection is technically plausible, not that deployment alone proves model-training value."
     - Reality mining: sensing complex social systems (2006)
     - StudentLife: assessing mental health, academic performance a (2014)
   ¶2: AI-specific provenance requirements define the proposal core
     Opening: "What turns simple sensing into a defensible proposal is the provenance layer plus a downstream use case: authenticity, consent, and governance must be designed together, and OpenAssistant shows that intentionally collected human conversations can in fact become alignment data."
     - Position: Data Authenticity, Consent, & Provenance for AI ar (2024)
-    - OpenAssistant Conversations -- Democratizing Large Language  (2023)
     - Perspective: The Power (Dynamics) of Open Data in Citizen Sc (2021)
-  ¶3: Stewardship requirements keep CampusGo proposal-framed
-    Opening: "The final move is a scope limit: stewardship principles show why CampusGo can only be presented as a motivated design direction and not as a validated intervention."
+  ¶3: Stewardship requirements keep CampusGo deployed but carefully scoped
+    Opening: "The final move is a scope limit: stewardship principles show why CampusGo can be presented as a deployed provenance-aware platform, but not as a validated intervention for downstream model gains."
     - Still in Need of Norms: The State of the Data in Citizen Sci (2020)
     - The CARE Principles and the Reuse, Sharing, and Curation of  (2023)
 
-**Writing notes**: Beat 6 should read as requirements engineering, not validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a system would need to satisfy.
+**Writing notes**: Beat 6 should read as deployed requirements engineering, not downstream validation. Start from campus feasibility, pivot to the AI-specific provenance/authenticity problem, and then use OpenAssistant as the concrete bridge showing that intentionally collected human interactions can become alignment corpora. End on governance and stewardship constraints. Do not claim that any existing paper proves CampusGo will improve downstream models; the literature only motivates what such a deployed system would need to satisfy.
+
+---
+
+## Beat 7: Competing Explanations and Honest Scoping
+
+**Anchor paper**: DEL-ToM: Inference-Time Scaling for Theory-of-Mind Reasoning via Dynamic Epistemic Logic
+  Why: DEL-ToM is the clearest scope-setting anchor because it shows social-reasoning gains from inference-time scaling alone, without changing model architecture, making it a direct competitor to any broader training-data explanation.
+
+**Narrative spine** (4 papers):
+
+  1. [2022] Self-Consistency Improves Chain of Thought Reasoning in Language Model
+     Role: Establishes the basic adversarial premise: test-time compute over multiple reasoning paths can substantially improve reasoning, so observed gains need not come from data composition alone.
+     Basis: thematic_progression
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → If simple sample-and-aggregate decoding already changes outcomes, the next question is whether richer chain-of-thought structure can explain additional gains without invoking new training data.
+  2. [2024] Faithful Logical Reasoning via Symbolic Chain-of-Thought
+     Role: Shows that strengthening reasoning structure itself via symbolic chain-of-thought can outperform standard CoT, extending the alternative-mechanism story from more compute to better inference-time scaffolding.
+     Basis: thematic_progression
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Once reasoning improves through structured test-time scaffolds, it becomes necessary to ask whether social reasoning in particular can also be unlocked this way.
+  3. [2025] DEL-ToM: Inference-Time Scaling for Theory-of-Mind Reasoning via Dynam
+     Role: Moves the competing-mechanism argument directly into Theory-of-Mind: inference-time scaling with a logic-grounded verifier improves ToM in small models, so social-reasoning gains can arise from search and verification rather than only upstream data choices.
+     Basis: thematic_progression
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → That result broadens the scope challenge: if verifier-guided scaling helps, even more elaborate meta-reasoning systems may also compete with a data-composition explanation.
+  4. [2026] Aham: A Metacognitive Architecture for Latent-Steered Theory-of-Mind i
+     Role: Extends the line to metacognitive and latent-steered reasoning systems, reinforcing that extended thinking itself is a plausible mechanism; this motivates an honest boundary that any thesis about data composition should be read at fixed model and inference-time budgets.
+     Basis: thematic_progression
+     → Taken together, these papers argue for narrowing claims to fixed-compute data-composition effects rather than treating social-reasoning gains as uniquely attributable to training data.
+
+**Paragraph structure**:
+
+  ¶1: Test-time compute and reasoning-trace design are genuine alternative explanations for performance gains.
+    Opening: "Before attributing gains to training data composition, related work should acknowledge that decoding strategy, chain-of-thought structure, process supervision, and in-context examples can each move reasoning performance substantially."
+    - Self-Consistency Improves Chain of Thought Reasoning in Lang (2022)
+    - Faithful Logical Reasoning via Symbolic Chain-of-Thought (2024)
+    - Faithful Logical Reasoning via Symbolic Chain-of-Thought (2024)
+    - Let's Verify Step by Step (2023)
+    - How Far Can In-Context Alignment Go? Exploring the State of  (2024)
+  ¶2: For social reasoning specifically, inference-time scaling, metacognitive scaffolds, steering, and process-reward RL all act as plausible competing mechanisms.
+    Opening: "The strongest scope limiter comes from work showing that Theory-of-Mind and pragmatic competence can improve through test-time verification, extended meta-reasoning, internal-state steering, or specialized reinforcement learning even without a new data-composition story."
+    - DEL-ToM: Inference-Time Scaling for Theory-of-Mind Reasoning (2025)
+    - Aham: A Metacognitive Architecture for Latent-Steered Theory (2026)
+    - CoSToM:Causal-oriented Steering for Intrinsic Theory-of-Mind (2026)
+    - Social-R1: Towards Human-like Social Reasoning in LLMs (2026)
+    - The Pragmatic Mind of Machines: Tracing the Emergence of Pra (2025)
+  ¶3: Model scale, modality, upstream dataset design, and training objectives remain additional explanations, while benchmark evidence shows persistent pragmatic gaps.
+    Opening: "A balanced scoping paragraph should therefore end by noting that larger or multimodal models, large curated pretraining corpora, and objective-level changes are all viable sources of improvement, and none erase the remaining human-like pragmatic failures."
+    - Are Vision Language Models Cross-Cultural Theory of Mind Rea (2025)
+    - Relevant answers to polar questions. (2025)
+    - Relevant answers to polar questions (2025)
+    - CCI4.0: A Bilingual Pretraining Dataset for Enhancing Reason (2025)
+    - Entropy-Aware On-Policy Distillation of Language Models (2026)
+
+**Writing notes**: Keep the tone concessive, not defensive. The point of this beat is to narrow the thesis: if later sections argue for data-composition effects, phrase them as effects observed under fixed model size and fixed inference-time budget, not as exclusive explanations of social-reasoning gains. DEL-ToM should be the main pivot because it most directly demonstrates ToM improvement from inference-time scaling alone. Self-Consistency and SymbCoT frame the broader test-time-compute and chain-of-thought alternative. The third and fourth spine positions then justify the explicit boundary: extended thinking, steering, RL, scale, and objective design are all live competitors. Also note that the evidence base here is heterogeneous and partly thin: several 2025-2026 papers are new, some are system papers, and two pairs are duplicate preprint/published versions (SymbCoT; Relevant answers to polar questions). In prose, prefer citing the published ACL and journal versions, while using the duplicates only if needed for metadata completeness.
 
 ---

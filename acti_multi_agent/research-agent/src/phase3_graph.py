@@ -27,14 +27,14 @@ from .paper_identity import (
 from .phase_contracts import ensure_gap_analysis_valid, ensure_relationship_analysis_valid
 from .prompts import RELATIONSHIP_ANALYST, GAP_SYNTHESIZER
 from .state_manager import complete_step, is_step_complete, save_state
-from .utils import atomic_write_json, load_json
+from .utils import atomic_write_json, load_json, filter_active_papers
 
 log = logging.getLogger("research_agent")
 
 BEAT_REQUIREMENTS = {
     1: {
         "name": "Model Collapse and Contamination Risk",
-        "argument_line": "line_1",
+        "argument_line": "motivation",
         "categories": ["A", "B", "C"],
         "pairs": ["A-B", "B-C"],
         "missing_titles": [
@@ -45,7 +45,7 @@ BEAT_REQUIREMENTS = {
     },
     2: {
         "name": "Partial Measurability of Web Drift",
-        "argument_line": "line_1",
+        "argument_line": "motivation",
         "categories": ["D", "H"],
         "pairs": ["D-H"],
         "missing_titles": [
@@ -56,18 +56,18 @@ BEAT_REQUIREMENTS = {
     },
     3: {
         "name": "L_auth Framework Definition",
-        "argument_line": "bridge",
+        "argument_line": "framework",
         "categories": ["D", "A"],
         "pairs": ["D-A"],
         "missing_titles": [
             "metric grounding anchor for entropy / divergence",
-            "formal bridge from metric ingredients to L_auth",
-            "scope-limit anchor showing what the metric cannot claim",
+            "fine-tuning-focused bridge from metric ingredients to L_auth",
+            "scope-limit anchor showing what the framework cannot claim",
         ],
     },
     4: {
         "name": "Fine-tuning Data Source Affects Social Reasoning",
-        "argument_line": "line_2",
+        "argument_line": "primary",
         "categories": ["F", "I", "J"],
         "pairs": ["F-I", "I-J"],
         "missing_titles": [
@@ -78,7 +78,7 @@ BEAT_REQUIREMENTS = {
     },
     5: {
         "name": "Contrastive Fine-tuning Experiment",
-        "argument_line": "line_2",
+        "argument_line": "primary",
         "categories": ["F", "I", "J"],
         "pairs": ["F-I", "I-J"],
         "missing_titles": [
@@ -88,14 +88,25 @@ BEAT_REQUIREMENTS = {
         ],
     },
     6: {
-        "name": "CampusGo as Design Proposal",
-        "argument_line": "proposal",
+        "name": "CampusGo as Deployed Core Contribution",
+        "argument_line": "core_contribution",
         "categories": ["G"],
         "pairs": [],
         "missing_titles": [
             "platform / provenance precedent for authentic data capture",
             "campus behavioral data collection precedent",
-            "proposal-scope anchor showing feasibility limits",
+            "deployed platform scope anchor showing contribution limits",
+        ],
+    },
+    7: {
+        "name": "Competing Explanations and Honest Scoping",
+        "argument_line": "adversarial",
+        "categories": ["K"],
+        "pairs": [],
+        "missing_titles": [
+            "inference-time scaling anchor for social reasoning",
+            "test-time compute or chain-of-thought explanation anchor",
+            "model-scale alternative mechanism anchor",
         ],
     },
 }
@@ -114,7 +125,7 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
         log.error("classified.json not found. Run Phase 2 first.")
         return state
 
-    papers = load_json(classified_path)
+    papers = filter_active_papers(load_json(classified_path))
     log.info(f"Phase 3: analyzing {len(papers)} classified papers")
 
     # Step 1: Build graph
@@ -358,7 +369,7 @@ def compute_graph_metrics(G: nx.DiGraph) -> dict:
 
 def category_intersection_matrix(G: nx.DiGraph) -> dict:
     """For each category pair: edge count, bridging papers, edge types."""
-    categories = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    categories = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
     cat_nodes = {}
     for cat in categories:
         cat_nodes[cat] = {n for n, d in G.nodes(data=True) if d.get("category") == cat}
@@ -395,7 +406,7 @@ def category_intersection_matrix(G: nx.DiGraph) -> dict:
 def category_statistics(papers: list[dict]) -> dict:
     """Per-category: paper count, median year, median citations, gaps."""
     import statistics
-    categories = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "X"]
+    categories = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "X"]
     stats = {}
     for cat in categories:
         cat_papers = [p for p in papers if p.get("primary_category") == cat]
@@ -468,7 +479,7 @@ def _run_gap_synthesizer(client, papers: list[dict], metrics: dict,
         retry_role = (
             GAP_SYNTHESIZER
             + "\nReturn minified JSON only. No prose, no markdown, no trailing commentary. "
-              "The JSON must contain exactly 6 beats plus a non-empty overall_assessment."
+              "The JSON must contain exactly 7 beats plus a non-empty overall_assessment."
         )
         retry_task = _build_compact_gap_synthesis_input(metrics, matrix, cat_stats)
         try:
@@ -533,7 +544,7 @@ def _build_compact_gap_synthesis_input(metrics: dict, matrix: dict, cat_stats: d
         for beat, info in BEAT_REQUIREMENTS.items()
     }
     return (
-        "Assess evidence sufficiency for exactly 6 beats.\n"
+        "Assess evidence sufficiency for exactly 7 beats.\n"
         f"Beat requirements: {json.dumps(beat_requirements, ensure_ascii=False)}\n"
         f"Category counts: {json.dumps(cat_summary, ensure_ascii=False)}\n"
         f"Sparse category pairs: {json.dumps(sparse_pairs, ensure_ascii=False)[:1800]}\n"
@@ -787,7 +798,7 @@ def _build_gap_synthesis_input(papers: list[dict], metrics: dict,
     gaps_str = "\n".join(all_gaps[:30])  # Limit to 30
 
     return (
-        f"Assess evidence sufficiency for a 6-beat research paper using this corpus of {len(papers)} papers.\n\n"
+        f"Assess evidence sufficiency for a 7-beat research paper using this corpus of {len(papers)} papers.\n\n"
         f"## Foundational Papers (highest in-degree)\n{found_str}\n\n"
         f"## Category Intersection Matrix\n{matrix_str}\n\n"
         f"## Category Statistics\n{cat_str}\n\n"

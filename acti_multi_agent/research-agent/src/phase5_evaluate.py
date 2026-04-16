@@ -15,6 +15,10 @@ from .phase_contracts import (
 )
 from .state_manager import complete_step, is_step_complete
 from .utils import atomic_write_json, load_json
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config.beat_definitions import NUM_BEATS
 
 log = logging.getLogger("research_agent")
 
@@ -38,7 +42,7 @@ def run_phase5(state: dict, state_path: str, base_dir: str, client,
         log.info("=== Phase 5.1: Data-driven scoring ===")
         data_scores = compute_data_scores(classified)
         atomic_write_json(os.path.join(analysis_dir, "data_scores.json"), data_scores)
-        log.info(f"  Evidence coverage: {data_scores['evidence_coverage']}/6 beats")
+        log.info(f"  Evidence coverage: {data_scores['evidence_coverage']}/{NUM_BEATS} beats")
         log.info(f"  Beat support counts: {data_scores.get('beat_support_counts', {})}")
         log.info(f"  Empty categories: {data_scores.get('empty_categories', data_scores['category_balance'])}")
         log.info(f"  Avg fill rate: {data_scores['avg_fill_rate']}")
@@ -66,7 +70,7 @@ def run_phase5(state: dict, state_path: str, base_dir: str, client,
     if not is_step_complete(state, "5", "aggregate"):
         log.info("=== Phase 5.3: Aggregating scores ===")
         aggregated = aggregate_reviews(reviews)
-        action = decide_action(aggregated)
+        action = decide_action(aggregated, base_dir=base_dir, data_scores=data_scores)
 
         result = {
             "iteration": iteration,
@@ -151,7 +155,7 @@ def _generate_eval_report(result: dict, base_dir: str):
 
     lines.append(f"\n## Data Metrics\n")
     lines.append(f"- Total papers: {data.get('total_papers', '?')}")
-    lines.append(f"- Evidence coverage: {data.get('evidence_coverage', '?')}/6 beats")
+    lines.append(f"- Evidence coverage: {data.get('evidence_coverage', '?')}/{NUM_BEATS} beats")
     lines.append(f"- Beat support counts: {data.get('beat_support_counts', {})}")
     lines.append(f"- Empty categories: {data.get('empty_categories', data.get('category_balance', '?'))}")
     lines.append(f"- Avg fill rate: {data.get('avg_fill_rate', '?')}")

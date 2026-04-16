@@ -81,8 +81,8 @@ def ensure_gap_analysis_valid(result: dict):
     if not isinstance(beats, list):
         errors.append("gap synthesis 'beats' must be a list")
         beats = []
-    elif len(beats) not in (5, 6):
-        errors.append(f"gap synthesis must contain 5 or 6 beats, got {len(beats)}")
+    elif len(beats) != 7:
+        errors.append(f"gap synthesis must contain exactly 7 beats, got {len(beats)}")
 
     field_observations = result.get("field_observations")
     if isinstance(field_observations, dict) and field_observations.get("error"):
@@ -114,8 +114,8 @@ def ensure_narrative_chains_valid(chains: list[dict]):
         raise PhaseContractError("narrative chains invalid: result is not a list")
 
     errors = []
-    if len(chains) not in (5, 6):
-        errors.append(f"narrative chains must contain 5 or 6 beats, got {len(chains)}")
+    if len(chains) != 7:
+        errors.append(f"narrative chains must contain exactly 7 beats, got {len(chains)}")
 
     valid_beats = 0
     hard_failures = []
@@ -221,8 +221,8 @@ def ensure_evidence_inventory_valid(result: dict):
     if not isinstance(inventory, list):
         errors.append("'evidence_inventory' must be a list")
         inventory = []
-    elif len(inventory) not in (5, 6):
-        errors.append(f"evidence inventory must contain 5 or 6 beats, got {len(inventory)}")
+    elif len(inventory) != 7:
+        errors.append(f"evidence inventory must contain exactly 7 beats, got {len(inventory)}")
 
     outline = result.get("suggested_paper_outline")
     if not isinstance(outline, dict) or not outline:

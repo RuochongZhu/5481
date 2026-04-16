@@ -2,7 +2,7 @@
 
 当前项目的主文档是：
 
-- [CURRENT_STATUS_AND_RECOMMENDATIONS.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/CURRENT_STATUS_AND_RECOMMENDATIONS.md)
+- [CURRENT_STATUS_AND_RECOMMENDATIONS.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/CURRENT_STATUS_AND_RECOMMENDATIONS.md)
 
 如果 `README` 与主文档冲突，以主文档为准。
 
@@ -55,13 +55,32 @@ python3 -m venv .venv
 
 - [main.py](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/main.py)
 - [state.json](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/state.json)
-- [CURRENT_STATUS_AND_RECOMMENDATIONS.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/CURRENT_STATUS_AND_RECOMMENDATIONS.md)
-- [RESEARCH_QUESTION.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/RESEARCH_QUESTION.md)
+- [CURRENT_STATUS_AND_RECOMMENDATIONS.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/CURRENT_STATUS_AND_RECOMMENDATIONS.md)
+- [RESEARCH_QUESTION.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/RESEARCH_QUESTION.md)
+
+## 目录结构
+
+- `src/`: 核心管线实现
+- `config/`: 检索、分类、人工覆盖配置
+- `data/`: 原始数据、解析数据、处理产物、PDF
+- `analysis/`: 当前轮分析 JSON
+- `output/`: 当前轮可读产物
+- `archive/`: 历史快照与分轮归档
+- `agent_logs/`: 运行日志
+- `docs/`: 项目说明、研究问题、历史 handoff 文档
+- `scripts/`: 本地辅助脚本
+
+## 文档入口
+
+- 当前主文档: [CURRENT_STATUS_AND_RECOMMENDATIONS.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/CURRENT_STATUS_AND_RECOMMENDATIONS.md)
+- 研究问题: [RESEARCH_QUESTION.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/RESEARCH_QUESTION.md)
+- 管线说明: [PIPELINE_EXPLAINER_FOR_PAPER_USE.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/PIPELINE_EXPLAINER_FOR_PAPER_USE.md)
+- 文档索引: [docs/README.md](/Users/zhuricardo/Desktop/GitHub/5481/acti_multi_agent/research-agent/docs/README.md)
 
 ## 历史文档
 
 以下文档仍保留，但不再是现行口径：
 
-- `ARCHITECTURE_UPGRADE_NOTES.md`
-- `API_CHAIN_SETUP.md`
-- `HANDOFF_STATUS_2026-04-09.md`
+- `docs/ARCHITECTURE_UPGRADE_NOTES.md`
+- `docs/API_CHAIN_SETUP.md`
+- `docs/HANDOFF_STATUS_2026-04-09.md`

@@ -1,0 +1,15 @@
+# Docs Index
+
+项目说明文档集中放在这个目录。
+
+当前优先阅读顺序：
+
+- `CURRENT_STATUS_AND_RECOMMENDATIONS.md`
+- `RESEARCH_QUESTION.md`
+- `PIPELINE_EXPLAINER_FOR_PAPER_USE.md`
+
+历史兼容文档：
+
+- `ARCHITECTURE_UPGRADE_NOTES.md`
+- `API_CHAIN_SETUP.md`
+- `HANDOFF_STATUS_2026-04-09.md`

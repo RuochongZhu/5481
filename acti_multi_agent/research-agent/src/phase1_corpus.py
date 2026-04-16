@@ -22,8 +22,8 @@ from .utils import atomic_write_json, load_json
 log = logging.getLogger("research_agent")
 
 CORE_TARGETS = {
-    "A": 30, "B": 17, "C": 12, "D": 22, "E": 22,
-    "F": 17, "G": 12, "H": 12, "I": 12, "J": 12,
+    "A": 8, "B": 17, "C": 5, "D": 22, "E": 10,
+    "F": 17, "G": 12, "H": 12, "I": 12, "J": 12, "K": 8,
 }
 
 CATEGORY_KEYWORDS = {
@@ -105,6 +105,18 @@ CATEGORY_KEYWORDS = {
         ],
         "secondary": ["mixture effect", "quality versus quantity", "social reasoning", "socialiqa", "empathy"],
     },
+    "K": {
+        "anchors": [
+            "inference-time scaling", "test-time compute", "chain-of-thought",
+            "extended thinking", "reasoning effort", "model scale",
+            "inference scaling", "thinking tokens",
+        ],
+        "secondary": [
+            "social reasoning", "theory of mind", "social cognition",
+            "reasoning benchmark", "compute scaling", "emergence",
+            "deliberate reasoning", "self-consistency",
+        ],
+    },
 }
 
 CATEGORY_GROUP_RULES = {
@@ -132,6 +144,11 @@ CATEGORY_GROUP_RULES = {
         ["lora", "qlora", "fine-tune", "fine-tuning", "instruction tuning", "adapter"],
         ["data composition", "data mixture", "quality", "quantity", "ablation", "training data", "synthetic data"],
         ["social reasoning", "socialiqa", "social commonsense", "empathy", "dialogue", "social intelligence"],
+    ],
+    "K": [
+        ["inference-time scaling", "test-time compute", "chain-of-thought", "extended thinking", "reasoning"],
+        ["social reasoning", "theory of mind", "social cognition", "benchmark", "evaluation"],
+        ["model scale", "compute", "emergence", "performance", "gain", "improvement"],
     ],
 }
 
@@ -614,7 +631,7 @@ def _select_core_corpus(corpus: list[dict], config_dir: str) -> list[dict]:
     """Build a focused top corpus for Phase 2 instead of classifying the full 4k+ papers.
 
     Strategy:
-    - Score each paper against A-J taxonomy using domain keywords
+    - Score each paper against A-K taxonomy using domain keywords
     - Select the top papers per category according to CORE_TARGETS
     - Deduplicate across categories, then fill remaining slots from global scores
     """

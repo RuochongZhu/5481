@@ -1,0 +1,111 @@
+# Evidence Sufficiency Report
+
+*Assessment of literature support for each beat of the paper*
+
+---
+
+## Beat 1: Model Collapse and Contamination Risk 🟡 adequate
+
+Supporting papers: 40
+Key papers present: AI models collapse when trained on recursively generated data, Self-Correcting Self-Consuming Loops for Generative Model Training, Self-Improving Diffusion Models with Synthetic Data, AI-generated data contamination erodes pathological variability and diagnostic reasoning
+Key papers MISSING: The Curse of Recursion: Training on Generated Data Makes Models Forget
+Weakness: The support is real but mostly controlled, recent, and fragmented. Much of A is image/medical or analytical, while B/C emphasize contamination detection and prevalence rather than downstream LM harm at web scale. This is enough to motivate urgency, not to serve as direct proof for post-training claims.
+
+Evidence chain:
+  → Controlled recursive-training papers establish that self-consumption can damage distributional support or diversity.
+  → Contamination/detection studies show AI-generated material is entering real corpora, making the risk operationally relevant even if prevalence and collapse thresholds remain uncertain.
+
+---
+
+## Beat 2: Web Drift Is Partially Measurable, Broad Degradation Still Unproven 🟡 adequate
+
+Supporting papers: 24
+Key papers present: The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data, category-D web drift/authenticity measurement papers, category-H web curation and corpus-quality papers
+Key papers MISSING: large-scale longitudinal web contamination measurement linked to downstream model quality (missing from corpus)
+Weakness: This beat is only supported in its narrower form. The corpus can justify that drift and quality variation are measurable and that curation matters, but the D-H link is thin and the literature does not directly prove broad web-scale training-data degradation over time.
+
+Evidence chain:
+  → Dataset-quality and curation papers show that web data quality is heterogeneous and measurable enough to matter for training outcomes.
+  → Contamination/prevalence papers suggest drift is happening, but they stop short of proving a global web-wide degradation trend in downstream LLM performance.
+
+---
+
+## Beat 3: L_auth as a Descriptive Framework, Not a Validated Law 🟡 adequate
+
+Supporting papers: 28
+Key papers present: AI models collapse when trained on recursively generated data, Self-Correcting Self-Consuming Loops for Generative Model Training, category-D authenticity/drift measurement papers, The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data
+Key papers MISSING: The Curse of Recursion: Training on Generated Data Makes Models Forget, stage-agnostic authenticity-effect validation paper spanning pretraining and post-training (missing from corpus)
+Weakness: The framework is plausible, but the literature does not validate L_auth as a general law. Cross-category integration is weak, most papers are very recent, and there is little direct evidence that an authenticity variable behaves consistently across stages, scales, or domains.
+
+Evidence chain:
+  → Collapse and contamination studies justify treating authenticity as a meaningful property of training data rather than a purely philosophical label.
+  → Measurement and curation papers support using authenticity descriptively in fine-tuning settings, but not as a universal, stage-agnostic predictor.
+
+---
+
+## Beat 4: Provenance Matters Most on Socially Grounded Tasks; AI Feedback Still Helps on Bounded Tasks 🟡 adequate
+
+Supporting papers: 42
+Key papers present: category-F socially grounded post-training papers, category-I recent human-vs-AI feedback papers, category-J provenance-sensitive evaluation papers
+Key papers MISSING: Constitutional AI: Harmlessness from AI Feedback, direct provenance-controlled comparison on socially grounded tasks (missing from corpus)
+Weakness: This is the strongest substantive line, but it still supports a narrower claim than the full thesis. F-J is the best-connected primary-evidence cluster, yet the corpus does not cleanly isolate provenance from other factors such as task design, annotation quality, or model family. The AI-feedback side is better supported on bounded tasks than on open-ended social grounding.
+
+Evidence chain:
+  → Higher-citation post-training literature suggests that socially grounded capabilities benefit from human-origin or interaction-grounded data.
+  → Recent AI-feedback/self-improvement work indicates synthetic supervision can work well on bounded or rubric-heavy tasks, creating a meaningful contrast rather than a universal anti-synthetic claim.
+
+---
+
+## Beat 5: Pilot Experiment at Fixed Inference-Time Compute Gives Directional, Not Definitive, Support 🟠 weak
+
+Supporting papers: 42
+Key papers present: category-F socially grounded post-training papers, category-I recent provenance/authenticity-sensitive fine-tuning papers, category-J task-evaluation papers
+Key papers MISSING: direct fixed-inference-compute provenance comparison paper on socially grounded tasks (missing from corpus), Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters
+Weakness: The corpus can make the pilot plausible, but it cannot strongly validate it. There is little direct literature matching the exact design: fixed inference-time compute, provenance-controlled fine-tuning data, and socially grounded evaluation. Because K is sparse, alternative explanations from test-time compute are not well bounded.
+
+Evidence chain:
+  → Existing post-training and evaluation work provides prior reason to expect provenance to matter on socially grounded tasks.
+  → But the literature lacks a direct benchmark isolating provenance at fixed inference-time compute, so the pilot should be framed as directional support only.
+
+---
+
+## Beat 6: CampusGo as Deployed Provenance-Aware Collection Platform 🟡 adequate
+
+Supporting papers: 11
+Key papers present: category-G deployed data-collection/infrastructure papers, secondary E/I/J papers linking infrastructure choices to data quality and evaluation
+Key papers MISSING: end-to-end platform deployment paper tied to downstream model improvement on social tasks (missing from corpus)
+Weakness: The corpus is sufficient to support buildability and deployment value, not downstream model gains. G has credible implementation precedent, but the graph is weakly connected to the primary-evidence clusters, so CampusGo should be presented as an operational contribution rather than proof of training efficacy.
+
+Evidence chain:
+  → Infrastructure papers show that provenance-aware data collection systems are feasible and can be deployed in practice.
+  → What they do not establish is that deployment alone improves downstream socially grounded model behavior without separate modeling evidence.
+
+---
+
+## Beat 7: Competing Explanations and Honest Scoping 🟠 weak
+
+Supporting papers: 5
+Key papers present: category-K inference-time scaling papers, bridging category-I/J papers touching reasoning-time or prompting effects
+Key papers MISSING: Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters, Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+Weakness: This is the most under-covered beat. K is small, recent, and only lightly integrated with the rest of the graph. That is enough to require honest scoping, but not enough to convincingly apportion causal weight among data composition, chain-of-thought, model scale, and test-time compute.
+
+Evidence chain:
+  → A small alternative-mechanisms literature shows that inference-time scaling and reasoning scaffolds can materially improve outcomes without changing training data.
+  → Because that literature is thin in this corpus, these mechanisms should be treated as genuine alternatives and scope limits, not brushed aside.
+
+---
+
+## Overall Assessment
+The corpus is sufficient for a cautious paper, not for a sweeping causal one. Motivation is adequately covered, especially the risk of recursive contamination, and the framework beat is defensible if L_auth is presented strictly as a descriptive lens. The strongest support is for the narrower primary claim that provenance appears especially valuable for socially grounded post-training tasks, while AI feedback can still work on bounded tasks. The weakest points are Beat 5 and Beat 7: the literature does not directly validate a fixed-inference-compute provenance effect, and it under-covers competing mechanisms such as test-time scaling and chain-of-thought. The graph structure reinforces this caution: only 54 edges across 135 nodes, 95 components, and 77 isolated papers indicate a fragmented evidence base with limited synthesis across categories.
+
+## Missing Papers (search suggestions)
+
+- **The Curse of Recursion: Training on Generated Data Makes Models Forget**: This is a canonical LM-side recursion/collapse paper that would materially strengthen Beat 1 and sharpen the motivation for treating authenticity as consequential rather than merely intuitive. It also helps anchor Beat 3 by connecting collapse arguments more directly to language-model training.
+  Search: `Search Semantic Scholar or Google Scholar for the exact title plus 'Shumailov recursion generated data language models'.`
+- **Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters**: This is the single most important missing paper for Beat 7 and also a major limiter on Beat 5. It directly supports the alternative explanation that improvements may come from inference-time scaling rather than training-data composition.
+  Search: `Search for the exact title or keywords 'test-time compute scaling LLM optimally model parameters'.`
+- **Chain-of-Thought Prompting Elicits Reasoning in Large Language Models**: A core chain-of-thought paper is important for honest scoping. Without it, Beat 7 under-represents a major non-data mechanism that can improve socially grounded or reasoning-adjacent evaluations at inference time.
+  Search: `Search for the exact title or 'Wei chain of thought prompting large language models'.`
+
+## Strongest Narrative Thread
+AI models collapse when trained on recursively generated data -> The RefinedWeb Dataset for Falcon LLM: Outperforming Curated Corpora with Web Data -> category-F/J socially grounded post-training evidence favoring provenance-sensitive data -> CampusGo as operational collection infrastructure

@@ -2,29 +2,29 @@
 
 Iteration: 1
 
-Overall score: **0.850**
+Overall score: **0.853**
 
 ## Dimension Scores
 
 | Dimension | Score | Weight |
 |-----------|-------|--------|
-| narrative | 0.84 | 25% |
+| narrative | 0.82 | 25% |
 | contradiction | 0.86 | 15% |
-| gap | 0.86 | 20% |
-| coverage | 0.81 | 25% |
-| honesty | 0.91 | 15% |
+| gap | 0.91 | 20% |
+| coverage | 0.82 | 25% |
+| honesty | 0.88 | 15% |
 
 ## Data Metrics
 
-- Total papers: 159
-- Evidence coverage: 6/6 beats
-- Beat support counts: {'1': 61, '2': 18, '3': 44, '4': 34, '5': 34, '6': 11}
+- Total papers: 133
+- Evidence coverage: 7/7 beats
+- Beat support counts: {'1': 40, '2': 17, '3': 27, '4': 38, '5': 38, '6': 9, '7': 5}
 - Empty categories: 0
-- Avg fill rate: 0.862
-- X papers: 9
-- X ratio: 0.054
+- Avg fill rate: 0.878
+- X papers: 2
+- X ratio: 0.015
 
 ## Decision
 
 Action: **done**
-Reason: Overall score 0.85 ≥ 0.75. Pipeline complete.
+Reason: Overall score 0.853 ≥ 0.85. Pipeline complete.

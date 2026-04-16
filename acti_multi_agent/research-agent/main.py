@@ -7,7 +7,7 @@ Domain: AI data quality / model collapse / synthetic data contamination / data a
 
 Pipeline:
   Phase 1    — Corpus Assembly (OpenAlex + S2 + arXiv + manual imports)
-  Phase 2    — Classification (A-J taxonomy via Literature Scanner agent)
+  Phase 2    — Classification (A-K taxonomy via Literature Scanner agent)
   Phase 2.5  — Deep Extraction (7 structured fields per paper)
   Phase 3    — Relationship Graph + Evidence Sufficiency Check
   Phase 3.5  — Narrative Chains (per-beat writing-ready paper ordering)
@@ -159,18 +159,19 @@ def check_deps(state: dict, phase: str) -> bool:
 
 def invalidate_outputs(base_dir: str, start_phase: str) -> None:
     """Delete generated artifacts for a phase and everything downstream."""
+    logger = globals().get("log", logging.getLogger(__name__))
     start_idx = PHASE_ORDER.index(start_phase)
     for phase in PHASE_ORDER[start_idx:]:
         for rel_path in PHASE_OUTPUTS.get(phase, []):
             path = os.path.join(base_dir, rel_path)
             if os.path.exists(path):
                 os.remove(path)
-                log.info(f"Removed stale artifact: {rel_path}")
+                logger.info(f"Removed stale artifact: {rel_path}")
         for rel_dir in PHASE_OUTPUT_DIRS.get(phase, []):
             path = os.path.join(base_dir, rel_dir)
             if os.path.isdir(path):
                 shutil.rmtree(path)
-                log.info(f"Removed stale artifact directory: {rel_dir}")
+                logger.info(f"Removed stale artifact directory: {rel_dir}")
 
 
 def run_phase(phase: str, state: dict, client, oa, s2, arxiv, lens, resume: bool = False):
@@ -306,7 +307,7 @@ def run_auto_loop(state: dict, client, oa, s2, arxiv, lens, max_iterations: int 
     from src.scoring import decide_action, aggregate_reviews
     from src.utils import load_json
 
-    target = float(os.environ.get("TARGET_SCORE", "0.80"))
+    target = float(os.environ.get("TARGET_SCORE", "0.85"))
     log.info(f"Auto-loop: target={target}, max_iterations={max_iterations}")
 
     for iteration in range(1, max_iterations + 1):
@@ -314,22 +315,10 @@ def run_auto_loop(state: dict, client, oa, s2, arxiv, lens, max_iterations: int 
         log.info(f"  AUTO-LOOP ITERATION {iteration}/{max_iterations}")
         log.info(f"{'#'*60}\n")
 
-        # Step 1: Run full pipeline (skips completed phases)
+        # Step 1: Run full pipeline (includes Phase 5 when pending)
         state = run_full_pipeline(state, client, oa, s2, arxiv, lens)
 
-        # Step 2: Reset Phase 5 for fresh evaluation
-        for step in state["phases"].get("5", {}).get("steps", {}):
-            state["phases"]["5"]["steps"][step]["status"] = "pending"
-        state["phases"]["5"]["status"] = "pending"
-        save_state(STATE_PATH, state)
-
-        # Step 3: Run Phase 5 evaluation
-        from src.phase5_evaluate import run_phase5
-        state = start_phase(state, STATE_PATH, "5")
-        state = run_phase5(state, STATE_PATH, BASE_DIR, client, iteration=iteration)
-        state = complete_phase(state, STATE_PATH, "5")
-
-        # Step 4: Read evaluation result
+        # Step 2: Read evaluation result from the Phase 5 pass that just completed
         eval_path = os.path.join(BASE_DIR, "analysis", "evaluation_result.json")
         if not os.path.exists(eval_path):
             log.error("Evaluation result not found")
@@ -389,10 +378,10 @@ def show_status(state: dict):
 
     phase_labels = {
         "1": "Corpus Assembly",
-        "2": "Classification (A-J)",
+        "2": "Classification (A-K)",
         "2.5": "Deep Extraction",
         "3": "Graph + Evidence Check",
-        "3.5": "Narrative Chains (6-beat)",
+        "3.5": "Narrative Chains (7-beat)",
         "3.7": "Contradiction Map",
         "4": "Evidence Inventory",
         "5": "Evaluation (target ≥ 0.85, honesty ≥ 0.80)",
@@ -451,44 +440,48 @@ def show_status(state: dict):
 def demo_mode():
     """Print architecture overview without API calls."""
     print("\n" + "="*60)
-    print("  RESEARCH AGENT PIPELINE v3.0 — 6-BEAT DUAL-ARGUMENT-LINE")
+    print("  RESEARCH AGENT PIPELINE v3.1 — 7-BEAT PROVENANCE + ADVERSARIAL")
     print("="*60)
     print("""
-  Goal: Collect targeted evidence to support a 6-beat paper thesis
-  with dual argument lines, then organize it into writing-ready
+  Goal: Collect targeted evidence to support a 7-beat paper thesis,
+  surface competing mechanisms honestly, then organize it into writing-ready
   narrative chains with contradiction awareness.
 
   Paper Thesis:
   Training data authenticity, as captured by the proposed L_auth
-  framework, systematically influences model quality — particularly
-  on socially grounded tasks. Two independent argument lines support
-  this claim.
+  framework, influences post-training outcomes on socially grounded
+  tasks. CampusGo operationalizes this as a provenance-aware collection
+  platform. Inference-time scaling remains a genuine competing mechanism.
 
-  Dual-Argument-Line Structure (6 Beats):
-  ────────────────────────────────────────
+  7-Beat Structure:
+  ────────────────
 
-  Argument Line 1 — Pretraining layer (risk argument):
+  Motivation:
     Beat 1 (§2 Collapse): Recursive collapse risk + contamination + detection limits
       → Categories A, B, C
     Beat 2 (§4 Web Drift): Partial measurability of web drift
       → Categories D, H
 
-  Bridge:
-    Beat 3 (§3 L_auth): Stage-agnostic descriptive framework (D1-D4)
+  Framework:
+    Beat 3 (§3 L_auth): Fine-tuning-focused descriptive framework (D1-D4)
       → Categories D, A
 
-  Argument Line 2 — Fine-tuning layer (experimental argument):
+  Primary Evidence:
     Beat 4 (§5 Social Reasoning): Data provenance affects social reasoning
       → Categories F, I, J
     Beat 5 (§5 Experiment): Contrastive fine-tuning pilot study
       → Categories F, I, J
 
-  Proposal:
-    Beat 6 (§6 CampusGo): Motivated design direction for authentic data
+  Core Contribution:
+    Beat 6 (§6 CampusGo): Deployed provenance-aware collection platform
       → Category G
 
-  CRITICAL: Line 1 and Line 2 have independent evidence bases.
-  Never use collapse papers (A) to support fine-tuning claims (4-5).
+  Adversarial Scoping:
+    Beat 7 (§6.2 Limits): Competing explanations such as inference-time scaling
+      → Category K
+
+  CRITICAL: Motivation beats frame the problem but do not directly prove the
+  primary line. Beat 7 must surface real alternatives, not dismiss them.
 
   9-Phase Pipeline:
   ─────────────────
@@ -499,7 +492,7 @@ def demo_mode():
     → Deduplicate → Target: 180-220 papers
 
   Phase 2    Classification (ANTHROPIC_API_KEY)
-    → Literature Scanner: classify into A-J (10 categories)
+    → Literature Scanner: classify into A-K (11 categories)
     → Batch 10 papers/call, resumable
 
   Phase 2.5  Deep Extraction (ANTHROPIC_API_KEY)
@@ -507,7 +500,7 @@ def demo_mode():
 
   Phase 3    Relationship Graph + Evidence Check
     → NetworkX citation graph + graph metrics
-    → Gap Synthesizer: assess 6-beat sufficiency
+    → Gap Synthesizer: assess 7-beat sufficiency
 
   Phase 3.5  Narrative Chains (ANTHROPIC + S2)
     → Full pairwise citation expansion
@@ -519,7 +512,7 @@ def demo_mode():
     → Severity rating: critical / moderate / minor
 
   Phase 4    Evidence Inventory + Final Reports
-    → Structured evidence list per beat (6 beats)
+    → Structured evidence list per beat (7 beats)
 
   Phase 5    Evaluation (target ≥ 0.85, honesty ≥ 0.80)
     → 5 reviewers × STORM debate → aggregate → auto-backtrack
@@ -588,7 +581,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-iterations", type=int, default=5,
                         help="Max iterations for --auto mode (default: 5)")
     parser.add_argument("--target-score", type=float, default=None,
-                        help="Target overall score for --auto mode (default: from .env or 0.80)")
+                        help="Target overall score for --auto mode (default: from .env or 0.85)")
     parser.add_argument("--import-file", dest="import_file", type=str,
                         help="Import CSV/BibTeX file into data/raw/")
     parser.add_argument("--demo", action="store_true",

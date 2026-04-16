@@ -24,6 +24,7 @@ CAT_NAMES = {
     "E": "Data Quality & Curation", "F": "Human Data & RLHF",
     "G": "Platform & Provenance", "H": "Temporal Web Quality",
     "I": "Social Reasoning Benchmarks", "J": "Fine-tune Ablation",
+    "K": "Competing Mechanisms",
     "X": "Uncategorized",
 }
 
@@ -34,12 +35,13 @@ BEAT_CATS = {
     "Beat 4: Social Reasoning": ["F", "I", "J"],
     "Beat 5: Experiment": ["F", "I", "J"],
     "Beat 6: CampusGo": ["G"],
+    "Beat 7: Competing Mechanisms": ["K"],
 }
 
 CAT_COLORS = {
     "A": "#e74c3c", "B": "#e67e22", "C": "#f1c40f", "D": "#2ecc71",
     "E": "#1abc9c", "F": "#3498db", "G": "#9b59b6", "H": "#e91e63",
-    "I": "#00bcd4", "J": "#ff9800", "X": "#95a5a6",
+    "I": "#00bcd4", "J": "#ff9800", "K": "#6c5ce7", "X": "#95a5a6",
 }
 
 
@@ -207,7 +209,7 @@ def v3_beat_heatmap(classified: list[dict], fig_dir: str) -> str:
     import numpy as np
 
     beats = list(BEAT_CATS.keys())
-    cats = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    cats = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
 
     matrix = np.zeros((len(beats), len(cats)))
     for i, (beat_name, beat_cats) in enumerate(BEAT_CATS.items()):
@@ -252,7 +254,7 @@ def v4_publication_timeline(classified: list[dict], fig_dir: str) -> str:
     """Interactive timeline showing publication year distribution by category."""
     import plotly.graph_objects as go
 
-    cats = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    cats = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
     years = sorted(set(p.get("year", 0) for p in classified if p.get("year", 0) > 2015))
 
     if not years:

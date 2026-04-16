@@ -10,7 +10,7 @@ from .api_client import agent_run_json, BRAIN_PHASE3_CONTRADICTION
 from .phase_contracts import ensure_contradictions_valid
 from .prompts import CONTRADICTION_MAPPER
 from .state_manager import complete_step, is_step_complete
-from .utils import atomic_write_json, load_json
+from .utils import atomic_write_json, load_json, filter_active_papers
 
 log = logging.getLogger("research_agent")
 
@@ -24,6 +24,7 @@ TYPE_PRIORITY = {
     "scope_disagreement": 1,
     "methodological_tension": 2,
     "implicit_tension": 3,
+    "competing_mechanism": 4,
 }
 
 FALLBACK_FOCUS_HEURISTICS = {
@@ -207,7 +208,7 @@ FALLBACK_FOCUS_HEURISTICS = {
             "This keeps Beat 6 from overselling platform value or synthetic substitution. Synthetic instruction pipelines can work well for many tasks, while socially grounded reasoning may still expose missing human signals."
         ),
         "handling": (
-            "Write Beat 6 as a targeted platform proposal for high-value data niches, not a blanket claim that all future training must shift away from web/synthetic mixtures."
+            "Write Beat 6 as a deployed but carefully scoped platform contribution for high-value data niches, not a blanket claim that all future training must shift away from web or synthetic mixtures."
         ),
         "unresolved": [
             "Which downstream tasks actually benefit from the proposed human-grounded data collection pipeline rather than generic synthetic instruction expansion.",
@@ -276,6 +277,38 @@ FALLBACK_FOCUS_HEURISTICS = {
         ),
         "unresolved": [
             "Whether observed social reasoning gains come from genuinely new human signal or from improved task formatting and instruction mixtures.",
+        ],
+    },
+    ("K",): {
+        "question": "Does inference-time scaling reduce the importance of training data quality for social reasoning?",
+        "type": "competing_mechanism",
+        "severity": "critical",
+        "beat": 7,
+        "side_a_keywords": [
+            "inference-time scaling",
+            "test-time compute",
+            "chain-of-thought",
+            "extended thinking",
+            "reasoning effort",
+            "model scale",
+        ],
+        "side_b_keywords": [
+            "data composition",
+            "provenance",
+            "human data",
+            "social reasoning",
+            "fine-tuning",
+            "alignment data",
+        ],
+        "relevance": (
+            "This is the main adversarial scope limiter: if inference-time scaling explains social-reasoning gains, the thesis must narrow itself to fixed-compute data-composition effects."
+        ),
+        "handling": (
+            "State explicitly that inference-time scaling is a genuine competing mechanism and scope L_auth to fixed-compute post-training effects when needed."
+        ),
+        "unresolved": [
+            "How much of the observed social-reasoning improvement is attributable to training-data composition versus extra inference-time compute.",
+            "Whether model-scale and inference-time scaling interact with provenance-sensitive data rather than replacing its effects entirely.",
         ],
     },
 }
@@ -378,6 +411,14 @@ CONTRADICTION_FOCUS_CONFIGS = [
             "Prefer direct tensions between social-benchmark weakness and data-composition successes, not generic dialogue papers."
         ),
     },
+    {
+        "categories": ["K"],
+        "question": "Does inference-time scaling reduce the importance of training data quality for social reasoning?",
+        "priority_papers": [],
+        "guidance": (
+            "Treat inference-time scaling, chain-of-thought, extended thinking, and model-scale gains as genuine competing mechanisms rather than side notes."
+        ),
+    },
 ]
 
 
@@ -394,7 +435,7 @@ def run_phase3_7(state: dict, state_path: str, base_dir: str, client) -> dict:
         log.error("classified.json not found. Run Phase 2 first.")
         return state
 
-    classified = load_json(classified_path)
+    classified = filter_active_papers(load_json(classified_path))
     log.info(f"Phase 3.7: contradiction mapping for {len(classified)} papers")
 
     # Step 1: Identify contradictions per focus pair
@@ -887,6 +928,14 @@ def _postprocess_contradiction_result(result: dict, categories: list[str]) -> di
             caveats.append(
                 "State explicitly that the corpus does not directly show AI-feedback or self-alignment failing on social-reasoning tasks; that domain restriction remains a hypothesis, not an established result."
             )
+        if category_key == ("K",):
+            item["argument_line"] = "adversarial"
+            item["beat_affected"] = 7
+            if item.get("type") not in TYPE_PRIORITY:
+                item["type"] = "competing_mechanism"
+            caveats.append(
+                "Treat inference-time scaling as a genuine competing mechanism and scope L_auth to fixed-compute data-composition effects unless direct evidence says otherwise."
+            )
 
         if caveats:
             existing = handling.lower()
@@ -937,6 +986,7 @@ def _focus_side_labels(categories: list[str]) -> tuple[str, str]:
         ("F", "J"): ("synthetic supervision works papers", "human-grounded limits papers"),
         ("B", "E", "H"): ("contamination-risk papers", "filtering / documentation limiters"),
         ("I", "J"): ("social-reasoning weakness papers", "data-composition intervention papers"),
+        ("K",): ("inference-time scaling papers", "data-composition scope papers"),
     }
     return mapping.get(tuple(categories), ("side A papers", "side B papers"))
 
@@ -981,6 +1031,11 @@ def _build_structural_limitations(classified: list[dict], focus_evidence_balance
     ):
         limitations.append(
             "The corpus contains strong AI-feedback and self-alignment success papers, but it does not directly show those methods failing on social-reasoning tasks; that scope boundary is still hypothetical."
+        )
+
+    if "Does inference-time scaling reduce the importance of training data quality for social reasoning?" in focus_evidence_balance:
+        limitations.append(
+            "Category K papers must be treated as adversarial scope evidence; do not write as if data provenance is the only plausible mechanism for social-reasoning gains."
         )
 
     limitations.append(
@@ -1060,6 +1115,7 @@ def _build_fallback_contradiction(heuristic: dict, index: int, left: dict, right
         "id": f"H{index}",
         "type": heuristic.get("type", "scope_disagreement"),
         "severity": heuristic.get("severity", "moderate"),
+        "argument_line": "adversarial" if heuristic.get("beat") == 7 else "cross-line",
         "question": heuristic.get("question", "What is the strongest scope-limiting tension here?"),
         "paper_a": {
             "paperId": left_paper.get("paperId", ""),
