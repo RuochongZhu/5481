@@ -6,52 +6,49 @@
 
 ## Executive Summary
 
-1. F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap? → Are rural/small-town transport gaps structurally unavoidable, or can multimodal institutional design make substitutes sufficient?
-   Handling: State explicitly that the thesis concerns small-town university contexts where multimodal integration is weak or absent, not all rural/small-town settings. Distinguish commercial rideshare underservice from overall mobility underservice. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
-2. F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? → Can endorsement design inside an existing reputation system sufficiently mitigate bias, or are rating systems structurally unreliable as fair trust devices?
-   Handling: Treat endorsement-based fixes as partial mitigation only. If the thesis uses ratings, it should explicitly acknowledge structural fairness risks and not claim that better endorsements alone make the system fair. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
-3. F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts? → Does self-tracking gamification for sustainability translate safely to peer-service mobility coordination, or can it slide into quasi-labor governance and precarity?
-   Handling: Restrict gamification to self-tracking or voluntary community recognition, not to ride assignment, labor substitution, or obligation management. Explicitly state that CampusRide is not using gamification to govern labor-like performance or substitute for formal employment protections. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
-4. F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)? → Does official participation in community chat spaces improve coordination, or does it undermine the private autonomy that makes those spaces effective?
-   Handling: Differentiate use cases. For emergency alerts or verified safety information, institutional participation may help. For peer exchange, dispute resolution, and reputation-sensitive coordination, preserve private or peer-governed channels. Explicitly avoid importing platform-labor style monitoring into community spaces. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
-5. F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk? → Can a safety platform claim comprehensive protection, or do persistent gaps imply that any single trust primitive—especially identity verification—has limited protective power?
-   Handling: Avoid 'comprehensive safety' language around campus verification. Frame it as partial risk mitigation with known blind spots, especially for harassment, coercion, and insider misuse. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
-6. F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? → Are rating-system fairness failures mainly technical bugs that feature design can repair, or do they stem from deeper power asymmetries that technical patches alone cannot solve?
-   Handling: Acknowledge that anti-retaliation mechanics address only one layer of fairness. Pair any technical rating design with governance commitments on moderation, transparency, limited discretion, and recourse. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+1. F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap? → Are small-town universities necessarily underserved by commercial rideshare, or can university-run transit already satisfy a substantial share of mobility demand?
+   Handling: Narrow the motivation claim to campuses lacking reliable university transit, especially for off-hours, off-campus, irregular, or newcomer-oriented trips. Explicitly distinguish 'no substitute exists' from 'existing substitute is partial or poorly matched to certain trip types.' Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
+2. F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk? → Does a campus-bounded identity layer meaningfully exclude unsafe outsiders, or does it merely create the appearance of a bounded community while remaining porous to external observation and spoofing?
+   Handling: Avoid presenting institutional or campus-bounded access as a safety guarantee. State clearly that affiliation/location gates are low-assurance filters and require additional protections such as abuse reporting, minimal profile exposure, audit trails, and incident-response procedures. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
+3. F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)? → Are grassroots WeChat groups already adequate for complex collective coordination, making the need for a dedicated platform more context-limited than the thesis suggests?
+   Handling: State clearly which properties of transport coordination make it harder than the risk-communication settings in this literature: e.g., repeated matching, route optimization, no-show handling, liability, or temporal precision. Without that specificity, the formalization step looks under-justified. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+4. F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? → Can improved endorsement and reputation signals make digital rating systems sufficiently fair in practice, or are these systems structurally untrustworthy because of underlying power asymmetries?
+   Handling: Avoid claiming that better rating mechanics fully solve fairness. Position design interventions as harm reduction within a system that still requires governance constraints, appeals, and limits on platform power. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+5. F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts? → Do challenge-based mechanics reliably increase participation in mobility contexts, or do they provoke resistance once participants experience them as labor control?
+   Handling: Position gamified challenges only as voluntary community campaigns, not as mechanisms that govern ride availability, driver reputation, or access to platform benefits. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+6. F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap? → Could demand-responsive transit, rather than a campus-specific rideshare formalization, solve mobility gaps in low-density university settings?
+   Handling: Recast the thesis from 'commercial rideshare leaves a unique gap' to 'some small-town campuses need a coordination layer because neither commercial rideshare nor local DRT/shuttle systems adequately cover specific needs.' Compare CampusRide explicitly against DRT/shuttle alternatives. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
 
 ## Argument-Line Coverage
 
 - Motivation / Background (count=5)
-  Focuses: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap? | F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-  Representative: Are rural/small-town transport gaps structurally unavoidable, or can multimodal institutional design make substitutes sufficient?
+  Focuses: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
+  Representative: Are small-town universities necessarily underserved by commercial rideshare, or can university-run transit already satisfy a substantial share of mobility demand?
 - Design Primitives Framework (count=2)
-  Focuses: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap? | F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-  Representative: Is low-density demand itself the reason substitutes fail, or can demand-managed shared mobility perform well enough to cover the gap?
-- Cross-line (count=1)
-  Focuses: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-  Representative: Does official participation in community chat spaces improve coordination, or does it undermine the private autonomy that makes those spaces effective?
-- Adversarial / Algorithmic Management Critique (count=19)
-  Focuses: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? | F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts? | F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk? | F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-  Representative: Can endorsement design inside an existing reputation system sufficiently mitigate bias, or are rating systems structurally unreliable as fair trust devices?
+  Focuses: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+  Representative: Do institutionally seeded student networks produce trustworthy coordination because members are identifiable, or can campus coordination also occur under anonymity, leaving accountability unresolved?
+- Adversarial / Algorithmic Management Critique (count=22)
+  Focuses: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk? | F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)? | F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? | F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
+  Representative: Does a campus-bounded identity layer meaningfully exclude unsafe outsiders, or does it merely create the appearance of a bounded community while remaining porous to external observation and spoofing?
 
 ## Focus Coverage
 
 - [A, B] F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap? (count=5)
-  Representative: Are rural/small-town transport gaps structurally unavoidable, or can multimodal institutional design make substitutes sufficient?
-- [H] F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? (count=6)
-  Representative: Can endorsement design inside an existing reputation system sufficiently mitigate bias, or are rating systems structurally unreliable as fair trust devices?
-- [G, J] F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts? (count=6)
-  Representative: Does self-tracking gamification for sustainability translate safely to peer-service mobility coordination, or can it slide into quasi-labor governance and precarity?
+  Representative: Are small-town universities necessarily underserved by commercial rideshare, or can university-run transit already satisfy a substantial share of mobility demand?
+- [E, F] F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk? (count=6)
+  Representative: Does a campus-bounded identity layer meaningfully exclude unsafe outsiders, or does it merely create the appearance of a bounded community while remaining porous to external observation and spoofing?
 - [C, D] F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)? (count=6)
-  Representative: Does official participation in community chat spaces improve coordination, or does it undermine the private autonomy that makes those spaces effective?
-- [E, F] F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk? (count=4)
-  Representative: Can a safety platform claim comprehensive protection, or do persistent gaps imply that any single trust primitive—especially identity verification—has limited protective power?
+  Representative: Are grassroots WeChat groups already adequate for complex collective coordination, making the need for a dedicated platform more context-limited than the thesis suggests?
+- [H] F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough? (count=6)
+  Representative: Can improved endorsement and reputation signals make digital rating systems sufficiently fair in practice, or are these systems structurally untrustworthy because of underlying power asymmetries?
+- [G, J] F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts? (count=6)
+  Representative: Do challenge-based mechanics reliably increase participation in mobility contexts, or do they provoke resistance once participants experience them as labor control?
 
 ---
 
 ## Structural Limitations
 
-- All categories are populated, but the corpus is still asymmetric: J=19 while F=3; treat this as uneven evidence density rather than balanced coverage.
+- All categories are populated, but the corpus is still asymmetric: B=14 while D=4; treat this as uneven evidence density rather than balanced coverage.
 - The small-town gap claim rests on scattered documentation rather than a single systematic multi-university audit; present it as motivated and contextually documented, not universally quantified.
 - The corpus contains .edu identity verification design claims but limited incident-level evidence on whether verification reduces behavioral harm; keep the trust-primitive claim scope-limited.
 - Category G and J papers must be treated as adversarial scope evidence for gamification; do not write as if points-based incentives are self-justifying.
@@ -62,156 +59,135 @@
 ### C1: 🔴 CRITICAL — scope_disagreement
 
 **Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
-**Question**: Are rural/small-town transport gaps structurally unavoidable, or can multimodal institutional design make substitutes sufficient?
+**Question**: Are small-town universities necessarily underserved by commercial rideshare, or can university-run transit already satisfy a substantial share of mobility demand?
 
-**Paper A**: How to ensure sufficient access to public transport in rural areas? A comparativ
-  Claim: Rural areas can achieve a basic level of sufficient public transport access when multimodal integration is designed well.
-  Evidence: The abstract states that 'institutional design parameters governing multimodal integration determine whether rural areas achieve sufficient public transport modal availability' and compares public transport, paratransit, and shared mobility as design alternatives for achieving a basic service level.
+**Paper A**: TARGET_THESIS
+  Claim: Small-town university settings face a multi-module coordination gap underserved by commercial rideshare, motivating formalized campus mobility coordination.
+  Evidence: The thesis frames small-town campuses as underserved by commercial rideshare and points to informal coordination via WeChat/WhatsApp and student networks as evidence of unmet transportation needs.
 
-**Paper B**: Examining network governance of multimodal integration: A comparative study of r
-  Claim: Rural public systems often fall short, with accessibility limited by indirect routing, low demand, and governance/interoperability barriers.
-  Evidence: The abstract says 'linear public systems often fall short' in rural areas and highlights barriers including 'ambiguous responsibility and interoperability gaps between transport modes'.
+**Paper B**: Factors that determine a university community’s satisfaction levels with public 
+  Claim: University transit services can be meaningful and satisfactory substitutes when service-quality factors are addressed.
+  Evidence: The paper studies a university community's satisfaction with public transit and states that universities collaborate with service providers to offer dedicated buses and on-demand services; satisfaction is explainable by demographic and service-quality variables via ordered logistic regression.
 
-**Relevance to thesis**: This is the strongest limiter on any universal 'small-town universities are underserved' motivation claim. If sufficient access is achievable through institutional design and multimodal integration, the gap claim must be narrowed to towns lacking that governance maturity rather than treated as general.
+**Relevance to thesis**: This does not refute local gaps everywhere, but it directly weakens any broad claim that small-town universities are generally underserved. Some campuses may already have adequate shuttle/on-demand substitutes.
 **Beat affected**: 1
-**Suggested handling**: State explicitly that the thesis concerns small-town university contexts where multimodal integration is weak or absent, not all rural/small-town settings. Distinguish commercial rideshare underservice from overall mobility underservice. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
+**Suggested handling**: Narrow the motivation claim to campuses lacking reliable university transit, especially for off-hours, off-campus, irregular, or newcomer-oriented trips. Explicitly distinguish 'no substitute exists' from 'existing substitute is partial or poorly matched to certain trip types.' Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
 
 ---
 
-### C2: 🟡 MODERATE — scope_disagreement
+### C2: 🔴 CRITICAL — competing_mechanism
 
 **Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
-**Question**: Do university campuses necessarily face unmet mobility demand, or can campus-focused public transport improvements adequately serve commuting needs?
+**Question**: Could demand-responsive transit, rather than a campus-specific rideshare formalization, solve mobility gaps in low-density university settings?
 
-**Paper A**: An importance-performance analysis of public transport to the university campus 
-  Claim: Campus commuting can be materially improved through targeted public transport service design.
-  Evidence: The abstract says best-worst scaling identifies which public transport attributes university authorities should prioritize 'to improve campus commuting services' and notes that campus location significantly shapes commuting conditions.
+**Paper A**: TARGET_THESIS
+  Claim: Commercial rideshare underserves small-town university settings, leaving a coordination gap that justifies a dedicated multi-module campus mobility platform.
+  Evidence: The thesis treats underservice by commercial rideshare as a key motivation and proposes formalizing grassroots coordination into a platform.
 
-**Paper B**: Examining network governance of multimodal integration: A comparative study of r
-  Claim: Rural public transport often remains inadequate because of systemic routing and integration failures.
-  Evidence: The abstract frames rural accessibility problems as stemming from low density, indirect routing, and multimodal governance barriers.
+**Paper B**: Service design of shared first- and last-mile transit systems
+  Claim: Shared first- and last-mile transit systems using mobility-on-demand principles can optimize service in sparsely populated areas.
+  Evidence: The paper proposes a demand-responsive transit framework for shared first-/last-mile connectivity and explicitly targets sparsely populated areas, arguing such systems are an essential component of public transport.
 
-**Relevance to thesis**: This creates a campus-specific adequacy counterexample: some university access problems may be solvable by improving conventional transit or shuttle attributes rather than by introducing a new platform layer. The thesis should not imply that universities as such are beyond the reach of public transport improvement.
+**Relevance to thesis**: This is a strong alternative mechanism: the observed gap may stem less from commercial rideshare failure per se than from missing institutional demand-responsive transit design.
 **Beat affected**: 1
-**Suggested handling**: Narrow the claim to campuses where authorities cannot or do not provide reliable fixed-route or shuttle service, especially off-peak or last-mile conditions. Treat campus transit quality as an alternative mechanism that may already fill part of the gap. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
+**Suggested handling**: Recast the thesis from 'commercial rideshare leaves a unique gap' to 'some small-town campuses need a coordination layer because neither commercial rideshare nor local DRT/shuttle systems adequately cover specific needs.' Compare CampusRide explicitly against DRT/shuttle alternatives. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
 
 ---
 
 ### C3: 🟡 MODERATE — scope_disagreement
 
 **Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
-**Question**: Are shuttle-based substitutes already a credible fit for university precincts, or are they still too limited to count as present-day adequacy?
+**Question**: Does evidence from MaaS deployments suggest that integrated mobility substitutes can work even outside dense cities, limiting a universal underservice claim?
 
-**Paper A**: Advancing Rural Mobility: Identifying Operational Determinants for Effective Aut
-  Claim: Small autonomous shuttles are a strong operational fit for rural mobility, especially around university precincts.
-  Evidence: The abstract says 'small autonomous shuttles best suit flexible non-routine trips in rural areas, with leisure travelers and university precincts as the most important operational determinants'.
+**Paper A**: TARGET_THESIS
+  Claim: Small-town university mobility is underserved in ways that motivate a new campus coordination platform.
+  Evidence: The thesis presents a coordination gap in small-town settings and frames existing commercial options as insufficient.
 
-**Paper B**: Department of Veterans Affairs’ Transportation System: Stakeholder Perspectives 
-  Claim: Autonomous ride-sharing is promising for rural/underserved access but is currently limited in practice.
-  Evidence: The abstract characterizes electric autonomous ride-sharing as 'a promising but currently limited alternative' for veterans in rural and underserved areas.
+**Paper B**: Driving change: A comprehensive meta-analysis of community benefits in MaaS depl
+  Claim: MaaS deployments improve accessibility, safety, energy efficiency, and employment across urban and rural contexts, though benefits vary by spatial and temporal context.
+  Evidence: This meta-analysis synthesizes 61 studies and reports positive community benefits from MaaS in both urban and rural landscapes, while emphasizing contextual variation.
 
-**Relevance to thesis**: This tension matters because shuttle-based substitutes may be a real countermechanism in university towns, but the evidence also suggests they are not yet broadly mature. That means shuttle adequacy cannot be assumed either for or against the gap claim without local deployment evidence.
-**Beat affected**: 2
-**Suggested handling**: Separate 'in-principle fit' from 'current availability.' Use shuttle literature as future substitute counterevidence, but maintain that present-day gap claims require evidence of actual service coverage in the target town. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
-
----
-
-### C2: 🟡 MODERATE — scope_disagreement
-
-**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-**Question**: Is grassroots WeChat coordination already adequate for generating trust and collective action, weakening the claim that a formal platform is needed to make community coordination work?
-
-**Paper A**: focal_paper
-  Claim: The focal paper treats existing WeChat/WhatsApp coordination as insufficiently organized and in need of formalization to address a coordination gap.
-  Evidence: Context frames informal student coordination as underserved and motivates a new platform architecture to structure mobility-related community exchange.
-
-**Paper B**: Residents' WeChat Group Use and Pro-Community Behavior in the COVID-19 Crisis: A
-  Claim: Residents' WeChat group use already increases pro-community behavior by building community trust and attachment.
-  Evidence: The study reports a positive effect of WeChat group use on pro-community behavior, mediated by community trust and community attachment during COVID-19.
-
-**Relevance to thesis**: This does not prove informal chat groups can handle campus ride coordination, but it weakens the premise that informality is inherently deficient. The paper provides concrete evidence that trust-rich collective behavior can emerge inside existing WeChat groups without new formal infrastructure.
-**Beat affected**: 2
-**Suggested handling**: Narrow the problem claim: argue that formalization is needed for specific logistics such as reliability, scheduling, or safety auditing, not because informal groups fail at trust-building or community formation. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+**Relevance to thesis**: The paper does not show all rural or campus contexts are well served, but it does challenge any simple equation of low density with persistent underservice. Integrated mobility systems can work in rural settings.
+**Beat affected**: 1
+**Suggested handling**: State that the thesis addresses a subset of small-town university contexts where MaaS-like integration is absent, unavailable, or poorly aligned with campus-specific social and temporal constraints. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
 
 ---
 
-### C3: 🟡 MODERATE — competing_mechanism
+### C4: 🟡 MODERATE — competing_mechanism
 
-**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-**Question**: Does spontaneous self-organization through lightweight communication tools already produce effective coordination, making formalization unnecessary or even harmful to spontaneity?
+**Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
+**Question**: Is the campus mobility problem better framed as a smart-campus integration problem than as evidence of commercial rideshare underservice?
 
-**Paper A**: focal_paper
-  Claim: The focal paper implies that coordination quality improves when grassroots exchange is formalized into a dedicated platform.
-  Evidence: Its contribution centers on operationalizing design primitives in a structured platform rather than leaving coordination in ad hoc messaging networks.
+**Paper A**: TARGET_THESIS
+  Claim: The main motivation is a local mobility gap left by inadequate commercial rideshare service in small-town university settings.
+  Evidence: The thesis foregrounds a multi-module coordination gap and uses that gap to justify formalizing existing grassroots practices.
 
-**Paper B**: Volunteers during a crisis in Israel: a case study of spontaneous self-organized
-  Claim: Spontaneous self-organized volunteer initiatives can grow effectively through technology-enabled information transfer and increase belonging and perceived effectiveness without heavy formalization.
-  Evidence: The case study shows crisis volunteers self-organize through digital communication, with participants reporting community belonging and effectiveness.
+**Paper B**: Smart Campuses: Extensive Review of the Last Decade of Research and Current Chal
+  Claim: University campuses are effective intermediate-scale testbeds for integrating mobility, buildings, environment, and governance within smart-campus systems.
+  Evidence: The review argues campuses are a strong scale for integrated smart solutions and highlights mobility and governance as part of broader campus system design.
 
-**Relevance to thesis**: This offers an alternative mechanism: effectiveness may come from low-friction self-organization, not platform structure. If so, formalization may trade away responsiveness and local initiative for administrative neatness.
-**Beat affected**: 2
-**Suggested handling**: Acknowledge that the platform should support opt-in escalation for repeated or high-stakes tasks while preserving low-friction self-organization for routine mutual aid. Avoid claiming that structure is always superior to improvisation. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+**Relevance to thesis**: This paper offers a different causal framing: the core issue may be fragmented campus mobility governance and systems integration, not specifically market underservice by commercial rideshare.
+**Beat affected**: 1
+**Suggested handling**: Position the thesis as one smart-campus mobility intervention among several, and avoid overstating commercial rideshare failure as the sole or primary causal driver. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
+
+---
+
+### C5: 🟢 MINOR — implicit_tension
+
+**Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
+**Question**: Do differences between ride-hail and public-bus perceptions imply modal complementarity rather than a one-sided service gap?
+
+**Paper A**: TARGET_THESIS
+  Claim: Commercial rideshare does not adequately serve small-town university mobility needs, creating a gap to be filled by campus coordination.
+  Evidence: The thesis treats inadequacy of existing commercial options as a motivating condition.
+
+**Paper B**: User Perception towards Ride hail Service: A case of Nagpur city, India
+  Claim: Ride-hail and public bus services are perceived differently, and those differences should inform efficient public transport planning.
+  Evidence: The paper reports significant differences in user perceptions between ride-hail and public bus transit, with abstract context noting increased ride-hail use among younger users alongside continuing relevance of public transport planning.
+
+**Relevance to thesis**: This is weaker and not campus-specific, but it suggests complementarity: where bus systems exist, the relevant question may be matching modes to trip types rather than assuming an overall underservice gap.
+**Beat affected**: 1
+**Suggested handling**: Acknowledge that mobility shortfalls may be trip-specific and mode-specific. Define precisely which trips existing shuttles/buses/taxis fail to cover. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
 
 ---
 
 ## Design Primitives Framework
 
-### C4: 🟡 MODERATE — competing_mechanism
+### C3: 🟡 MODERATE — scope_disagreement
 
-**Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
-**Question**: Is low-density demand itself the reason substitutes fail, or can demand-managed shared mobility perform well enough to cover the gap?
+**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+**Question**: Do institutionally seeded student networks produce trustworthy coordination because members are identifiable, or can campus coordination also occur under anonymity, leaving accountability unresolved?
 
-**Paper A**: Analyzing the impact of demand management in rural shared mobility-on-demand sys
-  Claim: Rural shared mobility-on-demand can perform better than expected when demand management improves ride bundling and system performance.
-  Evidence: The abstract states that demand management policies 'can improve ride bundling and system performance in rural shared mobility-on-demand services despite unfavorable spatial and temporal demand distributions'.
+**Paper A**: Social capital and resource requests on Facebook
+  Claim: Institutionally-seeded Facebook ties enable resource-mobilization requests.
+  Evidence: The extracted claim says Facebook ties seeded through institutional contexts support asking for information, favors, and other help through status updates.
 
-**Paper B**: Examining network governance of multimodal integration: A comparative study of r
-  Claim: Rural accessibility shortfalls stem from structural inefficiencies in existing systems and poor integration across modes.
-  Evidence: The abstract says rural public systems often fall short because of indirect routing, low demand, and interoperability/governance gaps.
+**Paper B**: Situated Anonymity
+  Claim: Hyper-locality, anonymity, and ephemerality on a single university campus shape a situated anonymous community identity.
+  Evidence: The extracted claim emphasizes that a university-campus community can coordinate and form identity while preserving anonymity rather than relying on verified identity.
 
-**Relevance to thesis**: This suggests the observed gap may reflect an operational-design failure rather than an unavoidable absence of service. If demand-managed shared mobility can work in rural settings, the thesis should not present low density alone as decisive evidence that substitutes are inadequate.
-**Beat affected**: 2
-**Suggested handling**: Frame the problem as conditional: substitutes may fail under unmanaged, fragmented operations, but can improve under designed demand management. This supports a narrower coordination-gap claim rather than a blanket service-gap claim. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
-
----
-
-### C5: 🟡 MODERATE — competing_mechanism
-
-**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-**Question**: Should the design goal be to replace informal coordination with a dedicated platform, or to bridge formal and informal spaces through the messaging tools people already use?
-
-**Paper A**: focal_paper
-  Claim: The focal paper proposes a new multi-module platform as the way to formalize grassroots coordination.
-  Evidence: CampusRide is presented as an operational platform contribution built around design primitives rather than as a light-touch integration with existing chat tools alone.
-
-**Paper B**: Bridging the Informal and Formal Learning Spaces with WhatsApp
-  Claim: WhatsApp's value lies in bridging formal and informal spaces, not in eliminating the informal layer.
-  Evidence: The study explicitly frames WhatsApp as a bridge between formal and informal learning environments for university faculty and students.
-
-**Relevance to thesis**: This is a framework-level tension. The external paper implies the productive move may be hybridization with existing tools, whereas the focal paper risks over-privileging a new institutional platform. For grassroots legitimacy, bridge-first design may be more acceptable than migration-first design.
-**Beat affected**: 4
-**Suggested handling**: Recast CampusRide as a bridge architecture: deep links, group import/export, notification mirroring, and minimal-friction interoperability with WhatsApp/WeChat. Make success criteria include coexistence with incumbent grassroots channels. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+**Relevance to thesis**: Positive findings from institutionally seeded social networks do not straightforwardly generalize to safety-sensitive mobility contexts. Campus coordination may happen with weak or absent identity, which means institutional verification may help some prosocial exchange while still leaving accountability gaps in high-risk interactions.
+**Beat affected**: 3
+**Suggested handling**: Separate claims about social-capital formation from claims about harm reduction. If F3 is retained, describe it as improving traceability and familiarity for some use cases, not as resolving accountability by itself. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
 
 ---
 
-## Cross-line
+### C1: 🟡 MODERATE — competing_mechanism
 
-### C6: 🟡 MODERATE — scope_disagreement
+**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+**Question**: Is verified institutional affiliation actually the source of campus trust, or can similar bounded community identity emerge without any .edu or campus-card verification?
 
-**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-**Question**: Does official participation in community chat spaces improve coordination, or does it undermine the private autonomy that makes those spaces effective?
+**Paper A**: The Benefits of Facebook “Friends:” Social Capital and College Students’ Use of 
+  Claim: .edu-gated Facebook use among college students is positively associated with bridging social capital.
+  Evidence: The study was conducted in the period when Facebook required a .edu email for membership, and the extracted claim explicitly ties that .edu-gated environment to positive bridging-social-capital outcomes for college students.
 
-**Paper A**: Utilizing social media for community risk communication in megacities: analysing
-  Claim: Community WeChat groups work better when both officials and core residents actively participate.
-  Evidence: The study finds that active participation from community officials and core residents significantly improves communication satisfaction in Shanghai pandemic risk communication.
+**Paper B**: (In)visible Cities: An Exploration of Social Identity, Anonymity and Location-Ba
+  Claim: Location-based filtering on Yik Yak manufactures bounded campus identity without explicit credential verification.
+  Evidence: The extracted claim states that campus identity is produced through location-based filtering and social identity processes, explicitly 'without explicit credential verification.'
 
-**Paper B**: Cooperative affordances: How instant messaging apps afford learning, resistance 
-  Claim: Private groups are valuable precisely because they provide learning, solidarity, and resistance not available in official platform spaces.
-  Evidence: The delivery-worker study emphasizes that private messaging groups compensate for what official apps do not afford, including mutualism and resistance.
-
-**Relevance to thesis**: This is a real scope-limiting tension for any formalization strategy. One literature stream says institutional participation can improve information quality and satisfaction; another says official/platform presence changes the politics of the space and suppresses autonomy. The focal thesis must specify which kind of coordination requires institutional visibility and which requires protected peer-only space.
-**Beat affected**: 6
-**Suggested handling**: Differentiate use cases. For emergency alerts or verified safety information, institutional participation may help. For peer exchange, dispute resolution, and reputation-sensitive coordination, preserve private or peer-governed channels. Explicitly avoid importing platform-labor style monitoring into community spaces. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+**Relevance to thesis**: This limits any claim that institutional verification is necessary as a trust primitive. The literature suggests campus-bounded belonging can arise from locality and shared context alone, so .edu verification may be one trust cue among several rather than the core mechanism.
+**Beat affected**: 3
+**Suggested handling**: Frame .edu/campus-card verification as an optional affiliation signal that may help legibility and accountability, not as the sole or necessary basis of trust. Distinguish 'community formation' from 'safety assurance.' State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
 
 ---
 
@@ -219,399 +195,458 @@
 
 ### C2: 🔴 CRITICAL — scope_disagreement
 
-**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
-**Question**: Can endorsement design inside an existing reputation system sufficiently mitigate bias, or are rating systems structurally unreliable as fair trust devices?
+**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+**Question**: Does a campus-bounded identity layer meaningfully exclude unsafe outsiders, or does it merely create the appearance of a bounded community while remaining porous to external observation and spoofing?
 
-**Paper A**: Fighting bias with bias: How same-race endorsements reduce racial discrimination
-  Claim: Same-race endorsements can reduce racial discrimination in Airbnb host selection, showing that bias can be offset within the reputation system itself.
-  Evidence: The empirical result reported is that white guests largely overcame racial bias when hosts were endorsed by previous white guests, suggesting a targeted reputation-layer intervention can improve fairness outcomes.
+**Paper A**: (In)visible Cities: An Exploration of Social Identity, Anonymity and Location-Ba
+  Claim: Location-based filtering creates a bounded campus identity on Yik Yak.
+  Evidence: The paper's claim is that location-based filtering manufactures a geographically bounded campus identity, implying a meaningful local boundary in user experience.
 
-**Paper B**: Trust and power in Airbnb’s digital rating and reputation system
-  Claim: Airbnb-style digital reputation systems embed power asymmetries that undermine their reliability as fair communicators of trustworthy behavior.
-  Evidence: The paper argues theoretically that platforms use ratings to establish trust among strangers, but the surrounding power structure makes these systems unreliable as fair signals.
+**Paper B**: Taking the Pulse of US College Campuses with Location-Based Anonymous Mobile App
+  Claim: GPS hacking enables passive surveying of college campus populations in location-based anonymous apps.
+  Evidence: The extracted claim states that GPS hacking can be used to survey campus populations and discover geographically bounded content pools, showing that the boundary can be externally penetrated or spoofed.
 
-**Relevance to thesis**: Paper A suggests bias may be tractable with reputation engineering; Paper B argues the fairness problem is deeper than local tweaks. This is central to whether rating fairness is an independent design concern or just a matter of tuning endorsements.
-**Beat affected**: 5
-**Suggested handling**: Treat endorsement-based fixes as partial mitigation only. If the thesis uses ratings, it should explicitly acknowledge structural fairness risks and not claim that better endorsements alone make the system fair. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
-
----
-
-### C6: 🔴 CRITICAL — scope_disagreement
-
-**Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
-**Question**: Does self-tracking gamification for sustainability translate safely to peer-service mobility coordination, or can it slide into quasi-labor governance and precarity?
-
-**Paper A**: Eco Drive – Implementation of Carbon Footprint Application using Java
-  Claim: A carbon-footprint app integrating GPS tracking, user input, and gamification can encourage individuals to reduce travel-related emissions.
-  Evidence: The system paper frames gamification as a self-management tool for individual behavioral change around transport emissions.
-
-**Paper B**: Algorithmic Management in Organizations? From Edge Case to Center Stage
-  Claim: Algorithmic management creates a gray zone that blurs employee-freelancer distinctions and lets platforms circumvent traditional employment regulation.
-  Evidence: The review argues that once platforms use algorithmic systems to direct and evaluate work, they can create governance structures with labor-like consequences despite informal classification.
-
-**Relevance to thesis**: This is a major boundary condition for F5. Gamification looks relatively benign in self-tracking apps, but a campus mobility platform coordinating rides between peers may use the same mechanics to steer service provision, reliability, and availability. That moves the design closer to platform labor management than to harmless eco-feedback.
-**Beat affected**: 7
-**Suggested handling**: Restrict gamification to self-tracking or voluntary community recognition, not to ride assignment, labor substitution, or obligation management. Explicitly state that CampusRide is not using gamification to govern labor-like performance or substitute for formal employment protections. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+**Relevance to thesis**: This is the strongest risk-shift tension for F3. Even if a campus-only or institution-looking boundary creates trust perceptions, the actual security boundary may be weak. Risk may shift from 'strangers are excluded' to 'users wrongly assume strangers are excluded.'
+**Beat affected**: 3
+**Suggested handling**: Avoid presenting institutional or campus-bounded access as a safety guarantee. State clearly that affiliation/location gates are low-assurance filters and require additional protections such as abuse reporting, minimal profile exposure, audit trails, and incident-response procedures. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
 
 ---
 
 ### C3: 🟡 MODERATE — scope_disagreement
 
-**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
-**Question**: Can a safety platform claim comprehensive protection, or do persistent gaps imply that any single trust primitive—especially identity verification—has limited protective power?
+**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
+**Question**: Are grassroots WeChat groups already adequate for complex collective coordination, making the need for a dedicated platform more context-limited than the thesis suggests?
 
-**Paper A**: A Comprehensive Web-Based Women Safety Application with Real-Time Tracking and A
-  Claim: An integrated safety application can comprehensively address women's safety threats.
-  Evidence: The key claim explicitly says the combined feature set can 'comprehensively address women's safety threats'.
+**Paper A**: TARGET_THESIS
+  Claim: The thesis argues that informal messaging-based coordination in small-town university transport is not enough on its own and should be formalized into a dedicated multi-module system.
+  Evidence: The thesis frames informal coordination as evidence of latent demand but also as a sign of an underserved coordination gap requiring design intervention.
 
-**Paper B**: A Comprehensive Study on Mobile SOS and Personal Safety Applications Across Mult
-  Claim: Despite progress toward richer safety systems, significant technological gaps remain across scenarios.
-  Evidence: The abstract explicitly says personal safety apps are evolving but that 'significant technological gaps remain'.
+**Paper B**: Utilizing social media for community risk communication in megacities: analysing
+  Claim: Community WeChat groups significantly facilitate grassroots risk communication and interactive governance, producing communication satisfaction.
+  Evidence: The paper finds that in Shanghai during COVID-19, WeChat-group information interaction and perception supported effective grassroots communication and governance outcomes.
 
-**Relevance to thesis**: If even a multi-feature safety stack cannot be assumed comprehensive, then .edu verification should be presented as an even narrower control. This contradiction supports a more cautious framing of institutional identity as one layer among many.
-**Beat affected**: 3
-**Suggested handling**: Avoid 'comprehensive safety' language around campus verification. Frame it as partial risk mitigation with known blind spots, especially for harassment, coercion, and insider misuse. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
+**Relevance to thesis**: This paper shows that informal group messaging can already support high-stakes, multi-actor coordination, not just casual conversation. The tension is scope-limiting rather than fatal: transport in a small-town university may still differ, but the thesis must justify why this domain cannot be served by the same lightweight mechanism.
+**Beat affected**: 2
+**Suggested handling**: State clearly which properties of transport coordination make it harder than the risk-communication settings in this literature: e.g., repeated matching, route optimization, no-show handling, liability, or temporal precision. Without that specificity, the formalization step looks under-justified. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
 
 ---
 
-### C6: 🔴 CRITICAL — methodological_tension
+### C4: 🟡 MODERATE — scope_disagreement
 
 **Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
-**Question**: Are rating-system fairness failures mainly technical bugs that feature design can repair, or do they stem from deeper power asymmetries that technical patches alone cannot solve?
+**Question**: Can improved endorsement and reputation signals make digital rating systems sufficiently fair in practice, or are these systems structurally untrustworthy because of underlying power asymmetries?
 
-**Paper A**: Trust and power in Airbnb’s digital rating and reputation system
-  Claim: Digital rating systems are structurally compromised by platform power asymmetries, undermining their fairness and reliability.
-  Evidence: The paper's core theoretical claim is that reputation systems do not neutrally communicate trustworthiness because platform power relations distort how ratings function.
+**Paper A**: Fighting bias with bias: How same-race endorsements reduce racial discrimination
+  Claim: Same-race endorsements can substantially offset discriminatory host-selection bias.
+  Evidence: The paper presents a concrete empirical mitigation result inside Airbnb's reputation environment, implying that carefully structured reputation signals can improve fairness outcomes.
 
-**Paper B**: Enhancing the Reputation System in  Ridesharing: A Blockchain-Based Mutual Escro
-  Claim: Technical features such as mutual escrow, dynamic bidirectional rating, and cool-off periods can reduce rating manipulation and retaliatory feedback.
-  Evidence: The system paper presents concrete mechanism-level fixes aimed at making ridesharing reputation systems more trustworthy and less biased in use.
+**Paper B**: Trust and power in Airbnb’s digital rating and reputation system
+  Claim: Airbnb-style digital reputation systems cannot be fully trusted because they create power asymmetries and may unfairly distribute benefits and burdens.
+  Evidence: The theoretical analysis argues that rating and reputation systems are not merely imperfect implementations but structurally power-laden institutions that can unfairly allocate risk and reward among platforms, consumers, and workers.
 
-**Relevance to thesis**: This is a major scope tension for any platform design paper. If fairness failures are structural, then adding rating features is not enough. If they are primarily interaction-design problems, modular fixes may be plausible.
+**Relevance to thesis**: This tension limits how strongly the thesis can generalize from a specific fairness pain point to a clean design fix. Even if some rating tweaks reduce observed bias, a broader literature argues the reputation apparatus may remain unfair at the structural level.
 **Beat affected**: 5
-**Suggested handling**: Acknowledge that anti-retaliation mechanics address only one layer of fairness. Pair any technical rating design with governance commitments on moderation, transparency, limited discretion, and recourse. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+**Suggested handling**: Avoid claiming that better rating mechanics fully solve fairness. Position design interventions as harm reduction within a system that still requires governance constraints, appeals, and limits on platform power. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+
+---
+
+### C3: 🟡 MODERATE — scope_disagreement
+
+**Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
+**Question**: Do challenge-based mechanics reliably increase participation in mobility contexts, or do they provoke resistance once participants experience them as labor control?
+
+**Paper A**: Enhancing Sustainable Mobility Through Gamified Challenges: Evidence from a Scho
+  Claim: Gamified intra-team walking challenges increased engagement and improved sustainable mobility behavior among high school students.
+  Evidence: The key claim is that 'walking-distance challenges framed as intra-team goals significantly enhanced engagement and improved sustainable mobility behaviors among high school participants.'
+
+**Paper B**: Fulfillment of the Work Games: Warehouse Workers' Experiences with Algorithmic M
+  Claim: Workers resist gamified/algorithmic control mechanisms rather than simply complying with them.
+  Evidence: The abstract states Amazon fulfillment workers 'actively resist algorithmic management through nuanced practices linked to broader algorithmic control mechanisms.'
+
+**Relevance to thesis**: This does not falsify gamification, but sharply limits generalization. Success in school-based, low-stakes, pro-social mobility challenges does not transfer cleanly to adult coordination systems where participation can feel quasi-obligatory or supply-side labor-like.
+**Beat affected**: 7
+**Suggested handling**: Position gamified challenges only as voluntary community campaigns, not as mechanisms that govern ride availability, driver reputation, or access to platform benefits. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
 
 ---
 
 ### C1: 🔴 CRITICAL — competing_mechanism
 
 **Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-**Question**: Do private WhatsApp/WeChat groups function as a necessary autonomy-preserving alternative to platform formalization, rather than a deficient precursor that should be absorbed into a campus platform?
+**Question**: Do private WeChat/WhatsApp groups already provide the key social infrastructure, such that formalization could erode the very mutualism and autonomy that make grassroots coordination work?
 
-**Paper A**: focal_paper
-  Claim: The focal paper argues that grassroots coordination practices in small-town university settings are underserved and should be formalized within a multi-module platform such as CampusRide.
-  Evidence: Context states that WeChat/WhatsApp coordination by students is treated as a coordination gap that 'warrants formalization,' with the platform contribution positioned as the remedy.
+**Paper A**: TARGET_THESIS
+  Claim: The thesis argues that small-town university mobility has a multi-module coordination gap underserved by commercial rideshare, and that existing grassroots coordination practices among students via WeChat/WhatsApp warrant formalization in a dedicated multi-module platform.
+  Evidence: From the provided thesis context: the paper claims small-town university settings face a coordination gap; grassroots coordination practices by international students exist but are underserved; CampusRide formalizes these practices through platform design primitives.
 
 **Paper B**: Cooperative affordances: How instant messaging apps afford learning, resistance 
-  Claim: Private instant-messaging groups are not merely informal stopgaps; they restore mutualism, build communities of practice, and enable resistance specifically not afforded by official platform apps.
-  Evidence: The paper finds delivery workers use private WhatsApp/Telegram/WeChat groups to create learning, solidarity, and resistance spaces unavailable in official delivery platforms.
+  Claim: Private instant-messaging groups are not just temporary workarounds; they actively restore mutualism, community-of-practice formation, resistance, and solidarity that platform delivery apps do not afford.
+  Evidence: The paper finds food delivery workers appropriate private WhatsApp/Telegram/Messenger/WeChat groups to create learning, resistance, and solidarity spaces outside the formal platform. Its core claim is that these cooperative affordances are specifically valuable because they are worker-controlled and not afforded by the delivery app itself.
 
-**Relevance to thesis**: This is the strongest challenge to the thesis's legitimacy logic. It suggests formalization can remove the very autonomy, mutual aid, and trust that make grassroots coordination valuable. It also raises an algorithmic-management alternative framing: once coordination is pulled into an official platform, fairness, visibility, verification, and reputation features can become worker/user control mechanisms rather than neutral infrastructure.
-**Beat affected**: 7
-**Suggested handling**: Reframe formalization as optional augmentation, not replacement. Explicitly protect private-group autonomy, avoid mandatory migration, and justify any rating, verification, or matching features against algorithmic-management harms. Position CampusRide as interoperable with grassroots channels rather than their successor. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+**Relevance to thesis**: This is the strongest countermechanism to the thesis's formalization step. If informal chat groups derive part of their value from being outside platform control, then turning grassroots student coordination into a formal platform may undermine autonomy, peer trust, and flexible reciprocity rather than simply improving coordination.
+**Beat affected**: 2
+**Suggested handling**: Explicitly narrow the thesis claim: formalization is justified only for failures that informal groups cannot reliably solve, such as cross-group discoverability, accountability, schedule matching, or safety. Also explain how CampusRide avoids reproducing extractive platform logics by preserving group autonomy, optionality, and community governance. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
 
 ---
 
-### C3: 🔴 CRITICAL — competing_mechanism
+### C4: 🔴 CRITICAL — competing_mechanism
+
+**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+**Question**: Do trust-building layers on platforms genuinely reduce harm, or do they mainly increase perceived trust while redistributing risk through platform-controlled reputation systems?
+
+**Paper A**: The Effects of Online Trust-Building Mechanisms on Trust in the Sharing Economy:
+  Claim: Online trust-building mechanisms increase providers' trust in the platform and in consumers.
+  Evidence: The extracted claim says three different trust-building mechanisms have measurable effects on providers' trust in a sharing-economy context.
+
+**Paper B**: Trust and power in Airbnb’s digital rating and reputation system
+  Claim: Digital rating and reputation systems cannot be fully trusted because they create power asymmetries and may unfairly distribute benefits and burdens.
+  Evidence: The extracted claim directly argues that platform reputation systems are not neutral trust devices; they structure power and can unfairly shift burdens among companies, consumers, and workers.
+
+**Relevance to thesis**: This is a live alternative framing for F3. Even if institutional verification and related trust cues increase perceived trust, the literature warns that formalized trust systems can shift risk into reputation governance rather than eliminating underlying safety problems.
+**Beat affected**: 3
+**Suggested handling**: Explicitly distinguish perceived trust from actual harm reduction. Pair any identity-verification feature with a discussion of governance risks, appeals, false reports, and asymmetric power over reputational consequences. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
+
+---
+
+### C6: 🔴 CRITICAL — competing_mechanism
 
 **Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
-**Question**: Is objective scoring enough to stabilize trust in peer ratings, or do ride platforms need dedicated anti-retaliation and anti-manipulation fairness mechanisms?
+**Question**: Does formalizing fairness through more algorithmic scoring and monitoring improve trust, or does it risk reproducing algorithmic-management harms that make the platform less fair overall?
 
 **Paper A**: Trust-Building in Peer-to-Peer Carsharing: Design Case Study for Algorithm-Based
-  Claim: Algorithm-based telematics scoring can supplement peer ratings to improve trust-building in peer-to-peer carsharing.
-  Evidence: The design case argues that an algorithmic, behavior-linked score can be added to peer ratings as a trust-building aid, implying that more objective scoring may solve key trust deficits.
+  Claim: Algorithm-based telematics scoring can improve or complement traditional ratings for trust-building in peer-to-peer carsharing.
+  Evidence: The carsharing case study treats additional algorithmic scoring as a positive trust mechanism, suggesting that fairness and reliability can be improved through more formalized behavioral measurement.
 
-**Paper B**: Enhancing the Reputation System in  Ridesharing: A Blockchain-Based Mutual Escro
-  Claim: Mutual escrow, bidirectional dynamic rating, and a cool-off period are needed to reduce retaliation and manipulation in ridesharing reputation systems.
-  Evidence: The system paper explicitly identifies rating manipulation and retaliatory feedback as major problems and proposes dedicated fairness mechanisms to counter them.
+**Paper B**: Influence of algorithmic management practices on workplace well-being – evidence
+  Claim: Algorithmic management practices negatively influence workplace well-being, partly through reduced job autonomy.
+  Evidence: The empirical study on European organisations finds that data-driven management systems have direct and indirect negative effects on well-being via autonomy loss, offering a clear caution against solving trust problems through more pervasive scoring and control.
 
-**Relevance to thesis**: This is a direct design fork for a campus rideshare system. Even if identity verification or telematics improves trust, the literature says fairness failures like retaliation and manipulation may persist unless separately designed for.
+**Relevance to thesis**: This is the strongest adversarial tension. A thesis that treats rating fairness as an independent design concern may still be challenged if its proposed fixes expand monitoring, scoring, or ranking in ways that replicate platform-labor control harms. In a campus carpool context, the remedy could become a new problem.
 **Beat affected**: 5
-**Suggested handling**: Separate trust signals from fairness protections in the architecture. If ratings are used, consider delayed reveal, bilateral escrow, cooldowns, and a dispute process rather than assuming objective scoring is sufficient. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
-
----
-
-### C5: 🔴 CRITICAL — competing_mechanism
-
-**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
-**Question**: Can user-side endorsements correct discrimination on their own, or must platform-level ranking and promotion policy explicitly counter biased ratings?
-
-**Paper A**: Fighting bias with bias: How same-race endorsements reduce racial discrimination
-  Claim: Discrimination can be reduced through endorsement structure within the existing reputation system.
-  Evidence: The reported finding is that same-race endorsements changed host-selection behavior enough to largely overcome observed racial bias among white guests.
-
-**Paper B**: Fairness Dynamics in Digital Economy Platforms with Biased Ratings
-  Claim: Platform promotion policies can either perpetuate or counteract rating-based discrimination against marginalized providers.
-  Evidence: The paper's key claim is that an evolutionary-game model captures how platform policy, not just user ratings, shapes whether biased rating dynamics persist.
-
-**Relevance to thesis**: This tension matters because it separates user reputation from platform governance. If platform-level promotion logic is decisive, rating fairness cannot be left to identity verification or social proof alone.
-**Beat affected**: 5
-**Suggested handling**: Do not rely only on peer endorsements. Audit ranking, recommendation, and exposure policies for disparate impact, and state that fairness design operates at both the user-reputation layer and the platform-policy layer. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+**Suggested handling**: Be explicit that fairness design should minimize surveillance and algorithmic control. Prefer low-intrusion mechanisms such as delayed review reveal, anti-retaliation workflows, or appeal processes over heavy continuous scoring. Separate peer safety/accountability needs from labor-style performance management. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
 
 ---
 
 ### C1: 🔴 CRITICAL — competing_mechanism
 
 **Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
-**Question**: Do gamified incentives in mobility coordination strengthen intrinsic prosocial motivation, or can they crowd out autonomy once embedded in ongoing platform control?
+**Question**: Do gamified systems broadly improve engagement, or can the same incentive/feedback structures reduce autonomy and well-being once embedded in a managed platform?
 
-**Paper A**: Leveraging gamification technology to motivate environmentally responsible behav
-  Claim: Gamification promotes environmentally responsible behavior through psychological need satisfaction and belief/attitude persuasion in the postadoption stage.
-  Evidence: The paper's key claim is that Ant Forest's gamification works by satisfying psychological needs and persuading beliefs/attitudes after adoption, implying game mechanics can sustain desired behavior.
+**Paper A**: Gamification for climate change engagement: review of corpus and future agenda
+  Claim: Games and gamification can simultaneously improve multiple dimensions of engagement for climate-change behavior change and education.
+  Evidence: The review's key claim is that gamification can 'simultaneously impact multiple engagement dimensions' in behavioral-change and education settings.
 
 **Paper B**: Influence of algorithmic management practices on workplace well-being – evidence
-  Claim: Algorithmic management practices negatively influence workplace well-being, including indirectly through reduced job autonomy.
-  Evidence: The paper reports a direct negative effect of algorithmic management on well-being and an indirect effect via lower job autonomy, suggesting behavior-shaping digital controls can undermine autonomy rather than support it.
+  Claim: Algorithmic management practices harm worker well-being, partly by reducing job autonomy.
+  Evidence: The abstract states algorithmic management practices 'negatively influence workplace well-being both directly and indirectly through reduced job autonomy in European organisations.'
 
-**Relevance to thesis**: This is a real alternative mechanism for F5. If CampusRide uses points, streaks, reliability scores, or rewards to steer ride provision, the same features framed as motivating could also become autonomy-reducing controls. That does not refute auxiliary gamification, but it strongly limits claims that gamification is straightforwardly beneficial.
+**Relevance to thesis**: This is a strong alternative mechanism against any broad pro-gamification claim in CampusRide. What looks like engagement support in voluntary climate or education contexts can become autonomy-reducing control when attached to ride supply, performance visibility, or participation expectations.
 **Beat affected**: 7
-**Suggested handling**: Narrow the pro-gamification claim to opt-in, nonpunitive, low-stakes encouragement. Avoid tying game mechanics to access, penalties, or mandatory performance expectations. Add evaluation of autonomy, stress, and motivation crowding alongside engagement metrics. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+**Suggested handling**: Narrow gamification to optional, non-essential, rider/community-facing encouragement. Avoid driver productivity scores, streaks, quotas, penalties, or any mechanic that conditions access or status on continuous participation. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
 
 ---
 
 ### C2: 🔴 CRITICAL — competing_mechanism
 
 **Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
-**Question**: Do game-like mobility challenges improve behavior, or do tracked 'work game' systems provoke strategic resistance and gaming by participants?
+**Question**: Is gamified feedback motivating because it satisfies psychological needs, or demotivating when it becomes tracking and evaluation?
 
-**Paper A**: Enhancing Sustainable Mobility Through Gamified Challenges: Evidence from a Scho
-  Claim: Walking-based and intra-team gamified challenges significantly enhanced engagement and improved sustainable mobility behaviors among high school participants.
-  Evidence: The paper specifically reports significant gains in engagement and mobility behavior from gamified challenges in a school intervention.
+**Paper A**: Leveraging gamification technology to motivate environmentally responsible behav
+  Claim: Gamification promotes environmentally responsible behavior through psychological need satisfaction and belief/attitude persuasion after adoption.
+  Evidence: The paper's key claim is that Ant Forest works 'through psychological need satisfaction and belief/attitude persuasion in the postadoption stage.'
 
-**Paper B**: Fulfillment of the Work Games: Warehouse Workers' Experiences with Algorithmic M
-  Claim: Workers develop nuanced resistance practices against labor-tracking algorithmic systems.
-  Evidence: The paper studies 'Work Games' in Amazon fulfillment and finds workers resist labor-tracking algorithmic systems, showing that game-like monitoring can elicit counter-strategies rather than straightforward compliance.
+**Paper B**: How Does Algorithmic Control Affect the Work Engagement of Gig Workers? The Role
+  Claim: Different forms of algorithmic control have opposite effects: standardized guidance can help, but tracking evaluation harms relational contracts.
+  Evidence: The abstract says 'standardized guidance' enhances relational contracts, while 'tracking evaluation' diminishes them.
 
-**Relevance to thesis**: This is one of the strongest tensions for unintended effects. In bounded school settings, challenges may boost engagement; in ongoing operational systems, similar game/tracking logics can invite resistance, metric-chasing, or evasive behavior. For a mobility platform, that means gaming the score may displace genuine coordination quality.
+**Relevance to thesis**: This is the clearest narrowing result for F5. It suggests that light-touch informational guidance may be acceptable, but evaluative gamification tied to monitoring, rankings, or review-linked rewards risks crowding out motivation and damaging trust.
 **Beat affected**: 7
-**Suggested handling**: Treat gamification as auxiliary and temporary, not as a persistent governance layer. Avoid public leaderboards for service reliability, and audit for strategic behavior such as cherry-picking easy rides, superficial check-ins, or collusive score inflation. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+**Suggested handling**: If gamification is retained, keep it informational and self-referential: personal progress, reminders, collective milestones. Exclude leaderboards, visible comparative scoring, dispatch-linked badges, and evaluation-heavy mechanics for drivers. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
 
 ---
 
-### C3: 🔴 CRITICAL — competing_mechanism
+### C5: 🔴 CRITICAL — competing_mechanism
 
 **Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
-**Question**: Does ML-personalized gamification improve coordination effectiveness, or does it create fairness problems when rewards, rankings, or nudges are algorithmically individualized?
+**Question**: Can gamified platform design be treated as a benign engagement layer, or do design features systematically produce equity harms that gamification can amplify?
 
 **Paper A**: Convergence of Gamification and Machine Learning: A Systematic Literature Review
-  Claim: The convergence of machine learning and gamification is primarily applied to personalization, behavioral change, and context adaptation.
-  Evidence: The review identifies personalization and context-adaptive behavioral steering as central use cases for combining ML with gamification.
+  Claim: Gamification plus machine learning is commonly used for personalization and task optimization.
+  Evidence: The review emphasizes personalization, context adaptation, and task optimization as key uses of ML-enhanced gamification.
 
-**Paper B**: Fairness in Algorithmic Management: Bringing Platform-Workers into the Fold
-  Claim: The distributive fairness of managerial algorithms critically influences independent platform workers' job satisfaction.
-  Evidence: The paper finds that perceived distributive fairness of algorithmic management matters substantially for worker outcomes, making fairness a first-order design issue rather than a side constraint.
+**Paper B**: A Systematic Literature Review of Anti-Discrimination Design Strategies in the D
+  Claim: Digital sharing-economy platform design features trigger discrimination against minority groups, requiring explicit anti-discrimination strategies.
+  Evidence: The abstract states that DSE platform design features 'trigger discrimination against minority groups across ridesharing, lodging, and freelancing domains.'
 
-**Relevance to thesis**: This is a direct alternative framing for platform design and rating fairness. A mobility platform that personalizes rewards or visibility may improve engagement on paper, but if users perceive ride assignment, reputation, or bonuses as unfair, the system can damage trust and participation. This substantially narrows any strong claim for adaptive gamification.
+**Relevance to thesis**: This is a direct equity warning for F5. Badges, tiers, streaks, visibility boosts, or personalized prompts may not be neutral in a ridesharing context; they can interact with existing bias and produce unequal exposure or trust.
 **Beat affected**: 7
-**Suggested handling**: Do not use opaque personalized scores or differential rewards without explanation. Provide transparent criteria, appeal paths, and fairness monitoring across user groups. If gamification is used, keep it informational rather than allocative. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+**Suggested handling**: Treat gamification as fairness-sensitive design, not cosmetic UX. Audit any rewards or status markers for disparate impact, and avoid mechanics that change discoverability or trust signals without explicit bias mitigation. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
 
 ---
 
-### C4: 🟡 MODERATE — scope_disagreement
+### C6: 🟡 MODERATE — scope_disagreement
 
-**Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
-**Question**: Can gamification be treated as a broadly inclusive engagement strategy, or do platform-mediated systems leave structural inequities in participation intact?
+**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+**Question**: Can a platform claim 'comprehensive safety' from layered technical features, or do real-world safety systems still suffer from unresolved verification and response gaps that static identity checks cannot solve?
 
-**Paper A**: Gamification for climate change engagement: review of corpus and future agenda
-  Claim: Games and gamification show promising potential to impact multiple climate change engagement dimensions simultaneously.
-  Evidence: The review presents gamification as broadly promising across engagement dimensions, implying wide applicability for behavior change.
+**Paper A**: A Comprehensive Web-Based Women Safety Application with Real-Time Tracking and A
+  Claim: A web application combining GPS tracking, safe routing, and AI risk assessment provides comprehensive women's safety.
+  Evidence: The extracted claim explicitly says the combined feature set delivers 'comprehensive women safety.'
 
-**Paper B**: Platform work‐lives in the gig economy: Recentering work–family research
-  Claim: Digital labor platforms do not inherently challenge gendered labor market inequalities; women workers instead develop coping tactics around those inequalities.
-  Evidence: The paper shows that platform mediation alone does not dissolve unequal constraints and that participants must adapt to persistent work-family and gendered burdens.
+**Paper B**: A Comprehensive Study on Mobile SOS and Personal Safety Applications Across Mult
+  Claim: Safety apps are advancing toward context-aware and AI-assisted systems, yet critical gaps in accessibility, inclusivity, and real-time verification persist.
+  Evidence: The extracted claim directly states that even more advanced safety-app stacks still have unresolved real-time verification gaps.
 
-**Relevance to thesis**: This is a real scope limiter for equity concerns under F5. Even if gamification increases aggregate participation, it may not help users with uneven time, safety, caregiving, language, or mobility constraints. For campus mobility coordination, game mechanics could advantage already-flexible users and under-serve those with the highest coordination burden.
-**Beat affected**: 7
-**Suggested handling**: Avoid universal-benefit claims. Evaluate effects by gender, caregiving status, international status, schedule rigidity, and transport access. Position gamification as a supplemental engagement tool, not as the main solution to unequal coordination conditions. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+**Relevance to thesis**: This tempers any move to treat .edu/campus-card verification as a strong safety claim. Broader safety literature suggests that even much richer technical stacks do not close real-time harm and verification gaps, so institutional identity should be framed as partial infrastructure at most.
+**Beat affected**: 3
+**Suggested handling**: Avoid 'comprehensive safety' language. Describe F3 as one low-cost deterrence and legibility measure within a larger safety architecture that must still address live verification, emergency response, and accessibility constraints. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
 
 ---
 
-### C5: 🟡 MODERATE — methodological_tension
+### C6: 🟡 MODERATE — scope_disagreement
 
 **Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
-**Question**: Is adoption/acceptance evidence enough to justify gamified mobility systems, or can accepted systems still reduce autonomy and engagement over time?
+**Question**: Does positive evidence from education and civic-engagement gamification transfer to a platform that may blur volunteer, customer, and worker roles?
 
 **Paper A**: Sustainable mobility learning: Technological acceptance model for gamified exper
-  Claim: The Technology Acceptance Model explains pupils' adoption of a gamification platform for sustainable mobility education.
-  Evidence: The paper evaluates adoption and acceptance of ClassCraft in a primary-school sustainable mobility learning context.
+  Claim: A gamified platform positively influenced primary-school pupils' adoption of sustainable mobility education.
+  Evidence: The key claim is that ClassCraft 'positively influences primary school pupils' adoption of sustainable mobility education' under a Technology Acceptance Model.
 
-**Paper B**: Creation of the algorithmic management questionnaire: A six‐phase scale developm
-  Claim: Perceived exposure to algorithmic management negatively relates to job autonomy and work engagement.
-  Evidence: The validated Algorithmic Management Questionnaire links algorithmic management exposure to lower autonomy and lower work engagement, indicating that engagement-related outcomes can worsen even when systems are widely used.
+**Paper B**: Algorithmic Management in Organizations? From Edge Case to Center Stage
+  Claim: Algorithmic management creates a gray zone that blurs employee-freelancer boundaries and enables regulatory avoidance.
+  Evidence: The abstract states algorithmic management 'creates a gray zone that strategically blurs employee-freelancer boundaries, allowing platforms to circumvent traditional employment regulations.'
 
-**Relevance to thesis**: This is a methodological warning rather than a thesis-killer. Much pro-gamification evidence here is about acceptance or short-term engagement in educational settings, while the risk literature measures autonomy and work engagement in real operational systems. For CampusRide, adoption would not be enough to claim safety or benefit.
+**Relevance to thesis**: This is a major scope limiter. Evidence that children accept gamified mobility learning says little about adult peer-mobility systems where drivers may occupy ambiguous, quasi-labor roles. In that setting, gamification can stop being pedagogy and start functioning as governance.
 **Beat affected**: 7
-**Suggested handling**: Do not infer success from TAM-style acceptance alone. Add longitudinal measures of autonomy, fairness, burden concentration, dropout, and perceived manipulation. Separate novelty effects from durable prosocial coordination gains. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
+**Suggested handling**: Limit any pro-gamification claim to auxiliary education/onboarding/community use cases. Explicitly rule out using gamified tiers or rewards to manage driver effort, availability, or compliance. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
 
 ---
 
-### C4: 🟡 MODERATE — implicit_tension
+### C4: 🟡 MODERATE — methodological_tension
 
 **Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
-**Question**: Could formalization damage the identity work, agency, and trust that flourish in semi-private WhatsApp communities?
+**Question**: Does the thesis over-prescribe a new platform when prior work shows WhatsApp-like tools already support boundary-crossing problem solving without formal system redesign?
 
-**Paper A**: focal_paper
-  Claim: The focal paper proposes formalizing grassroots coordination into a university-oriented platform layer.
-  Evidence: Context presents informal WhatsApp/WeChat practices as candidates for systematization within CampusRide.
+**Paper A**: TARGET_THESIS
+  Claim: The thesis proposes a designed platform intervention to formalize existing grassroots messaging practices into structured coordination modules.
+  Evidence: CampusRide is presented as the operationalization of four design primitives in a multi-module platform, implying that dedicated system design is the appropriate next step beyond informal chat.
 
-**Paper B**: Smartphone Religious Networking: Negotiating Contested Identities within a Pious
-  Claim: WhatsApp groups enable members of a pious minority community to negotiate contested identities through communal affinity, practiced agency, and contestation of dogmatism.
-  Evidence: The study shows that group-based interaction supports sensitive identity negotiation and community agency inside WhatsApp.
+**Paper B**: Mobile instant messaging: New knowledge tools in global health?
+  Claim: Mobile instant messaging platforms such as WhatsApp already function as powerful informal tools for learning, knowledge sharing, and collaborative problem solving across boundaries.
+  Evidence: The paper reports empirical evidence from global health contexts that MIM platforms are used in boundary-crossing ways for informal learning and coordination, despite lacking formal workflow structures.
 
-**Relevance to thesis**: Although the domain is religious rather than mobility-focused, the mechanism matters: semi-private messaging spaces can be valuable because they are socially owned by the community. Moving them into institutional software may chill expression, reduce agency, or shift norms of participation.
-**Beat affected**: 7
-**Suggested handling**: State that formalization should not absorb all social interaction. Preserve off-platform spaces for sensitive peer support and identity negotiation, especially for international students and other vulnerable subgroups. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+**Relevance to thesis**: This creates a methodological tension: the existence of coordination problems does not automatically imply a need for a new platform. It may instead indicate that lightweight, repurposed messaging tools are the more robust sociotechnical solution because they preserve flexibility and low overhead.
+**Beat affected**: 2
+**Suggested handling**: Justify why the identified mobility tasks cannot be met through structured use of existing messaging apps, perhaps with templates, moderators, or group norms. Acknowledge that dedicated-platform design is one intervention choice, not an inevitable progression from informal coordination. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
 
 ---
 
-### C4: 🟡 MODERATE — implicit_tension
+### C2: 🟡 MODERATE — implicit_tension
 
-**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
-**Question**: If peer ratings or telematics scores affect access or matching, are they just trust devices, or do they become managerial algorithms whose fairness must be governed independently?
+**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
+**Question**: If WeChat groups already build trust and attachment, is formalization solving a real deficiency or replacing a trust-producing grassroots medium with a more brittle system?
+
+**Paper A**: TARGET_THESIS
+  Claim: The thesis treats grassroots WeChat/WhatsApp coordination as valuable but insufficiently structured, arguing that these practices should be formalized into a platform better suited to mobility coordination in small-town university settings.
+  Evidence: The thesis motivation is that current informal practices exist yet leave a coordination gap that commercial rideshare does not fill, motivating formalization.
+
+**Paper B**: Residents' WeChat Group Use and Pro-Community Behavior in the COVID-19 Crisis: A
+  Claim: Residents' WeChat group use positively increases community trust, community attachment, and pro-community behavior.
+  Evidence: The paper reports a serial mediation pattern in which WeChat group use strengthens trust and attachment, which in turn supports pro-community behavior during COVID-19.
+
+**Relevance to thesis**: This does not directly refute a mobility-specific gap, but it weakens any assumption that grassroots chat coordination is merely ad hoc or deficient. It suggests the informal medium itself can be socially productive, so replacing it with a formal platform may sacrifice the trust dynamics that make coordination work.
+**Beat affected**: 2
+**Suggested handling**: Reframe formalization as augmentation rather than substitution. The thesis should explain why mobility coordination needs more than trust-rich chat groups and specify which functions remain in community messaging spaces versus which belong in the platform. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+
+---
+
+### C5: 🟡 MODERATE — competing_mechanism
+
+**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
+**Question**: Could formalization dampen the spontaneity and self-organization that make grassroots coordination effective in the first place?
+
+**Paper A**: TARGET_THESIS
+  Claim: The thesis interprets recurring grassroots coordination as a signal that these practices should be formalized into a more durable and legible mobility platform.
+  Evidence: The thesis moves from observed ad hoc WeChat/WhatsApp practices to the design claim that a formal platform can better serve the coordination needs of a small-town university.
+
+**Paper B**: Volunteers during a crisis in Israel: a case study of spontaneous self-organized
+  Claim: Spontaneous self-organized volunteer initiatives grow through technological affordances that enable rapid information transfer about crises and needs.
+  Evidence: The paper's core finding is that self-organized volunteer activity scaled through accessible technology, emphasizing spontaneous and decentralized coordination rather than formal organizational structure.
+
+**Relevance to thesis**: This suggests a competing mechanism for effectiveness: low-friction, decentralized communication may be superior precisely because it avoids formal enrollment, governance overhead, and role rigidity. For the thesis, that means formalization may trade away spontaneity for structure without proving that the trade is worthwhile.
+**Beat affected**: 2
+**Suggested handling**: Acknowledge the possibility that formalization can suppress volunteer-like spontaneity. Position CampusRide as optional scaffolding for recurrent pain points, not as a wholesale replacement for emergent coordination. Future evaluation should compare whether formalization increases reliability while preserving responsiveness. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
+
+---
+
+### C5: 🟡 MODERATE — competing_mechanism
+
+**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
+**Question**: Should platform safety rely on algorithmic trust proxies such as telematics scoring, or do those same formal trust systems risk reproducing opaque and unfair governance?
 
 **Paper A**: Trust-Building in Peer-to-Peer Carsharing: Design Case Study for Algorithm-Based
-  Claim: Algorithm-based scoring can improve trust in peer-to-peer carsharing by supplementing peer ratings.
-  Evidence: The paper treats scoring primarily as a trust-building design addition for a sharing platform context.
+  Claim: Algorithm-based telematics scoring can support trust-building in peer-to-peer carsharing by complementing or improving traditional user ratings.
+  Evidence: The extracted claim explicitly presents telematics scoring as a trust-supporting design intervention for peer-to-peer carsharing.
 
-**Paper B**: Fairness in Algorithmic Management: Bringing Platform-Workers into the Fold
-  Claim: For independent platform workers, the distributive fairness of managerial algorithms critically affects job satisfaction.
-  Evidence: The abstract states that platform algorithms handle assignments and performance evaluation, and that perceived fairness of these managerial algorithms is critical to worker outcomes.
+**Paper B**: Trust and power in Airbnb’s digital rating and reputation system
+  Claim: Platform reputation systems cannot be fully trusted because they create power asymmetries and unfairly distribute burdens.
+  Evidence: The paper's extracted claim offers a critical account of formal trust infrastructures, warning that reputation systems institutionalize unequal power rather than simply reducing uncertainty.
 
-**Relevance to thesis**: This introduces an alternative framing from algorithmic-management literature: once scores shape visibility, matching, or access, rating fairness is not merely a trust issue. It becomes a governance issue. That weakens any argument that identity verification alone is enough.
-**Beat affected**: 5
-**Suggested handling**: Be explicit about whether CampusRide scores are informational or consequential. If they affect access, matching priority, or reputation persistence, import fairness safeguards from algorithmic-management work: explanations, appeal, human override, and bias auditing. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+**Relevance to thesis**: For CampusRide, this is an important scope limiter: adding more formal trust instrumentation may improve screening or matching, but it can also intensify governance and fairness problems. Institutional identity verification does not settle this tradeoff.
+**Beat affected**: 3
+**Suggested handling**: Present telematics/scores as optional supplementary evidence, not as definitive safety truth. Add procedural safeguards: explainability, contestation, limited use, and no overclaim that algorithmic trust proxies equal reduced harm. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
 
 ---
 
 ### C1: 🟡 MODERATE — competing_mechanism
 
-**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
-**Question**: If harm reduction depends on live monitoring, safe routing, and emergency escalation, is institutional identity verification only a weak trust cue rather than a meaningful safety control?
+**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
+**Question**: Are identity-rich profile cues enough to generate trust, or do those same cues create discrimination risk that requires dedicated fairness design in reputation systems?
 
-**Paper A**: Creating a trusting environment in the sharing economy: Unpacking mechanisms for
-  Claim: P2P carpooling platforms can build trust through platform trust-building mechanisms, although effects differ by user type such as car ownership and experience.
-  Evidence: The abstract frames trust as a central challenge for P2P carpooling and says the study 'unpacks mechanisms for trust-building' with differential effects across user segments.
+**Paper A**: Trust and reputation in the sharing economy: The role of personal photos in Airb
+  Claim: Personal photos on Airbnb influence trust formation and reputation building.
+  Evidence: The paper's key claim is that profile photos materially shape trust and reputation judgments on Airbnb, implying that identity-visible cues can do substantial trust-building work without adding separate fairness mechanisms to the review flow.
 
-**Paper B**: A Comprehensive Web-Based Women Safety Application with Real-Time Tracking and A
-  Claim: Women's safety requires a stack of real-time GPS tracking, crime heatmaps, safer-route computation, and AI assistance to address threats.
-  Evidence: The key claim says the application integrates real-time tracking, crime heatmap visualization, safe routing, and AI-powered risk support to 'comprehensively address' safety threats.
+**Paper B**: A Systematic Literature Review of Anti-Discrimination Design Strategies in the D
+  Claim: Digital sharing-economy platform design features trigger discrimination against minority groups, and specific software design strategies are needed to mitigate that bias.
+  Evidence: The systematic literature review synthesizes evidence across ridesharing, lodging, and freelancing that platform design itself can induce discrimination, and that anti-discrimination design interventions are required.
 
-**Relevance to thesis**: This does not directly refute .edu verification, but it weakens any claim that identity verification itself materially reduces harm. Paper B implies that actual safety comes from situational awareness and response infrastructure, not from knowing the other party's nominal identity.
-**Beat affected**: 3
-**Suggested handling**: Recast .edu or campus-card verification as a low-level access and accountability primitive, not a primary safety guarantee. Pair it with route-risk alerts, SOS, incident logging, and escalation channels. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
+**Relevance to thesis**: This is a real scope-limiting tension for any claim that stronger identity verification or richer identity presentation can substitute for rating-fairness design. The literature suggests identity cues may help trust while simultaneously worsening discriminatory outcomes.
+**Beat affected**: 5
+**Suggested handling**: Distinguish back-end identity verification from front-end identity display. Do not argue that identity salience alone solves trust; instead claim that verification supports safety while fairness-aware UI and reputation design are still needed to reduce discriminatory inference. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
 
 ---
 
 ### C2: 🟡 MODERATE — competing_mechanism
 
-**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
-**Question**: Does verification prevent unsafe encounters, or do users still need post-verification protections because verified participants can remain dangerous?
+**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
+**Question**: Should fairness be engineered inside peer-review workflows, or can platforms reduce dependence on biased peer ratings by shifting trust to more objective scoring mechanisms?
 
-**Paper A**: Creating a trusting environment in the sharing economy: Unpacking mechanisms for
-  Claim: Platform trust-building mechanisms can foster user trust in peer-to-peer carpooling.
-  Evidence: The paper positions trust-building as a core platform problem and contribution, indicating that platform design can shape perceived trustworthiness.
+**Paper A**: Reciprocity and Unveiling in Two-Sided Reputation Systems: Evidence from an Expe
+  Claim: Hiding feedback until both parties submit reviews reduces reciprocity bias in two-sided reputation systems.
+  Evidence: The Airbnb experiment provides causal evidence that a specific review-interface design change alters rating behavior by reducing reciprocity bias, directly supporting dedicated fairness design within the rating system itself.
 
-**Paper B**: A Comprehensive Study on Mobile SOS and Personal Safety Applications Across Mult
-  Claim: Personal safety systems are moving beyond manual panic buttons toward context-aware, sensor-fused, AI-assisted systems with monitoring-center or police integration, but important gaps remain.
-  Evidence: The abstract states the field is shifting to context-aware and integrated emergency-response models and still reports 'significant technological gaps'.
+**Paper B**: Trust-Building in Peer-to-Peer Carsharing: Design Case Study for Algorithm-Based
+  Claim: Algorithm-based telematics scoring can support trust-building in peer-to-peer carsharing by complementing or improving upon traditional user ratings.
+  Evidence: The design case study argues that telematics-based scoring offers a trust signal that can supplement or improve ordinary user ratings, implying that trust may be better stabilized by objective behavioral data than by further refining peer ratings alone.
 
-**Relevance to thesis**: This creates a real scope tension for F3: even if institutional verification increases initial trust, Paper B suggests residual risk remains large enough to require continuous sensing and emergency response. That implies verification may shift risk from screening to response rather than eliminate it.
-**Beat affected**: 3
-**Suggested handling**: Explicitly distinguish between trust formation and harm prevention. State that campus identity verification may improve traceability and onboarding confidence, but cannot substitute for protective features once a ride or encounter begins. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
+**Relevance to thesis**: This does not refute rating fairness as a concern, but it does challenge the stronger claim that fairness must be addressed primarily inside the peer-rating mechanism itself. Alternative trust architectures may partly bypass the problem.
+**Beat affected**: 5
+**Suggested handling**: Frame rating fairness as one trust module rather than the sole solution. Compare or combine review-fairness interventions with non-rating trust signals such as verified trip data, telematics, or other low-bias accountability cues. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+
+---
+
+### C3: 🟡 MODERATE — competing_mechanism
+
+**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
+**Question**: If peer endorsements can already offset discrimination, do platforms still need dedicated fairness policies targeted at biased ratings?
+
+**Paper A**: Fighting bias with bias: How same-race endorsements reduce racial discrimination
+  Claim: Same-race endorsements reduce racial discrimination on Airbnb.
+  Evidence: The empirical study reports that white guests' racial bias in host selection is largely offset when hosts are endorsed by previous white guests, suggesting that social-proof features inside an existing reputation system can mitigate discrimination without a separate fairness module.
+
+**Paper B**: Fairness Dynamics in Digital Economy Platforms with Biased Ratings
+  Claim: Platform promotion policies can counteract rating-based discrimination against marginalised service providers while maintaining quality incentives.
+  Evidence: The theoretical paper models biased ratings and concludes that explicit platform-side promotion policies are needed to correct discriminatory dynamics while preserving incentives.
+
+**Relevance to thesis**: This is a genuine mechanism-level tension. One line suggests discrimination can be dampened through endogenous endorsement patterns already present in reputation systems; the other suggests dedicated fairness policy remains necessary because biased ratings still distort exposure and outcomes.
+**Beat affected**: 5
+**Suggested handling**: Acknowledge that endorsement-based social proof may help in some settings, but argue that it is not a guaranteed or equitable correction mechanism. Treat dedicated fairness policy as a safeguard when organic endorsement patterns are absent, sparse, or themselves stratified. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
 
 ---
 
 ### C4: 🟡 MODERATE — competing_mechanism
 
-**Source focus**: F3 .edu as Trust Primitive: Does institutional identity verification meaningfully reduce harm, or does it merely shift risk?
-**Question**: Is user-triggered self-help sufficient for safety, or does relying on it merely transfer responsibility to the potential victim after verification has already failed?
+**Source focus**: F5 Gamification Risk: Does gamification produce unintended effects (motivation crowding, gaming behavior, equity concerns) in mobility / coordination contexts?
+**Question**: Does ML-personalized gamification optimize behavior, or does optimization itself create opacity and power asymmetry that invite gaming, mistrust, and defensive sensemaking?
 
-**Paper A**: Android App for Women Safety
-  Claim: A one-touch SOS app that sends live GPS coordinates to pre-registered contacts can enhance women's safety in emergencies.
-  Evidence: The key claim centers on emergency response through manual SOS activation and location sharing.
+**Paper A**: Convergence of Gamification and Machine Learning: A Systematic Literature Review
+  Claim: Gamification and machine learning converge around personalization, behavior change, context adaptation, and task optimization.
+  Evidence: The review identifies their main intersection as 'learning, personalization, behavioral change, context adaptation, and task optimization.'
 
-**Paper B**: A Comprehensive Study on Mobile SOS and Personal Safety Applications Across Mult
-  Claim: Safety apps are shifting away from manual panic-button models toward context-aware and sensor-fused systems.
-  Evidence: The survey explicitly describes a field-level move from manual panic-button systems to richer automatic and assisted models.
+**Paper B**: Opaque Overwatch: How Food-Delivery Workers Make Sense of Algorithmic Management
+  Claim: Opaque algorithmic management creates power asymmetry and forces workers to interpret and respond to unclear control systems.
+  Evidence: The abstract says 'technical opacity and power asymmetry' drive food-delivery workers to engage in sensemaking about algorithmic control.
 
-**Relevance to thesis**: This is relevant because .edu verification can similarly function as a pre-incident reassurance layer while leaving users to manage acute risk themselves. Paper B suggests that such user-burdened models are incomplete and often require automation or institutional response to be effective.
-**Beat affected**: 3
-**Suggested handling**: Do not equate verified identity with safety. If the thesis includes verification, also address burden-shifting: users should not be solely responsible for activating protection once harm is underway. State explicitly that .edu identity verification is a trust signal that reduces anonymity-based risk, not a substitute for ongoing behavioral safety design.
+**Relevance to thesis**: A mobility platform that uses ML-personalized points, nudges, or visibility boosts may unintentionally recreate the opacity problems seen in gig work. That is a real gaming-behavior risk: once rules are obscure, users optimize against the system rather than cooperate with it.
+**Beat affected**: 7
+**Suggested handling**: Use fully transparent rules for any rewards or recognition. Do not combine gamification with hidden ranking, matching, or exposure logic. Provide appealability and human-readable explanations for any prioritized visibility. Treat gamification-induced gaming behavior and motivation crowding as genuine risks; keep points auxiliary rather than primary in design arguments.
 
 ---
 
-### C1: 🟡 MODERATE — competing_mechanism
+### C6: 🟢 MINOR — scope_disagreement
 
-**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
-**Question**: Are visible identity cues enough to generate trustworthy peer evaluations, or do they create fairness problems that require separate anti-discrimination design?
+**Source focus**: F2 Grassroots Legitimacy: Does grassroots WeChat/WhatsApp coordination need formalization, or is it already adequate (and does formalization risk community autonomy)?
+**Question**: Do international students already cope through heterogeneous mobility repertoires, implying that a single formal platform may flatten rather than support real grassroots practice?
 
-**Paper A**: Trust and reputation in the sharing economy: The role of personal photos in Airb
-  Claim: Personal photos function as trust signals on Airbnb and materially shape reputation formation and booking choice.
-  Evidence: The paper's key claim is that personal photos influence reputation formation and booking decisions, implying that identity-rich profile cues do substantial trust work even before or alongside formal ratings.
+**Paper A**: TARGET_THESIS
+  Claim: The thesis treats international-student grassroots coordination as a candidate for formalization within a unified platform response to small-town mobility gaps.
+  Evidence: The context explicitly highlights WeChat/WhatsApp and international students as grassroots practices that warrant formalization.
 
-**Paper B**: A Systematic Literature Review of Anti-Discrimination Design Strategies in the D
-  Claim: Digital sharing-economy platforms embed design choices that allow some demographics to gain unfair advantage, so anti-discrimination design must be treated explicitly.
-  Evidence: This systematic review synthesizes 58 studies and concludes that platform design decisions can systematically advantage certain demographics, directly challenging the fairness of identity-salient trust cues.
+**Paper B**: Mobility Repertoires: How Chinese Overseas Students Overcame Pandemic-Induced Im
+  Claim: Chinese overseas students navigated pandemic immobility by deploying four different mobility repertoires under hostile and restrictive conditions.
+  Evidence: The paper shows that students coped through varied, adaptive repertoires rather than a single standardized pathway, emphasizing situational improvisation under constraint.
 
-**Relevance to thesis**: This limits any claim that stronger identity verification or richer profile identity is enough to make peer ratings fair. The same cues that help strangers trust each other can also import demographic bias into evaluations.
-**Beat affected**: 5
-**Suggested handling**: Frame identity verification as a safety and accountability baseline, not a substitute for fairness design. Minimize optional identity display in decision points and add anti-discrimination safeguards around profile presentation and rating use. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
+**Relevance to thesis**: This is a weaker but relevant scope tension. If student mobility is managed through multiple adaptive repertoires, then formalization into one platform may misfit the heterogeneity of actual coping practices. The issue is not that formalization is impossible, but that it may encode only a subset of legitimate strategies.
+**Beat affected**: 2
+**Suggested handling**: Avoid universalizing from a subset of practices. Define which mobility repertoires CampusRide is meant to support, and identify which remain outside scope. This helps prevent overclaiming that platform formalization can stand in for the diversity of grassroots adaptation. Acknowledge that grassroots WeChat/WhatsApp coordination is adequate for many coordination needs; frame CampusRide as formalization of specific patterns rather than replacement of informal channels.
 
 ---
 
 ### C5: 🟢 MINOR — scope_disagreement
 
-**Source focus**: F1 Gap vs. Substitute: Does commercial rideshare really underserve small-town universities, or do substitutes (shuttles, transit) adequately fill the gap?
-**Question**: When papers claim rural access can be made sufficient, does that adequacy extend to disabled riders and other accessibility-sensitive groups?
+**Source focus**: F4 Rating Fairness as Independent Design Concern: Do peer rating systems need dedicated fairness design, or is strong identity verification enough?
+**Question**: Is rating fairness a universal independent design concern, or does its importance vary by user segment and context enough that a single fairness mechanism may overgeneralize?
 
-**Paper A**: How to ensure sufficient access to public transport in rural areas? A comparativ
-  Claim: Appropriate multimodal institutional design can produce sufficient public transport availability in rural areas.
-  Evidence: The abstract emphasizes institutional design as determining whether rural areas achieve 'sufficient public transport modal availability'.
+**Paper A**: Creating a trusting environment in the sharing economy: Unpacking mechanisms for
+  Claim: Trust-building mechanisms in peer-to-peer carpooling have differential effects depending on car ownership and customer experience level.
+  Evidence: The mixed-method carpooling study explicitly reports heterogeneous effects of trust-building mechanisms across user segments, implying that what matters for trust and fairness may differ by platform role and experience.
 
-**Paper B**: Accessible Autonomous Transportation and Services: Design Considerations From th
-  Claim: Transportation substitutes remain inadequate unless wheelchair accessibility is explicitly designed in, especially in rural and low-income communities.
-  Evidence: The abstract says wheelchair accessibility in autonomous vehicles 'must be prioritized to improve equitable transportation access' and highlights access problems for medical appointments in rural and low-income communities.
+**Paper B**: Enhancing the Reputation System in  Ridesharing: A Blockchain-Based Mutual Escro
+  Claim: Mutual escrow, bidirectional dynamic rating, and a cooldown period prevent rating manipulation and retaliatory feedback in decentralized ridesharing reputation systems.
+  Evidence: The systems paper presents a mechanism-level solution as a generalized way to prevent manipulation and retaliation in ridesharing reputation systems.
 
-**Relevance to thesis**: This is not a thesis-killer, but it limits any broad substitute-adequacy claim. A town may have 'sufficient' multimodal access in aggregate while still leaving accessibility-dependent users underserved.
-**Beat affected**: 3
-**Suggested handling**: Qualify adequacy claims by rider segment. If the thesis claims substitutes fail, specify whether that refers to the general student population, disabled riders, off-peak users, or other subgroups. Frame small-town university underservice as motivated and contextually documented, not as a universally empirically quantified gap; acknowledge substitutes (shuttles, transit) where present.
+**Relevance to thesis**: This is not a thesis-killer, but it cautions against universalizing a fairness intervention from one subgroup observation. A campus amateur-driver population may not respond like other carpooling or platform segments.
+**Beat affected**: 5
+**Suggested handling**: State explicitly that dedicated fairness features may need role-specific or segment-specific tuning. Use the driver-subgroup finding as evidence for targeted fairness design, not for one-size-fits-all reputation architecture. Present the rating-fairness observation (F5, N=30) as resonating with algorithmic management literature rather than replicating it; the design response is a hypothesis, not a validation.
 
 ---
 
 
 ## Summary
 
-Total contradictions: 27
-Critical (must address): 10
+Total contradictions: 29
+Critical (must address): 9
 
 ## Thesis Risk Assessments
 
-- Moderate. None of the retrieved papers shows that commercial rideshare itself adequately serves small-town universities, so the core 'commercial rideshare underserves' premise is not directly overturned. However, several A-category papers materially weaken any universal claim that substitutes do not fill the gap. The strongest counterevidence is that rural access can be sufficient under mature multimodal institutional design, campus commuting can be improved through targeted public transport priorities, and demand-managed or shuttle-based substitutes may perform well in university-adjacent rural contexts. The safest thesis formulation is therefore narrow: underservice persists in specific small-town university settings where multimodal governance is immature, campus shuttle/transit provision is weak, and last-mile or off-peak needs remain unmet.
-- Moderate. The literature does not show that formalization is always wrong, but it does undermine any blanket claim that grassroots WeChat/WhatsApp coordination is inherently inadequate. Multiple papers show existing chat groups already generate trust, attachment, learning, belonging, and effective self-organization. The strongest risk is adversarial: formalization can reproduce platform-governance harms by shifting socially owned peer spaces into monitored, rule-bound, reputation-bearing systems. The thesis remains viable if it is narrowed from 'grassroots coordination needs formalization' to 'some high-friction campus mobility tasks may benefit from an optional, interoperable, community-governed formal layer.'
-- moderate. None of the four papers directly demonstrates that institutional identity verification (.edu, campus card) meaningfully reduces fraud, harassment, or unsafe behavior, and none provides the requested case-study or incident-report evidence of verified insiders causing harm. The strongest signal is indirect: multiple safety papers imply that meaningful protection comes from monitoring, routing, sensing, and escalation layers, not from identity assurance alone. This does not kill the thesis, but it forces a narrower claim: institutional verification may help onboarding trust, traceability, and accountability, while actual harm reduction likely depends on complementary operational safeguards.
-- Overall risk is moderate-to-high if the thesis implies that strong identity verification, richer profile identity, or generic trust signals are sufficient to make peer ratings fair. The strongest counter-signal in this set is that identity-salient trust cues can themselves encode bias, endorsement tweaks can mitigate but not fully resolve unfairness, and algorithmic or reputation-based evaluation becomes a governance problem once it affects access, visibility, or outcomes. The thesis is much safer if it states that verified identity is a baseline safety primitive while rating fairness remains an independent design concern requiring explicit safeguards, limited use, and recourse.
-- The strongest evidence does not show that gamification is uniformly harmful; however, it does show that the positive literature in this set is concentrated in bounded, educational, climate-engagement, or self-tracking contexts, while the platform and algorithmic-management literature documents autonomy loss, fairness problems, resistance, and persistent inequity in real operational systems. So F5 is a serious scope-limiter, not an automatic thesis failure. The defensible position is that gamification may be useful only in auxiliary, opt-in, low-stakes, nonallocative use cases. Claims that gamification broadly improves mobility coordination should be narrowed, especially where rankings, rewards, tracking, or algorithmic personalization govern access, visibility, or obligations.
+- Moderate. The strongest counterevidence does not prove that commercial rideshare adequately serves small-town universities everywhere, but it does materially undercut any universal underservice claim. Several papers show that university-run transit, on-demand campus services, demand-responsive transit, and broader MaaS integration can provide effective substitutes in at least some low-density or campus settings. The thesis remains viable if narrowed to specific small-town contexts where these substitutes are absent, temporally limited, geographically thin, or poorly matched to the needs of irregular travelers, international students, late-night riders, and off-campus errands.
+- Overall risk to the thesis on F2 is moderate. None of the cited papers directly disproves that small-town university transport has unmet coordination needs, but several of the strongest category-C papers do challenge the inference that existing WeChat/WhatsApp coordination therefore needs formalization. The sharpest tension is that informal messaging groups can be effective precisely because they are community-controlled, trust-producing, flexible, and partially insulated from platform governance. Without deployment evidence, the thesis remains vulnerable on the claim that formalization improves on grassroots practice rather than displacing its social advantages.
+- The strongest literature signal does not support a strong claim that institutional identity verification meaningfully prevents harm on its own. The most damaging tension is that campus-bounded identity can be produced without formal credentials, while campus-bounded access can also be spoofed or externally observed via GPS hacking. That means .edu/campus-card verification may improve perceived affiliation and some low-stakes social capital, but the evidence here is weaker on actual harm reduction and stronger on boundary porosity and risk shift. A second major tension is that formal trust systems often move risk into ratings, scoring, and platform governance rather than eliminating it. Overall, F3 is defensible only if framed narrowly as a partial affiliation and accountability signal, not as a safety guarantee.
+- Moderate. The strongest literature in this set does support the idea that peer rating systems have fairness problems requiring design attention: reciprocity bias can be reduced through review-interface changes, anti-discrimination design is a recognized need, and retaliation/manipulation countermeasures are explicitly proposed. However, the contradiction surface is real in two ways. First, several papers imply that trust can sometimes be stabilized through other mechanisms such as identity-rich cues, endorsements, or objective telematics, so rating fairness should not be framed as the only trust lever. Second, the algorithmic-management literature raises a more serious adversarial risk: fairness-oriented formalization can slide into surveillance and control, especially if the solution relies on expanded scoring or tracking. The safest thesis position is therefore not 'identity verification is enough,' nor 'rating fairness alone solves trust,' but 'rating fairness is an independent and nontrivial design concern that must be addressed alongside identity, governance, and anti-control safeguards.'
+- The strongest signal is not a single thesis-killing direct contradiction, but a consistent scope-limiting pattern: positive gamification evidence in the candidate set comes mostly from voluntary climate, education, civic-engagement, and school settings, while platform-work literature shows that once feedback, tracking, personalization, and reputation become tied to managed participation, they can reduce autonomy, invite resistance, create opacity, and amplify inequity. For F5, the honest conclusion is that gamification is defensible only in narrow auxiliary roles; it is risky as a core coordination or driver-management mechanism.
 
 ## Unresolved Tensions
 
-- No retrieved paper directly compares commercial rideshare against campus shuttles, taxis, and public transit within the same small-town university setting, so substitute adequacy remains mostly inferred rather than head-to-head tested.
-- Several substitute-friendly papers are about design, governance, or operational optimization rather than observed full-scale deployment, so they show feasibility more than proven real-world sufficiency.
-- The campus-specific evidence suggests some universities can improve public transport significantly, but the literature shown here does not establish when those improvements are politically or financially realistic in small-town contexts.
-- Which campus mobility tasks truly exceed the capacity of existing WhatsApp/WeChat groups: matching, scheduling, safety verification, dispute handling, or record-keeping?
-- When does institutional presence improve outcomes, and when does it chill participation or erode trust?
-- Can CampusRide be governed as community infrastructure rather than as an algorithmic-management system with ratings, surveillance, or coercive verification?
-- Should the design target migration from grassroots channels, or long-term coexistence and interoperability with them?
-- Are international students more likely to benefit from formal safeguards or to avoid institutional spaces because of vulnerability, stigma, or fear?
-- No candidate paper directly studies .edu or campus-card verification as a safety intervention.
-- No paper in this set provides incident reports showing verified institutional identities failing to prevent fraud, harassment, or unsafe conduct.
-- The available evidence conflates trust formation with safety outcomes; improved willingness to engage is not the same as reduced harm.
-- System papers make strong safety claims without clear deployment or incident-outcome evaluation in the provided metadata.
-- A key open question remains whether institutional verification reduces risk or merely shifts it downstream to monitoring, reporting, and emergency response layers.
-- It remains unclear how far Airbnb and gig-work fairness failures transfer to a small-town campus rideshare with repeated interactions and stronger offline community ties.
-- The literature here does not establish whether lightweight mitigations such as delayed reveal, cooldowns, and moderation are enough in peer carpooling, or whether stronger platform-level auditing of ranking and exposure is necessary.
-- A key open question is whether CampusRide ratings are merely advisory trust signals or consequential governance tools; if they affect access or matching, algorithmic-management critiques become much more relevant.
-- There is little direct longitudinal evidence on gamification failure specifically in campus mobility coordination, so some risks remain analogical rather than directly observed in this domain.
-- The current positive papers mostly measure engagement, acceptance, or behavior change, not motivation crowding, perceived manipulation, or long-run trust erosion.
-- No paper in this set cleanly identifies when a gamified coordination feature crosses the line into algorithmic management; that boundary needs explicit design criteria.
-- Equity effects remain under-specified: the literature suggests structural inequalities persist on platforms, but there is limited direct evidence on how mobility gamification affects newcomers, caregivers, international students, or low-flexibility users.
-- Gaming behavior is strongly suggested by resistance findings in algorithmically managed work, but direct evidence on score manipulation, collusion, or metric-chasing in nonwork mobility gamification is still sparse.
+- There is no direct head-to-head evidence here comparing commercial rideshare, campus shuttles, public transit, taxis, and informal student coordination within the same small-town university setting.
+- The university-transit satisfaction paper shows substitutes can work, but it does not establish how common such adequate service is across small-town campuses.
+- Demand-responsive transit and MaaS papers show feasibility and benefits, but not whether small universities can fund, govern, and sustain those systems.
+- The thesis should specify which trip classes remain underserved despite substitutes: late-night trips, airport runs, grocery trips, regional inter-town travel, and newcomer/international-student mobility.
+- A defensible claim is likely conditional rather than general: underservice persists where campus/regional transit is sparse in coverage, low in frequency, weak off-hours, or inaccessible to certain student subgroups.
+- What concrete failures of grassroots chat coordination in small-town university mobility cannot be solved by lightweight adaptations to existing messaging groups?
+- Can CampusRide preserve the autonomy, privacy, and solidarity benefits of closed community groups, or does any formalization introduce platform-control costs?
+- Is transport coordination sufficiently different from community risk communication, volunteer self-organization, and informal knowledge sharing to justify a dedicated platform?
+- Should the design be framed as augmenting existing WeChat/WhatsApp ecologies rather than replacing them?
+- How will the thesis evaluate whether formalization improves reliability without reducing trust, reciprocity, and spontaneous mutual aid?
+- None of the provided papers directly compare safety outcomes in .edu-verified versus non-verified campus mobility systems.
+- The strongest failure evidence in this set concerns porous campus/location boundaries and spoofing, not a direct incident study of .edu-gated ride platforms.
+- Positive .edu-era Facebook findings concern social capital and resource mobilization, which may not generalize to safety-critical stranger coordination.
+- The set does not establish whether institutional verification mainly deters outsider fraud or simply reclassifies insiders as presumptively trustworthy despite ongoing harassment or safety risks.
+- There is no direct evidence here on campus-card or university SSO identity checks reducing assault, fraud, or dangerous ride incidents in transportation settings.
+- How much trust can be achieved through verification, profile cues, and endorsements before dedicated rating-fairness mechanisms deliver diminishing returns?
+- Whether endorsement-based mitigation effects generalize from Airbnb lodging to amateur-driver campus carpooling remains unresolved.
+- Objective scoring systems may reduce some review biases but can introduce algorithmic-management harms; the literature does not yet specify the boundary where accountability becomes over-control.
+- The carpooling literature suggests heterogeneity by user role and experience, so the thesis should not generalize a driver-subgroup fairness result into a universal reputation-design rule.
+- The candidate set does not include a clean, direct failure study of gamification in peer campus ridesharing, so some risk inference is transferred from adjacent gig-work and sharing-economy contexts.
+- It remains unresolved whether amateur/occasional campus drivers would react more like voluntary community members or like workers under algorithmic control once rewards and status signals are introduced.
+- No paper here directly isolates overjustification or motivation crowding-out in community mobility coordination; the best evidence is indirect via autonomy loss, evaluative tracking, resistance, and discrimination findings.
+- A possible safe zone remains: transparent, opt-in, non-comparative, non-evaluative gamification for onboarding, sustainability awareness, and community milestones rather than supply control or reputation governance.

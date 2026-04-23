@@ -6,7 +6,8 @@ import json
 import logging
 import os
 import re
-from collections import Counter
+import shutil
+from collections import Counter, defaultdict
 
 import networkx as nx
 
@@ -114,6 +115,66 @@ BEAT_REQUIREMENTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# v4.2 Extended Edge Extraction (Prompt D)
+# ---------------------------------------------------------------------------
+# Stopwords that MUST be filtered out of CONCEPTUAL_OVERLAP keyword matching.
+# The v4.2 guide is explicit: generic nouns ("user", "study", "design",
+# "system", "paper", "model", "research", "approach", "work", "result") cause
+# false-positive keyword overlaps to explode. Keep this list conservative but
+# cover the most common surface forms (plurals, common English stopwords,
+# and a handful of paper-writing boilerplate tokens).
+DOMAIN_STOPWORDS: set[str] = {
+    # guide-mandated exclusions
+    "user", "users", "study", "studies", "design", "designs",
+    "system", "systems", "paper", "papers", "model", "models",
+    "research", "approach", "approaches", "work", "works",
+    "result", "results",
+    # trivial English stopwords that sneak through word-split tokenization
+    "the", "and", "for", "with", "that", "this", "from", "into", "are",
+    "was", "were", "have", "has", "had", "but", "not", "our", "their",
+    "its", "they", "them", "these", "those", "such", "also", "can",
+    "may", "will", "been", "being", "more", "most", "other", "than",
+    "between", "across", "over", "under", "through", "both", "all",
+    "any", "each", "some", "many", "few", "new", "novel",
+    # boilerplate research-prose tokens
+    "abstract", "introduction", "method", "methods", "methodology",
+    "methodologies", "finding", "findings", "data", "datum", "analysis",
+    "analyses", "conclusion", "conclusions", "discussion", "future",
+    "propose", "proposed", "present", "presented", "show", "shows",
+    "demonstrate", "demonstrates", "using", "use", "used", "based",
+    "towards", "toward", "paper's", "we", "authors", "author",
+}
+
+
+# Coarse methodology shape patterns. Each key maps to a set of substrings that,
+# when present in an abstract (or methodology field when we have it), mark the
+# paper as that shape. A pair of papers sharing a shape gets a
+# METHODOLOGICAL_MIRROR edge (weight 0.5).
+METHODOLOGY_SHAPE_PATTERNS: dict[str, tuple[str, ...]] = {
+    "formative_survey": (
+        "formative survey", "formative study", "survey study",
+        "questionnaire study", "online survey", "n=", "n =",
+        "respondents", "survey respondents",
+    ),
+    "design_case_study": (
+        "design case", "case study", "design study", "field deployment",
+        "deployed", "in-the-wild", "in the wild",
+    ),
+    "system_plus_evaluation": (
+        "system and evaluation", "system + evaluation", "we built",
+        "we designed and evaluated", "prototype and evaluation",
+        "implementation and evaluation", "system implementation",
+        "user evaluation", "usability evaluation",
+    ),
+    "qualitative_interview": (
+        "qualitative interview", "semi-structured interview",
+        "semistructured interview", "interview study", "focus group",
+        "thematic analysis", "grounded theory",
+    ),
+}
+
+
 def run_phase3(state: dict, state_path: str, base_dir: str, client,
                s2=None) -> dict:
     """Orchestrate Phase 3."""
@@ -179,9 +240,12 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
         refined = _run_relationship_analyst(client, papers, G)
         atomic_write_json(os.path.join(analysis_dir, "relationship_analysis.json"), refined)
         ensure_relationship_analysis_valid(refined)
-        # Merge refined edges back into graph
+
+        graph_path = os.path.join(proc_dir, "relationship_graph.json")
+        alias_lookup = build_alias_lookup(papers)
+
+        # Merge LLM-refined edges back into graph (existing v4.1 logic).
         if refined and "edges" in refined:
-            alias_lookup = build_alias_lookup(papers)
             for edge in refined["edges"]:
                 src = canonicalize_paper_ref(edge.get("source"), alias_lookup)
                 tgt = canonicalize_paper_ref(edge.get("target"), alias_lookup)
@@ -194,7 +258,61 @@ def run_phase3(state: dict, state_path: str, base_dir: str, client,
                         confidence_label="INFERRED",
                         provenance="phase3_relationship_analyst",
                     )
-            _save_graph(G, os.path.join(proc_dir, "relationship_graph.json"))
+
+        # v4.2 Prompt D: compute extended edges (conceptual_overlap,
+        # methodological_mirror, temporal_succession, contradiction) AFTER
+        # the LLM extraction so heuristic edges only fill gaps the LLM left.
+        contradictions_path = os.path.join(analysis_dir, "contradictions.json")
+        contradictions_data = (
+            load_json(contradictions_path)
+            if os.path.exists(contradictions_path) else None
+        )
+        citation_map_path = os.path.join(proc_dir, "full_citation_map.json")
+        citation_map_data = (
+            load_json(citation_map_path)
+            if os.path.exists(citation_map_path) else None
+        )
+
+        extended_edges = compute_extended_edges(
+            classified=papers,
+            contradictions=contradictions_data,
+            citation_map=citation_map_data,
+        )
+        added_counts = _merge_extended_edges_into_graph(
+            G, extended_edges, alias_lookup
+        )
+        log.info(
+            "Phase 3.4 v4.2 extended edges added: %s (computed=%d)",
+            added_counts, len(extended_edges),
+        )
+
+        # v4.2 hard requirement: back up the prior relationship_graph.json
+        # BEFORE we overwrite it so we can A/B compare / roll back.
+        backup_path = os.path.join(
+            proc_dir, "relationship_graph_v4.1_backup.json"
+        )
+        if os.path.exists(graph_path) and not os.path.exists(backup_path):
+            try:
+                shutil.copyfile(graph_path, backup_path)
+                log.info(
+                    "Phase 3.4: backed up v4.1 relationship graph to %s",
+                    backup_path,
+                )
+            except Exception as e:
+                log.warning(
+                    "Phase 3.4: relationship_graph backup failed: %s", e,
+                )
+
+        _save_graph(G, graph_path)
+        v42_metrics = _log_extended_edge_metrics(G)
+        atomic_write_json(
+            os.path.join(analysis_dir, "relationship_edge_metrics_v4_2.json"),
+            {
+                "added_edges": added_counts,
+                "computed_edges": len(extended_edges),
+                **v42_metrics,
+            },
+        )
         state = complete_step(state, state_path, 3, "relationship_analysis")
     else:
         refined = load_json(os.path.join(analysis_dir, "relationship_analysis.json"))
@@ -425,6 +543,317 @@ def category_statistics(papers: list[dict]) -> dict:
             "top_gaps": gaps[:10],  # First 10 gaps for the agent
         }
     return stats
+
+
+# ---------------------------------------------------------------------------
+# v4.2 Extended edge computation (Prompt D)
+# ---------------------------------------------------------------------------
+
+_WORD_RE = re.compile(r"[a-z][a-z\-]{2,}")
+
+
+def _paper_keywords(paper: dict) -> set[str]:
+    """Domain-specific keyword set for a paper, with stopwords stripped.
+
+    Pulls from title + abstract (+ any explicit concepts field). Filters against
+    DOMAIN_STOPWORDS and requires length >= 4 so that very short fragments
+    ("use", "web") cannot drive a CONCEPTUAL_OVERLAP match.
+    """
+    text_parts = [
+        str(paper.get("title", "") or ""),
+        str(paper.get("abstract", "") or ""),
+    ]
+    for concept in paper.get("concepts", []) or []:
+        if isinstance(concept, dict):
+            text_parts.append(str(concept.get("name", "") or ""))
+        elif isinstance(concept, str):
+            text_parts.append(concept)
+    text = " ".join(text_parts).lower()
+    tokens = {
+        tok for tok in _WORD_RE.findall(text)
+        if len(tok) >= 4 and tok not in DOMAIN_STOPWORDS
+    }
+    return tokens
+
+
+def _methodology_shape(paper: dict) -> set[str]:
+    """Return the set of methodology-shape labels matched by a paper.
+
+    Uses abstract + title as the haystack. A paper can match multiple shapes
+    (e.g. formative_survey AND qualitative_interview); METHODOLOGICAL_MIRROR
+    fires on any shape overlap.
+    """
+    haystack = " ".join(
+        str(paper.get(k, "") or "") for k in ("title", "abstract")
+    ).lower()
+    matched: set[str] = set()
+    for shape, patterns in METHODOLOGY_SHAPE_PATTERNS.items():
+        if any(p in haystack for p in patterns):
+            matched.add(shape)
+    return matched
+
+
+def _keyword_in_abstract(keywords: set[str], abstract: str) -> str | None:
+    """Return the first keyword from `keywords` that appears as a whole word in
+    `abstract` (case-insensitive), else None. Used by TEMPORAL_SUCCESSION.
+    """
+    if not abstract or not keywords:
+        return None
+    lowered = abstract.lower()
+    for kw in keywords:
+        # whole-word match
+        if re.search(rf"\b{re.escape(kw)}\b", lowered):
+            return kw
+    return None
+
+
+def compute_extended_edges(
+    classified: list[dict],
+    contradictions: dict | list | None,
+    citation_map: dict | None,
+) -> list[dict]:
+    """Compute v4.2 extended edges: conceptual_overlap, methodological_mirror,
+    temporal_succession, and contradiction.
+
+    Returns a list of edge dicts in the same schema the Relationship Analyst
+    produces: {source, target, type, evidence, weight, provenance}. The caller
+    is responsible for canonicalizing ids against the graph before insertion.
+
+    Args:
+        classified: active papers (already filter_active_papers'd).
+        contradictions: parsed contradictions.json (dict with
+            "contradictions" list) — used for CONTRADICTION edges.
+        citation_map: reserved for future ranking; currently unused, but kept
+            in the signature to match the v4.2 spec and to let future
+            iterations prefer already-cited pairs.
+
+    All edges use lowercase snake_case `type` strings and carry a
+    `phase3_extended_edges_v4_2` provenance tag so they can be counted /
+    rolled back independently of LLM-authored edges.
+    """
+    _ = citation_map  # held for future citation-aware ranking; see docstring.
+    edges: list[dict] = []
+
+    # Pre-compute per-paper features
+    features: dict[str, dict] = {}
+    for p in classified:
+        pid = p.get("paperId")
+        if not pid:
+            continue
+        features[pid] = {
+            "paper": p,
+            "keywords": _paper_keywords(p),
+            "methodology": _methodology_shape(p),
+            "category": p.get("primary_category", "X"),
+            "year": p.get("year") or 0,
+            "abstract": (p.get("abstract") or "").lower(),
+        }
+
+    pids = list(features.keys())
+    n = len(pids)
+
+    # ---- 1) CONCEPTUAL_OVERLAP (weight 0.7) ------------------------------
+    # >=3 shared domain-specific keywords. Cross-category pairs preferred
+    # (but same-category still emitted if they clear the threshold).
+    # ---- 2) METHODOLOGICAL_MIRROR (weight 0.5) ---------------------------
+    # >=1 shared methodology shape.
+    # ---- 3) TEMPORAL_SUCCESSION (weight 0.6) -----------------------------
+    # year diff >=3 AND one paper has a keyword from the other's abstract.
+    # Emitted older -> newer.
+    for i in range(n):
+        pi = pids[i]
+        fi = features[pi]
+        for j in range(i + 1, n):
+            pj = pids[j]
+            fj = features[pj]
+
+            # CONCEPTUAL_OVERLAP
+            shared_kw = fi["keywords"] & fj["keywords"]
+            if len(shared_kw) >= 3:
+                sample_terms = sorted(shared_kw)[:5]
+                cross_cat = fi["category"] != fj["category"]
+                edges.append({
+                    "source": pi,
+                    "target": pj,
+                    "type": "conceptual_overlap",
+                    "weight": 0.7,
+                    "evidence": (
+                        f"{len(shared_kw)} shared domain keywords "
+                        f"({', '.join(sample_terms)})"
+                        + (" across categories "
+                           f"{fi['category']}/{fj['category']}" if cross_cat
+                           else " within category "
+                           f"{fi['category']}")
+                    ),
+                    "cross_category": cross_cat,
+                    "shared_keyword_count": len(shared_kw),
+                    "provenance": "phase3_extended_edges_v4_2",
+                    "confidence_label": "INFERRED",
+                })
+
+            # METHODOLOGICAL_MIRROR
+            shared_shapes = fi["methodology"] & fj["methodology"]
+            if shared_shapes:
+                edges.append({
+                    "source": pi,
+                    "target": pj,
+                    "type": "methodological_mirror",
+                    "weight": 0.5,
+                    "evidence": (
+                        "shared methodology shape(s): "
+                        + ", ".join(sorted(shared_shapes))
+                    ),
+                    "methodology_shapes": sorted(shared_shapes),
+                    "provenance": "phase3_extended_edges_v4_2",
+                    "confidence_label": "INFERRED",
+                })
+
+            # TEMPORAL_SUCCESSION
+            yi, yj = fi["year"], fj["year"]
+            if yi and yj and abs(yi - yj) >= 3:
+                if yi <= yj:
+                    older_id, newer_id = pi, pj
+                    older_kw, newer_abs = fi["keywords"], fj["abstract"]
+                    older_abs, newer_kw = fi["abstract"], fj["keywords"]
+                    older_year, newer_year = yi, yj
+                else:
+                    older_id, newer_id = pj, pi
+                    older_kw, newer_abs = fj["keywords"], fi["abstract"]
+                    older_abs, newer_kw = fj["abstract"], fi["keywords"]
+                    older_year, newer_year = yj, yi
+                # one paper must carry a keyword from the other's abstract
+                hit = (
+                    _keyword_in_abstract(older_kw, newer_abs)
+                    or _keyword_in_abstract(newer_kw, older_abs)
+                )
+                if hit:
+                    edges.append({
+                        "source": older_id,
+                        "target": newer_id,
+                        "type": "temporal_succession",
+                        "weight": 0.6,
+                        "evidence": (
+                            f"{newer_year - older_year}-year gap "
+                            f"({older_year} -> {newer_year}); "
+                            f"shared term '{hit}'"
+                        ),
+                        "year_gap": newer_year - older_year,
+                        "provenance": "phase3_extended_edges_v4_2",
+                        "confidence_label": "INFERRED",
+                    })
+
+    # ---- 4) CONTRADICTION (weight 1.0) -----------------------------------
+    # Every focus pair in contradictions.json MUST emit a CONTRADICTION edge.
+    if isinstance(contradictions, dict):
+        contradiction_list = contradictions.get("contradictions") or []
+    elif isinstance(contradictions, list):
+        contradiction_list = contradictions
+    else:
+        contradiction_list = []
+
+    for c in contradiction_list:
+        if not isinstance(c, dict):
+            continue
+        pa = c.get("paper_a") or {}
+        pb = c.get("paper_b") or {}
+        sa = pa.get("paperId") if isinstance(pa, dict) else None
+        tb = pb.get("paperId") if isinstance(pb, dict) else None
+        if not sa or not tb or sa == tb:
+            continue
+        edges.append({
+            "source": sa,
+            "target": tb,
+            "type": "contradiction",
+            "weight": 1.0,
+            "evidence": (
+                f"contradictions.json {c.get('id', '?')} "
+                f"({c.get('severity', 'unknown')}): "
+                f"{(c.get('question') or '')[:140]}"
+            ),
+            "contradiction_id": c.get("id"),
+            "severity": c.get("severity"),
+            "argument_line": c.get("argument_line"),
+            "focus": c.get("source_question") or c.get("question"),
+            "provenance": "phase3_extended_edges_v4_2",
+            "confidence_label": "EXTRACTED",
+        })
+
+    return edges
+
+
+def _merge_extended_edges_into_graph(
+    G: nx.DiGraph,
+    extended_edges: list[dict],
+    alias_lookup: dict[str, str],
+) -> dict[str, int]:
+    """Insert extended edges into G, de-duping against existing edges of the
+    same type. Returns a per-type count of edges actually added.
+    """
+    added: Counter = Counter()
+    for edge in extended_edges:
+        src = canonicalize_paper_ref(edge.get("source"), alias_lookup)
+        tgt = canonicalize_paper_ref(edge.get("target"), alias_lookup)
+        if not src or not tgt or not G.has_node(src) or not G.has_node(tgt):
+            continue
+        etype = edge.get("type", "related")
+        # Skip if an edge of the same type already exists between these nodes
+        # (any direction, since conceptual/methodological edges are
+        # undirected in spirit).
+        directional = etype in {"temporal_succession", "contradiction"}
+        if directional:
+            if G.has_edge(src, tgt) and G[src][tgt].get("type") == etype:
+                continue
+        else:
+            if (G.has_edge(src, tgt) and G[src][tgt].get("type") == etype) or (
+                G.has_edge(tgt, src) and G[tgt][src].get("type") == etype
+            ):
+                continue
+        attrs = {k: v for k, v in edge.items()
+                 if k not in ("source", "target")}
+        attrs.setdefault("confidence_label", "INFERRED")
+        attrs.setdefault("provenance", "phase3_extended_edges_v4_2")
+        G.add_edge(src, tgt, **attrs)
+        added[etype] += 1
+    return dict(added)
+
+
+def _log_extended_edge_metrics(G: nx.DiGraph) -> dict:
+    """Emit the v4.2 target metrics: avg outgoing edges / paper, CONTRADICTION
+    edge count, and min_edges_per_chain map. Returns the metrics dict.
+    """
+    n_nodes = G.number_of_nodes() or 1
+    n_edges = G.number_of_edges()
+    avg_out = n_edges / n_nodes
+
+    type_counts: Counter = Counter(
+        d.get("type", "unknown") for _, _, d in G.edges(data=True)
+    )
+    contradiction_count = type_counts.get("contradiction", 0)
+
+    # Min-edges-per-chain target map (from paper_outline_v4.2 Part 5 table).
+    # Chain index i corresponds to beat i+1.
+    min_edges_per_chain = {
+        1: 8, 2: 8, 3: 8, 4: 5, 5: 8, 6: 5, 7: 6,
+    }
+
+    log.info(
+        "Phase 3 v4.2 edge metrics: avg_outgoing_edges/paper=%.2f "
+        "(target >=4), total_edges=%d, contradiction_edges=%d "
+        "(target >=15), edge_type_counts=%s",
+        avg_out, n_edges, contradiction_count, dict(type_counts),
+    )
+    log.info(
+        "Phase 3 v4.2 min_edges_per_chain targets: %s (sum=%d, overall "
+        "edge target >=80 per outline Part 5)",
+        min_edges_per_chain, sum(min_edges_per_chain.values()),
+    )
+    return {
+        "avg_outgoing_edges_per_paper": round(avg_out, 3),
+        "total_edges": n_edges,
+        "contradiction_edge_count": contradiction_count,
+        "edge_type_counts": dict(type_counts),
+        "min_edges_per_chain": min_edges_per_chain,
+    }
 
 
 # ---------------------------------------------------------------------------

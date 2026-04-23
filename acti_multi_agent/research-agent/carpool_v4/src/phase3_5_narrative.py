@@ -85,7 +85,7 @@ BEAT_NARRATIVE_GUIDANCE = {
         "campus transport gap) as the anchor; Category B (P2P rideshare / sharing-economy trust) supports "
         "the 'why peer / campus-scoped platforms are worth designing' bridge. "
         "Use verbs: exists, motivates, is documented. AVOID: has been proved, is quantified, "
-        "definitively shows. Preview finding F1 (Uber perceived expensive 29/33; availability issues 24/33) "
+        "definitively shows. Preview finding F1 (Uber perceived expensive 28/32; availability issues 23/32) "
         "at the end of the first paragraph only as a teaser — the full finding belongs to Beat 4 (§4.1)."
     ),
     2: (
@@ -107,49 +107,101 @@ BEAT_NARRATIVE_GUIDANCE = {
         "(3) rating fairness (H: peer reputation + algorithmic management concerns), (4) rewards / "
         "gamification (G). Each primitive is one paragraph with one classic citation + one recent (2022+) "
         "citation. Present the four as PARALLEL; do NOT value-rank them here — Beats 4/5/6 do the ranking. "
+        "Identity primitive (¶1) wording is TIERED against Category E manual-inclusion count and MUST NOT "
+        "jump tiers: if E native N>=5 say 'mature literature specialized here to institutional and .edu-scoped "
+        "contexts'; if E native N=3-4 say 'moderate precedent — a well-studied trust signal in sharing "
+        "economy, with institutional/.edu scoping discussed case-by-case in HCI/CSCW, though systematic "
+        "treatment is less developed'; if E native N<3 say 'under-investigated primitive — while identity "
+        "verification has an established literature in broader sharing economy contexts, .edu-scoped identity "
+        "as a distinct trust primitive has received limited systematic treatment, and we position this paper "
+        "as one case within that under-investigated space' (i.e. scope disclosure, not a coverage failure). "
         "Use neutral definitional verbs: we distill, we propose, commonly discussed. AVOID: the canonical "
         "framework, validated primitives."
     ),
     4: (
         "Beat 4 is §4.1 passenger-side survey findings (primary_data). The anchor is the pseudo-anchor "
-        "local:CornellCarpoolSurvey2026 (N=117 formative survey). The spine references findings (F1/F3/F4) "
-        "and section labels, not paperIds. Narrative: (1) recap N=117 / 50 complete / 82% Mandarin scope "
-        "disclosure, (2) transport-gap quantification (F1), (3) WTP safety-feature ranking (F3: location "
-        "70.1%, .edu 65.9%, SOS 64.4%), (4) motivation structure (F4: financial 63.6%, gamification 48.3%, "
-        "social 45.6%, environmental 44.5%). "
+        "local:CornellCarpoolSurvey2026. The spine references findings (F1/F3/F4/F6) and section labels, "
+        "not paperIds. Narrative: (1) recap N cohort — N=111 eligible / 44 finished (6 Survey-Preview test "
+        "responses excluded) and 79% Mandarin-native among the 91 respondents who reported native language "
+        "(72/91), with per-item N reported separately because completion varies by question; (2) transport-gap "
+        "quantification F1 — Uber pricing perceived too high 28/32, Uber availability problematic 23/32; "
+        "(3) WTP safety-feature ranking F3 — all seven items >=50 on the 0-100 scale, with means 69.1 "
+        "(Real-Time Location Sharing), 67.3 (.edu school-email verification), 63.5 (Emergency SOS), 60.5 "
+        "(driver experience visibility), 55.4 (auto trip-sharing with emergency contacts), 54.9 (driver "
+        "social connections), 50.9 (interior car photos); (4) motivation structure F4 — financial dominant, "
+        "gamification secondary, social and environmental also present; (5) F6 preview of Q23 driver supply "
+        "willingness (N=33) — Ithaca 10/33, short-distance 9/33, long-distance 12/33 Very+Extremely willing, "
+        "long-distance is the highest supply scenario at 36% and feeds §5.2 carpool-module scope motivation "
+        "(Beat 6). "
         "NO inferential statistics, NO p-values, NO 'significantly'. Use: we observe, reports indicate, "
-        "median value is. Disclose 82% Mandarin-native as scope, not mask as bias."
+        "median value is. Disclose 79% Mandarin-native (72/91) as scope, not as bias and not as a selling point."
     ),
     5: (
-        "Beat 5 is §4.2 driver-side tolerance + the counterintuitive rating-fairness asymmetry. The "
-        "anchor is Rosenblat & Stark 2016 (or closest algorithmic management anchor in Category H/J). "
-        "Narrative: (1) present the four-dimensional tolerance data (late 42.7, route-change 44.8, "
-        "destination-change 33.0, unfair rating 26.6), highlight that unfair rating is the LOW point, "
-        "(2) contextualize with algorithmic management literature (Rosenblat & Stark + Lee et al.); "
-        "frame as 'resonates with' / 'parallels' at smaller campus scale, NOT 'replicates' or 'confirms'. "
-        "Spine: F+H papers as contextualizing frame; J can support the adversarial framing. "
-        "N=30 caveat must be explicit. AVOID: proves, confirms, validates the same phenomenon."
+        "Beat 5 is §4.2 driver-side tolerance + the counterintuitive rating-fairness asymmetry. v4.2 "
+        "MAJOR REVISION: the finding is NO LONGER reported on the full N=30 sample. It is reported on "
+        "the Driver/Both subset (N=19, self-reported travel role Driver or Both) against a Rider-only "
+        "control subset (N=12). Using the full mixed sample dilutes real drivers' experience-anchored "
+        "answers with riders' hypothetical answers to 'as a driver, how tolerant would you be'. "
+        "The anchor is Rosenblat & Stark 2016 (or closest algorithmic management anchor in Category H/J). "
+        "Narrative: "
+        "(1) Driver/Both subset (N=19) four-dimensional tolerance on the 0-100 scale — late passenger "
+        "(Q24_1) 47.2, destination change (Q24_2) 41.4, unfair rating (Q24_3) 29.1, non-standard route "
+        "(Q24_4) 52.3; unfair rating (29.1) is 12.3-23.2 points below the other three (41.4-52.3) — this "
+        "is the core counterintuitive observation: the thing drivers least tolerate is not passenger "
+        "misbehavior but unfairness from the rating system itself. "
+        "(2) Rider-only control subset (N=12) numbers MUST BE REPORTED in the same paragraph as "
+        "methodological justification for the subset split: 35.7 / 19.6 / 22.4 / 33.2 on Q24_1 / Q24_2 / "
+        "Q24_3 / Q24_4. In the rider-only control the pattern is weak — 'unfair rating' 22.4 is not "
+        "distinctively low and is actually higher than 'destination change' 19.6 — which is exactly why "
+        "the full-sample mix washed the pattern out, and why reporting on the Driver/Both subset is the "
+        "methodologically honest choice. Do NOT hide these control numbers because the pattern weakens; "
+        "the weakening IS the justification. "
+        "(3) Contextualize with algorithmic management literature (Rosenblat & Stark, Lee et al.); "
+        "frame as 'resonates with' / 'parallels' at smaller, amateur-driver campus scale, NOT "
+        "'replicates' or 'confirms'. Explicitly note that the literature covers professional gig "
+        "workers, and whether amateur/occasional-driver rating anxiety is isomorphic is an open "
+        "question the paper raises rather than answers. "
+        "Spine: F+H papers (including H-subgroup for amateur drivers) as contextualizing frame; J can "
+        "support the adversarial framing into Beat 7. "
+        "Attribution MUST go to 'Driver/Both subset (N=19)' — never drop the subset label, never mix "
+        "with full-sample N=30 numbers. AVOID: proves, confirms, validates the same phenomenon, "
+        "replicates Rosenblat & Stark."
     ),
     6: (
         "Beat 6 is §5 CampusRide platform (artifact). The anchor is the pseudo-anchor "
         "local:CampusRideSystem2026. The spine references module names ('module:carpool', 'module:marketplace', "
-        "etc.) and finding keys ('finding:F3', 'finding:F4', 'finding:F5'), not real paperIds. Narrative: "
-        "(1) §5.1 platform overview with 6-module x 4-primitive matrix, (2) §5.2–5.7 each module gets one "
-        "subsection at overview level, (3) §5.8 carpool deep-dive with four design decisions (identity, "
-        "safety, rating fairness, gamification) each explicitly motivated by a survey finding. "
+        "etc.) and finding keys ('finding:F3', 'finding:F4', 'finding:F5', 'finding:F6'), not real paperIds. "
+        "Narrative: (1) §5.1 platform overview with 6-module x 4-primitive matrix; (2) §5.2 carpool module "
+        "scope — cite F6 (Q23 driver supply willingness, N=33: Ithaca 10/33, short-distance 9/33, "
+        "long-distance 12/33 Very+Extremely willing) as the evidence for prioritizing long-distance carpool "
+        "as the deep-dive scope, because long-distance is the highest supply scenario at 36%; (3) §5.2-5.7 "
+        "remaining modules get one subsection each at overview level; (4) §5.8 carpool deep-dive with four "
+        "design decisions (identity, safety, rating fairness, gamification) each explicitly motivated by a "
+        "survey finding — identity ties to F3 mean 67.3 / median 79; safety ties to F3 Real-Time Location "
+        "69.1 and SOS 63.5; rating fairness ties to F5 Driver/Both-subset (N=19) 29.1 versus same-subset "
+        "41.4-52.3 on the other three Q24 items; gamification ties to F4. F5 attribution MUST stay at the "
+        "Driver/Both subset level — never smear F5 back onto the full sample. "
         "Use: we designed, we implemented, motivated by, in response to finding X. AVOID: effective, "
         "successful, proves, validates. Acknowledge: no deployment data; six-module claim acknowledges "
         "only carpool is deep-dived."
     ),
     7: (
         "Beat 7 is §7.2 adversarial scoping — the honesty anchor. Five paragraphs, each citing at least "
-        "one counterevidence paper (Category J primarily, H secondarily): (1) formalization risk — "
-        "platform-mediated coordination may reproduce algorithmic management harms (Rosenblat & Stark, "
-        "Lee et al.), (2) sample skew — 82% Mandarin-native limits generalizability, particularly "
-        "English-native students N=15, (3) no deployment evaluation — the four design decisions are not "
-        "compared in real-world use, (4) .edu scope boundary — identity verification does NOT verify "
-        "driving competence / behavior / platform governance, (5) gamification risk — cross-module points "
-        "may induce gaming / fake trips. "
+        "one counterevidence paper (Category J primarily, H secondarily): "
+        "(1) formalization risk — platform-mediated coordination may reproduce algorithmic management "
+        "harms (Rosenblat & Stark, Lee et al.); "
+        "(2) sample skew — THREE-TIER disclosure is required and none of the three may be suppressed: "
+        "(a) main-sample language skew — 79% Mandarin-native (72/91 who reported native language) limits "
+        "generalizability, with English-native respondents at 15/91 (16%) leaving any claim about them "
+        "highly uncertain; (b) driver-subset skew — the F5 rating-fairness asymmetry rests on the "
+        "Driver/Both subset N=19, which is methodologically preferred to the full-sample mix (see §4.2 "
+        "¶2 justification) but still very small and requires a dedicated driver-side survey to confirm; "
+        "(c) completion skew — 44/111 finished (~40% completion rate), so finishers may differ "
+        "systematically from non-finishers on carpool salience; "
+        "(3) no deployment evaluation — the four design decisions are not compared in real-world use; "
+        "(4) .edu scope boundary — identity verification does NOT verify driving competence, behavior, "
+        "or platform governance; "
+        "(5) gamification risk — cross-module points may induce gaming / fake trips. "
         "Use: may reproduce, we acknowledge, scope-limited. AVOID: we address, we prevent, we solve. "
         "This beat succeeds by honest scoping, not by defending the thesis at all costs."
     ),
@@ -363,9 +415,10 @@ def _expand_with_opencitations(oc: OpenCitationsClient, doi: str, corpus_ids: se
 
 
 _BEAT4_SPINE_KEYS = [
-    ("finding:F1", "Uber pricing perceived expensive (29/33) and availability issues (24/33)"),
-    ("finding:F3", "Safety-feature WTP ranking: real-time location 70.1%, .edu 65.9%, SOS 64.4%"),
+    ("finding:F1", "Uber pricing perceived expensive (28/32) and availability issues (23/32)"),
+    ("finding:F3", "Safety-feature WTP ranking: real-time location 69.1, .edu 67.3, SOS 63.5 (F3 means on 0-100 scale)"),
     ("finding:F4", "Motivation structure: financial 63.6, gamification 48.3, social 45.6, environmental 44.5"),
+    ("finding:F6", "Driver supply willingness (Q23): long-distance 12/33 Very+Extremely willing (highest), Ithaca 10/33, short 9/33"),
 ]
 
 _BEAT4_PARAGRAPHS = [
@@ -373,19 +426,19 @@ _BEAT4_PARAGRAPHS = [
         "paragraph": 1,
         "topic": "Methodology recap and scope disclosure",
         "papers": ["finding:F1"],
-        "opening_sentence": "The formative survey launched with N=117 and reached 50 fully complete responses; 82% of respondents reported Mandarin as their first language, which we disclose as scope rather than mask as bias.",
+        "opening_sentence": "The formative survey yielded N=111 eligible respondents and N=44 who finished the full instrument (6 Survey-Preview test rows excluded); 79% of respondents who reported native language were Mandarin-native (72/91), which we disclose as scope rather than mask as bias.",
     },
     {
         "paragraph": 2,
         "topic": "Quantified transport gap and WTP for safety / identity features",
         "papers": ["finding:F1", "finding:F3"],
-        "opening_sentence": "Passengers report Uber as expensive (29/33) and often unavailable (24/33); across seven asked-for features, all cross the 50% WTP threshold, with real-time location (70.1%), .edu verification (65.9%), and emergency SOS (64.4%) as the three highest.",
+        "opening_sentence": "Passengers report Uber as expensive (28/32) and often unavailable (23/32); across seven asked-for features, all cross the 50 mean-WTP threshold, with real-time location (mean 69.1 / median 76), .edu verification (mean 67.3 / median 79), and emergency SOS (mean 63.5 / median 64) as the top three.",
     },
     {
         "paragraph": 3,
-        "topic": "Motivation structure: financial dominant, gamification as secondary motivator",
-        "papers": ["finding:F4"],
-        "opening_sentence": "The motivation structure separates into two tiers: financial at 63.6%, then gamification at 48.3% followed by social (45.6%) and environmental (44.5%); gamification as the second-tier motivator informs the platform's decision to keep points auxiliary rather than primary in §5.",
+        "topic": "Motivation structure + driver supply willingness (F6)",
+        "papers": ["finding:F4", "finding:F6"],
+        "opening_sentence": "Passenger motivation splits into two tiers — financial at 63.6 then gamification / social / environmental clustered at 48.3 / 45.6 / 44.5 — while driver supply willingness (F6, N=33) favours long-distance trips (12/33 Very+Extremely willing) over in-Ithaca (10/33) and short-distance (9/33), directly informing the carpool module's long-distance scope priority in §5.2.",
     },
 ]
 
@@ -407,15 +460,15 @@ _BEAT6_PARAGRAPHS = [
     },
     {
         "paragraph": 2,
-        "topic": "Six-module overview with cross-module design primitive reuse",
-        "papers": ["module:marketplace", "module:activities", "module:groups", "module:messages", "module:points"],
-        "opening_sentence": "Each module reuses the platform's shared .edu identity layer and messaging infrastructure; only carpool fully exercises all four primitives at maximum intensity, which is why we select it for deep-dive analysis.",
+        "topic": "Six-module overview with cross-module design primitive reuse + F6 long-distance scope",
+        "papers": ["module:marketplace", "module:activities", "module:groups", "module:messages", "module:points", "finding:F6"],
+        "opening_sentence": "Each module reuses the platform's shared .edu identity layer and messaging infrastructure; only carpool fully exercises all four primitives at maximum intensity, which — combined with F6's long-distance driver-supply willingness (12/33 highest) — is why we select carpool, with long-distance trips as its priority scope, for deep-dive analysis.",
     },
     {
         "paragraph": 3,
-        "topic": "Carpool deep-dive: four design decisions motivated by survey findings F3/F4/F5",
-        "papers": ["module:carpool", "finding:F3", "finding:F4", "finding:F5"],
-        "opening_sentence": "The carpool deep-dive operationalizes four design decisions motivated by survey findings: .edu identity verification (F3), safety skeleton with real-time location and SOS (F3), bidirectional rating with fairness considerations (F5), and gamification kept as a secondary incentive (F4).",
+        "topic": "Carpool deep-dive: four design decisions motivated by survey findings F3/F4/F5/F6",
+        "papers": ["module:carpool", "finding:F3", "finding:F4", "finding:F5", "finding:F6"],
+        "opening_sentence": "The carpool deep-dive operationalizes four design decisions motivated by survey findings: .edu identity verification (F3), safety skeleton with real-time location and SOS (F3), bidirectional rating with Driver/Both-subset fairness consideration (F5, N=19), and gamification kept as a secondary incentive (F4); F6's long-distance driver-supply preference anchors §5.2's carpool scope choice.",
     },
 ]
 
@@ -436,9 +489,11 @@ def _build_primary_anchor_chain(beat_num: int, beat_name: str,
         spine_keys = _BEAT4_SPINE_KEYS
         paragraphs = _BEAT4_PARAGRAPHS
         why = (
-            "Formative Cornell Carpool Survey (N=117) is the primary-data source grounding "
-            "passenger-side WTP and motivation findings. It is a pseudo-anchor because it is "
-            "grey literature contributed by the authors, not a retrieved peer-reviewed paper."
+            "Formative Cornell Carpool Survey (N=111 eligible / 44 finished, 6 Survey-Preview "
+            "test rows excluded) is the primary-data source grounding passenger-side WTP and "
+            "motivation findings (F1/F3/F4) plus driver supply willingness (F6, N=33). It is a "
+            "pseudo-anchor because it is grey literature contributed by the authors, not a "
+            "retrieved peer-reviewed paper."
         )
     elif beat_num == 6:
         spine_keys = _BEAT6_SPINE_KEYS

@@ -105,7 +105,7 @@ MUST_CITE_COUNTEREVIDENCE = {
         "Formalization risk: platform-mediated coordination may reproduce commercial rideshare harms",
         ".edu verification does not verify driving competence or prevent malicious behavior",
         "Gamification may produce gaming behavior or crowd out intrinsic motivation",
-        "82% Mandarin-native sample skew limits generalizability to other student populations",
+        "Three-tier sample-skew disclosure: (a) main-sample language skew — 79% Mandarin-native (72/91 who reported native language) limits generalizability to other student populations; (b) driver-subset skew — the F5 rating-fairness asymmetry rests on the Driver/Both subset N=19, which is methodologically preferred to the full-sample mix but still small and requires a dedicated driver-side survey to confirm; (c) completion skew — 44/111 finished (~40% completion rate), so finishers may differ systematically from non-finishers on carpool salience",
     ],
 }
 
@@ -126,17 +126,22 @@ HONESTY_CONSTRAINTS = {
     ],
     4: [
         "Descriptive statistics only: no inferential statistics, no t-tests, no p-values, no 'significantly'",
-        "Report N per item; 82% Mandarin-native is disclosed as scope-setting, not masked as bias",
+        "Disclose N cohort as 'N=111 eligible / 44 finished' (6 Survey-Preview test responses excluded); report per-item N separately because completion varies by question",
+        "Language cohort is disclosed as '79% Mandarin-native (72/91 who reported native language)' — scope-setting, not masked as bias and not marketed as the paper's strength",
+        "F6 (Q23 driver willingness, N=33) is reported as descriptive supply-side counts: Ithaca 10/33, short-distance 9/33, long-distance 12/33 Very+Extremely willing; long-distance is highest but this is framed as signal, not as a tested hypothesis",
         "Use 'we observe' / 'reports indicate' / 'median value is'; avoid 'majority think' / 'statistics confirm'",
     ],
     5: [
-        "The counterintuitive rating-fairness finding (26.6) is observed at N=30 and resonates with algorithmic management literature, not replicates it",
-        "Use 'resonates with' / 'parallels' / 'counterintuitively'; avoid 'confirms' / 'replicates' / 'proves'",
-        "Do not over-generalize F5 to all peer rating systems",
+        "The counterintuitive rating-fairness finding is reported on the Driver/Both subset (N=19) against a Rider-only control subset (N=12); Q24_3 'unfair rating' tolerance is 29.1 in the driver subset versus 22.4 in rider-only, while the other three Q24 items sit at 41.4-52.3 in the driver subset versus 19.6-35.7 in the rider-only control",
+        "The subset gap (29.1 unfair-rating vs 41.4-52.3 other-items within the same Driver/Both respondents, a 12.3-23.2 point spread) is the core observation; it resonates with algorithmic management literature (Rosenblat & Stark, Lee et al.), it does NOT replicate it",
+        "Rider-only control numbers (35.7 / 19.6 / 22.4 / 33.2) must be reported as methodological justification for the subset split, not hidden because the pattern weakens there",
+        "Use 'resonates with' / 'parallels' / 'counterintuitively' / 'limited to the Driver/Both subset (N=19)'; avoid 'confirms' / 'replicates' / 'proves the same phenomenon' and avoid mixing the full-sample N=30 numbers with the subset numbers",
+        "Do not over-generalize F5 to all peer rating systems or to professional gig workers",
     ],
     6: [
         "The platform is presented as designed and implemented — not as validated by deployment data",
-        "Each design decision in §5.8 must explicitly reference a survey finding (F3/F4/F5)",
+        "Each design decision in §5.8 must explicitly reference a survey finding (F3/F4/F5), and F5 attribution must go down to the Driver/Both subset (N=19), not the full sample",
+        "§5.2 carpool module scope motivation cites F6 (Q23 driver supply willingness: long-distance 12/33 Very+Extremely willing, the highest of the three supply scenarios) as the evidence for prioritizing long-distance carpool as a deep-dive scope",
         "Use 'we designed' / 'motivated by' / 'in response to finding X'; avoid 'effective' / 'successful' / 'proves'",
         "Six-module claim must acknowledge five modules are described at overview level and only carpool is deep-dived",
     ],

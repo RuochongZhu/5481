@@ -1,174 +1,177 @@
 # Paper Corpus by Category
 
-## A: Model Collapse Theory (8 papers)
+## A: Model Collapse Theory (5 papers)
 
-- [2024] Public transportation means as seen by citizens: Approaching the case of the Dom (cites=5)
-  → Examines citizen perceptions and mode-choice behavior regarding public transportation in the Dominic
-- [2024] Accessible Autonomous Transportation and Services: Design Considerations From th (cites=4)
-  → Identifies design considerations for accessible autonomous vehicles serving wheelchair users and und
-- [2025] Analyzing the impact of demand management in rural shared mobility-on-demand sys (cites=3)
-  → Analyzes demand management strategies for improving ride-bundling efficiency in rural shared mobilit
-- [2025] An importance-performance analysis of public transport to the university campus  (cites=2)
-  → Uses best-worst scaling to evaluate the importance and satisfaction of public transport attributes f
-- [2025] Examining network governance of multimodal integration: A comparative study of r (cites=1)
-  → Examines network governance structures for multimodal rural mobility hubs in the Netherlands, compar
-- [2025] Department of Veterans Affairs’ Transportation System: Stakeholder Perspectives  (cites=0)
-  → Examines stakeholder perspectives on VA transportation challenges and the potential of electric auto
-- [2025] How to ensure sufficient access to public transport in rural areas? A comparativ (cites=0)
-  → Compares institutional designs for integrating public transport, paratransit, and shared mobility to
-- [2025] Advancing Rural Mobility: Identifying Operational Determinants for Effective Aut (cites=0)
-  → Identifies key operational determinants for deploying autonomous road-based transit in rural and per
+- [2021] Smart Campuses: Extensive Review of the Last Decade of Research and Current Chal (cites=66)
+  → Provides a comprehensive review of smart campus research over the last decade, covering intelligent 
+- [2023] Factors that determine a university community’s satisfaction levels with public  (cites=32)
+  → Identifies factors determining university community satisfaction with public transit services, empha
+- [2024] Driving change: A comprehensive meta-analysis of community benefits in MaaS depl (cites=5)
+  → Meta-analysis of 61 MaaS deployment studies quantifying community benefits including accessibility, 
+- [2021] User Perception towards Ride hail Service: A case of Nagpur city, India (cites=2)
+  → Examines user perceptions of ride-hail services versus public transportation in Nagpur, India, findi
+- [2025] Service design of shared first- and last-mile transit systems (cites=1)
+  → Proposes and optimizes a shared first- and last-mile transit system using demand-responsive transit 
 
-## B: Web Data Pollution & Scale (17 papers)
+## B: Web Data Pollution & Scale (14 papers)
 
 - [2015] Trust and reputation in the sharing economy: The role of personal photos in Airb (cites=1240)
-  → Demonstrates that personal profile photos on Airbnb serve as a critical trust signal influencing str
+  → Empirically examines how personal photos in Airbnb profiles function as trust signals in the sharing
 - [2020] Indian Travellers’ Adoption of Airbnb Platform (cites=58)
-  → Adapts the meta-UTAUT model to explain Indian travelers' adoption of Airbnb, highlighting trust and 
-- [2020] The Effects of Online Trust-Building Mechanisms on Trust in the Sharing Economy: (cites=41)
-  → Identifies online trust-building mechanisms (reviews, identity verification, social media) that infl
+  → Adapts the meta-UTAUT model to explain Indian travelers' adoption of Airbnb, extending sharing-econo
 - [2020] Factors influencing trust and behavioral intention to use Airbnb service innovat (cites=36)
-  → Identifies key factors influencing consumer trust and behavioral intention toward Airbnb's service i
+  → Identifies key factors influencing consumer trust and behavioral intention to use Airbnb across thre
 - [2020] Attracted to or Locked In? Explaining Consumer Loyalty toward Airbnb (cites=35)
-  → Explains Airbnb consumer loyalty through both dedication-based (satisfaction) and constraint-based (
-- [2025] The Sharing Economy: A Systematic Literature Review and Research Agenda (cites=20)
-  → Provides a systematic review of 92 sharing economy studies using dual ADO and TCM frameworks to map 
+  → Explains Airbnb consumer loyalty through both dedication-based (satisfaction/attitude) and constrain
+- [2023] Fighting bias with bias: How same-race endorsements reduce racial discrimination (cites=11)
+  → Demonstrates that same-race peer endorsements on Airbnb can reduce racial discrimination, showing ho
 - [2024] Trust dynamics in sharing economy services during a crisis: A comparison between (cites=10)
-  → Compares trust antecedents and the pandemic's impact on trust dynamics in Airbnb versus Uber, highli
+  → Compares trust dynamics and antecedents on Airbnb and Uber during the COVID-19 crisis, finding struc
 - [2024] Unlocking the potentials of hybrid business models in the sharing economy: an in (cites=9)
-  → Develops a conceptual framework for hybrid business models in the sharing economy, synthesizing them
+  → Synthesizes literature on hybrid business models in the sharing economy, advancing a conceptual fram
 - [2024] Antecedents of Customer Participation on Sharing Platforms: A Meta‐analysis (cites=7)
-  → Meta-analysis of 192 samples identifies trust, perceived value, and social influence as dominant ant
+  → Meta-analyzes 192 samples to identify factors driving customer participation on sharing platforms li
 - [2025] Creating a trusting environment in the sharing economy: Unpacking mechanisms for (cites=7)
-  → Uses a mixed-method study to unpack trust-building mechanisms (review systems, GPS tracking, offline
+  → Mixed-method comparison of trust-building mechanisms across four P2P carpooling platforms, identifyi
 - [2023] Professionalizing Sharing Platforms for Sustainable Growth in the Hospitality Se (cites=5)
-  → Examines how professionalization of e-hospitality sharing platforms (Airbnb, Uber) can address regul
+  → Examines how professionalization of sharing-economy e-hospitality platforms (Airbnb-style) can suppo
 - [2023] Self-disclosure and trust in the shared economy: a cross-cultural comparison (cites=5)
-  → Explores how self-disclosure shapes trust formation on Airbnb across different cultural contexts in 
+  → Explores how self-disclosure on Airbnb builds trust in sharing-economy platforms through a cross-cul
 - [2020] Airbnb: Understanding the Concept, Recognizing the Values (cites=5)
-  → Synthesizes conceptual foundations of Airbnb as a P2P accommodation platform, emphasizing trust and 
-- [2023] Trust-Building in Peer-to-Peer Carsharing: Design Case Study for Algorithm-Based (cites=5)
-  → Presents a design case study exploring how algorithm-based reputation systems and telematics data ca
+  → Reviews the Airbnb P2P accommodation concept through secondary literature, emphasizing trust as the 
 - [2022] Digitalisation and the sharing economy. A survey-based research on Airbnb in Rom (cites=4)
-  → Quantitative survey assessing Romanian tourists' awareness, trust, and adoption of Airbnb in the con
-  ... and 2 more
+  → Survey-based study of Romanian tourists' awareness, trust, and acceptance of the Airbnb platform wit
+- [2025] Corporate digital (ir)responsibility in the sharing economy: mobilizing the VBA  (cites=1)
+  → Develops a conceptual VBA framework for corporate digital responsibility in sharing-economy platform
 
-## C: Detection & Reactive Limits (7 papers)
+## C: Detection & Reactive Limits (5 papers)
 
 - [2023] Cooperative affordances: How instant messaging apps afford learning, resistance  (cites=41)
-  → Demonstrates through multi-country digital ethnography how food delivery workers use private instant
+  → Shows how food delivery platform workers across five countries use private instant-messaging chat gr
 - [2023] Residents' WeChat Group Use and Pro-Community Behavior in the COVID-19 Crisis: A (cites=13)
-  → Shows that residents' WeChat group use during COVID-19 boosted community trust, community attachment
+  → Finds that residents' WeChat group use during COVID-19 fosters community trust and attachment, which
 - [2024] Utilizing social media for community risk communication in megacities: analysing (cites=7)
-  → Analyzes how community WeChat groups in Shanghai facilitated grassroots risk information interaction
-- [2022] Smartphone Religious Networking: Negotiating Contested Identities within a Pious (cites=4)
-  → Examines how members of a religious minority group negotiate contested identities through WhatsApp a
+  → Demonstrates that community WeChat group information interaction and risk perception significantly i
 - [2018] Mobile instant messaging: New knowledge tools in global health? (cites=4)
-  → Examines how mobile instant messaging platforms like WhatsApp are used for informal knowledge sharin
+  → Examines WhatsApp and other mobile instant messaging platforms as tools for knowledge sharing and le
 - [2022] Volunteers during a crisis in Israel: a case study of spontaneous self-organized (cites=1)
-  → Documents how technology-enabled spontaneous self-organized volunteer communities emerged during cri
-- [2021] Bridging the Informal and Formal Learning Spaces with WhatsApp (cites=0)
-  → Investigates how WhatsApp bridges informal and formal learning spaces for university faculty and stu
+  → Case study of how spontaneous, technology-enabled volunteer initiatives in Israel self-organized rap
 
 ## D: Information Theory + Text Quality (4 papers)
 
 - [2018] A Neglected Population: Media Consumption, Perceived Risk, and Fear of Crime Amo (cites=20)
-  → Investigates international students' media consumption patterns and how they relate to fear of crime
-- [2022] Going Beyond the (Un)awakened Body: Arts-Based Collaborative Autoethnographic In (cites=7)
-  → Uses collaborative autoethnography and arts-based methods to explore Korean female doctoral students
+  → Investigates international students' fear of crime and media consumption patterns, finding that cult
+- [2023] Mobility Repertoires: How Chinese Overseas Students Overcame Pandemic-Induced Im (cites=13)
+  → Develops the concept of 'mobility repertoires' to explain how Chinese overseas students navigated pa
 - [2024] How Social Media as a Digital Marketing Strategy Influences Chinese Students' De (cites=5)
   → Analyzes how social media as a digital marketing strategy influences Chinese students' decisions to 
 - [2021] Dilemmas and Coping Strategies of Chinese International Students’ Mental Health  (cites=3)
-  → Explores the dilemmas and coping strategies of Chinese international students' parents when discussi
+  → Examines Chinese international students' mental health challenges related to depression from the per
 
-## F: Human Data Value & RLHF (3 papers)
+## E: Data Quality & Curation (9 papers)
 
+- [2020] The Effects of Online Trust-Building Mechanisms on Trust in the Sharing Economy: (cites=41)
+  → Identifies online trust-building mechanisms that influence provider trust in peer-to-peer accommodat
+- [2025] Trust and power in Airbnb’s digital rating and reputation system (cites=5)
+  → Critically analyzes Airbnb's digital rating and reputation system, revealing how algorithmic surveil
+- [2023] Trust-Building in Peer-to-Peer Carsharing: Design Case Study for Algorithm-Based (cites=5)
+  → Design case study exploring algorithm-based reputation systems in P2P carsharing, combining peer rat
+- [2017] Situated Anonymity (cites=0)
+  → Interview study of Yik Yak users on a single US university campus showing how geofencing, anonymity,
+- [2017] Taking the Pulse of US College Campuses with Location-Based Anonymous Mobile App (cites=0)
+  → Analyzes location-based anonymous app Yik Yak via GPS-based passive surveying of US college campuses
+- [2016] Anonymous social media – Understanding the content and context of Yik Yak (cites=0)
+  → Content analysis of 4,000 Yaks from 42 US university campuses provides the largest empirical corpus 
+- [2014] Social capital and resource requests on Facebook (cites=0)
+  → Analyzes Facebook resource-mobilization requests to show how broadcasted status updates leverage soc
+- [2007] The Benefits of Facebook “Friends:” Social Capital and College Students’ Use of  (cites=0)
+  → Empirically establishes that Facebook's .edu-gated institutional identity enabled college students t
+- [0] (In)visible Cities: An Exploration of Social Identity, Anonymity and Location-Ba (cites=0)
+  → Shows that location-based geographic filtering on Yik Yak manufactures a bounded campus identity com
+
+## F: Human Data Value & RLHF (5 papers)
+
+- [2024] Evaluating an immunization carpool service for women in rural areas for facilita (cites=3)
+  → Demonstrates feasibility and high acceptability of a women-only immunization carpool service in rura
 - [2025] Android App for Women Safety (cites=0)
-  → Presents the design and evaluation of an Android app for women's safety featuring real-time location
+  → Designs and evaluates an Android safety app for women featuring real-time location tracking, SOS ale
 - [2026] A Comprehensive Web-Based Women Safety Application with Real-Time Tracking and A (cites=0)
-  → Presents a web application using React.js, Node.js, and Firebase that provides real-time GPS trackin
+  → Develops a web-based women's safety application using React.js, Node.js, and Firebase with real-time
 - [2025] A Comprehensive Study on Mobile SOS and Personal Safety Applications Across Mult (cites=0)
-  → Systematically reviews eight major mobile SOS and personal-safety applications, identifying design p
+  → Systematically surveys eight major mobile SOS and personal safety applications, identifying core des
+- [2026] RiderConnect – A Ride Sharing Platform (cites=0)
+  → Reviews web-based geolocation and real-time communication frameworks for an intelligent group ride-s
 
 ## G: Platform & Provenance Design (7 papers)
 
 - [2021] Gamification for climate change engagement: review of corpus and future agenda (cites=94)
-  → Reviews the gamification literature for climate change engagement, identifying behavioral change mec
+  → Systematically reviews the gamification-for-climate-change corpus and proposes a future research age
 - [2020] Convergence of Gamification and Machine Learning: A Systematic Literature Review (cites=65)
-  → Systematically reviews the convergence of gamification techniques and machine learning methods in no
+  → Conducts a systematic literature review on the convergence of gamification techniques and machine le
 - [2023] Leveraging gamification technology to motivate environmentally responsible behav (cites=35)
-  → Empirically examines how Ant Forest's gamification technology motivates environmentally responsible 
+  → Empirically examines Ant Forest, a Chinese fintech gamification initiative, as a mechanism for induc
 - [2023] GAMIFICATION IN URBAN PLANNING - EXPERIENCING THE FUTURE CITY (cites=10)
-  → Explores gamified VR environments in urban planning to engage the public in smart city mobility conc
+  → Explores gamified VR environments for public engagement in urban planning, including smart city mobi
 - [2023] Sustainable mobility learning: Technological acceptance model for gamified exper (cites=10)
-  → Applies the Technology Acceptance Model to assess a gamified classroom tool (ClassCraft) for sustain
+  → Applies the Technology Acceptance Model to a gamified ClassCraft experience for teaching sustainable
 - [2025] Enhancing Sustainable Mobility Through Gamified Challenges: Evidence from a Scho (cites=2)
-  → Evaluates gamified point-based mobile challenges in promoting sustainable commuting behaviors among 
+  → Evaluates a school-based gamified mobile application that awards points for sustainable commuting ch
 - [2025] Eco Drive – Implementation of Carbon Footprint Application using Java (cites=1)
-  → Presents Eco Drive, a mobile application using GPS tracking and gamification features to encourage s
+  → Presents Eco Drive, a Java-based carbon footprint tracking app that gamifies sustainable travel choi
 
-## H: Temporal Web Quality Measurement (6 papers)
+## H: Temporal Web Quality Measurement (5 papers)
 
-- [2023] Fighting bias with bias: How same-race endorsements reduce racial discrimination (cites=11)
-  → Shows that same-race peer endorsements can reduce racial discrimination in Airbnb host selection, re
 - [2022] A Systematic Literature Review of Anti-Discrimination Design Strategies in the D (cites=7)
-  → Systematically reviews anti-discrimination design strategies across digital sharing economy platform
-- [2025] Trust and power in Airbnb’s digital rating and reputation system (cites=5)
-  → Critically analyzes how Airbnb, Uber, and Deliveroo construct digital reputation scores by combining
+  → Systematic literature review of anti-discrimination design strategies in digital sharing economy pla
+- [2021] Reciprocity and Unveiling in Two-Sided Reputation Systems: Evidence from an Expe (cites=0)
+  → Large-scale Airbnb experiment demonstrates that simultaneous-reveal (blind) review systems reduce re
+- [2016] Local Standards for Sample Size at CHI (cites=0)
+  → Systematic analysis of CHI 2014 papers documents that HCI study sample sizes range from 1 to 916,000
 - [2026] Fairness Dynamics in Digital Economy Platforms with Biased Ratings (cites=0)
-  → Models the dynamics of biased rating systems in digital economy platforms and their fairness implica
-- [2026] Gender Disparities in StackOverflow's Community-Based Question Answering: A Matt (cites=0)
-  → Investigates gender disparities in Stack Overflow's reputation and rating mechanisms, finding biases
+  → Models fairness dynamics in digital economy platforms showing how biased rating systems perpetuate n
 - [2025] Enhancing the Reputation System in  Ridesharing: A Blockchain-Based Mutual Escro (cites=0)
-  → Proposes a blockchain-based reputation system for ridesharing using mutual escrow, bidirectional dyn
+  → Proposes a blockchain-based ridesharing reputation system using mutual escrow, bidirectional dynamic
 
 ## I: Social Reasoning Benchmarks (7 papers)
 
 - [2024] Local super apps in the 15-minute city: a new model for sustainable smart cities (cites=10)
-  → Proposes integrating Mobility-as-a-Feature and the 15-minute city concept into local super apps that
+  → Proposes integrating Mobility-as-a-Feature with the 15-minute city concept into local super apps to 
 - [2024] Persepsi Publik Tentang Digitalisasi Layanan Pusaka Kemenag (cites=1)
-  → Analyzes public perceptions of the Indonesian Ministry of Religious Affairs' PUSAKA super app digita
+  → Analyzes public perceptions of Indonesia's Ministry of Religious Affairs PUSAKA super app, finding m
+- [2020] Please Call the Specialism: Using WeChat to Support Patient Care in China (cites=0)
+  → Studies nurse-facilitated WeChat patient groups as a closed clinic-scoped coordination infrastructur
+- [2020] LINE as Super App: Platformization in East Asia (cites=0)
+  → Analyzes LINE's evolution from single-purpose chat app to East Asian super-app, providing theoretica
+- [2017] Digital Genealogies: Understanding Social Mobile Media LINE in the Role of Japan (cites=0)
+  → Ethnographic study of LINE usage within Japanese families over three years, revealing how bounded so
+- [2015] Dwelling Places in KakaoTalk (cites=0)
+  → Ethnography of KakaoTalk chatrooms as bounded 'dwelling places,' showing how closed chatroom spaces 
 - [2026] Navigating Digital Governance: Bridging the Gap in Developing SANTER as a Super- (cites=0)
-  → Examines the development of SANTER, a super-app initiative for Samarinda's smart city transformation
-- [2026] Navigating Digital Governance: Bridging the Gap in Developing SANTER as a Super- (cites=0)
-  → Duplicate entry examining SANTER super-app development for Samarinda's smart city digital governance
-- [2026] Navigating Digital Governance: Bridging the Gap in Developing SANTER as a Super- (cites=0)
-  → Third duplicate entry examining SANTER super-app development for Samarinda's smart city digital gove
-- [2026] NeoPlace : A Smart Career Assistant for Modern Student Placements (cites=0)
-  → Proposes NeoPlace, an AI-powered one-stop campus placement platform that matches students with recru
-- [2025] Implementasi Aplikasi Polri Super App Presisi Untuk Pelayanan Surat Keterangan C (cites=0)
-  → Analyzes implementation of Indonesia's Polri Super App Presisi for online police record certificate 
+  → Examines the development of SANTER, a smart city super-app for Samarinda, Indonesia, identifying gov
 
-## J: Fine-tune Data Composition Ablation (19 papers)
+## J: Fine-tune Data Composition Ablation (12 papers)
 
-- [2023] Algorithmic <scp>HRM</scp> control in the gig economy: The app‐worker perspectiv (cites=103)
-  → Proposes the concept of 'algorithmic HRM control' as an omnipresent and distinctive control system i
 - [2022] Influence of algorithmic management practices on workplace well-being – evidence (cites=93)
-  → Empirically examines how algorithmic management practices affect workplace well-being in European or
-- [2023] Creation of the algorithmic management questionnaire: A six‐phase scale developm (cites=89)
-  → Develops and validates the Algorithmic Management Questionnaire (AMQ) to measure gig workers' percep
-- [2023] Platform work‐lives in the gig economy: Recentering work–family research (cites=43)
-  → Uses ethnographic research with women platform workers in the UK to interrogate how crowdwork platfo
+  → Empirical study of European organisations shows that algorithmic management practices have complex, 
 - [2025] Algorithmic Management in Organizations? From Edge Case to Center Stage (cites=41)
-  → Comprehensively reviews algorithmic management literature from HRM and organizational psychology, re
-- [2023] Challenges in the New Economy: A New Era for Work Design (cites=32)
-  → Reviews how technological, demographic, and environmental shifts are reshaping work design in the ne
-- [2024] Gig workers in precarious life: The trajectory of exploitation, insecurity, and  (cites=12)
-  → Analyzes how gig work's informal nature produces exploitation, insecurity, and exclusion from social
+  → Comprehensive review synthesizing HRM, OP, and OB perspectives on algorithmic management in platform
 - [2025] Fulfillment of the Work Games: Warehouse Workers' Experiences with Algorithmic M (cites=4)
-  → Empirically examines Amazon warehouse workers' experiences with algorithmic management, extending CS
-- [2024] Fairness in Algorithmic Management: Bringing Platform-Workers into the Fold (cites=3)
-  → Investigates how platform workers perceive fairness in algorithmic management decisions and the effe
+  → Extends CSCW research on algorithmic management beyond gig platforms to Amazon warehouse workers, re
 - [2021] The Logic of Gig Economy (Origins and Growth Prospects) (cites=3)
-  → Applies a systematic framework to analyze the driving forces behind the gig economy's emergence and 
+  → Applies a systematic framework to trace the origins and growth drivers of the gig economy, assessing
 - [2024] Becoming "Platform Workers": A Biographical Exploration of Temporary Visa and Wo (cites=2)
-  → Uses biographical methods to trace how migrant gig workers on temporary visas in Germany experience 
+  → Uses biographical migration trajectories of Latin American gig workers on temporary visas in Germany
 - [2025] How Does Algorithmic Control Affect the Work Engagement of Gig Workers? The Role (cites=2)
-  → Demonstrates through a three-wave survey of Chinese gig workers that perceived algorithmic fairness 
-- [2024] Cogs in the code: Applying labor process theory in algorithmic management of pla (cites=2)
-  → Applies labor process theory to analyze power dynamics and control mechanisms in algorithmic managem
+  → Demonstrates via a three-wave survey that algorithmic control dimensions affect gig workers' engagem
 - [2023] Opaque Overwatch: How Food-Delivery Workers Make Sense of Algorithmic Management (cites=1)
-  → Explores how food-delivery gig workers make sense of opaque algorithmic management, revealing how te
+  → Investigates how food-delivery gig workers make sense of opaque algorithmic management systems, reve
 - [2025] An Empirical Analysis of Algorithmic Control and Worker Perceptions in the Gig E (cites=0)
-  → Empirically examines gig workers' perceptions of algorithmic control across dimensions of job securi
-  ... and 4 more
+  → Empirically examines gig workers' perceptions of algorithmic control across job security, fairness, 
+- [2026] The Legal Challenges of Regulating the Gig Economy in Uganda: A Critical Review  (cites=0)
+  → Critically reviews the legal and regulatory challenges Uganda faces in governing gig economy platfor
+- [2026] Occupational Diversity and Stratification in Platform Work: A Longitudinal Study (cites=0)
+  → Uses longitudinal data to show that platform workers are occupationally diverse and stratified, chal
+- [2026] Not all algorithmic controls are equal: the double-edged impact of algorithmic c (cites=0)
+  → Finds that different dimensions of algorithmic control have asymmetric effects on food delivery ride
+- [2026] Algorithmic Control and Psychological Risk in Digitally Managed Public Transport (cites=0)
+  → Develops an integrated multilevel theoretical framework linking GPS surveillance, rating systems, an

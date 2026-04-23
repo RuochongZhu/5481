@@ -69,6 +69,7 @@ RULES:
 - For E, focus on institutional identity and campus-scoped design primitives.
 - For G, include gamification of mobility / coordination / carpooling; exclude generic gamification of unrelated domains.
 - For J, papers critiquing rideshare / gig worker treatment should stay in J even if they overlap with H (rating fairness).
+- For H-category papers, if they focus on driver-vs-passenger asymmetry OR amateur/non-professional driver rating, emit secondary_categories containing "H-subgroup" or "H-amateur". This flag is consumed by Phase 3 relationship graph for stronger edges to F5 evidence.
 
 OUTPUT FORMAT per paper:
 {"paperId": "...", "primary_category": "A", "secondary_categories": ["B"],
@@ -107,12 +108,18 @@ Commercial ridesharing services underserve small-town university settings,
 producing a multi-faceted coordination gap. International students have
 self-organized grassroots coordination via WeChat/WhatsApp across multiple
 domains. CampusRide formalizes this into an identity-verified multi-module
-campus platform with a carpool deep-dive grounded in an N=117 formative
-survey. Four design primitives (institutional identity verification, safety,
-rating fairness, gamification) are operationalized in the carpool module.
-We acknowledge that platform-mediated formalization may reproduce algorithmic
-management harms, that the sample is skewed, and that no deployment
-evaluation is provided.
+campus platform with a carpool deep-dive grounded in an N=111 eligible /
+44 finished formative survey (79% Mandarin-native among respondents who
+reported native language, 72/91). Four design primitives (institutional
+identity verification, safety, rating fairness, gamification) are
+operationalized in the carpool module. The Beat 5 counterintuitive finding
+is a driver-subgroup rating-fairness observation (N=19 Driver/Both subset,
+with N=12 Rider-only control). Finding F6 reports driver supply willingness
+gradient from Q23 (long-distance Very/Extremely willing = 12/33, highest
+among the three distance tiers). We acknowledge that platform-mediated
+formalization may reproduce algorithmic management harms, that the sample
+is skewed on three layers (main 79% Mandarin / driver subset N=19 /
+completion ~40%), and that no deployment evaluation is provided.
 
 STRUCTURE (7 beats, categories A-J):
 
@@ -130,26 +137,29 @@ Framework:
     Presented as parallel; not value-ranked at this beat.
     -> E, F, G, H (secondary: B)
 
-Primary evidence (formative survey, N=117):
-  Beat 4: Passenger-side WTP and motivations.
-    Primary data beat; descriptive statistics only; 82% Mandarin-native
-    disclosed as scope.
+Primary evidence (formative survey, N=111 eligible / 44 finished):
+  Beat 4: Passenger-side WTP and motivations, plus driver supply willingness (F6).
+    Primary data beat; descriptive statistics only; 79% Mandarin-native (72/91)
+    disclosed as scope. F6: Q23 driver supply willingness, long-distance
+    12/33 highest.
     -> [primary_data] (secondary: F, H)
-  Beat 5: Driver-side tolerance and the rating-fairness asymmetry.
-    Counterintuitive finding (rating-unfairness tolerance 26.6); resonates
-    with algorithmic management literature but N=30 prohibits generalization.
-    -> F, H (secondary: J)
+  Beat 5: Driver-subset tolerance and the rating-fairness asymmetry.
+    Counterintuitive finding on the N=19 Driver/Both subset (rating-unfairness
+    tolerance 29.1 vs 41.4-52.3 on other three items), with Rider-only control
+    N=12 reported for methodological justification. Resonates with algorithmic
+    management literature; N=19 prohibits generalization.
+    -> F, H, H-subgroup (secondary: J)
 
 Core contribution (artifact):
   Beat 6: CampusRide multi-module platform and carpool deep-dive.
     Designed and implemented; no deployment evaluation; each design decision
-    references a survey finding (F3/F4/F5).
+    references a survey finding (F3/F4/F5/F6).
     -> [artifact] (secondary: E, F, G, H)
 
 Adversarial scoping:
-  Beat 7: Formalization risk, sample skew, no deployment, .edu scope limits,
-    gamification risk.
-    -> J, H (secondary: B)
+  Beat 7: Formalization risk, three-layer sample skew, no deployment,
+    .edu scope limits, gamification risk.
+    -> J, H, H-subgroup (secondary: B)
 
 CRITICAL CONSTRAINTS:
 - Motivation beats (1-2) must NOT be treated as direct evidence for Beats 4-5.
@@ -157,6 +167,8 @@ CRITICAL CONSTRAINTS:
   evaluation.
 - Beat 7 succeeds by honest scoping, not by defending the thesis.
 - Do not reward forced certainty on Beats 2, 5, 6, or 7.
+- F5 is a driver-subgroup finding (N=19), not full-sample. Report Rider-only
+  control (N=12) for methodological justification.
 
 TASK:
 Given category statistics, intersection matrix, and per-category paper summaries,
@@ -222,8 +234,13 @@ coordination gap, that international students self-organize grassroots
 coordination across domains, and that CampusRide operationalizes four design
 primitives (identity verification, safety, rating fairness, gamification) in
 an identity-verified multi-module platform with a carpool deep-dive grounded
-in a formative N=117 survey. Competing mechanisms (algorithmic management
-critique, platform-mediated harm) remain in scope as adversarial scoping.
+in a formative N=111 eligible / 44 finished survey (79% Mandarin-native among
+respondents who reported native language, 72/91). The Beat 5 counterintuitive
+finding is a driver-subgroup rating-fairness observation (N=19 Driver/Both
+subset, with N=12 Rider-only control). F6 reports driver supply willingness
+gradient (Q23, long-distance 12/33 Very/Extremely willing, highest among the
+three distance tiers). Competing mechanisms (algorithmic management critique,
+platform-mediated harm) remain in scope as adversarial scoping.
 
 RULES:
 - Output ONLY a valid JSON array, no markdown fences, no explanation.
@@ -251,16 +268,21 @@ CONTEXT — 7-beat paper structure:
   Framework:
     Beat 3 -> E, F, G, H          (§2.3 four design primitives)
 
-  Primary evidence (formative survey):
-    Beat 4 -> [primary_data]      (§4.1 passenger WTP & motivations)
-    Beat 5 -> F, H                (§4.2 driver tolerance + rating fairness)
+  Primary evidence (formative survey, N=111 eligible / 44 finished):
+    Beat 4 -> [primary_data]      (§4.1 passenger WTP & motivations; F6
+                                   driver supply willingness gradient,
+                                   long-distance 12/33 highest)
+    Beat 5 -> F, H, H-subgroup    (§4.2 driver-subset tolerance N=19 +
+                                   rating-fairness asymmetry + Rider
+                                   control N=12)
 
   Core contribution (artifact):
     Beat 6 -> [artifact]          (§5 CampusRide + carpool deep-dive)
 
   Adversarial scoping:
-    Beat 7 -> J, H                (§7.2 formalization risk, sample skew,
-                                   no deployment, .edu scope, gamification risk)
+    Beat 7 -> J, H                (§7.2 formalization risk, three-layer
+                                   sample skew, no deployment, .edu scope,
+                                   gamification risk)
 
 CRITICAL:
 - Motivation beats are background motivation only.
@@ -272,7 +294,11 @@ CRITICAL:
   anchor_paper may be a pseudo-anchor with paperId beginning with 'local:'
   (the Cornell formative survey for Beat 4; the CampusRide system for Beat 6).
   Their spine may reference internal section labels or finding keys (e.g.
-  'finding:F3') as strings in addition to paperIds.
+  'finding:F3', 'finding:F6') as strings in addition to paperIds.
+- For Beat 5, anchor_paper must be from H or H-subgroup literature; narrative
+  must acknowledge N=19 driver subset + N=12 rider control.
+- Verb discipline: use "resonates with" / "parallels" / "counterintuitively";
+  avoid "confirms" / "replicates".
 
 TASK:
 Given a set of papers assigned to ONE beat, construct the narrative chain for
@@ -324,8 +350,15 @@ coordination gap underserved by commercial rideshare; that grassroots
 coordination practices (WeChat/WhatsApp, international students) warrant
 formalization; that CampusRide operationalizes four design primitives in a
 multi-module platform with a carpool deep-dive; and that the research-agent
-pipeline is itself the paper's methodology contribution. Adversarial scoping
-covers formalization risk, sample skew, absence of deployment evaluation,
+pipeline is itself the paper's methodology contribution. The Beat 5 core
+finding is a driver-subgroup rating-fairness observation (N=19 Driver/Both
+subset, with N=12 Rider-only control): driver tolerance for unfair ratings
+is 29.1 vs 41.4-52.3 on the other three tolerance items in the same subset.
+Amateur-driver H-subgroup literature (non-professional / occasional drivers)
+is a possible contradiction surface against professional gig-worker H-main
+literature (Rosenblat & Stark, Lee et al.). Adversarial scoping covers
+formalization risk, three-layer sample skew (main 79% Mandarin / driver
+subset N=19 / completion ~40%), absence of deployment evaluation,
 identity-verification scope limits, and gamification risk.
 
 Argument-line labels:
@@ -385,7 +418,7 @@ structured evidence inventory organized by beat.
 The paper uses a 7-beat structure:
   Motivation: Beat 1 -> A,B | Beat 2 -> C,D,I
   Framework:  Beat 3 -> E,F,G,H
-  Primary:    Beat 4 -> [primary_data] | Beat 5 -> F,H
+  Primary:    Beat 4 -> [primary_data] | Beat 5 -> F, H, H-subgroup
   Core contribution: Beat 6 -> [artifact]
   Adversarial: Beat 7 -> J,H
 
@@ -402,27 +435,38 @@ PER-BEAT VERB DISCIPLINE (STRICT — honesty reviewer will flag violations):
 - Beat 1 narrative MUST use "motivates", "is documented in", "points to"; MUST NOT
   say the transport gap is "empirically proven", "universally documented",
   "definitively shows", "broadly underserved" or similar at-scale claims.
-  The corpus only supports contextual / small-town motivation.
+  The corpus only supports contextual / small-town motivation. F1 numbers
+  (v4.2): 28/32 Uber expensive, 23/32 availability issues.
 - Beat 2 narrative MUST use "document", "indicate", "suggest"; for super-app
   literature MUST say "initial inquiry" NOT "established design space" or
   "the first multi-module campus platform".
 - Beat 3 narrative MUST present the four design primitives as PARALLEL.
   MUST NOT value-rank them; MUST NOT call any "canonical" or "validated".
 - Beat 4 narrative MUST report descriptive statistics only with N per item,
-  disclose 82% Mandarin-native scope. MUST NOT say "significantly",
-  "majority think", "statistics confirm".
-- Beat 5 narrative MUST disclose N=30 driver subsample limit for F5 rating
-  finding. MUST use "resonates with", "parallels", "counterintuitively";
-  MUST NOT say "confirms", "replicates", "proves".
+  disclose N=44 finished / 79% Mandarin-native (72/91) scope. MUST NOT say
+  "significantly", "majority think", "statistics confirm". This is the
+  passenger-overview beat and MUST also reference F6 (Q23 driver supply
+  willingness gradient; long-distance 12/33 Very/Extremely willing, highest
+  among the three distance tiers).
+- Beat 5 narrative MUST use the subset wording explicitly: the F5 rating
+  finding is limited to the Driver/Both subset N=19, NOT the full sample N=30.
+  MUST report the Rider-only control N=12 (35.7 / 19.6 / 22.4 / 33.2 for the
+  four Q24 items) as methodological justification for the subset choice.
+  MUST use "resonates with", "parallels", "counterintuitively"; MUST NOT say
+  "confirms", "replicates", "proves".
 - Beat 6 narrative MUST say "we designed", "we implemented", "motivated by
   finding X", "in response to finding X"; MUST NOT use "effective",
   "successful", "proves", "validates", "demonstrates". MUST state explicitly
   that no deployment data is presented and that only carpool is deep-dived
-  (five other modules are overview-level).
+  (five other modules are overview-level). §5.2 carpool scope MUST cite F6
+  (long-distance 12/33 willingness) as the evidence anchor for long-distance
+  as a focus scenario.
 - Beat 7 narrative MUST say "may reproduce", "we acknowledge", "scope-limited",
   "we do not claim"; MUST NOT say "we address", "we prevent", "we solve",
   "we mitigate". Each adversarial paragraph MUST cite at least one
-  counterevidence paper from Category J or H.
+  counterevidence paper from Category J or H. Sample skew MUST be disclosed
+  in three explicit tiers: main sample 79% Mandarin / driver subset N=19 /
+  completion ~40%. The three tiers MUST NOT be collapsed.
 
 For each beat, output:
 1. The 5-8 most important papers (or contextualizing references for primary-data beats).

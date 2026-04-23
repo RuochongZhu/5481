@@ -1,8 +1,9 @@
-# Research Agent — CLAUDE.md (v4 CampusRide)
+# Research Agent — CLAUDE.md (v4.2 CampusRide)
 
 > Claude Code reads this file on every session start. It defines quality gates,
-> role isolation rules, and invariants for the **v4 CampusRide** research-agent
+> role isolation rules, and invariants for the **v4.2 CampusRide** research-agent
 > pipeline. Previous L_auth thesis state is archived in `../` (parent dir).
+> v4.1 artifacts are superseded by v4.2 updates described below.
 
 ## Project Overview
 
@@ -12,8 +13,19 @@ HCI design-case literature analysis pipeline for the **CampusRide** paper.
 
 Three contribution claims (carried through Abstract, Introduction §1, §5, §6):
 1. CampusRide — identity-verified multi-module campus platform
-2. Carpool module deep-dive grounded in N=117 formative survey
+2. Carpool module deep-dive grounded in a formative survey (N=111 eligible / 44 finished; driver subgroup N=19 carries the F5 rating-fairness asymmetry)
 3. research-agent — thesis-conditioned evidence pipeline as methodology
+
+## v4.1 → v4.2 changes (summary)
+
+- Survey cohort corrected: "117 / 50" → "111 eligible / 44 finished" (6 Survey-Preview test rows excluded).
+- Language cohort corrected: "82% Mandarin" → "79% Mandarin-native (72/91 who reported native language)".
+- F1 numbers: 29/32 → 28/32, 24/33 → 23/32. F3 means updated to 69.1 / 67.3 / 63.5 / 60.5 / 55.4 / 54.9 / 50.9.
+- **F5 MAJOR**: now reported on the Driver/Both subset (N=19) with a Rider-only control subset (N=12). Full-sample N=30 is an outdated v4.1 artifact — flag it.
+- **F6 NEW**: Q23 driver supply willingness (N=33). Long-distance 12/33 Very+Extremely willing = highest.
+- E / I / H-subgroup categories populated via manual_core_inclusions (Prompt A/B/E audits under `config/*_audit.md`).
+- Phase 3 relationship graph emits 4 new edge types: `conceptual_overlap`, `methodological_mirror`, `temporal_succession`, `contradiction`.
+- §6.2 Audit Trail must include a negative-audit paragraph (pipeline limitations explicitly disclosed).
 
 ## Beat Structure (7 beats, sections §2.1–§7.2)
 
@@ -22,10 +34,10 @@ Three contribution claims (carried through Abstract, Introduction §1, §5, §6)
 | 1 | §2.1 | Small-Town Campus Transportation & Coordination Gaps | motivation | A, B |
 | 2 | §2.2 | Grassroots Coordination & Integrated Campus Platforms | motivation | C, D, I |
 | 3 | §2.3 | Design Primitives: Identity, Safety, Rating Fairness, Rewards | framework | E, F, G, H |
-| 4 | §4.1 | Formative Survey: Passenger-Side WTP & Motivations | primary | *(primary_data)* |
-| 5 | §4.2 | Formative Survey: Driver-Side Tolerance & Rating-Fairness Asymmetry | primary | F, H |
+| 4 | §4.1 | Formative Survey: Passenger-Side WTP & Motivations (+ F6 supply) | primary | *(primary_data)* |
+| 5 | §4.2 | Formative Survey: Driver-Subset Tolerance & Rating-Fairness Asymmetry | primary | F, H, H-subgroup |
 | 6 | §5 | CampusRide Multi-Module Platform Design with Carpool Deep-Dive | core_contribution | *(artifact)* |
-| 7 | §7.2 | Adversarial Scoping: Formalization Risk, Sample Skew, No Deployment | adversarial | J, H |
+| 7 | §7.2 | Adversarial Scoping: 3-Tier Sample Skew, Formalization, No Deployment | adversarial | J, H, H-subgroup |
 
 CRITICAL:
 - Motivation beats (1-2) frame urgency but do not directly prove the primary survey findings.
