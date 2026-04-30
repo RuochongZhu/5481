@@ -201,14 +201,15 @@ def v2_citation_force_graph(classified: list[dict], graph_data: dict | None,
 # ---------------------------------------------------------------------------
 
 def v3_beat_heatmap(classified: list[dict], fig_dir: str) -> str:
-    """Heatmap showing paper density per Beat × Category."""
+    """Heatmap showing paper density per Beat × Category (v4.2 polished)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
 
     beats = list(BEAT_CATS.keys())
-    cats = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
+    # v4.2: drop K (taxonomy is A-J now). Show full category names (no 15-char truncation).
+    cats = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
 
     matrix = np.zeros((len(beats), len(cats)))
     for i, (beat_name, beat_cats) in enumerate(BEAT_CATS.items()):
@@ -217,27 +218,62 @@ def v3_beat_heatmap(classified: list[dict], fig_dir: str) -> str:
                 count = sum(1 for p in classified if p.get("primary_category") == cat)
                 matrix[i][j] = count
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(15, 7))
     im = ax.imshow(matrix, cmap="YlOrRd", aspect="auto")
 
     ax.set_xticks(range(len(cats)))
-    ax.set_xticklabels([f"{c}\n{CAT_NAMES.get(c, '')[:15]}" for c in cats],
-                       fontsize=8, rotation=45, ha="right")
+    ax.set_xticklabels(
+        [f"{c}\n{CAT_NAMES.get(c, '')}" for c in cats],
+        fontsize=9, rotation=35, ha="right",
+    )
     ax.set_yticks(range(len(beats)))
     ax.set_yticklabels(beats, fontsize=10)
 
-    # Annotate cells
-    for i in range(len(beats)):
+    # Annotate cells. For Beats 4 (Passenger Survey) and 6 (CampusRide Platform),
+    # the row is empty by design — they use pseudo-anchors instead of category
+    # support. Draw a hatched grey overlay across those rows and print a
+    # centered 'pseudo-anchor' label so readers don't think it's missing data.
+    pseudo_beat_labels = {
+        "Beat 4: Passenger Survey": "primary-data beat — pseudo-anchor (Cornell Carpool Survey, N=111/44)",
+        "Beat 6: CampusRide Platform": "artifact beat — pseudo-anchor (CampusRide system, §5)",
+    }
+    for i, beat_name in enumerate(beats):
+        label = pseudo_beat_labels.get(beat_name)
+        if label is not None:
+            # Grey hatched band across the full row
+            ax.fill_between(
+                [-0.5, len(cats) - 0.5], i - 0.5, i + 0.5,
+                facecolor="#d0d0d0", edgecolor="#a0a0a0",
+                hatch="//", alpha=0.5, zorder=2,
+            )
+            ax.text(
+                (len(cats) - 1) / 2, i, label,
+                ha="center", va="center",
+                fontsize=9, fontstyle="italic", color="#333333", zorder=3,
+            )
+            continue
         for j in range(len(cats)):
             val = int(matrix[i][j])
             if val > 0:
-                color = "white" if val > matrix.max() * 0.6 else "black"
+                color = "white" if val > matrix.max() * 0.55 else "black"
                 ax.text(j, i, str(val), ha="center", va="center",
-                        fontsize=10, fontweight="bold", color=color)
+                        fontsize=11, fontweight="bold", color=color, zorder=3)
 
-    plt.colorbar(im, ax=ax, label="Paper Count")
-    ax.set_title("Evidence Density: Beat × Category", fontsize=14, fontweight="bold")
-    plt.tight_layout()
+    plt.colorbar(im, ax=ax, label="Paper count (primary category)")
+    ax.set_title(
+        "Evidence Density: Beat × Category (v4.2, N_total=88)",
+        fontsize=14, fontweight="bold", pad=12,
+    )
+    # Caption below the plot — critical for readers to interpret empty rows
+    fig.text(
+        0.5, 0.02,
+        "Beats 1-3, 5, 7 draw from literature categories A-J. Beats 4 and 6 are\n"
+        "primary-data and artifact beats respectively and do not have a category spine\n"
+        "by design; their evidence is the formative survey (N=111 eligible / 44 finished)\n"
+        "and the CampusRide platform implementation, documented in §4.1, §4.2, and §5.",
+        ha="center", fontsize=9, style="italic", color="#555555",
+    )
+    plt.subplots_adjust(bottom=0.22)
 
     path = os.path.join(fig_dir, "v3_beat_heatmap.png")
     fig.savefig(path, dpi=200, bbox_inches="tight")

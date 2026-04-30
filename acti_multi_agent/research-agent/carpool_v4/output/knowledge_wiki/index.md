@@ -2,31 +2,32 @@
 
 > Agent-readable graph wiki. Start here before scanning raw corpus files.
 
-**161 nodes · 4064 edges · 6 communities**
+**175 nodes · 5624 edges · 7 communities**
 
 ## Communities
 
-- [[Category X]] — 57 nodes
-- [[Category H]] — 50 nodes
-- [[Category C]] — 46 nodes
-- [[Category D]] — 6 nodes
-- [[Community 4]] — 1 nodes
+- [[Category D]] — 66 nodes
+- [[Category J]] — 62 nodes
+- [[Category F]] — 31 nodes
+- [[Category E]] — 13 nodes
+- [[Category X]] — 1 nodes
 - [[Community 5]] — 1 nodes
+- [[Community 6]] — 1 nodes
 
 ## Top Hubs
 
-- Digital Genealogies: Understanding Social Mobile Media LINE in the Role of Japanese Families (paper, degree=120)
-- The Logic of Gig Economy (Origins and Growth Prospects) (paper, degree=118)
-- Trust and power in Airbnb’s digital rating and reputation system (paper, degree=116)
-- Mobile instant messaging: New knowledge tools in global health? (paper, degree=111)
-- A Neglected Population: Media Consumption, Perceived Risk, and Fear of Crime Among International Students. (paper, degree=109)
-- Developing a One-Stop Platform Transportation Planning Service to Help Older Adults Move Around in Their Community Where, When, and How They Wish: Protocol for a Living Lab Study. (paper, degree=108)
-- DonnaRosa Project: Exploring Informal Communication Practices Among Breast Cancer Specialists. (paper, degree=107)
-- The Benefits of Facebook “Friends:” Social Capital and College Students’ Use of Online Social Network Sites (paper, degree=105)
-- Factors influencing trust and behavioral intention to use Airbnb service innovation in three ASEAN countries (paper, degree=104)
-- Indian Travellers’ Adoption of Airbnb Platform (paper, degree=103)
-- Utilizing social media for community risk communication in megacities: analysing the impact of WeChat group information interaction and perception on communication satisfaction during the COVID-19 pandemic in Shanghai. (paper, degree=103)
-- Social capital and resource requests on Facebook (paper, degree=103)
-- RiderConnect – A Ride Sharing Platform (paper, degree=103)
-- Influence of algorithmic management practices on workplace well-being – evidence from European organisations (paper, degree=103)
-- Gamification for climate change engagement: review of corpus and future agenda (paper, degree=102)
+- Fostering Learning in the Networked World: The Cyberlearning Opportunity and Challenge. A 21st Century Agenda for the National Science Foundation (paper, degree=179)
+- What Affects Millennials’ Mobility? Part I: Investigating the Environmental Concerns, Lifestyles, Mobility-Related Attitudes and Adoption of Technology of Young Adults in California (paper, degree=163)
+- Mental Health Response to the COVID-19 Outbreak in China (paper, degree=152)
+- Populism, globalisation and social media (paper, degree=149)
+- Social media for rapid knowledge dissemination: early experience from the <scp>COVID</scp> ‐19 pandemic (paper, degree=147)
+- Synergies between app-based car-related Shared Mobility Services for the development of more profitable business models (paper, degree=143)
+- Challenges of Promoting Sustainable Mobility on University Campuses: The Case of Eastern Mediterranean University (paper, degree=141)
+- Trust and power in Airbnb’s digital rating and reputation system (paper, degree=139)
+- Cooperation or competition - When do people contribute more? A field experiment on gamification of crowdsourcing (paper, degree=138)
+- DonnaRosa Project: Exploring Informal Communication Practices Among Breast Cancer Specialists. (paper, degree=129)
+- Do Not Harm in Private Chat Apps: Ethical Issues for Research on and with WhatsApp (paper, degree=129)
+- RiderConnect – A Ride Sharing Platform (paper, degree=127)
+- Utilizing social media for community risk communication in megacities: analysing the impact of WeChat group information interaction and perception on communication satisfaction during the COVID-19 pandemic in Shanghai. (paper, degree=126)
+- Fairness Dynamics in Digital Economy Platforms with Biased Ratings (paper, degree=126)
+- Sharing Anxiety Is in the Driver’s Seat: Analyzing User Acceptance of Dynamic Ridepooling and Its Implications for Shared Autonomous Mobility (paper, degree=126)

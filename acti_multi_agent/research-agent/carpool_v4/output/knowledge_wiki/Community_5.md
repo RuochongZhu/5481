@@ -4,11 +4,11 @@
 
 ## Key Nodes
 
-- **CampusRide Multi-Module Platform Design with Carpool Deep-Dive** (beat, degree=0)
+- **Formative Survey: Passenger-Side WTP & Motivations** (beat, degree=0)
 
 ## Member Nodes
 
-- CampusRide Multi-Module Platform Design with Carpool Deep-Dive [beat]
+- Formative Survey: Passenger-Side WTP & Motivations [beat]
 
 ---
 

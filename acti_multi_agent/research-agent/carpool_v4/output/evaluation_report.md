@@ -2,30 +2,29 @@
 
 Iteration: 1
 
-Overall score: **0.793**
+Overall score: **0.854**
 
 ## Dimension Scores
 
 | Dimension | Score | Weight |
 |-----------|-------|--------|
-| narrative | 0.89 | 25% |
-| contradiction | 0.73 | 15% |
-| gap | 0.87 | 20% |
-| coverage | 0.68 | 25% |
-| honesty | 0.78 | 15% |
+| narrative | 0.87 | 25% |
+| contradiction | 0.82 | 15% |
+| gap | 0.84 | 20% |
+| coverage | 0.88 | 25% |
+| honesty | 0.84 | 15% |
 
 ## Data Metrics
 
-- Total papers: 73
+- Total papers: 100
 - Evidence coverage: 5/7 beats
-- Beat support counts: {'1': 19, '2': 14, '3': 26, '4': 0, '5': 10, '6': 0, '7': 17}
+- Beat support counts: {'1': 21, '2': 26, '3': 37, '4': 0, '5': 20, '6': 0, '7': 24}
 - Empty categories: 0
-- Avg fill rate: 0.75
-- X papers: 15
-- X ratio: 0.17
+- Avg fill rate: 1.0
+- X papers: 0
+- X ratio: 0.0
 
 ## Decision
 
-Action: **backtrack**
-Reason: Weakest dimension: coverage (0.68). Backtracking to Phase 1.
-Target phase: 1
+Action: **done**
+Reason: Overall score 0.854 ≥ 0.85. Pipeline complete.

@@ -46,6 +46,7 @@ from src.state_manager import (
     merge_usage_delta,
 )
 from src.api_client import OpenAlexClient, S2Client, ArxivClient, LensClient, DEFAULT_MODEL
+from src.archive import archive_pre_run, restore_from_archive
 
 STATE_PATH = os.path.join(BASE_DIR, "state.json")
 LOG_DIR = os.path.join(BASE_DIR, "agent_logs")
@@ -564,6 +565,44 @@ def _print_summary(state: dict):
 
 
 # ---------------------------------------------------------------------------
+# Run-mode resolution + pre-run archive
+# ---------------------------------------------------------------------------
+
+def _resolve_run_mode(args, log) -> str:
+    """Resolve RUN_MODE from CLI flag > env var > legacy --resume > 'fresh'."""
+    if args.mode:
+        mode = args.mode
+    elif os.environ.get("RUN_MODE"):
+        mode = os.environ["RUN_MODE"].strip().lower()
+    elif args.resume:
+        log.warning("--resume is deprecated in carpool_v4; use --mode enrich")
+        mode = "enrich"
+    else:
+        mode = "fresh"
+    if mode not in ("fresh", "enrich"):
+        log.error(f"Invalid RUN_MODE={mode!r}; expected fresh|enrich")
+        sys.exit(2)
+    if args.from_archive and mode != "enrich":
+        log.error("--from-archive requires --mode enrich")
+        sys.exit(2)
+    return mode
+
+
+def _maybe_archive_and_restore(args, mode: str, log) -> None:
+    archive_enabled = (not args.no_archive) and \
+        os.environ.get("ARCHIVE_BEFORE_RUN", "true").strip().lower() in ("1", "true", "yes", "on")
+    label = args.archive_label or os.environ.get("ARCHIVE_LABEL") or None
+    if label is not None:
+        label = label.strip() or None
+    include_raw = os.environ.get("ARCHIVE_INCLUDE_RAW", "false").strip().lower() in ("1", "true", "yes", "on")
+    if archive_enabled:
+        archive_pre_run(BASE_DIR, mode=mode, label=label,
+                        include_raw=include_raw, log=log)
+    if args.from_archive:
+        restore_from_archive(BASE_DIR, args.from_archive, log=log)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -590,6 +629,14 @@ if __name__ == "__main__":
                         help="Show current pipeline state")
     parser.add_argument("--model", type=str, default=None,
                         help="Override model (e.g. claude-opus-4-6)")
+    parser.add_argument("--mode", choices=["fresh", "enrich"], default=None,
+                        help="Run mode (overrides RUN_MODE env). fresh=reset state+outputs; enrich=continue.")
+    parser.add_argument("--from-archive", dest="from_archive", type=str, default=None,
+                        help="Restore from archive/run_*/ snapshot before continuing. Requires --mode enrich.")
+    parser.add_argument("--no-archive", action="store_true",
+                        help="Skip pre-run archive snapshot (overrides ARCHIVE_BEFORE_RUN).")
+    parser.add_argument("--archive-label", dest="archive_label", type=str, default=None,
+                        help="Append a human label to the archive dir name.")
     args = parser.parse_args()
 
     # Load .env — check both research-agent/.env and parent acti_multi_agent/.env
@@ -648,19 +695,38 @@ if __name__ == "__main__":
 
     # Run
     if args.auto:
-        log.info("Running auto-loop mode")
+        run_mode = _resolve_run_mode(args, log)
+        _maybe_archive_and_restore(args, run_mode, log)
+        if args.from_archive:
+            state = load_state(STATE_PATH)
+        if run_mode == "fresh":
+            state = reset_phase_tree(state, STATE_PATH, "1")
+            invalidate_outputs(BASE_DIR, "1")
+        log.info(f"Running auto-loop mode (mode={run_mode})")
         if args.target_score is not None:
             os.environ["TARGET_SCORE"] = str(args.target_score)
         state = run_auto_loop(state, client, oa, s2, arxiv, lens,
                               max_iterations=args.max_iterations)
     elif args.phase:
-        if not args.resume:
+        run_mode = _resolve_run_mode(args, log)
+        _maybe_archive_and_restore(args, run_mode, log)
+        if args.from_archive:
+            state = load_state(STATE_PATH)
+        if run_mode == "fresh":
             state = reset_phase_tree(state, STATE_PATH, args.phase)
             invalidate_outputs(BASE_DIR, args.phase)
-        log.info(f"Running Phase {args.phase}" + (" (resume)" if args.resume else ""))
-        state = run_phase(args.phase, state, client, oa, s2, arxiv, lens, resume=args.resume)
+        log.info(f"Running Phase {args.phase} (mode={run_mode})")
+        state = run_phase(args.phase, state, client, oa, s2, arxiv, lens,
+                          resume=(run_mode == "enrich"))
     else:
-        log.info("Running full pipeline (9 phases)")
+        run_mode = _resolve_run_mode(args, log)
+        _maybe_archive_and_restore(args, run_mode, log)
+        if args.from_archive:
+            state = load_state(STATE_PATH)
+        if run_mode == "fresh":
+            state = reset_phase_tree(state, STATE_PATH, "1")
+            invalidate_outputs(BASE_DIR, "1")
+        log.info(f"Running full pipeline (9 phases) (mode={run_mode})")
         state = run_full_pipeline(state, client, oa, s2, arxiv, lens)
 
     show_status(state)

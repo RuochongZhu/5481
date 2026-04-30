@@ -1,95 +1,98 @@
 # Research Knowledge Graph Report
 
-**Nodes:** 161  
-**Edges:** 4064
+**Nodes:** 175  
+**Edges:** 5624
 
 ## Node Types
 
 - beat: 7
 - category: 11
-- layer: 5
-- paper: 88
-- query: 41
-- source: 8
+- layer: 6
+- paper: 100
+- query: 44
+- source: 6
 - unknown: 1
 
 ## Relation Types
 
-- conceptual_overlap: 1788
-- temporal_succession: 1693
-- supports_beat: 125
-- classified_as: 88
-- provided_record: 88
-- retrieved: 88
-- retrieved_via: 88
-- methodological_mirror: 58
+- conceptual_overlap: 2542
+- temporal_succession: 2400
+- supports_beat: 164
+- classified_as: 100
+- provided_record: 100
+- retrieved_via: 100
+- retrieved: 83
+- methodological_mirror: 80
 - secondary_category: 33
-- extends: 6
-- builds_on: 5
-- cites: 4
+- contradiction: 16
+- builds_on: 3
+- extends: 3
 
 ## Integrity Signals
 
-- Paper nodes: 88
-- With DOI: 86
-- With publisher metadata: 83
+- Paper nodes: 100
+- With DOI: 95
+- With publisher metadata: 30
 - Retracted flagged: 0
-- Publisher: Springer Science and Business Media LLC (8)
-- Publisher: MDPI AG (7)
-- Publisher: SAGE Publications (7)
-- Publisher: Elsevier BV (6)
-- Publisher: Wiley (5)
+- Publisher: SAGE Publications (5)
+- Publisher: ACM (4)
+- Publisher: MDPI AG (1)
+- Publisher: Springer Science and Business Media LLC (1)
+- Publisher: Adam Mickiewicz University Poznan (1)
 
 ## Top Hubs
 
-- Digital Genealogies: Understanding Social Mobile Media LINE in the Role of Japanese Families (paper, degree=120)
-- The Logic of Gig Economy (Origins and Growth Prospects) (paper, degree=118)
-- Trust and power in Airbnb’s digital rating and reputation system (paper, degree=116)
-- Mobile instant messaging: New knowledge tools in global health? (paper, degree=111)
-- A Neglected Population: Media Consumption, Perceived Risk, and Fear of Crime Among International Students. (paper, degree=109)
-- Developing a One-Stop Platform Transportation Planning Service to Help Older Adults Move Around in Their Community Where, When, and How They Wish: Protocol for a Living Lab Study. (paper, degree=108)
-- DonnaRosa Project: Exploring Informal Communication Practices Among Breast Cancer Specialists. (paper, degree=107)
-- The Benefits of Facebook “Friends:” Social Capital and College Students’ Use of Online Social Network Sites (paper, degree=105)
-- Factors influencing trust and behavioral intention to use Airbnb service innovation in three ASEAN countries (paper, degree=104)
-- Indian Travellers’ Adoption of Airbnb Platform (paper, degree=103)
-- Utilizing social media for community risk communication in megacities: analysing the impact of WeChat group information interaction and perception on communication satisfaction during the COVID-19 pandemic in Shanghai. (paper, degree=103)
-- Social capital and resource requests on Facebook (paper, degree=103)
-- RiderConnect – A Ride Sharing Platform (paper, degree=103)
-- Influence of algorithmic management practices on workplace well-being – evidence from European organisations (paper, degree=103)
-- Gamification for climate change engagement: review of corpus and future agenda (paper, degree=102)
+- Fostering Learning in the Networked World: The Cyberlearning Opportunity and Challenge. A 21st Century Agenda for the National Science Foundation (paper, degree=179)
+- What Affects Millennials’ Mobility? Part I: Investigating the Environmental Concerns, Lifestyles, Mobility-Related Attitudes and Adoption of Technology of Young Adults in California (paper, degree=163)
+- Mental Health Response to the COVID-19 Outbreak in China (paper, degree=152)
+- Populism, globalisation and social media (paper, degree=149)
+- Social media for rapid knowledge dissemination: early experience from the <scp>COVID</scp> ‐19 pandemic (paper, degree=147)
+- Synergies between app-based car-related Shared Mobility Services for the development of more profitable business models (paper, degree=143)
+- Challenges of Promoting Sustainable Mobility on University Campuses: The Case of Eastern Mediterranean University (paper, degree=141)
+- Trust and power in Airbnb’s digital rating and reputation system (paper, degree=139)
+- Cooperation or competition - When do people contribute more? A field experiment on gamification of crowdsourcing (paper, degree=138)
+- DonnaRosa Project: Exploring Informal Communication Practices Among Breast Cancer Specialists. (paper, degree=129)
+- Do Not Harm in Private Chat Apps: Ethical Issues for Research on and with WhatsApp (paper, degree=129)
+- RiderConnect – A Ride Sharing Platform (paper, degree=127)
+- Utilizing social media for community risk communication in megacities: analysing the impact of WeChat group information interaction and perception on communication satisfaction during the COVID-19 pandemic in Shanghai. (paper, degree=126)
+- Fairness Dynamics in Digital Economy Platforms with Biased Ratings (paper, degree=126)
+- Sharing Anxiety Is in the Driver’s Seat: Analyzing User Acceptance of Dynamic Ridepooling and Its Implications for Shared Autonomous Mobility (paper, degree=126)
 
 ## Communities
 
-### Category X (57 nodes)
-- Developing a One-Stop Platform Transportation Planning Service to Help Older Adults Move Around in Their Community Where, When, and How They Wish: Protocol for a Living Lab Study. (paper, degree=108)
-- Factors influencing trust and behavioral intention to use Airbnb service innovation in three ASEAN countries (paper, degree=104)
-- RiderConnect – A Ride Sharing Platform (paper, degree=103)
-- Gamification for climate change engagement: review of corpus and future agenda (paper, degree=102)
-- Relationship Between Transportation Availability and Obstetric Access in Predicting United States Maternal Death Rates (paper, degree=101)
+### Category D (66 nodes)
+- Fostering Learning in the Networked World: The Cyberlearning Opportunity and Challenge. A 21st Century Agenda for the National Science Foundation (paper, degree=179)
+- Mental Health Response to the COVID-19 Outbreak in China (paper, degree=152)
+- Populism, globalisation and social media (paper, degree=149)
+- Social media for rapid knowledge dissemination: early experience from the <scp>COVID</scp> ‐19 pandemic (paper, degree=147)
+- DonnaRosa Project: Exploring Informal Communication Practices Among Breast Cancer Specialists. (paper, degree=129)
 
-### Category H (50 nodes)
-- The Logic of Gig Economy (Origins and Growth Prospects) (paper, degree=118)
-- Trust and power in Airbnb’s digital rating and reputation system (paper, degree=116)
-- Indian Travellers’ Adoption of Airbnb Platform (paper, degree=103)
-- Influence of algorithmic management practices on workplace well-being – evidence from European organisations (paper, degree=103)
-- A Systematic Literature Review of Anti-Discrimination Design Strategies in the Digital Sharing Economy (paper, degree=102)
+### Category J (62 nodes)
+- Challenges of Promoting Sustainable Mobility on University Campuses: The Case of Eastern Mediterranean University (paper, degree=141)
+- Trust and power in Airbnb’s digital rating and reputation system (paper, degree=139)
+- Cooperation or competition - When do people contribute more? A field experiment on gamification of crowdsourcing (paper, degree=138)
+- RiderConnect – A Ride Sharing Platform (paper, degree=127)
+- Fairness Dynamics in Digital Economy Platforms with Biased Ratings (paper, degree=126)
 
-### Category C (46 nodes)
-- Digital Genealogies: Understanding Social Mobile Media LINE in the Role of Japanese Families (paper, degree=120)
-- Mobile instant messaging: New knowledge tools in global health? (paper, degree=111)
-- DonnaRosa Project: Exploring Informal Communication Practices Among Breast Cancer Specialists. (paper, degree=107)
-- The Benefits of Facebook “Friends:” Social Capital and College Students’ Use of Online Social Network Sites (paper, degree=105)
-- Utilizing social media for community risk communication in megacities: analysing the impact of WeChat group information interaction and perception on communication satisfaction during the COVID-19 pandemic in Shanghai. (paper, degree=103)
+### Category F (31 nodes)
+- What Affects Millennials’ Mobility? Part I: Investigating the Environmental Concerns, Lifestyles, Mobility-Related Attitudes and Adoption of Technology of Young Adults in California (paper, degree=163)
+- Synergies between app-based car-related Shared Mobility Services for the development of more profitable business models (paper, degree=143)
+- Towards an AI-powered Future that Works for Vocational Workers (paper, degree=123)
+- Android App for Women Safety (paper, degree=119)
+- A Comprehensive Web-Based Women Safety Application with Real-Time Tracking and AI-Powered Risk Assessment (paper, degree=118)
 
-### Category D (6 nodes)
-- A Neglected Population: Media Consumption, Perceived Risk, and Fear of Crime Among International Students. (paper, degree=109)
-- Cooperative affordances: How instant messaging apps afford learning, resistance and solidarity among food delivery workers (paper, degree=91)
-- Dilemmas and Coping Strategies of Chinese International Students’ Mental Health Problems: The Parents’ Perspectives (paper, degree=84)
-- Category D (category, degree=4)
-- ("international students" OR "Chinese students") AND (WeChat OR digital OR "social media") AND ("US university" OR "American campus" OR "United States") AND year_published:[2018 TO 2026] (query, degree=2)
+### Category E (13 nodes)
+- The Benefits of Facebook “Friends:” Social Capital and College Students’ Use of Online Social Network Sites (paper, degree=113)
+- Social capital and resource requests on Facebook (paper, degree=111)
+- Anonymous social media – Understanding the content and context of Yik Yak (paper, degree=92)
+- Situated Anonymity (paper, degree=57)
+- (In)visible Cities: An Exploration of Social Identity, Anonymity and Location-Based Filtering on Yik Yak (paper, degree=26)
 
-### Community 4 (1 nodes)
-- Formative Survey: Passenger-Side WTP & Motivations (beat, degree=0)
+### Category X (1 nodes)
+- Category X (category, degree=0)
 
 ### Community 5 (1 nodes)
+- Formative Survey: Passenger-Side WTP & Motivations (beat, degree=0)
+
+### Community 6 (1 nodes)
 - CampusRide Multi-Module Platform Design with Carpool Deep-Dive (beat, degree=0)

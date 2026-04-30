@@ -324,9 +324,15 @@ def _run_openalex_search(oa: OpenAlexClient, queries_cfg: dict, raw_dir: str) ->
 
 def _run_lens_search(lens: LensClient | None, queries_cfg: dict, raw_dir: str) -> list[dict]:
     """Run targeted Lens queries as a precision supplement for missing categories."""
+    cache_path = os.path.join(raw_dir, "lens_results.json")
+    cached = load_json(cache_path) if os.path.exists(cache_path) else []
+
     if lens is None or not lens.enabled:
+        if cached:
+            log.info(f"Lens API not configured — reusing cached {len(cached)} papers from {cache_path}")
+            return cached
         log.info("Lens API not configured — skipping targeted supplementation")
-        atomic_write_json(os.path.join(raw_dir, "lens_results.json"), [])
+        atomic_write_json(cache_path, [])
         return []
 
     papers = []
@@ -354,7 +360,13 @@ def _run_lens_search(lens: LensClient | None, queries_cfg: dict, raw_dir: str) -
         except Exception as e:
             log.error(f"    → Failed: {e}")
 
-    atomic_write_json(os.path.join(raw_dir, "lens_results.json"), papers)
+    if not papers and cached:
+        log.warning(
+            f"Lens returned 0 papers (likely auth/quota failure); preserving cached {len(cached)} papers"
+        )
+        return cached
+
+    atomic_write_json(cache_path, papers)
     log.info(f"Total from Lens: {len(papers)} papers")
     return papers
 

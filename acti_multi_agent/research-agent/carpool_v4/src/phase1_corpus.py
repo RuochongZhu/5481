@@ -23,8 +23,8 @@ log = logging.getLogger("research_agent")
 
 CORE_TARGETS = {
     "A": 8, "B": 10, "C": 8, "D": 8, "E": 8,
-    "F": 10, "G": 8, "H": 10, "I": 8, "J": 10,
-}
+    "F": 10, "G": 8, "H": 10, "I": 12, "J": 10,
+}  # v4.4: I bumped 8→12 to absorb HoQ/QFD/multi-campus/in-the-wild evidence
 
 CATEGORY_KEYWORDS = {
     "A": {
@@ -111,10 +111,18 @@ CATEGORY_KEYWORDS = {
         "anchors": [
             "super app", "super-app", "integrated platform",
             "multi-module platform", "one-stop platform",
+            # v4.4: HoQ / multi-campus / continuous-deployment expansion
+            "house of quality", "quality function deployment", "qfd",
+            "multi-campus", "multi-site deployment", "cross-institution",
+            "continuous deployment", "soft launch", "in the wild", "in-the-wild",
         ],
         "secondary": [
             "community platform", "campus platform", "integrated services",
             "platform ecosystem", "bundled services",
+            "voice of customer", "engineering characteristics",
+            "longitudinal deployment", "field deployment", "iterative design",
+            "agile design", "design transferability", "context transfer",
+            "telemetry", "usage analytics", "sustained engagement",
         ],
     },
     "J": {
@@ -165,8 +173,14 @@ CATEGORY_GROUP_RULES = {
         ["fairness", "bias", "algorithmic management", "anxiety", "dispute"],
     ],
     "I": [
-        ["super app", "super-app", "integrated platform", "multi-module", "one-stop"],
-        ["community", "campus", "closed", "platform", "ecosystem"],
+        ["super app", "super-app", "integrated platform", "multi-module", "one-stop",
+         "house of quality", "qfd", "quality function deployment",
+         "multi-campus", "multi-site", "cross-institution",
+         "continuous deployment", "soft launch", "in the wild", "in-the-wild"],
+        ["community", "campus", "closed", "platform", "ecosystem",
+         "voice of customer", "engineering characteristics",
+         "longitudinal deployment", "field deployment", "iterative design",
+         "telemetry", "design transferability", "context transfer"],
     ],
     "J": [
         ["algorithmic management", "platform labor", "gig economy", "platform-mediated work"],

@@ -6,195 +6,185 @@
 
 ## Beat 1: Small-Town Campus Transportation & Coordination Gaps
 
-**Anchor paper**: Factors that determine a university community’s satisfaction levels with public transit services
-  Why: It is the most direct campus-transport paper in the set: it documents that university-community transit satisfaction varies with service quality and user characteristics, giving a concrete campus mobility anchor before the section broadens to small-town coordination limits and the peer-platform bridge.
+**Anchor paper**: Challenges of Promoting Sustainable Mobility on University Campuses: The Case of Eastern Mediterranean University
+  Why: It is the closest direct Category A anchor for campus mobility challenges, letting the section begin with university transport conditions rather than generic platform theory.
 
 **Narrative spine** (6 papers):
 
-  1. [2023] Factors that determine a university community’s satisfaction levels wi
-     Role: Establishes that a campus transportation gap exists as a lived service-quality and accessibility issue within university communities, rather than assuming campus mobility is already well served.
+  1. [2018] Challenges of Promoting Sustainable Mobility on University Campuses: T
+     Role: Opens with the campus setting by documenting that mobility challenges exist within university environments and motivate context-specific transport responses.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → If campus transit satisfaction is uneven even within a bounded university community, the next step is to view the campus itself as a coordination environment whose mobility problems connect to broader infrastructure and governance constraints.
-  2. [2021] Smart Campuses: Extensive Review of the Last Decade of Research and Cu
-     Role: Frames campuses as intermediate-scale socio-technical systems where mobility, governance, data, and service integration intersect, motivating why a campus-specific mobility problem can justify a campus-specific design response.
+     → If campus mobility challenges already exist at the institutional level, the next question is how unevenly current transit services meet day-to-day needs across the university community.
+  2. [2023] Factors that determine a university community’s satisfaction levels wi
+     Role: Shows that satisfaction with university transit depends on service and user factors, documenting that existing campus provision does not fit everyone equally well.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → That campus framing becomes more acute outside dense metropolitan contexts, where sparse demand and fragmented trip patterns make first- and last-mile coordination harder to solve with fixed services alone.
+     → That uneven fit becomes especially salient in lower-density settings, where the first- and last-mile problem is harder to absorb through frequent conventional service.
   3. [2025] Service design of shared first- and last-mile transit systems
-     Role: Extends the motivation from campus transit dissatisfaction to the small-town or sparsely populated setting, where shared first- and last-mile systems are explicitly treated as a service-design challenge rather than a solved market.
+     Role: Extends the argument from campus dissatisfaction to the structural coordination problem of sparsely populated areas, motivating shared and demand-responsive approaches where fixed service is thin.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Once the problem is framed as coordination under sparse demand, the question shifts from whether peers could help to how a peer-mediated system becomes trustworthy enough for everyday use.
+     → Once the gap is framed as a coordination problem rather than only a fleet problem, sharing-economy work helps explain why peer or campus-scoped alternatives are worth designing.
   4. [2015] Trust and reputation in the sharing economy: The role of personal phot
-     Role: Provides the foundational bridge from service gap to peer-platform design by documenting that trust and reputation cues matter in sharing-economy participation.
-     Basis: verified_citation
-     Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Later synthesis work builds on this trust-centered view by showing that participation depends not only on interpersonal cues but also on platform and provider conditions that shape whether people join and stay active.
-  5. [2024] Antecedents of Customer Participation on Sharing Platforms: A Meta‐ana
-     Role: Generalizes the bridge: customer participation on sharing platforms is motivated by trust, motives, and platform features, making peer coordination a plausible design direction when commercial coverage is thin.
-     Basis: verified_citation
-     Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → For mobility specifically, this general participation logic resonates with newer work on carpooling, which examines how trust-building mechanisms operate when the exchange is a shared ride rather than lodging or goods.
-  6. [2025] Creating a trusting environment in the sharing economy: Unpacking mech
-     Role: Brings the bridge closest to the target domain by showing that trust-building mechanisms on peer-to-peer carpooling platforms matter, while still leaving the small-town campus case only indirectly documented.
+     Role: Introduces the core bridge from transport shortage to peer coordination: participation in peer platforms depends on trust and reputation cues, not just functional matching.
      Basis: thematic_progression
-     → This closes the motivation on an honest boundary: peer-mobility trust mechanisms exist, but their fit to small-town university communities still motivates dedicated campus-scoped design rather than assuming transfer is automatic.
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → Later syntheses build on this foundation by arguing that trust is only one part of a broader participation system involving motives, platform design, and provider characteristics.
+  5. [2024] Antecedents of Customer Participation on Sharing Platforms: A Meta‐ana
+     Role: Generalizes the bridge across sharing platforms by showing that trust, customer motives, and platform/provider features all shape participation.
+     Basis: verified_citation
+     Note: Order is justified by the argument progression rather than a verified internal citation chain.
+     → For this paper's purposes, the key next step is to narrow that general participation logic toward mobility-like peer coordination rather than leave it at the level of generic marketplace exchange.
+  6. [2025] Creating a trusting environment in the sharing economy: Unpacking mech
+     Role: Brings the bridge back to rides by showing that trust-building on P2P carpooling platforms varies across user roles and experience levels, motivating bounded community design rather than assuming generic ride-hail solutions transfer cleanly.
+     Basis: thematic_progression
+     → This leaves a deliberate scope boundary: the literature motivates campus-scoped peer coordination, but direct evidence on small-town university ride demand and willingness is deferred to the paper's own formative data.
 
 **Paragraph structure**:
 
-  ¶1: Document the campus and small-town mobility gap: university transit satisfaction varies, campuses are bounded coordination environments, and sparse-demand settings make first/last-mile coverage difficult for standard transit or commercial ride-hail alone.
-    Opening: "Across university and secondary-city settings, a transportation coordination gap exists: mobility needs are local, recurrent, and socially embedded, yet available services are often fragmented across campus transit, public transit, and on-demand options."
+  ¶1: Document the campus and low-density mobility gap as a motivating condition, not as a fully quantified Uber-specific result.
+    Opening: "Category A literature documents that university mobility friction exists and becomes harder to resolve in lower-density settings, where conventional campus or municipal transit may not cover all trips reliably or conveniently."
+    - Challenges of Promoting Sustainable Mobility on University C (2018)
     - Factors that determine a university community’s satisfaction (2023)
-    - Smart Campuses: Extensive Review of the Last Decade of Resea (2021)
-    - User Perception towards Ride hail Service: A case of Nagpur  (2021)
     - Service design of shared first- and last-mile transit system (2025)
-  ¶2: Bridge from transport gap to peer-platform rationale: sharing-economy participation is documented to depend on trust, reputation, platform design, and perceived fairness, which motivates exploring campus-scoped peer coordination rather than assuming commercial platforms will fill the gap.
-    Opening: "A service gap by itself does not justify a peer platform, but sharing-economy research documents why peer exchange can be viable when trust cues, participation incentives, and fairness perceptions are designed carefully."
+    - Driving change: A comprehensive meta-analysis of community b (2024)
+    - Perspectives of Community Health Center Employees on Public  (2026)
+  ¶2: Bridge from transport shortage to peer coordination by showing that sharing-platform participation depends on trust and legibility.
+    Opening: "Because this is partly a coordination gap, sharing-economy research motivates why any peer or campus-scoped alternative must make trust, identity, and participation cues workable for ordinary users."
     - Trust and reputation in the sharing economy: The role of per (2015)
-    - Antecedents of Customer Participation on Sharing Platforms:  (2024)
     - Factors influencing trust and behavioral intention to use Ai (2020)
-    - Attracted to or Locked In? Explaining Consumer Loyalty towar (2020)
     - Self-disclosure and trust in the shared economy: a cross-cul (2023)
-  ¶3: End on the closest mobility analog and an explicit boundary: carpooling and cross-platform trust studies motivate peer ride coordination, while hybrid and local-community platform work suggests possible forms; however, this evidence remains only a partial proxy for small-town campus rides.
-    Opening: "The closest bridge to the present problem comes from peer-mobility and local-platform studies, which suggest that trust-building and community fit matter, while also leaving an honest scope gap between general sharing-economy evidence and the specific small-town campus case."
+    - Antecedents of Customer Participation on Sharing Platforms:  (2024)
+    - Indian Travellers’ Adoption of Airbnb Platform (2020)
+  ¶3: Narrow the bridge toward carpool-like systems while admitting that direct small-town campus evidence remains thin.
+    Opening: "More recent work narrows this bridge toward mobility and community-scale platforms, but it also suggests that trust, fairness, and operating model choices are contingent enough that a campus-bounded design remains motivated rather than pre-validated."
     - Creating a trusting environment in the sharing economy: Unpa (2025)
+    - Attracted to or Locked In? Explaining Consumer Loyalty towar (2020)
     - Trust dynamics in sharing economy services during a crisis:  (2024)
     - Unlocking the potentials of hybrid business models in the sh (2024)
     - Professionalizing Sharing Platforms for Sustainable Growth i (2023)
-    - Driving change: A comprehensive meta-analysis of community b (2024)
+    - Smart Campuses: Extensive Review of the Last Decade of Resea (2021)
 
-**Writing notes**: Keep the register strictly motivational: say the gap exists, is documented, and motivates design; do not treat this beat as direct evidence for any later primary claim. In paragraph 1, describe commercial ride-hail underservice cautiously as a documented concern in small-town or campus-like contexts rather than a scale-quantified fact. Close paragraph 1 only with a teaser to local finding F1, for example: 'This framing also resonates with our later formative survey, where Uber was often described as expensive (28/32) and sometimes unavailable or unreliable (23/32), though we return to that evidence in §4.1.' Do not elaborate on F1 here. In paragraphs 2-3, use bridge verbs such as 'motivates,' 'parallels,' and 'resonates with'; avoid 'confirms' or 'replicates.' Make the final sentence of paragraph 3 an explicit limitation: most of the trust literature comes from Airbnb or general sharing platforms, so the case for a campus-scoped peer-rides system is motivated rather than fully established by prior work alone.
+**Writing notes**: Keep the rhetoric strictly motivational: the small-town campus transport gap exists, is documented, and motivates design exploration, but it is not presented here as quantified at scale. Do not use these papers as the direct evidence base for the paper's later claims. End paragraph 1 with a single teaser sentence to the paper's own data, e.g., 'This documented gap resonates with our later survey, where many respondents described Uber as expensive (28/32) or not reliably available when needed (23/32); we unpack that evidence in §4.1.' Do not repeat those numbers elsewhere in this beat. Use verbs such as 'exists,' 'motivates,' 'is documented,' 'resonates with,' and 'parallels.' Avoid 'proves,' 'quantifies,' 'confirms,' or 'replicates.' Also admit the literature weakness explicitly: there is limited directly campus-scoped, small-town P2P ridesharing evidence, so the bridge from transport gap to peer-platform design should be framed as a plausible motivation rather than a settled empirical conclusion.
 
 ---
 
 ## Beat 2: Grassroots Coordination & Integrated Campus Platforms
 
 **Anchor paper**: Mobility Repertoires: How Chinese Overseas Students Overcame Pandemic-Induced Immobility
-  Why: Closest population match for this subsection: it documents how Chinese overseas students assemble mobility repertoires under constraint, which motivates the need for informal coordination channels even though it does not isolate carpooling or messaging-group mechanics on its own.
+  Why: This is the closest student-centered empirical anchor in the set: it documents how Chinese overseas students assemble informal mobility repertoires under constraint. It does not study campus carpool groups directly, so it should be used to motivate why students lean on familiar social channels, not as direct evidence for later primary claims.
 
 **Narrative spine** (6 papers):
 
   1. [2023] Mobility Repertoires: How Chinese Overseas Students Overcame Pandemic-
-     Role: Opens with the target population, showing that overseas students already improvise mobility and coping strategies through distributed social ties under uncertainty.
+     Role: Anchors the subsection in international-student mobility constraints and coping practices, establishing why informal peer coordination channels become salient before any formal campus tool exists.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → If overseas students already piece together mobility through informal ties, messaging-platform studies suggest the practical coordination unit is often the chat group itself.
-  2. [2018] Mobile instant messaging: New knowledge tools in global health?
-     Role: Provides the mechanism: WhatsApp-style mobile messaging is documented as boundary-crossing infrastructure for informal problem solving, knowledge exchange, and ad hoc coordination.
+     → Because these student repertoires are enacted through everyday communication media, adjacent messaging studies help explain why coordination so often settles into chat groups rather than dedicated services.
+  2. [2023] Cooperative affordances: How instant messaging apps afford learning, r
+     Role: Provides the mechanism: instant-messaging groups can support learning, solidarity, and mutual aid outside the formal platform that workers are nominally supposed to use.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Once messaging groups are treated as coordination infrastructure, the next question is whether the same channel also absorbs other collective tasks beyond transport.
-  3. [2023] Cooperative affordances: How instant messaging apps afford learning, r
-     Role: Shows that private messaging groups can expand into mutual aid, resistance, and community-of-practice functions when formal platforms leave coordination gaps.
+     → Once a group can solve one immediate coordination problem, other WeChat studies indicate that it often broadens into an ongoing community channel rather than remaining task-specific.
+  3. [2023] Residents' WeChat Group Use and Pro-Community Behavior in the COVID-19
+     Role: Shows that WeChat group use can foster trust, attachment, and pro-community behavior, supporting the claim that a single social channel can carry more than one kind of coordination.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → These multi-purpose group uses suggest a broader structural issue: why can one conversational space carry so many different activities?
-  4. [2017] Digital Genealogies: Understanding Social Mobile Media LINE in the Rol
-     Role: Introduces the super-app side by framing chat spaces as bounded social infrastructure, helping explain why one channel can become a durable coordination home.
+     → If the same social channel is already handling multiple requests and relationships, the next question is whether integrated platforms can productively formalize any of that scattered activity.
+  4. [2024] Local super apps in the 15-minute city: a new model for sustainable sm
+     Role: Introduces super-app work as an initial inquiry into bundling mobility with other local services, offering a partial analogy rather than a settled campus blueprint.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → From these bounded units, later LINE scholarship traces how chat-centered environments accumulate additional services through platformization.
-  5. [2020] LINE as Super App: Platformization in East Asia
-     Role: Moves from bounded chat spaces to super-app platformization, offering a conceptual bridge from single-channel coordination to multi-module integration.
-     Basis: verified_citation
+     → Yet city-scale integration proposals do not by themselves show that such bundling is reliable or institutionally appropriate in everyday use.
+  5. [2024] Persepsi Publik Tentang Digitalisasi Layanan Pusaka Kemenag
+     Role: Adds a pragmatic counterweight: integrated service apps may be received positively while still being hampered by server and network failures.
+     Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → That platformization logic motivates, but does not settle, whether smaller local ecosystems such as campuses can sustain integrated service bundles.
-  6. [2024] Local super apps in the 15-minute city: a new model for sustainable sm
-     Role: Supplies the most direct local-integration bridge by treating super apps as possible containers for mobility plus adjacent services, while still remaining city-scale and exploratory rather than campus-specific.
-     Basis: verified_citation
-     → Because this local super-app literature is still an initial inquiry and not a settled campus model, the next beat turns to design primitives instead of claiming an established integrated-platform template.
+     → For campus settings, then, the issue is not only whether services can be bundled, but how students actually navigate and trust mediated information environments.
+  6. [2020] Information Literacy in the Age of Algorithms: Student Experiences wit
+     Role: Brings the discussion back to student-facing systems by suggesting that platform mediation changes how students find, interpret, and act on information, which points toward narrower design primitives rather than an off-the-shelf super-app template.
+     Basis: thematic_progression
+     → This motivates the next section's turn from broad platform forms to specific design primitives for trust, coordination, control, and fairness.
 
 **Paragraph structure**:
 
-  ¶1: International students already rely on familiar social channels to manage mobility, uncertainty, and support abroad, making chat-based ride coordination a plausible extension even though direct campus carpool studies are thin.
-    Opening: "Studies of overseas students and adjacent mobile-messaging contexts document that everyday platforms such as WeChat and WhatsApp already carry practical coordination, risk management, and help-seeking across borders, even if the literature rarely isolates campus carpooling as a standalone practice."
+  ¶1: International students already lean on familiar social channels for mobility-adjacent self-organization, although direct campus carpool studies remain thin.
+    Opening: "Work on international students and instant-messaging groups documents a practical baseline: when mobility, safety, and settlement frictions emerge, coordination often moves first through familiar social channels rather than through dedicated campus systems."
     - Mobility Repertoires: How Chinese Overseas Students Overcame (2023)
     - A Neglected Population: Media Consumption, Perceived Risk, a (2018)
-    - Dilemmas and Coping Strategies of Chinese International Stud (2021)
     - How Social Media as a Digital Marketing Strategy Influences  (2024)
-    - Mobile instant messaging: New knowledge tools in global heal (2018)
-  ¶2: The same social channel often expands beyond one task, absorbing volunteer coordination, neighborhood communication, and solidarity work, which suggests a single campus group channel could host multiple coordination domains.
-    Opening: "Beyond mobility alone, grassroots messaging studies indicate that one group-channel infrastructure can accumulate multiple forms of coordination, from crisis response and community communication to mutual aid and collective problem solving."
-    - Volunteers during a crisis in Israel: a case study of sponta (2022)
-    - Residents' WeChat Group Use and Pro-Community Behavior in th (2023)
-    - Utilizing social media for community risk communication in m (2024)
     - Cooperative affordances: How instant messaging apps afford l (2023)
-  ¶3: Super-app scholarship gives a partial explanation for why users keep returning to one channel: chat spaces become bounded social infrastructure and, in some ecosystems, gateways to additional services.
-    Opening: "A smaller body of super-app research suggests why these coordination practices may concentrate in one place: users inhabit chatrooms as bounded social spaces, and platformization can layer additional functions onto those spaces over time."
-    - Digital Genealogies: Understanding Social Mobile Media LINE  (2017)
-    - Dwelling Places in KakaoTalk (2015)
-    - Please Call the Specialism: Using WeChat to Support Patient  (2020)
-    - LINE as Super App: Platformization in East Asia (2020)
-  ¶4: Localized integrated-platform work offers only initial inquiry for campus scope, highlighting possibilities for mobility-plus-service bundling while leaving scale, governance, and interoperability unsettled; this motivates the next beat's design primitives.
-    Opening: "When the literature moves from messaging ecosystems toward localized super apps, it offers initial inquiry rather than an established campus design space, suggesting integration possibilities while keeping implementation constraints and governance tradeoffs visible."
+  ¶2: Once established, a single chat channel often expands beyond rides into advice, help-seeking, risk communication, and community exchange.
+    Opening: "Related messaging studies indicate that chat groups rarely stay transport-only: once trust and routine are in place, the same channel can carry requests for information, coping support, and broader mutual aid."
+    - Mobile instant messaging: New knowledge tools in global heal (2018)
+    - How did Wuhan residents cope with a 76-day lockdown? (2020)
+    - Residents' WeChat Group Use and Pro-Community Behavior in th (2023)
+    - Dilemmas and Coping Strategies of Chinese International Stud (2021)
+    - Utilizing social media for community risk communication in m (2024)
+  ¶3: Integrated-platform and super-app work offers only partial guidance for campus settings, so the review should narrow toward design primitives rather than claim a settled platform model.
+    Opening: "A separate but sparser literature suggests an initial inquiry into integration: local super-app work explores bundling mobility with other services, but public-sector and education-facing studies indicate reliability, inclusion, and navigation questions that remain unresolved for campus use."
     - Local super apps in the 15-minute city: a new model for sust (2024)
     - Persepsi Publik Tentang Digitalisasi Layanan Pusaka Kemenag (2024)
     - Navigating Digital Governance: Bridging the Gap in Developin (2026)
-    - Smart Campuses: Extensive Review of the Last Decade of Resea (2021)
+    - Fostering Learning in the Networked World: The Cyberlearning (2008)
+    - Information Literacy in the Age of Algorithms: Student Exper (2020)
 
-**Writing notes**: Keep this subsection explicitly motivational. Do not treat categories C, D, or I as the direct evidence base for the paper's later primary-data claims. Paragraph 1 should end with a forward-looking preview of local finding F2: 17/72 Mandarin respondents versus 1/15 English respondents reported using WeChat groups for carpool coordination; frame this as a resonance with the literature rather than confirmation. Be explicit that direct published evidence about international-student carpool coordination is thinner than evidence about broader messaging-based coordination and support. In paragraphs 3-4, use cautious language such as document, indicate, and suggest; for the super-app papers, describe them as an initial inquiry into integration rather than an established design space. Avoid claiming that the artifact is the first multi-module campus platform or that this literature settles campus-specific design. Close paragraph 4 by pivoting to Beat 3: because existing work only partially explains how a campus-scale system should be composed, the paper next distills design primitives rather than inheriting a ready-made platform blueprint.
+**Writing notes**: Motivation only: do not use any paper in this beat as direct evidence for the later primary-data claims in Beats 4-5. Use document/indicate/suggest throughout. In paragraph 1, explicitly admit that direct studies of student carpool coordination via WeChat/WhatsApp are limited; the argument is that adjacent international-student and messaging literature makes such coordination plausible and already socially legible. Close paragraph 1 with a non-evidentiary preview of F2, e.g., 'This pattern resonates with our formative survey, where WeChat-group carpool coordination appeared much more often among Mandarin-speaking than English-speaking respondents (F2); the direct evidence appears later.' In paragraph 2, emphasize single-channel spillover across domains without overstating marketplace specificity. In paragraph 3, describe super-app literature as an initial inquiry, not an established design space, and explicitly note that campus transfer is uncertain. The requested four-part logic is merged into 3 paragraphs here to satisfy the output-format paragraph cap; paragraph 3 combines the super-app discussion with the transition to Beat 3's design primitives.
 
 ---
 
 ## Beat 3: Design Primitives: Identity, Safety, Rating Fairness, Rewards
 
 **Anchor paper**: The Effects of Online Trust-Building Mechanisms on Trust in the Sharing Economy: The Perspective of Providers
-  Why: Provides a broad trust-building lens for sharing platforms, letting the section distill multiple design primitives in parallel rather than implying that any single mechanism is primary.
+  Why: This paper is the best mechanism-level anchor in the selected set: it treats trust-building features as design choices rather than as fixed outcomes, which helps frame identity and rating fairness as distinct primitives while leaving safety and rewards as parallel platform levers rather than ranked priorities.
 
-**Narrative spine** (5 papers):
+**Narrative spine** (4 papers):
 
-  1. [2020] The Effects of Online Trust-Building Mechanisms on Trust in the Sharin
-     Role: Cross-cutting setup: introduces platform trust-building mechanisms as designable features, which motivates distilling four parallel primitives without claiming a validated hierarchy.
+  1. [2007] The Benefits of Facebook “Friends:” Social Capital and College Student
+     Role: Introduces institutional identity as a trust primitive through the early .edu-gated campus social network context, making visible how affiliation itself can structure legibility and social capital.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → From that broad trust-building lens, the first primitive narrows to institutional identity: who is legibly inside the community before any ride is matched.
-  2. [2007] The Benefits of Facebook “Friends:” Social Capital and College Student
-     Role: Classic identity anchor: .edu-gated social networking is treated as a trust-relevant signal tied to campus affiliation and social capital.
+     → If institutional identity supplies an initial trust signal before people interact, the next design question is what infrastructure protects them once interaction becomes a real-time trip.
+  2. [2021] Sharing Anxiety Is in the Driver’s Seat: Analyzing User Acceptance of 
+     Role: Moves from who the participants are to how they feel protected in transit, positioning safety infrastructure as a separate design layer tied to acceptance of shared rides.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → If identity addresses who belongs, a parallel design line asks how platforms make the encounter itself safer once participants are already in the network.
-  3. [2024] Evaluating an immunization carpool service for women in rural areas fo
-     Role: Safety anchor: shows transport coordination can be paired with explicit protective infrastructure, here through a service designed around acceptability and secure accommodation for vulnerable riders.
+     → Once physical and situational safety are in view, the governance problem shifts to how participants are evaluated, scored, and potentially disadvantaged by reputation mechanisms.
+  3. [2020] The Effects of Online Trust-Building Mechanisms on Trust in the Sharin
+     Role: Frames rating fairness as a trust-governance primitive by separating platform-level trust-building mechanisms from interpersonal trust, opening space to discuss bias and asymmetry in peer ratings.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Beyond trip-time protection, the literature also treats reputation as infrastructure to be governed, raising the separate question of whether ratings distribute trust fairly.
-  4. [2022] A Systematic Literature Review of Anti-Discrimination Design Strategie
-     Role: Rating-fairness anchor: frames reputation systems as possible sites of discrimination and mitigation, shifting the discussion from trust generation to trust allocation.
+     → Beyond trust and governance, platforms still face a separate motivational question: how to encourage participation without treating incentives as substitutes for identity, safety, or fairness.
+  4. [2019] Cooperation or competition - When do people contribute more? A field e
+     Role: Defines rewards and gamification as a distinct motivational primitive, showing that contribution can be shaped by incentive structure even when trust and safety questions are analytically separate.
      Basis: thematic_progression
-     Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → A fourth primitive is not about access, protection, or reputation, but about motivation: how platforms encourage repeated participation through rewards and game-like structures.
-  5. [2021] Gamification for climate change engagement: review of corpus and futur
-     Role: Rewards anchor: synthesis showing gamification is commonly discussed as a behavioral design layer that can sustain participation and pro-social action.
-     Basis: thematic_progression
-     → Together, these four lines are best presented as parallel design primitives rather than as a ranked sequence.
+     → This completes the four-part framework and sets up later beats, which examine how participants actually prioritize or resist these primitives in the Cornell context.
 
 **Paragraph structure**:
 
-  ¶1: Institutional identity as a trust primitive
-    Opening: "We distill institutional identity as a first primitive, drawing on a mature literature specialized here to institutional and .edu-scoped contexts: affiliation-gated networks and campus-bounded publics commonly act as trust signals before any ride is negotiated, even as recent mobility design work parallels this with algorithmically supplemented trust cues."
-    - The Effects of Online Trust-Building Mechanisms on Trust in  (2020)
+  ¶1: Institutional identity as a trust and legibility primitive
+    Opening: "We distill institutional identity as a first primitive: there is a mature literature specialized here to institutional and .edu-scoped contexts, where early .edu-gated social networking work and later campus resource-request studies treat affiliation as a trust signal, while recent platform critique reminds us that identity alone does not settle downstream power or fairness questions."
     - The Benefits of Facebook “Friends:” Social Capital and Colle (2007)
     - Social capital and resource requests on Facebook (2014)
-    - Situated Anonymity (2017)
-    - Trust-Building in Peer-to-Peer Carsharing: Design Case Study (2023)
-  ¶2: Safety infrastructure as a coordination primitive
-    Opening: "In parallel, we propose safety infrastructure as a second primitive: platforms can reduce uncertainty during the trip itself through real-time location sharing, SOS escalation, and shared situational awareness, although in this selected corpus the literature is newer and more applied than the identity line."
-    - Evaluating an immunization carpool service for women in rura (2024)
-    - A Comprehensive Study on Mobile SOS and Personal Safety Appl (2025)
-    - RiderConnect – A Ride Sharing Platform (2026)
-  ¶3: Rating fairness as a governance primitive
-    Opening: "A third primitive is rating fairness: reputation systems may coordinate trust, but recent work increasingly asks who is disadvantaged by biased feedback, asymmetrical visibility, or platform-side promotion rules, so we treat fairness as a design concern in its own right rather than as an automatic benefit of ratings."
-    - A Systematic Literature Review of Anti-Discrimination Design (2022)
     - Trust and power in Airbnb’s digital rating and reputation sy (2025)
-    - Fairness Dynamics in Digital Economy Platforms with Biased R (2026)
-  ¶4: Rewards and gamification as a motivation primitive
-    Opening: "Finally, we distill rewards as a separate primitive, where gamification is commonly discussed as a way to motivate sustained participation and pro-social mobility choices, not as a substitute for identity, safety, or fairness but as a parallel lever with different behavioral aims."
+  ¶2: Safety infrastructure as an operational primitive
+    Opening: "We propose safety infrastructure as a parallel primitive, commonly discussed not as background reassurance alone but as operational support for shared mobility through features such as real-time awareness, protected trip conditions, routing support, and emergency escalation."
+    - Sharing Anxiety Is in the Driver’s Seat: Analyzing User Acce (2021)
+    - Evaluating an immunization carpool service for women in rura (2024)
+    - A Comprehensive Web-Based Women Safety Application with Real (2026)
+  ¶3: Rating fairness as a governance primitive
+    Opening: "We distill rating fairness as a third primitive; because the H-specific literature in this selected subset is comparatively thin, we draw on adjacent sharing-economy trust and algorithmic-governance work to show that reputation systems can coordinate participation while also introducing bias, asymmetry, or managerial pressure."
+    - The Effects of Online Trust-Building Mechanisms on Trust in  (2020)
+    - Towards an AI-powered Future that Works for Vocational Worke (2020)
+    - Trust-Building in Peer-to-Peer Carsharing: Design Case Study (2023)
+  ¶4: Rewards and gamification as a motivational primitive
+    Opening: "We treat rewards and gamification as a fourth primitive in parallel with the others: this literature commonly discusses how incentive structure, challenge framing, and feedback loops can motivate participation, even though such rewards do not by themselves resolve identity, safety, or fairness concerns."
+    - Cooperation or competition - When do people contribute more? (2019)
     - Gamification for climate change engagement: review of corpus (2021)
-    - Leveraging gamification technology to motivate environmental (2023)
     - Enhancing Sustainable Mobility Through Gamified Challenges:  (2025)
 
-**Writing notes**: Keep the four primitives explicitly parallel and avoid value-ranking language. Use neutral verbs such as 'we distill,' 'we propose,' and 'commonly discussed.' For identity, retain the tiered disclosure exactly at the strong tier implied by the corpus: 'mature literature specialized here to institutional and .edu-scoped contexts.' The 2007 and 2014 Facebook papers form the cleanest historical thread, with the 2014 paper following the 2007 paper's line. Safety and rating fairness are comparatively newer in this selected set; say so directly rather than implying a deep historical canon. For safety, emphasize real-time location, SOS, and situational awareness; for fairness, emphasize bias, asymmetric power, and promotion logic. The rewards paragraph should present gamification as a participation lever that resonates with, but does not outrank, the other three primitives. Avoid downstream claims of validated deployment gains here; this beat is definitional framework-building, not outcome evaluation.
+**Writing notes**: Keep the section explicitly parallel: identity, safety, rating fairness, and rewards are four design primitives, not a ranked list. Use neutral definitional verbs such as 'we distill,' 'we propose,' and 'commonly discussed.' Avoid claims of validation. For the identity paragraph, preserve the tiered wording exactly as written above. Because the visible selected set is stronger on E/F/G than on explicit H-labeled papers, state that the rating-fairness paragraph leans on adjacent reputation and algorithmic-management literature rather than implying a fully settled H corpus. Recommended connective language: 'parallels,' 'resonates with,' and 'counterintuitively' where needed; avoid 'confirms' and 'replicates.'
 
 ---
 
@@ -247,59 +237,53 @@
 
 ## Beat 5: Formative Survey: Driver-Side Tolerance & Rating-Fairness Asymmetry
 
-**Anchor paper**: Reciprocity and Unveiling in Two-Sided Reputation Systems: Evidence from an Experiment on Airbnb
-  Why: Among the beat-assigned papers, this is the closest available anchor to the Rosenblat/Stark-style concern with platform-mediated evaluation: it shows that two-sided review design changes fairness dynamics, which helps frame the Driver/Both subset's unusually low tolerance for unfair ratings as a reputation-system issue rather than simple annoyance at passenger behavior.
+**Anchor paper**: Systematic Literature Review on Gig Economy: Power Dynamics, Worker Autonomy, and the Role of Social Networks
+  Why: Closest available proxy to the requested Rosenblat-and-Stark-style anchor: it foregrounds gig-platform power asymmetries, worker autonomy, and reputational/social control, which helps frame why unfair ratings may matter more to drivers than ordinary passenger-side inconvenience.
 
-**Narrative spine** (6 papers):
+**Narrative spine** (5 papers):
 
-  1. [2021] Reciprocity and Unveiling in Two-Sided Reputation Systems: Evidence fr
-     Role: Closest available H-anchor for why ratings themselves can become a source of strategic pressure; sets up the local finding that Driver/Both respondents were least tolerant of unfair rating rather than of classic passenger frictions.
+  1. [2021] Sharing Anxiety Is in the Driver’s Seat: Analyzing User Acceptance of 
+     Role: Starts from shared-mobility acceptance as an anxiety-and-control problem, creating a bridge from trip frictions to the driver-side tolerance questions in the formative survey.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → If review visibility and timing can distort behavior in two-sided systems, then 'unfair rating' is not just interpersonal friction but a design problem that mobility platforms may need to govern explicitly.
-  2. [2025] Enhancing the Reputation System in  Ridesharing: A Blockchain-Based Mu
-     Role: Ridesharing-specific follow-on that makes retaliatory or strategic feedback legible as a mechanism-design issue through mutual escrow and cool-off periods.
+     → If participation hinges partly on anxiety and perceived loss of control, then the platform's evaluative machinery matters alongside the passenger's behavior.
+  2. [2024] Systematic Literature Review on Gig Economy: Power Dynamics, Worker Au
+     Role: Anchor paper: reframes platform-mediated work through power dynamics and constrained autonomy, making ratings and reputation legible as governance mechanisms rather than neutral feedback.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Once retaliatory feedback is made explicit at the ridesharing-mechanism level, the next question is how biased ratings shape outcomes more broadly across platforms.
-  3. [2026] Fairness Dynamics in Digital Economy Platforms with Biased Ratings
-     Role: Broadens the frame from retaliation to platform-level fairness dynamics under biased ratings, helping interpret why rating anxiety may matter even when other inconveniences are tolerated.
+     → Within that power frame, ratings are not just summaries of trust; they can become channels through which unfairness is produced and felt.
+  3. [2022] A Systematic Literature Review of Anti-Discrimination Design Strategie
+     Role: Shows that platform design choices around reputation and interaction can enable or mitigate unfair treatment, supporting a move from interpersonal annoyance to system-mediated fairness concerns.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → But rating bias does not act alone; adjacent reviews show that trust and reputation features can distribute burdens unevenly across different kinds of platform participants.
-  4. [2022] A Systematic Literature Review of Anti-Discrimination Design Strategie
-     Role: Survey-level bridge showing that reputation and interface choices can generate discriminatory or unfair effects across sharing-economy systems; supports phrasing the local result as resonant with broader fairness concerns.
+     → Once ratings are treated as design-mediated sources of unfairness, the next question is how users experience that oversight psychologically.
+  4. [2023] Creation of the algorithmic management questionnaire: A six‐phase scal
+     Role: Provides vocabulary for algorithmic evaluation, monitoring, and perceived control, which helps interpret why unfair ratings may be experienced as a more salient threat than routine ride deviations.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Most of that literature, however, studies large commercial platforms, whereas this paper's evidence comes from occasional campus drivers in a smaller peer-mobility setting.
-  5. [2026] RiderConnect – A Ride Sharing Platform
-     Role: Thin but useful F-side bridge: peer ride-sharing design work that emphasizes coordination and safety features over ratings, suggesting that amateur-driver settings may govern trust through different levers than professional gig platforms.
+     → That vocabulary makes the campus result interpretable as a governance concern: evaluative unfairness may feel more consequential than a late passenger or route change.
+  5. [2026] Fairness Dynamics in Digital Economy Platforms with Biased Ratings
+     Role: Ends on the broader ratings-fairness problem by showing, at a theoretical level, how biased ratings can distort platform outcomes and invite corrective design, while keeping the scale mismatch with occasional campus drivers explicit.
      Basis: thematic_progression
-     Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → That difference in design space is exactly why the N=19 Driver/Both pattern should be written as a scoped formative signal, not as a settled claim about all two-sided mobility systems.
-  6. [2016] Local Standards for Sample Size at CHI
-     Role: Methodological boundary marker for writing the Driver/Both subset (N=19) against the Rider-only control (N=12) as exploratory but still interpretable in HCI-style formative work.
-     Basis: thematic_progression
+     → Against that backdrop, the Driver/Both subset finding resonates with broader platform-fairness concerns but remains a small-sample campus parallel rather than a replication of professional gig-worker dynamics.
 
 **Paragraph structure**:
 
-  ¶1: Report the primary finding honestly on the Driver/Both subset and immediately justify the subset split with the Rider-only control, then contextualize it through rating-fairness mechanics.
-    Opening: "Limited to the Driver/Both subset (N=19), tolerance scores were 47.2 for a late passenger, 41.4 for a destination change, 29.1 for an unfair rating, and 52.3 for a non-standard route, so counterintuitively the least tolerated disruption was not passenger misbehavior but unfairness from the rating system itself; the Rider-only control (N=12) showed 35.7 / 19.6 / 22.4 / 33.2 on the same items, where 'unfair rating' is not distinctly lowest, which is exactly why the mixed full-sample N=30 is not the methodologically honest headline."
-    - Reciprocity and Unveiling in Two-Sided Reputation Systems: E (2021)
-    - Enhancing the Reputation System in  Ridesharing: A Blockchai (2025)
-    - Fairness Dynamics in Digital Economy Platforms with Biased R (2026)
-  ¶2: Frame the asymmetry as a trust-governance issue in peer mobility while admitting that the bridge from commercial platforms to occasional campus drivers is thin.
-    Opening: "Read cautiously, that subset-specific dip on unfair rating resonates with literature showing that platform trust features can create uneven burdens, but the nearest mobility-specific comparisons in this beat are mostly about coordination, safety, and acceptability rather than about professionalized algorithmic management."
+  ¶1: From shared-mobility anxiety to platform governance: why a driver may react to evaluation pressure, not just trip inconvenience.
+    Opening: "Counterintuitively, the Driver/Both subset (N=19) was less tolerant of an unfair rating (Q24_3 = 29.1/100) than of a late passenger (47.2), a destination change (41.4), or a non-standard route (52.3), suggesting that driver-side tolerance may turn as much on perceived control and evaluative risk as on ride inconvenience itself."
+    - Sharing Anxiety Is in the Driver’s Seat: Analyzing User Acce (2021)
+    - Navigating autonomous demand responsive transport: stakehold (2023)
+    - Systematic Literature Review on Gig Economy: Power Dynamics, (2024)
+    - Socio‐technical issues in the platform‐mediated gig economy: (2024)
+  ¶2: Methodological honesty about the subset split, then contextualization through rating-system fairness and algorithmic-management literature.
+    Opening: "Methodologically, we therefore report Q24 on the Driver/Both subset (N=19)—47.2 / 41.4 / 29.1 / 52.3 for late passenger / destination change / unfair rating / non-standard route—alongside the Rider-only control (N=12) at 35.7 / 19.6 / 22.4 / 33.2, where unfair rating is not distinctively low and in fact sits above destination change, which is exactly why the mixed full-sample N=30 would wash out the experience-anchored asymmetry."
     - A Systematic Literature Review of Anti-Discrimination Design (2022)
-    - RiderConnect – A Ride Sharing Platform (2026)
-    - Evaluating an immunization carpool service for women in rura (2024)
-  ¶3: End on scope: the finding is formative, not transport-platform universal, and adjacent safety systems often solve risk through tooling rather than fair reputation design.
-    Opening: "Because this evidence rests on a Driver/Both subset (N=19) with a Rider-only control (N=12), it should be written as a formative design signal; nearby safety-system work tends to move toward SOS, verification, routing, and risk-assessment tools, which underscores that this survey raises a reputation-fairness question rather than settling the broader safety design space."
-    - Local Standards for Sample Size at CHI (2016)
-    - A Comprehensive Study on Mobile SOS and Personal Safety Appl (2025)
-    - A Comprehensive Web-Based Women Safety Application with Real (2026)
+    - Fighting bias with bias: How same-race endorsements reduce r (2023)
+    - Creation of the algorithmic management questionnaire: A six‐ (2023)
+    - Fairness Dynamics in Digital Economy Platforms with Biased R (2026)
+    - Enhancing the Reputation System in  Ridesharing: A Blockchai (2025)
 
-**Writing notes**: Keep attribution explicit every time: 'Driver/Both subset (N=19)' versus 'Rider-only control (N=12)'; do not revert to mixed-sample N=30 wording. Report all four Driver/Both values together (47.2, 41.4, 29.1, 52.3) and all four Rider-only control values together (35.7, 19.6, 22.4, 33.2) in the same paragraph, because the weakened control pattern is the justification for the subset split. Use verbs like 'counterintuitively,' 'resonates with,' and 'parallels'; avoid 'confirms,' 'replicates,' 'proves,' or claims that campus amateur drivers show the same phenomenon as professional gig workers. Make the literature weakness explicit: the H papers are stronger on rating fairness than the F papers are on amateur-driver mobility, and the F bridge is mostly about safety/coordination rather than ratings. If Rosenblat & Stark 2016 or Lee et al. are available elsewhere in the manuscript bibliography, they can be added in prose as broader algorithmic-management context after paragraph 1, but only as a cautious parallel and not as a claim of replication. A clean end-state for this beat is a scope boundary: the paper surfaces a plausible reputation-fairness sensitivity among occasional campus drivers, but whether that sensitivity is isomorphic to gig-worker rating anxiety remains open.
+**Writing notes**: Keep attribution explicit: every numeric claim belongs either to the Driver/Both subset (N=19) or the Rider-only control (N=12); do not mention or average in the mixed full-sample N=30. State the core observation as an within-subset spread: unfair-rating tolerance in the Driver/Both subset (29.1) sits 12.3-23.2 points below the other three driver-side tolerance items (41.4-52.3). Use the rider-only control numbers as justification for the split, not as an embarrassment to hide: the weaker pattern there is the methodological reason to foreground the Driver/Both subset. When linking to H-literature, use 'resonates with', 'parallels', and 'counterintuitively'; avoid 'confirms', 'replicates', 'proves', or 'validates the same phenomenon'. Make the scope boundary explicit: most cited literature concerns professional gig workers or broader platform labor, whereas this study concerns amateur or occasional campus drivers; whether rating anxiety is isomorphic across those settings remains open. Use design-response papers only as context for possible mitigation directions, not as evidence that the campus artifact or survey solves the fairness problem.
 
 ---
 
@@ -373,65 +357,41 @@
 ## Beat 7: Adversarial Scoping: Formalization Risk, Sample Skew, No Deployment
 
 **Anchor paper**: Algorithmic Management in Organizations? From Edge Case to Center Stage
-  Why: Best overall honesty anchor in this candidate set: it synthesizes how algorithmic management can blur worker-status boundaries and institutional accountability, which lets the section frame CampusRide as a scope-limited coordination artifact that may reproduce familiar platform harms rather than assuming benign mediation.
+  Why: It provides the broadest adversarial frame for this beat: platform coordination can slide into algorithmic management, so the discussion can open with formalization risk and then widen into sample limits, evaluation limits, governance limits, and incentive-side gaming.
 
 **Narrative spine** (5 papers):
 
   1. [2025] Algorithmic Management in Organizations? From Edge Case to Center Stag
-     Role: Open with the strongest counter-frame: even lightweight coordination platforms may reproduce algorithmic-management harms, so the artifact should be read against that risk rather than as inherently prosocial.
+     Role: Opens the honesty beat by framing platform-mediated coordination as a gray-zone form of algorithmic management that may reproduce control harms rather than merely reduce friction.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → If platform mediation may import control and accountability problems, we should also narrow what our own evidence base can legitimately support, starting with who actually answered the survey.
-  2. [2016] Local Standards for Sample Size at CHI
-     Role: Use sample-size norms as the bridge into three-tier disclosure, making the argument about evidentiary caution rather than about defending small-N results.
+     → If coordination systems can reproduce control harms in general, then the next adversarial question is whose experiences are being centered, which makes our own sample composition a substantive scope limit rather than a footnote.
+  2. [2026] Occupational Diversity and Stratification in Platform Work: A Longitud
+     Role: Moves from abstract risk to heterogeneity, motivating why language skew, driver-subset size, and completion skew materially limit what can be generalized from the study.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → That caution matters because the reputation and fairness literature offers promising mechanisms, but those mechanisms become persuasive only when compared or observed in real use conditions that this project does not yet have.
-  3. [2022] A Systematic Literature Review of Anti-Discrimination Design Strategie
-     Role: Frame the no-deployment limitation: design strategies for bias and reputation can be meaningful, but their downstream effects remain conditional until implemented and evaluated in context.
+     → Once worker experience is treated as heterogeneous, prototype-stage claims become even more conditional, because design effects cannot be inferred cleanly without real-world comparison.
+  3. [2024] Socio‐technical issues in the platform‐mediated gig economy: A systema
+     Role: Shifts from sample limits to evaluation limits by emphasizing that platform effects are socio-technical and context-dependent, so undeployed design choices remain unvalidated in use.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → Even if such mechanisms help in principle, they do not settle a separate institutional boundary: a campus identity layer is not equivalent to verified driving competence, safe behavior, or platform governance.
-  4. [2026] The Legal Challenges of Regulating the Gig Economy in Uganda: A Critic
-     Role: Mark the .edu boundary as narrow and institutional rather than safety-complete, using legal and governance critiques to show that identity verification does not resolve deeper platform-accountability questions.
+     → That undeployed status matters especially for governance questions, since entry controls alone do not determine whether downstream bias or abuse is reproduced.
+  4. [2022] A Systematic Literature Review of Anti-Discrimination Design Strategie
+     Role: Narrows the critique to governance and discrimination, supporting the claim that identity verification is scope-limited and does not by itself verify competence, behavior, or fair platform rules.
      Basis: thematic_progression
      Note: Order is justified by the argument progression rather than a verified internal citation chain.
-     → And narrowing institutional scope still leaves incentive design exposed: once cross-module rewards are introduced, participants may game the system rather than use it as intended.
+     → Even if entry-side trust or anti-bias mechanisms are improved, incentive mechanics inside the system may still invite strategic play, so the final scoping move is to consider gaming risk directly.
   5. [2025] Fulfillment of the Work Games: Warehouse Workers' Experiences with Alg
-     Role: Close on gamification risk: points and reward loops may invite strategic compliance, fake activity, or pressure-inducing behavior, so this remains an open hazard rather than a solved design choice.
+     Role: Closes on incentive-side failure modes: gamified metrics and points systems may be played strategically, making fake trips or score-seeking behavior a live risk rather than a solved problem.
      Basis: thematic_progression
-     → The section should end here on scope-limited caution, not on a recovery move.
+     → The beat ends on unresolved risk and scope boundaries, not on a defensive resolution.
 
 **Paragraph structure**:
 
-  ¶1: Formalization risk: platform-mediated coordination may reproduce algorithmic-management harms.
-    Opening: "We acknowledge a first adversarial possibility: even when a campus carpool tool is framed as coordination support, it may reproduce the opacity, autonomy loss, and asymmetrical oversight associated with algorithmic management rather than remaining a neutral social utility."
+  ¶1: Formalization risk: a campus coordination platform may reproduce algorithmic-management harms through opacity, ranking, and control logics.
+    Opening: "We first acknowledge a formalization risk: even a coordination tool may reproduce algorithmic-management harms when platform rules,"
     - Algorithmic Management in Organizations? From Edge Case to C (2025)
     - Influence of algorithmic management practices on workplace w (2022)
     - Opaque Overwatch: How Food-Delivery Workers Make Sense of Al (2023)
-  ¶2: Sample skew: disclose all three tiers explicitly—main-sample language skew, small driver-side subset, and completion skew.
-    Opening: "We therefore narrow our empirical claims aggressively: 79% of respondents reporting native language were Mandarin-native (72/91), only 15/91 were English-native, the F5 rating-fairness asymmetry rests on the methodologically preferred but still very small Driver/Both subset (N=19, with rider control N=12), and only 44/111 eligible respondents finished the survey, so generalization beyond these scope-limited slices remains highly uncertain."
-    - Local Standards for Sample Size at CHI (2016)
-    - Becoming "Platform Workers": A Biographical Exploration of T (2024)
-    - Occupational Diversity and Stratification in Platform Work:  (2026)
-    - An Empirical Analysis of Algorithmic Control and Worker Perc (2025)
-  ¶3: No deployment evaluation: the four design decisions are not compared in real-world use.
-    Opening: "The design literature also cuts against overclaiming: fairness and reputation mechanisms can matter, but our artifact has not been deployed in a setting where alternative implementations are compared, so any benefit claim remains design-motivated rather than usage-validated."
-    - A Systematic Literature Review of Anti-Discrimination Design (2022)
-    - Reciprocity and Unveiling in Two-Sided Reputation Systems: E (2021)
-    - Enhancing the Reputation System in  Ridesharing: A Blockchai (2025)
-    - Fairness Dynamics in Digital Economy Platforms with Biased R (2026)
-  ¶4: .edu scope boundary: identity verification is not driving-competence verification, behavior verification, or governance verification.
-    Opening: "We also keep the institutional boundary narrow: a .edu gate may verify affiliation, but it does not verify driving skill, safe conduct, legal accountability, or whether the surrounding governance model allocates risk and authority well."
-    - The Legal Challenges of Regulating the Gig Economy in Uganda (2026)
-    - The Logic of Gig Economy (Origins and Growth Prospects) (2021)
-    - Algorithmic Control and Psychological Risk in Digitally Mana (2026)
-  ¶5: Gamification risk: cross-module points may induce gaming, fake trips, or pressure-bearing strategic behavior.
-    Opening: "Finally, we acknowledge that cross-module rewards may invite gaming rather than trustworthy participation: points can become targets in themselves, creating incentives for fake trips, strategic compliance, or pressure-inducing behavior that the current study does not test in the field."
-    - Fulfillment of the Work Games: Warehouse Workers' Experience (2025)
-    - How Does Algorithmic Control Affect the Work Engagement of G (2025)
-    - Not all algorithmic controls are equal: the double-edged imp (2026)
-
-**Writing notes**: Use this beat as the honesty anchor, not as a defense section. Keep the tone explicitly scope-limited: use phrases like 'may reproduce,' 'we acknowledge,' 'parallels,' and 'resonates with'; avoid 'we address,' 'we prevent,' 'we solve,' 'confirms,' or 'replicates.' No direct citation edges exist among the selected J/H papers, so the spine is thematic rather than citation-driven. The seeded exemplars for formalization risk (Rosenblat & Stark; Lee et al.) are not present in this candidate set; say so implicitly by using the Annurev review and adjacent empirical J papers as the closest available counterevidence. Paragraph 2 must not collapse the disclosure into a single generic limitation: state all three skew layers separately and with numbers—language skew (72/91 Mandarin-native; 15/91 English-native), driver-side skew (F5 rests on Driver/Both N=19 and should be preferred over the full-sample mix for methodological reasons, but still needs a dedicated driver survey; rider control N=12), and completion skew (44/111 finished, about 40%). Paragraph 3 should state plainly that the artifact's four design decisions are not compared in deployment and therefore any downstream gains remain untested. Paragraph 4 should mark .edu verification as affiliation-only, not evidence of competence, behavior, insurance, or governance quality. Paragraph 5 should end the beat by admitting the literature bridge is suggestive rather than domain-perfect: work-games and control-dimension studies make gaming plausible, but they do not let us claim measured abuse in CampusRide itself.
 
 ---
