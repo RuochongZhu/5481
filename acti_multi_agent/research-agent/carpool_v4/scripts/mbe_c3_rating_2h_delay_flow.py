@@ -1,23 +1,11 @@
-"""mbe_c3 — Rating Window Timeline + Submission Flow.
+"""mbe_c3 — Rating window timeline + bidirectional submission flow.
 
-Two-panel matplotlib figure documenting the 2-hour post-departure
-rating-readiness delay and the rating-submission upsert path.
-
-  Top panel (ax1):  Horizontal timeline anchored to `departure_time`
-                    semantics, showing the three time zones (pre-departure
-                    grey / during-trip yellow / open-window green) and
-                    annotated key events (T0 bookRide fan-out, T_dep ride,
-                    T_dep + 2h readiness gate via RATING_READY_DELAY_MS,
-                    T_dep + 7d revisable upsert).
-  Bottom panel (ax2): Horizontal flow with all 4 guards, the UPSERT step,
-                    and the migration-008 rating-aggregation trigger.
-
-Source-of-truth:
-  campusride-backend/src/controllers/rating.controller.js:22-100
-  campusride-backend/src/controllers/carpooling.controller.js:12
-    (RATING_READY_DELAY_MS constant)
-  supabase/migrations/008_ratings_and_admin.sql:82-100
-    (update_user_rating_on_new_rating trigger)
+Conceptual figure for HCI readers. Top: a horizontal time axis from booking
+to revisable horizon, partitioned into three zones (pre-departure /
+during-trip / open window) with the 2-hour gate highlighted. Bottom: a
+simple bidirectional sequence — passenger and driver each tap-rate, the
+rating is recorded (revisable), and the user's average rating updates.
+A side text-box surfaces three open design proposals not yet implemented.
 """
 
 from __future__ import annotations
@@ -27,418 +15,311 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_mbe_figures import renderer  # noqa: E402
 from _mbe_helpers import (  # noqa: E402
-    setup_mpl, save_mpl, register, DRIVER_COLOR, RIDER_COLOR,
+    setup_mpl, save_mpl, register, renderer, DRIVER_COLOR, RIDER_COLOR,
 )
 
 
-# Palette
-GREY_ZONE = "#ECEFF1"     # pre-departure
-YELLOW_ZONE = "#FCF3CF"   # during trip (rating blocked, 403)
-GREEN_ZONE = "#D4EFDF"    # rating window open
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"
+NEUTRAL = "#566573"
 
+GREY_ZONE = "#ECEFF1"
 GREY_BORDER = "#7F8C8D"
+YELLOW_ZONE = "#FCF3CF"
 YELLOW_BORDER = "#B7950B"
+GREEN_ZONE = "#D4EFDF"
 GREEN_BORDER = "#1E8449"
-
-ACCENT_GATE = "#27AE60"   # the 2h-readiness threshold marker
-TIMELINE_AXIS = "#34495E"
-TICK_COLOR = "#1B2631"
-
-GUARD_FILL = "#FDF2E9"
-GUARD_BORDER = "#CA6F1E"
-DB_FILL = "#D5F5E3"
-DB_BORDER = "#1E8449"
-TRIGGER_FILL = "#D6EAF8"
-TRIGGER_BORDER = "#1F618D"
-ENTRY_FILL = "#F4ECF7"
-ENTRY_BORDER = "#6C3483"
-
-SIDE_BG = "#FDFEFE"
-SIDE_BORDER = "#566573"
 
 
 @renderer("mbe_c3_rating_2h_delay_flow")
 def render():
     setup_mpl()
     import matplotlib.pyplot as plt
-    import matplotlib.patches as mpatches
-    from matplotlib.gridspec import GridSpec
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
 
-    fig = plt.figure(figsize=(13, 7))
-    gs = GridSpec(
-        2, 1, figure=fig, height_ratios=[2.6, 1.0],
-        hspace=0.55, left=0.045, right=0.985, top=0.93, bottom=0.05,
+    fig, (ax_top, ax_bot) = plt.subplots(
+        2, 1, figsize=(14, 8.0),
+        gridspec_kw=dict(height_ratios=[1.15, 1.0], hspace=0.22),
     )
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[1, 0])
+    fig.subplots_adjust(top=0.97, bottom=0.03, left=0.04, right=0.98)
 
     # =====================================================================
-    # TOP: timeline anchored to departure_time semantics
+    # TOP PANEL — rating-window timeline
     # =====================================================================
-    # X coordinate is symbolic units relative to T_dep. We draw on a
-    # 0..14 axis where:
-    #   x=1   -> T0 (booking_time)
-    #   x=2.4 -> T0 + 1d (placeholder; departure_time variable)
-    #   x=5.5 -> T_dep (ride departs)
-    #   x=7.0 -> T_dep + 2h (rating window opens)
-    #   x=9.0 -> T_dep + 24h (typical decay; reminder still surfaces)
-    #   x=12.0 -> T_dep + 7d (still revisable via update-in-place upsert)
-    X_T0 = 1.0
-    X_T0_1D = 2.4
-    X_DEP = 5.5
-    X_DEP_2H = 7.0
-    X_DEP_24H = 9.0
-    X_DEP_7D = 12.0
+    X_MIN, X_MAX = 0.0, 16.0
 
-    ax1.set_xlim(0.0, 13.5)
-    ax1.set_ylim(-3.4, 3.2)
+    # Time anchors along the axis
+    X_T0 = 1.5     # booking moment
+    X_DEP = 7.5    # trip happens (departure)
+    X_GATE = 10.0  # trip + 2 hours (rating opens)
+    X_LATE = 14.5  # revisable horizon
 
-    # Three zones.
-    ax1.add_patch(mpatches.Rectangle(
-        (0.0, -0.45), X_DEP - 0.0, 0.9,
+    band_y = 1.4
+    band_h = 1.1
+
+    # Three zones
+    ax_top.add_patch(Rectangle(
+        (X_MIN + 0.4, band_y - band_h / 2),
+        X_DEP - (X_MIN + 0.4), band_h,
         facecolor=GREY_ZONE, edgecolor=GREY_BORDER, linewidth=0.8, zorder=1,
     ))
-    ax1.add_patch(mpatches.Rectangle(
-        (X_DEP, -0.45), X_DEP_2H - X_DEP, 0.9,
+    ax_top.add_patch(Rectangle(
+        (X_DEP, band_y - band_h / 2),
+        X_GATE - X_DEP, band_h,
         facecolor=YELLOW_ZONE, edgecolor=YELLOW_BORDER, linewidth=0.8, zorder=1,
     ))
-    ax1.add_patch(mpatches.Rectangle(
-        (X_DEP_2H, -0.45), 13.5 - X_DEP_2H, 0.9,
+    ax_top.add_patch(Rectangle(
+        (X_GATE, band_y - band_h / 2),
+        (X_MAX - 0.4) - X_GATE, band_h,
         facecolor=GREEN_ZONE, edgecolor=GREEN_BORDER, linewidth=0.8, zorder=1,
     ))
 
-    # Zone labels (inside band).
-    ax1.text(
-        X_DEP / 2.0, 0.0, "pre-departure (no rating; not yet eligible)",
-        ha="center", va="center", fontsize=9.4, color="#566573", style="italic",
+    # Zone labels (inside bands)
+    ax_top.text(
+        (X_MIN + 0.4 + X_DEP) / 2, band_y, "Pre-departure\n(rating not yet eligible)",
+        ha="center", va="center", fontsize=10, color=NEUTRAL, style="italic",
         zorder=3,
     )
-    ax1.text(
-        (X_DEP + X_DEP_2H) / 2.0, 0.0,
-        "during trip\n(rating endpoint blocks: HTTP 403)",
-        ha="center", va="center", fontsize=9.0, color="#7E5109",
+    ax_top.text(
+        (X_DEP + X_GATE) / 2, band_y, "During trip\n(submission blocked)",
+        ha="center", va="center", fontsize=10, color="#7E5109",
         fontweight="bold", zorder=3,
     )
-    ax1.text(
-        (X_DEP_2H + 13.5) / 2.0, 0.0,
-        "rating window OPEN  (readiness gate satisfied; upsert revisable)",
-        ha="center", va="center", fontsize=9.4, color="#196F3D",
+    ax_top.text(
+        (X_GATE + (X_MAX - 0.4)) / 2, band_y,
+        "Rating window OPEN\n(rating recorded; remains revisable)",
+        ha="center", va="center", fontsize=10, color="#196F3D",
         fontweight="bold", zorder=3,
     )
 
-    # Timeline axis on top of the zones.
-    ax1.plot(
-        [0.05, 13.45], [-0.45, -0.45],
-        color=TIMELINE_AXIS, linewidth=1.2, zorder=4,
+    # Time axis (below the bands)
+    axis_y = 0.4
+    ax_top.plot(
+        [X_MIN + 0.4, X_MAX - 0.3], [axis_y, axis_y],
+        color=NEUTRAL, linewidth=1.1, zorder=4,
     )
-    ax1.annotate(
-        "", xy=(13.48, -0.45), xytext=(13.30, -0.45),
-        arrowprops=dict(arrowstyle="-|>", color=TIMELINE_AXIS, lw=1.2),
+    ax_top.annotate(
+        "", xy=(X_MAX - 0.2, axis_y), xytext=(X_MAX - 0.5, axis_y),
+        arrowprops=dict(arrowstyle="-|>", color=NEUTRAL, lw=1.1),
         zorder=4,
     )
-    ax1.text(
-        13.50, -0.85, "time", ha="right", va="top",
-        fontsize=8.8, color=TIMELINE_AXIS, style="italic",
+    ax_top.text(
+        X_MAX - 0.15, axis_y - 0.18, "time",
+        ha="right", va="top", fontsize=9, color=NEUTRAL, style="italic",
     )
 
-    # Tick marks + tick labels.
+    # Tick marks + labels
     ticks = [
-        (X_T0, "T0\n(booking_time)"),
-        (X_T0_1D, "T0 + 1d\n(placeholder)"),
-        (X_DEP, "T_dep\n(departure_time;\nvariable distance)"),
-        (X_DEP_2H, "T_dep + 2h\n(RATING_READY_DELAY_MS)"),
-        (X_DEP_24H, "T_dep + 24h\n(typical decay)"),
-        (X_DEP_7D, "T_dep + 7d\n(still revisable)"),
+        (X_T0,   "T0\nBooking"),
+        (X_DEP,  "Trip happens"),
+        (X_GATE, "Trip + 2 hours\n(rating opens)"),
+        (X_LATE, "Later\n(rating still revisable)"),
     ]
     for x, lbl in ticks:
-        ax1.plot(
-            [x, x], [-0.62, -0.28], color=TICK_COLOR, linewidth=1.1, zorder=5,
+        ax_top.plot(
+            [x, x], [axis_y - 0.08, axis_y + 0.08],
+            color=NEUTRAL, linewidth=1.1, zorder=5,
         )
-        ax1.text(
-            x, -0.82, lbl, ha="center", va="top",
-            fontsize=8.6, color=TICK_COLOR,
+        ax_top.text(
+            x, axis_y - 0.28, lbl,
+            ha="center", va="top", fontsize=9.2, color="#1B2631",
         )
 
-    # Highlight T_dep + 2h with a vertical accent line crossing both bands.
-    ax1.plot(
-        [X_DEP_2H, X_DEP_2H], [-0.45, 2.95],
-        color=ACCENT_GATE, linewidth=1.8, linestyle="--", zorder=6,
+    # Highlight the 2-hour gate with the accent color (vertical marker)
+    ax_top.plot(
+        [X_GATE, X_GATE], [axis_y + 0.05, band_y + band_h / 2 + 0.55],
+        color=ACCENT_COLOR, linewidth=2.0, linestyle="--", zorder=6,
     )
-    ax1.text(
-        X_DEP_2H + 0.12, 2.92,
-        "readiness gate:\nnow >= departure_time + 2h",
-        ha="left", va="top", fontsize=9.0, color=ACCENT_GATE,
-        fontweight="bold",
-    )
-
-    # ---- Event annotations above the timeline -------------------------------
-    # T0: bookRide fan-out
-    _annot_event(
-        ax1, x=X_T0, y_top=2.55,
-        title="T0: bookRide()",
-        body=(
-            "5 immediate notifications +\n"
-            "2 ride_rating_reminder rows queued\n"
-            "(data.showAfter = T_dep + 2h)"
-        ),
-        edge=RIDER_COLOR,
+    ax_top.add_patch(FancyBboxPatch(
+        (X_GATE - 1.5, band_y + band_h / 2 + 0.55),
+        3.0, 0.55,
+        boxstyle="round,pad=0.04",
+        facecolor="#FEF5E7", edgecolor=ACCENT_COLOR, linewidth=1.4, zorder=7,
+    ))
+    ax_top.text(
+        X_GATE, band_y + band_h / 2 + 0.82,
+        "2-hour gate: rating becomes available\n2 hours after the trip ends",
+        ha="center", va="center", fontsize=9.5, color="#7D4E0F",
+        fontweight="bold", zorder=8,
     )
 
-    # T_dep: ride happens
-    _annot_event(
-        ax1, x=X_DEP, y_top=2.55,
-        title="T_dep: ride happens",
-        body=(
-            "soft window for completeRide()\n"
-            "by driver (no hard timeout)"
-        ),
-        edge=DRIVER_COLOR,
+    # Booking marker callout (small flag above T0)
+    ax_top.add_patch(FancyBboxPatch(
+        (X_T0 - 1.0, band_y + band_h / 2 + 0.55),
+        2.0, 0.45,
+        boxstyle="round,pad=0.04",
+        facecolor="white", edgecolor=RIDER_COLOR, linewidth=1.3, zorder=7,
+    ))
+    ax_top.text(
+        X_T0, band_y + band_h / 2 + 0.78, "Trip booked",
+        ha="center", va="center", fontsize=9.5, color=RIDER_COLOR,
+        fontweight="bold", zorder=8,
     )
 
-    # T_dep + 2h: rating window opens — placed below the timeline
-    _annot_event_below(
-        ax1, x=X_DEP_2H, y_bot=-1.55,
-        title="T_dep + 2h: rating opens",
-        body=(
-            "reminders surface as\n"
-            "tap-to-rate notification cards"
-        ),
-        edge=ACCENT_GATE,
+    # Title + subtitle (top panel)
+    ax_top.text(
+        X_MIN + 0.2, 4.05,
+        "Rating window: when can riders and drivers rate each other?",
+        ha="left", va="center", fontsize=14, fontweight="bold", color="#1B2631",
+    )
+    ax_top.text(
+        X_MIN + 0.2, 3.65,
+        "The post-trip window opens 2 hours after the trip ends; "
+        "ratings are recorded but remain revisable thereafter.",
+        ha="left", va="center", fontsize=10.5, style="italic", color=NEUTRAL,
     )
 
-    # T_dep + 7d: still revisable (placed below the timeline so it does not
-    # collide with the figure-right side note above ax1).
-    _annot_event_below(
-        ax1, x=X_DEP_7D, y_bot=-1.55,
-        title="T_dep + 7d (illustrative)",
-        body=(
-            "rating still revisable via\n"
-            "update-in-place UPSERT key\n"
-            "(trip_id, rater_id, ratee_id)"
-        ),
-        edge=GREEN_BORDER,
-    )
-
-    # Title for the top panel.
-    ax1.set_title(
-        "Rating window timeline  —  RATING_READY_DELAY_MS = 2 h  "
-        "(rating.controller.js:22-100; carpooling.controller.js:12)",
-        fontsize=11.5, fontweight="bold", loc="left", pad=10,
-    )
-
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    for spine in ax1.spines.values():
-        spine.set_visible(False)
+    ax_top.set_xlim(X_MIN, X_MAX)
+    ax_top.set_ylim(-0.4, 4.3)
+    ax_top.axis("off")
 
     # =====================================================================
-    # BOTTOM: rating-submission flow with all 4 guards + upsert + trigger
+    # BOTTOM PANEL — bidirectional submission flow + side note
     # =====================================================================
-    ax2.set_xlim(0.0, 13.5)
-    ax2.set_ylim(0.0, 2.4)
-    ax2.set_xticks([])
-    ax2.set_yticks([])
-    for spine in ax2.spines.values():
-        spine.set_visible(False)
+    # Allocate the right-hand strip for the open-design side box.
+    BX_MIN, BX_MAX = 0.0, 16.0
+    SIDE_LEFT = 11.4  # everything to the right of this is the side note
 
-    # Define horizontal slots for 7 nodes. Reserve right side for side note.
-    # Available drawing region: 0.10 .. 9.85; side note 10.0 .. 13.4
-    flow_xs = [0.55, 2.05, 3.65, 5.40, 7.20, 8.65, 9.95]
-    flow_w = [1.30, 1.40, 1.60, 1.65, 1.30, 1.20, 1.10]  # not used directly
-    cy = 1.10
+    ax_bot.set_xlim(BX_MIN, BX_MAX)
+    ax_bot.set_ylim(-0.2, 3.6)
+    ax_bot.axis("off")
 
-    nodes = [
-        # (x_center, label, fill, border, halfwidth, halfheight, role-color)
-        (
-            0.95,
-            "POST /api/v1/ratings\n-> createRating\n[rating.controller.js]",
-            ENTRY_FILL, ENTRY_BORDER, 0.78, 0.55, None,
-        ),
-        (
-            2.75,
-            "Guard 1\nnow ≥ departure_time\n+ RATING_READY_DELAY_MS\nelse 403",
-            GUARD_FILL, GUARD_BORDER, 0.78, 0.62, ACCENT_GATE,
-        ),
-        (
-            4.55,
-            "Guard 2\nrater is driver OR\nnon-cancelled passenger\nof the trip",
-            GUARD_FILL, GUARD_BORDER, 0.80, 0.62, None,
-        ),
-        (
-            6.45,
-            "Guard 3\nrole-pairing\ndriver -> passengers only\npassenger -> driver only",
-            GUARD_FILL, GUARD_BORDER, 0.92, 0.62,
-            "ROLE",  # marker; rendered with stripe
-        ),
-        (
-            8.30,
-            "Guard 4\nrater_id ≠ ratee_id",
-            GUARD_FILL, GUARD_BORDER, 0.65, 0.45, None,
-        ),
-        (
-            9.85,
-            "UPSERT\nratings(trip_id,\n rater_id, ratee_id)\nOVERWRITE on conflict",
-            DB_FILL, DB_BORDER, 0.85, 0.62, None,
-        ),
-        (
-            11.85,
-            "Trigger\nupdate_user_rating_on_new_rating()\n[migration 008 L82-100]\nrecompute users.avg_rating\n+ users.total_ratings",
-            TRIGGER_FILL, TRIGGER_BORDER, 1.20, 0.78, None,
-        ),
+    # Lane y-coordinates
+    PY = 2.55  # passenger lane
+    SY = 1.55  # platform lane
+    DY = 0.55  # driver lane
+    LANE_H = 0.85
+
+    LANES = [
+        ("Passenger", RIDER_COLOR, PY),
+        ("Platform",  PLATFORM_COLOR, SY),
+        ("Driver",    DRIVER_COLOR, DY),
     ]
-
-    centers = []
-    for (cx, lbl, fc, bc, hw, hh, role) in nodes:
-        rect = mpatches.FancyBboxPatch(
-            (cx - hw, cy - hh), 2 * hw, 2 * hh,
-            boxstyle="round,pad=0.04,rounding_size=0.10",
-            facecolor=fc, edgecolor=bc, linewidth=1.3, zorder=3,
-        )
-        ax2.add_patch(rect)
-        ax2.text(
-            cx, cy, lbl,
-            ha="center", va="center", fontsize=8.2, color="#1A1A1A",
-            zorder=4,
-        )
-        centers.append((cx, hw))
-
-        # Optional left-edge stripe for the role-paired guard.
-        if role == "ROLE":
-            ax2.add_patch(mpatches.Rectangle(
-                (cx - hw, cy - hh), 0.10, hh,
-                facecolor=DRIVER_COLOR, edgecolor="none", zorder=4,
-            ))
-            ax2.add_patch(mpatches.Rectangle(
-                (cx - hw, cy - hh + hh), 0.10, hh,
-                facecolor=RIDER_COLOR, edgecolor="none", zorder=4,
-            ))
-        elif role is not None:
-            # Single accent stripe (used by readiness-gate guard to echo
-            # the timeline color).
-            ax2.add_patch(mpatches.Rectangle(
-                (cx - hw, cy - hh), 0.10, 2 * hh,
-                facecolor=role, edgecolor="none", zorder=4,
-            ))
-
-    # Connect adjacent nodes with arrows.
-    for i in range(len(centers) - 1):
-        cx_a, hw_a = centers[i]
-        cx_b, hw_b = centers[i + 1]
-        x_start = cx_a + hw_a + 0.04
-        x_end = cx_b - hw_b - 0.04
-        ax2.annotate(
-            "", xy=(x_end, cy), xytext=(x_start, cy),
-            arrowprops=dict(
-                arrowstyle="-|>", color="#34495E", lw=1.3, mutation_scale=12,
-            ),
-            zorder=2,
+    LANE_RIGHT = SIDE_LEFT - 0.3
+    for name, color, y in LANES:
+        ax_bot.add_patch(FancyBboxPatch(
+            (BX_MIN + 0.1, y - LANE_H / 2),
+            LANE_RIGHT - (BX_MIN + 0.1), LANE_H,
+            boxstyle="round,pad=0.02",
+            facecolor=color, alpha=0.07,
+            edgecolor=color, linewidth=0.8, zorder=1,
+        ))
+        ax_bot.text(
+            BX_MIN + 0.25, y, name,
+            ha="left", va="center", fontsize=11, fontweight="bold", color=color,
         )
 
-    # Bottom-panel title.
-    ax2.text(
-        0.05, 2.30,
-        "Rating-submission flow  —  4 guards -> UPSERT -> migration-008 aggregation trigger",
-        ha="left", va="top", fontsize=10.5, fontweight="bold", color="#1B2631",
+    # Helpers
+    def card(x, y, w, h, text, color, *, fc="white", fs=9.5, bold=False):
+        ax_bot.add_patch(FancyBboxPatch(
+            (x - w / 2, y - h / 2), w, h,
+            boxstyle="round,pad=0.04",
+            facecolor=fc, edgecolor=color, linewidth=1.4, zorder=3,
+        ))
+        ax_bot.text(
+            x, y, text,
+            ha="center", va="center", fontsize=fs, color="#1B2631",
+            fontweight="bold" if bold else "normal", zorder=4,
+        )
+
+    def arrow(x0, y0, x1, y1, color, *, ls="-", lw=1.4):
+        ax_bot.add_patch(FancyArrowPatch(
+            (x0, y0), (x1, y1),
+            arrowstyle="-|>", color=color,
+            linewidth=lw, linestyle=ls, mutation_scale=12, zorder=2,
+        ))
+
+    # Step columns
+    X_TAP = 3.5     # both actors tap-rate (passenger & driver simultaneously)
+    X_REC = 6.7     # platform records the rating
+    X_AVG = 9.7     # platform updates each user's average
+
+    # 1. Passenger taps to rate
+    card(X_TAP, PY, 2.4, 0.6,
+         "Tap-to-rate prompt\n(passenger rates driver)",
+         RIDER_COLOR, bold=True)
+    # 2. Driver taps to rate
+    card(X_TAP, DY, 2.4, 0.6,
+         "Tap-to-rate prompt\n(driver rates passenger)",
+         DRIVER_COLOR, bold=True)
+
+    # 3. Platform records both ratings (single card on platform lane)
+    card(X_REC, SY, 2.5, 0.65,
+         "Rating recorded\n(revisable)",
+         PLATFORM_COLOR, bold=True)
+    arrow(X_TAP + 1.2, PY - 0.2, X_REC - 1.25, SY + 0.25, RIDER_COLOR)
+    arrow(X_TAP + 1.2, DY + 0.2, X_REC - 1.25, SY - 0.25, DRIVER_COLOR)
+
+    # 4. Platform updates each user's average rating
+    card(X_AVG, SY, 2.6, 0.65,
+         "User's average rating\nupdated",
+         PLATFORM_COLOR)
+    arrow(X_REC + 1.25, SY, X_AVG - 1.30, SY, PLATFORM_COLOR)
+
+    # 5. Echo the new average back to both actors (dashed)
+    arrow(X_AVG, SY + 0.32, X_AVG, PY - 0.30, PLATFORM_COLOR, ls="--")
+    arrow(X_AVG, SY - 0.32, X_AVG, DY + 0.30, PLATFORM_COLOR, ls="--")
+
+    # Bottom-panel title + subtitle
+    ax_bot.text(
+        BX_MIN + 0.2, 3.45,
+        "Bidirectional rating: each side rates the other, then averages update",
+        ha="left", va="center", fontsize=13, fontweight="bold", color="#1B2631",
+    )
+    ax_bot.text(
+        BX_MIN + 0.2, 3.13,
+        "Snapshot: 0 ratings submitted in production "
+        "(formative design, not yet validated by usage).",
+        ha="left", va="center", fontsize=10, style="italic", color=NEUTRAL,
     )
 
-    # Role-pairing legend swatches (to explain the stripe).
-    ax2.add_patch(mpatches.Rectangle(
-        (4.65, 0.07), 0.14, 0.18,
-        facecolor=DRIVER_COLOR, edgecolor="none",
+    # ------------------------------------------------------------------
+    # Side text-box: open design proposals (not yet implemented)
+    # ------------------------------------------------------------------
+    side_x = SIDE_LEFT + 0.2
+    side_w = (BX_MAX - 0.2) - side_x
+    side_y = 0.15
+    side_h = 3.20
+
+    ax_bot.add_patch(FancyBboxPatch(
+        (side_x, side_y), side_w, side_h,
+        boxstyle="round,pad=0.04",
+        facecolor="#FDFEFE", edgecolor=ACCENT_COLOR, linewidth=1.4, zorder=3,
     ))
-    ax2.text(
-        4.83, 0.16, "driver", ha="left", va="center",
-        fontsize=8.2, color=DRIVER_COLOR, fontweight="bold",
+    ax_bot.text(
+        side_x + 0.20, side_y + side_h - 0.25,
+        "Open design proposals\n(not yet implemented)",
+        ha="left", va="top", fontsize=10.5, fontweight="bold",
+        color=ACCENT_COLOR, zorder=4,
     )
-    ax2.add_patch(mpatches.Rectangle(
-        (5.55, 0.07), 0.14, 0.18,
-        facecolor=RIDER_COLOR, edgecolor="none",
-    ))
-    ax2.text(
-        5.73, 0.16, "passenger", ha="left", va="center",
-        fontsize=8.2, color=RIDER_COLOR, fontweight="bold",
-    )
-    ax2.text(
-        6.55, 0.16,
-        "(stripe on Guard 3 indicates role-paired permission)",
-        ha="left", va="center", fontsize=8.0, color="#566573", style="italic",
-    )
+    bullets = [
+        "Pre-publication dispute window\n(flag a rating before it goes live)",
+        "Cross-trip trend protection\n(buffer against retaliatory dips)",
+        "Mandatory justification\n(low scores require a written reason)",
+    ]
+    bullet_y = side_y + side_h - 0.95
+    for b in bullets:
+        ax_bot.text(
+            side_x + 0.30, bullet_y, "•",
+            ha="left", va="top", fontsize=11, color=ACCENT_COLOR,
+            fontweight="bold", zorder=4,
+        )
+        ax_bot.text(
+            side_x + 0.55, bullet_y, b,
+            ha="left", va="top", fontsize=9.4, color="#1B2631", zorder=4,
+        )
+        bullet_y -= 0.65
 
-    # =====================================================================
-    # Side note (top-right of figure, anchored to ax1 area)
-    # =====================================================================
-    side_text = (
-        "NOT implemented (open design proposals):\n"
-        "  • pre-publication dispute window\n"
-        "  • cross-trip trend protection\n"
-        "  • mandatory justification on low scores\n"
-        "\n"
-        "ratings table holds 0 rows in the\n"
-        "2026-04-23 production snapshot."
-    )
-    # Place the box in figure coordinates so it sits to the right of the
-    # event annotations without overlapping them.
-    fig.text(
-        0.985, 0.86, side_text,
-        ha="right", va="top", fontsize=8.7, color="#1B2631",
-        bbox=dict(
-            boxstyle="round,pad=0.5,rounding_size=0.4",
-            facecolor=SIDE_BG, edgecolor=SIDE_BORDER, linewidth=1.0,
-        ),
-    )
-
-    pdf, png = save_mpl("mbe_c3_rating_2h_delay_flow")
+    # ------------------------------------------------------------------
+    # Save
+    # ------------------------------------------------------------------
+    pdf, png = save_mpl("mbe_c3_rating_2h_delay_flow", dpi=300)
     register("mbe_c3_rating_2h_delay_flow", "ok", png_path=png)
+    print(f"  pdf -> {pdf}")
+    print(f"  png -> {png}")
     return pdf, png
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _annot_event(ax, x, y_top, title, body, edge, anchor="center"):
-    """Draw an event callout above the timeline at x, with leader line."""
-    if anchor == "left":
-        ha = "left"
-        text_x = x + 0.05
-    else:
-        ha = "center"
-        text_x = x
-
-    # Leader line from timeline (y=-0.45..0.45) up to box bottom.
-    ax.plot(
-        [x, x], [0.48, y_top - 0.78],
-        color=edge, linewidth=1.0, linestyle=":", zorder=5,
-    )
-
-    label = f"{title}\n{body}"
-    ax.text(
-        text_x, y_top, label,
-        ha=ha, va="top", fontsize=8.4, color="#1B2631",
-        bbox=dict(
-            boxstyle="round,pad=0.30,rounding_size=0.25",
-            facecolor="#FFFFFF", edgecolor=edge, linewidth=1.1,
-        ),
-        zorder=7,
-    )
-
-
-def _annot_event_below(ax, x, y_bot, title, body, edge):
-    """Draw an event callout below the timeline (under the tick labels)."""
-    # Leader line from below-tick area down to box top.
-    ax.plot(
-        [x, x], [-1.10, y_bot + 0.05],
-        color=edge, linewidth=1.0, linestyle=":", zorder=5,
-    )
-    label = f"{title}\n{body}"
-    ax.text(
-        x, y_bot, label,
-        ha="center", va="top", fontsize=8.4, color="#1B2631",
-        bbox=dict(
-            boxstyle="round,pad=0.30,rounding_size=0.25",
-            facecolor="#FFFFFF", edgecolor=edge, linewidth=1.1,
-        ),
-        zorder=7,
-    )
+if __name__ == "__main__":
+    render()

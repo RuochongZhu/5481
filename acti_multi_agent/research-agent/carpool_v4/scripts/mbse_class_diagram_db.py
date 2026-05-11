@@ -1,25 +1,18 @@
-"""mbse_class_diagram_db - UML Class Diagram for the live database schema.
+"""mbse_class_diagram_db - Class diagram of the production database schema.
 
-15 classes drawn as UML record-style boxes (class name in the top
-compartment, key attributes in the bottom compartment).  Classes are
-grouped into 6 visual clusters by domain:
+Fifteen classes drawn as Graphviz HTML-table nodes, grouped into six
+domain clusters: Identity, Carpool, Activities, Marketplace, Messaging,
+and Cross-module. Each class shows its name and the key columns that
+are load-bearing for the design — primary keys are bold "id", foreign
+keys are italic and read in natural English ("driver -> users"). SQL
+types (UUID, text, JSONB), engineering-only fields, and database
+internals are stripped for HCI/CHI readers.
 
-  Identity        : User
-  Carpool         : Ride, RideBooking, Rating
-  Activities      : Activity, ActivityParticipant, ActivityCheckin
-  Marketplace    : MarketplaceItem
-  Messaging       : Group, GroupMember, GroupMessage,
-                    Message, MessageParticipant
-  Cross-module    : Notification, WxgroupNoticeRecord
-
-Associations between classes carry UML multiplicity labels (1, 0..1,
-1..*, 0..*).  Self-loops and inheritance are not used (none of the
-production tables inherit from another).  Foreign-key direction is
-shown with an open diamond (aggregation) end on the owning side.
-
-Source-of-truth:
-  campusride-backend/supabase/migrations/000_initial_schema.sql
-  + migrations 005-016 (group / message / activity-checkin / wxgroup tables)
+Style: per `_mbe_style_guide.md` §4 (ER / class diagram row), graphviz
+HTML-table nodes are acceptable for true class / ER diagrams. Strong
+precedent: `mbe_a4_db_er_core.py` — this figure matches its conventions.
+The points ledger and the wxgroup notice queue are annotated with the
+design-language phrase "not yet provisioned in production".
 """
 
 from __future__ import annotations
@@ -32,390 +25,327 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _mbe_helpers import make_digraph, render_dot, register, renderer  # noqa: E402
 
 
-# Per-cluster fill palette
-IDENTITY_FILL = "#FDEBD0"
-IDENTITY_BORDER = "#9C640C"
-CARPOOL_FILL = "#D6EAF8"
-CARPOOL_BORDER = "#1F618D"
-ACT_FILL = "#D5F5E3"
-ACT_BORDER = "#1E8449"
-MKT_FILL = "#FADBD8"
-MKT_BORDER = "#922B21"
-MSG_FILL = "#E8DAEF"
-MSG_BORDER = "#6C3483"
-CROSS_FILL = "#FCF3CF"
-CROSS_BORDER = "#9A7D0A"
+# Per-cluster header colors (light pastel fill + matching dark border)
+CLUSTERS = {
+    "identity":    {"fill": "#D6EAF8", "border": "#1F618D", "label": "Identity"},
+    "carpool":     {"fill": "#FADBD8", "border": "#922B21", "label": "Carpool"},
+    "activities":  {"fill": "#D5F5E3", "border": "#1E8449", "label": "Activities"},
+    "marketplace": {"fill": "#FAE5D3", "border": "#B9770E", "label": "Marketplace"},
+    "messaging":   {"fill": "#E8DAEF", "border": "#6C3483", "label": "Messaging"},
+    "cross":       {"fill": "#FCF3CF", "border": "#9A7D0A", "label": "Cross-module"},
+}
 
-EDGE_COLOR = "#1B2631"
+# Navy edge color (per style guide)
+EDGE_COLOR = "#1A5276"
+
+
+def _row(text: str, port: str | None = None, italic: bool = False,
+         bold: bool = False, color: str | None = None) -> str:
+    """Build one HTML <TR><TD>...</TD></TR> row of a class node."""
+    inner = text
+    if italic:
+        inner = f"<I>{inner}</I>"
+    if bold:
+        inner = f"<B>{inner}</B>"
+    port_attr = f' PORT="{port}"' if port else ""
+    color_attr = f' BGCOLOR="{color}"' if color else ""
+    return (
+        f'<TR><TD ALIGN="LEFT"{port_attr}{color_attr}>{inner}</TD></TR>'
+    )
+
+
+def _class_node(name: str, columns: list[tuple[str, str, str]],
+                fill: str, border: str) -> str:
+    """Return an HTML-like label for a class.
+
+    columns: list of (port, text, role) where role in {pk, fk, self_fk, col, note}.
+    """
+    header = (
+        f'<TR><TD BGCOLOR="{fill}" ALIGN="CENTER">'
+        f'<B>{name}</B></TD></TR>'
+    )
+    body = []
+    for port, text, role in columns:
+        if role == "pk":
+            body.append(_row(text, port=port, bold=True))
+        elif role in ("fk", "self_fk"):
+            body.append(_row(text, port=port, italic=True))
+        elif role == "note":
+            body.append(_row(f'<FONT POINT-SIZE="9" COLOR="#7B241C">{text}</FONT>',
+                             port=port))
+        else:
+            body.append(_row(text, port=port))
+    table = (
+        f'<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3" '
+        f'COLOR="{border}">'
+        + header + "".join(body) +
+        "</TABLE>>"
+    )
+    return table
 
 
 @renderer("mbse_class_diagram_db")
 def render():
-    g = make_digraph("mbse_class_diagram_db", rankdir="LR")
-    g.attr(
-        ranksep="1.20", nodesep="0.55", splines="spline", concentrate="false",
-        overlap="false",
-        label=(
-            "Class Diagram - production database schema (snapshot 2026-04-23)\n"
-            "15 core classes across 6 domain clusters; UML associations with multiplicity."
-        ),
-        labelloc="t", fontsize="14",
-    )
-    g.attr("node", fontname="Helvetica", fontsize="10")
-    g.attr("edge", fontname="Helvetica", fontsize="8.5", color=EDGE_COLOR,
-           labeldistance="1.6", labelangle="0",
-           labelfloat="false")
+    g = make_digraph("mbse_class_diagram_db", rankdir="TB")
+    g.attr(splines="spline", nodesep="0.45", ranksep="0.8", concentrate="false",
+           label=("CampusRide class diagram — 15 classes across six domain "
+                  "clusters (snapshot 2026-04-23)"),
+           labelloc="t", fontsize="14")
+    g.attr("node", shape="plaintext", style="", fontname="Helvetica",
+           fontsize="10")
 
-    # ------------------------------------------------------------------
-    # UML record-style class label builder
-    # ------------------------------------------------------------------
-    def _esc(s: str) -> str:
-        # Escape graphviz record-shape special characters
-        return (
-            s.replace("\\", "\\\\")
-             .replace("<", "\\<").replace(">", "\\>")
-             .replace("|", "\\|")
-             .replace("{", "\\{").replace("}", "\\}")
-             .replace("\"", "\\\"")
-        )
-
-    def cls_label(name: str, attrs: list[str]) -> str:
-        # Graphviz record shape: '{' = vertical stack, '|' = compartment sep,
-        # '\l' = left-align newline within a compartment.
-        attr_block = "\\l".join(_esc(a) for a in attrs) + "\\l"
-        return "{" + _esc(name) + "|" + attr_block + "}"
-
-    def add_class(g_or_c, key, name, attrs, fill, border):
-        g_or_c.node(
-            key, cls_label(name, attrs),
-            shape="record", style="filled",
-            fillcolor=fill, color=border, penwidth="1.6",
-            fontsize="10",
-        )
-
-    # ------------------------------------------------------------------
-    # Cluster 1 - Identity
-    # ------------------------------------------------------------------
+    # ---------- Identity cluster ----------
+    cl = CLUSTERS["identity"]
     with g.subgraph(name="cluster_identity") as c:
-        c.attr(
-            label="Identity", style="rounded,filled",
-            color=IDENTITY_BORDER, fillcolor="#FEF9E7",
-            fontsize="12", fontcolor=IDENTITY_BORDER, penwidth="1.2",
-            labeljust="l",
-        )
-        add_class(
-            c, "User", "User",
+        c.attr(label=cl["label"], style="rounded,filled",
+               color=cl["border"], fillcolor=cl["fill"], penwidth="1.4",
+               fontsize="12")
+        c.node("User", _class_node(
+            "User",
             [
-                "+ id : UUID",
-                "+ email : @cornell.edu",
-                "+ university : text",
-                "+ is_verified : bool",
-                "+ points : int",
-                "+ avg_rating : numeric",
+                ("id",   "id",                              "pk"),
+                (None,   "email (Cornell address)",         "col"),
+                (None,   "university",                      "col"),
+                (None,   "verified status",                 "col"),
+                (None,   "average rating",                  "col"),
+                (None,   "points balance",                  "col"),
             ],
-            IDENTITY_FILL, IDENTITY_BORDER,
-        )
+            fill=cl["fill"], border=cl["border"]))
 
-    # ------------------------------------------------------------------
-    # Cluster 2 - Carpool
-    # ------------------------------------------------------------------
+    # ---------- Carpool cluster ----------
+    cl = CLUSTERS["carpool"]
     with g.subgraph(name="cluster_carpool") as c:
-        c.attr(
-            label="Carpool", style="rounded,filled",
-            color=CARPOOL_BORDER, fillcolor="#EBF5FB",
-            fontsize="12", fontcolor=CARPOOL_BORDER, penwidth="1.2",
-            labeljust="l",
-        )
-        add_class(
-            c, "Ride", "Ride",
+        c.attr(label=cl["label"], style="rounded,filled",
+               color=cl["border"], fillcolor=cl["fill"], penwidth="1.4",
+               fontsize="12")
+        c.node("Ride", _class_node(
+            "Ride",
             [
-                "+ id : UUID",
-                "+ driver_id : UUID FK",
-                "+ departure_time : ts",
-                "+ status : enum",
-                "+ total_seats : int",
-                "+ price : numeric",
+                ("id",     "id",                                          "pk"),
+                ("driver", "driver &#8594; users",                          "fk"),
+                (None,     "departure time",                              "col"),
+                (None,     "seats remaining",                             "col"),
+                (None,     "status (active / full / completed / cancelled)", "col"),
+                (None,     "fare per seat",                               "col"),
             ],
-            CARPOOL_FILL, CARPOOL_BORDER,
-        )
-        add_class(
-            c, "RideBooking", "RideBooking",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("RideBooking", _class_node(
+            "RideBooking",
             [
-                "+ id : UUID",
-                "+ ride_id : UUID FK",
-                "+ rider_id : UUID FK",
-                "+ status : enum",
-                "+ payment_status : enum",
+                ("id",     "id",                              "pk"),
+                ("ride",   "ride &#8594; rides",                   "fk"),
+                ("rider",  "rider &#8594; users",                  "fk"),
+                (None,     "status (confirmed / cancelled)",  "col"),
+                (None,     "payment status",                  "col"),
             ],
-            CARPOOL_FILL, CARPOOL_BORDER,
-        )
-        add_class(
-            c, "Rating", "Rating",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("Rating", _class_node(
+            "Rating",
             [
-                "+ trip_id : UUID FK",
-                "+ rater_id : UUID FK",
-                "+ ratee_id : UUID FK",
-                "+ score : int (1-5)",
-                "+ role_of_rater : enum",
+                ("id",     "id",                              "pk"),
+                ("trip",   "trip &#8594; rides",                   "fk"),
+                ("rater",  "rater &#8594; users",                  "fk"),
+                ("ratee",  "ratee &#8594; users",                  "fk"),
+                (None,     "rater role (driver / passenger)", "col"),
+                (None,     "score (1-5)",                     "col"),
             ],
-            CARPOOL_FILL, CARPOOL_BORDER,
-        )
+            fill=cl["fill"], border=cl["border"]))
 
-    # ------------------------------------------------------------------
-    # Cluster 3 - Activities
-    # ------------------------------------------------------------------
+    # ---------- Activities cluster ----------
+    cl = CLUSTERS["activities"]
     with g.subgraph(name="cluster_activities") as c:
-        c.attr(
-            label="Activities", style="rounded,filled",
-            color=ACT_BORDER, fillcolor="#EAFAF1",
-            fontsize="12", fontcolor=ACT_BORDER, penwidth="1.2",
-            labeljust="l",
-        )
-        add_class(
-            c, "Activity", "Activity",
+        c.attr(label=cl["label"], style="rounded,filled",
+               color=cl["border"], fillcolor=cl["fill"], penwidth="1.4",
+               fontsize="12")
+        c.node("Activity", _class_node(
+            "Activity",
             [
-                "+ id : UUID",
-                "+ organizer_id : UUID FK",
-                "+ location_coord : point",
-                "+ status : enum",
-                "+ checkin_code : text",
+                ("id",     "id",                                          "pk"),
+                ("org",    "organizer &#8594; users",                          "fk"),
+                (None,     "venue coordinates",                           "col"),
+                (None,     "status (draft / published / ongoing / done)", "col"),
+                (None,     "check-in code",                               "col"),
             ],
-            ACT_FILL, ACT_BORDER,
-        )
-        add_class(
-            c, "ActivityParticipant", "ActivityParticipant",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("ActivityParticipant", _class_node(
+            "ActivityParticipant",
             [
-                "+ activity_id : UUID FK",
-                "+ user_id : UUID FK",
-                "+ attendance_status : enum",
-                "+ payment_status : enum",
+                ("id",   "id",                          "pk"),
+                ("act",  "activity &#8594; activities",      "fk"),
+                ("usr",  "user &#8594; users",               "fk"),
+                (None,   "attendance status",           "col"),
+                (None,   "payment status",              "col"),
             ],
-            ACT_FILL, ACT_BORDER,
-        )
-        add_class(
-            c, "ActivityCheckin", "ActivityCheckin",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("ActivityCheckin", _class_node(
+            "ActivityCheckin",
             [
-                "+ id : UUID",
-                "+ participant_id : UUID FK",
-                "+ location : point",
-                "+ location_verified : bool",
-                "+ device_info : json",
+                ("id",   "id",                          "pk"),
+                ("part", "participant &#8594; participants", "fk"),
+                (None,   "distance to venue",           "col"),
+                (None,   "location verified",           "col"),
             ],
-            ACT_FILL, ACT_BORDER,
-        )
+            fill=cl["fill"], border=cl["border"]))
 
-    # ------------------------------------------------------------------
-    # Cluster 4 - Marketplace
-    # ------------------------------------------------------------------
+    # ---------- Marketplace cluster ----------
+    cl = CLUSTERS["marketplace"]
     with g.subgraph(name="cluster_marketplace") as c:
-        c.attr(
-            label="Marketplace", style="rounded,filled",
-            color=MKT_BORDER, fillcolor="#FDEDEC",
-            fontsize="12", fontcolor=MKT_BORDER, penwidth="1.2",
-            labeljust="l",
-        )
-        add_class(
-            c, "MarketplaceItem", "MarketplaceItem",
+        c.attr(label=cl["label"], style="rounded,filled",
+               color=cl["border"], fillcolor=cl["fill"], penwidth="1.4",
+               fontsize="12")
+        c.node("MarketplaceItem", _class_node(
+            "MarketplaceItem",
             [
-                "+ id : UUID",
-                "+ seller_id : UUID FK",
-                "+ status : enum",
-                "+ price : numeric",
-                "+ views_count : int",
+                ("id",     "id",                                  "pk"),
+                ("seller", "seller &#8594; users",                     "fk"),
+                (None,     "status (active / sold / removed)",    "col"),
+                (None,     "price",                               "col"),
+                (None,     "view count",                          "col"),
             ],
-            MKT_FILL, MKT_BORDER,
-        )
+            fill=cl["fill"], border=cl["border"]))
 
-    # ------------------------------------------------------------------
-    # Cluster 5 - Messaging
-    # ------------------------------------------------------------------
+    # ---------- Messaging cluster ----------
+    cl = CLUSTERS["messaging"]
     with g.subgraph(name="cluster_messaging") as c:
-        c.attr(
-            label="Messaging  (groups + DMs)", style="rounded,filled",
-            color=MSG_BORDER, fillcolor="#F4ECF7",
-            fontsize="12", fontcolor=MSG_BORDER, penwidth="1.2",
-            labeljust="l",
-        )
-        add_class(
-            c, "Group", "Group",
+        c.attr(label=cl["label"], style="rounded,filled",
+               color=cl["border"], fillcolor=cl["fill"], penwidth="1.4",
+               fontsize="12")
+        c.node("Group", _class_node(
+            "Group",
             [
-                "+ id : UUID",
-                "+ group_kind : enum",
-                "+ ride_id : UUID FK?",
-                "+ chat_expires_at : ts",
-                "+ member_count : int",
+                ("id",       "id",                                       "pk"),
+                ("creator",  "creator &#8594; users",                         "fk"),
+                (None,       "kind (community / ride-bound)",            "col"),
+                ("ride",     "ride &#8594; rides (null for community)",       "fk"),
+                (None,       "chat expires at",                          "col"),
+                (None,       "member count",                             "col"),
             ],
-            MSG_FILL, MSG_BORDER,
-        )
-        add_class(
-            c, "GroupMember", "GroupMember",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("GroupMember", _class_node(
+            "GroupMember",
             [
-                "+ group_id : UUID FK",
-                "+ user_id : UUID FK",
-                "+ role : enum",
+                ("id",     "id",                       "pk"),
+                ("group",  "group &#8594; groups",          "fk"),
+                ("usr",    "user &#8594; users",            "fk"),
+                (None,     "role",                     "col"),
             ],
-            MSG_FILL, MSG_BORDER,
-        )
-        add_class(
-            c, "GroupMessage", "GroupMessage",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("GroupMessage", _class_node(
+            "GroupMessage",
             [
-                "+ id : UUID",
-                "+ group_id : UUID FK",
-                "+ sender_id : UUID FK",
-                "+ content : text",
-                "+ deleted_at : ts?",
+                ("id",     "id",                       "pk"),
+                ("group",  "group &#8594; groups",          "fk"),
+                ("send",   "sender &#8594; users",          "fk"),
+                (None,     "content",                  "col"),
             ],
-            MSG_FILL, MSG_BORDER,
-        )
-        add_class(
-            c, "Message", "Message",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("Message", _class_node(
+            "Message",
             [
-                "+ id : UUID",
-                "+ sender_id : UUID FK",
-                "+ receiver_id : UUID FK",
-                "+ context_type : enum",
-                "+ context_id : UUID",
-                "+ thread_id : UUID",
+                ("id",     "id",                       "pk"),
+                ("send",   "sender &#8594; users",          "fk"),
+                ("recv",   "receiver &#8594; users",        "fk"),
+                (None,     "thread",                   "col"),
+                (None,     "context (type, id)",       "col"),
+                (None,     "message type",             "col"),
             ],
-            MSG_FILL, MSG_BORDER,
-        )
-        add_class(
-            c, "MessageParticipant", "MessageParticipant",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("MessageParticipant", _class_node(
+            "MessageParticipant",
             [
-                "+ message_id : UUID FK",
-                "+ user_id : UUID FK",
-                "+ is_read : bool",
-                "+ archived : bool",
+                ("id",   "id",                          "pk"),
+                ("msg",  "message &#8594; messages",         "fk"),
+                ("usr",  "user &#8594; users",               "fk"),
+                (None,   "read flag",                   "col"),
+                (None,   "archived flag",               "col"),
             ],
-            MSG_FILL, MSG_BORDER,
-        )
+            fill=cl["fill"], border=cl["border"]))
 
-    # ------------------------------------------------------------------
-    # Cluster 6 - Cross-module
-    # ------------------------------------------------------------------
-    with g.subgraph(name="cluster_crossmod") as c:
-        c.attr(
-            label="Cross-module", style="rounded,filled",
-            color=CROSS_BORDER, fillcolor="#FEF9E7",
-            fontsize="12", fontcolor=CROSS_BORDER, penwidth="1.2",
-            labeljust="l",
-        )
-        add_class(
-            c, "Notification", "Notification",
+    # ---------- Cross-module cluster ----------
+    cl = CLUSTERS["cross"]
+    with g.subgraph(name="cluster_cross") as c:
+        c.attr(label=cl["label"], style="rounded,filled",
+               color=cl["border"], fillcolor=cl["fill"], penwidth="1.4",
+               fontsize="12")
+        c.node("Notification", _class_node(
+            "Notification",
             [
-                "+ id : UUID",
-                "+ recipient_id : UUID FK",
-                "+ type : enum",
-                "+ priority : enum",
-                "+ data : jsonb",
-                "+ is_read : bool",
+                ("id",   "id",                          "pk"),
+                ("usr",  "recipient &#8594; users",          "fk"),
+                (None,   "type",                        "col"),
+                (None,   "priority",                    "col"),
+                (None,   "payload",                     "col"),
+                (None,   "read flag",                   "col"),
             ],
-            CROSS_FILL, CROSS_BORDER,
-        )
-        add_class(
-            c, "WxgroupNoticeRecord", "WxgroupNoticeRecord",
+            fill=cl["fill"], border=cl["border"]))
+        c.node("WxgroupNoticeRecord", _class_node(
+            "WxgroupNoticeRecord",
             [
-                "+ id : UUID",
-                "+ source_type : enum",
-                "+ source_id : UUID",
-                "+ dispatch_status : enum",
-                "+ link_url : text",
+                ("id",   "id",                                       "pk"),
+                (None,   "source kind (ride / item / activity)",     "col"),
+                (None,   "source reference",                         "col"),
+                (None,   "dispatch status",                          "col"),
+                (None,   "external link",                            "col"),
+                (None,   "not yet provisioned in production",        "note"),
             ],
-            CROSS_FILL, CROSS_BORDER,
-        )
+            fill=cl["fill"], border=cl["border"]))
 
-    # ------------------------------------------------------------------
-    # Associations (UML labelled edges with multiplicity)
-    # arrowhead = "odiamond" expresses aggregation (the "owning" side)
-    # ------------------------------------------------------------------
-    def assoc(src, dst, lbl, *, src_mult="", dst_mult="",
-              owner="src", style="solid", color=EDGE_COLOR):
-        head = "odiamond" if owner == "dst" else "vee"
-        tail = "odiamond" if owner == "src" else "none"
-        g.edge(
-            src, dst, label=lbl,
-            taillabel=src_mult, headlabel=dst_mult,
-            arrowhead=head, arrowtail=tail, dir="both",
-            style=style, color=color, fontcolor=color,
-            penwidth="1.1", labeldistance="2.4", labelangle="22",
-        )
+    # ---------- Association edges ----------
+    # Color edges by parent cluster so the diagram reads as colored bundles
+    # rather than a navy spaghetti. User-as-hub edges share the Identity
+    # navy; intra-cluster edges share the cluster border color.
+    edge_attrs = {"arrowhead": "crow", "arrowtail": "none", "dir": "both",
+                  "penwidth": "1.0"}
 
-    # User <-> Ride (driver)
-    assoc("User", "Ride", "drives",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # User <-> RideBooking (rider)
-    assoc("User", "RideBooking", "books",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # Ride <-> RideBooking
-    assoc("Ride", "RideBooking", "has",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # Ride <-> Rating (trip_id)
-    assoc("Ride", "Rating", "yields",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # User <-> Rating (rater + ratee, summarised as one association)
-    assoc("User", "Rating", "rates / is rated",
-          src_mult="2", dst_mult="0..*", owner="src")
+    def fk(child: str, child_port: str, parent: str, parent_port: str = "id",
+           style: str | None = None, color: str = EDGE_COLOR,
+           label: str | None = None):
+        attrs = dict(edge_attrs)
+        attrs["color"] = color
+        if style:
+            attrs["style"] = style
+        if label:
+            attrs["label"] = label
+            attrs["fontsize"] = "9"
+            attrs["fontcolor"] = color
+        g.edge(f"{child}:{child_port}", f"{parent}:{parent_port}", **attrs)
 
-    # User <-> Activity
-    assoc("User", "Activity", "organises",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # Activity <-> ActivityParticipant
-    assoc("Activity", "ActivityParticipant", "registers",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # User -> ActivityParticipant omitted to reduce User-as-hub clutter
-    # (User-Activity participation is transitive via Activity-ActivityParticipant).
-    # ActivityParticipant <-> ActivityCheckin
-    assoc("ActivityParticipant", "ActivityCheckin", "checks in",
-          src_mult="1", dst_mult="0..*", owner="src")
+    # Identity hub - User is referenced by everyone (navy bundle)
+    USR = CLUSTERS["identity"]["border"]
+    fk("Ride", "driver", "User", color=USR)
+    fk("RideBooking", "rider", "User", color=USR)
+    fk("Rating", "rater", "User", color=USR)
+    fk("Rating", "ratee", "User", color=USR)
+    fk("Activity", "org", "User", color=USR)
+    fk("ActivityParticipant", "usr", "User", color=USR)
+    fk("MarketplaceItem", "seller", "User", color=USR)
+    fk("Group", "creator", "User", color=USR)
+    fk("GroupMember", "usr", "User", color=USR)
+    fk("GroupMessage", "send", "User", color=USR)
+    fk("Message", "send", "User", color=USR)
+    fk("Message", "recv", "User", color=USR)
+    fk("MessageParticipant", "usr", "User", color=USR)
+    fk("Notification", "usr", "User", color=USR)
 
-    # User <-> MarketplaceItem
-    assoc("User", "MarketplaceItem", "lists",
-          src_mult="1", dst_mult="0..*", owner="src")
+    # Carpool internal links (red bundle)
+    CAR = CLUSTERS["carpool"]["border"]
+    fk("RideBooking", "ride", "Ride", color=CAR)
+    fk("Rating", "trip", "Ride", color=CAR)
+    fk("Group", "ride", "Ride", color=CAR, style="dashed",
+       label="ride-bound only")
 
-    # Group <-> GroupMember
-    assoc("Group", "GroupMember", "contains",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # User <-> GroupMember
-    assoc("User", "GroupMember", "member of",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # Group <-> GroupMessage
-    assoc("Group", "GroupMessage", "carries",
-          src_mult="1", dst_mult="0..*", owner="src")
-    # User -> GroupMessage (sender) intentionally omitted to reduce
-    # User-as-hub clutter; "member of" already records the User-Group relation.
-    # Ride <-> Group (ride_carpool kind)
-    assoc("Ride", "Group", "spawns ride_carpool",
-          src_mult="1", dst_mult="0..1", owner="src",
-          style="dashed", color="#7D6608")
+    # Activities internal links (green bundle)
+    ACT = CLUSTERS["activities"]["border"]
+    fk("ActivityParticipant", "act", "Activity", color=ACT)
+    fk("ActivityCheckin", "part", "ActivityParticipant", color=ACT)
 
-    # Message + MessageParticipant
-    assoc("User", "Message", "sends DM",
-          src_mult="1", dst_mult="0..*", owner="src")
-    assoc("Message", "MessageParticipant", "addressed to",
-          src_mult="1", dst_mult="1..*", owner="src")
-    # User -> MessageParticipant omitted (is_read flag is the only payload;
-    # transitive via Message.sender_id keeps the diagram less crowded).
+    # Messaging internal links (purple bundle)
+    MSG = CLUSTERS["messaging"]["border"]
+    fk("GroupMember", "group", "Group", color=MSG)
+    fk("GroupMessage", "group", "Group", color=MSG)
+    fk("MessageParticipant", "msg", "Message", color=MSG)
 
-    # Notification (recipient = User)
-    assoc("User", "Notification", "receives",
-          src_mult="1", dst_mult="0..*", owner="src")
-
-    # Wxgroup notice references source rows polymorphically via
-    # (source_type, source_id).  Render a single annotated note instead
-    # of three near-identical dashed edges (which would crowd the layout).
-    g.node(
-        "wx_note",
-        "polymorphic association:\n"
-        "(source_type, source_id) -> Ride / MarketplaceItem / Activity\n"
-        "snapshot 2026-04-23: 16 ride / 62 mkt / 4 act = 82",
-        shape="note", style="filled", fillcolor="#FEF9E7",
-        color=CROSS_BORDER, fontcolor=CROSS_BORDER, fontsize="9",
-    )
-    g.edge("WxgroupNoticeRecord", "wx_note",
-           style="dashed", color=CROSS_BORDER, arrowhead="none",
-           constraint="false")
-
-    pdf, png = render_dot(g, "mbse_class_diagram_db")
+    pdf, png = render_dot(g, "mbse_class_diagram_db", dpi=300)
     register("mbse_class_diagram_db", "ok", png_path=png)
     return pdf, png
 

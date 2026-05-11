@@ -310,12 +310,50 @@ multi-entity State Machine, and a SysML Parametric Diagram.
 \end{figure*}
 ```
 
+## Round-3 additions
+
+Three additional `mbse_*` figures rendered against the same 2026-04-23
+production snapshot. They complete the standardized MBSE-course diagram
+set with a UML Component Diagram (lollipop / socket interface notation),
+a SysML Requirement Diagram (graphical alternative to the spec table),
+and a closed-loop control diagram for the §5.18 Continuous Optimization
+Loop.
+
+| # | Stem | Inserts at | Caption (1 line) |
+|---|------|------------|------------------|
+| M17 | `mbse_component_diagram` | §5.1 platform overview (after Figure mbse-class-db) | UML Component Diagram: 9 «package» containers (Auth, Carpool, Marketplace, Activity, Group, Message, Notification, Points, Rating) with provided-interface lollipops, required-interface sockets, and dashed «use» dependency arrows; Points subsystem rendered with dashed border (designed-but-inert in production). |
+| M18 | `mbse_requirement_diagram` | §5.16 HoQ (after Figure mbse-req-spec) | SysML Requirement Diagram: 12 «requirement» blocks R.1-R.12 in a 4×3 grid with «derive» arrows from F1-F6 findings (left), «satisfy» arrows from 7 subsystem blocks (right), «verify» arrows from TP.1-TP.12 (bottom), and «refine» arrows for inter-requirement elaboration. |
+| M19 | `mbse_continuous_opt_loop` | §5.18 Continuous Optimization Loop opener | Closed-loop control diagram: 4 telemetry channels → summing junction (Σ) → monthly snapshot review (human-in-the-loop icon) → HoQ refresh → release-track decisions → 3 release tracks (points / dispute-window / institution-whitelist) → Codebase deploy → dashed monthly feedback loop with clock icon. |
+
+## LaTeX include lines (paste-ready, Round-3 block)
+
+```latex
+% --- MBSE Round-3 additions (mbse_*) ---
+\begin{figure*}[t]\centering
+  \includegraphics[width=\textwidth]{pic/mbse_component_diagram.pdf}
+  \caption{UML Component Diagram for the \campusride{} v4.4 backend. Nine \texttt{«package»} containers group the 18 active components (Auth: \texttt{AuthController}, \texttt{EmailService}, \texttt{authMiddleware}; Carpool: \texttt{CarpoolingController}; Marketplace: \texttt{MarketplaceController}; Activity: \texttt{ActivityController}, \texttt{ActivityCheckinService}; Group: \texttt{GroupController}, \texttt{rideCarpoolGroupService}; Message: \texttt{MessageController}, \texttt{messageService}; Notification: \texttt{NotificationService}, \texttt{SocketIO Hub}; Points: \texttt{PointsController}, \texttt{pointsService}; Rating: \texttt{RatingController}, \texttt{ratingService}; plus the external \texttt{wechatLinkService} sidecar). Provided interfaces are rendered as lollipops (\texttt{IIdentityVerify}, \texttt{IJWTAuth}, \texttt{INotification}, \texttt{ISocketEmit}, \texttt{IRideCRUD}, \texttt{IRideCarpoolGroup}, \texttt{IGeoCheckin}, \texttt{IMessageSend}, \texttt{IPointsAward}, \texttt{IRatingUpsert}, \texttt{IEmailDeliver}, \texttt{IWeChatLink}); required interfaces as socket arcs; dashed \texttt{«use»} arrows connect required to provided ends. The Points components are rendered with dashed borders to flag that they are designed-but-inert in production (\texttt{point\_rules}\,$=$\,0 rows). The implicit \texttt{IJWTAuth} dependency from every controller to \texttt{authMiddleware} is rendered with light dotted edges to avoid spaghetti.}
+  \label{fig:mbse-component}
+\end{figure*}
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=\textwidth]{pic/mbse_requirement_diagram.pdf}
+  \caption{SysML Requirement Diagram for \campusride{} v4.4 -- the graphical alternative to the requirements specification of Figure~\ref{fig:mbse-req-spec}. Twelve \texttt{«requirement»} rectangles R.1--R.12 are arranged in a 4$\times$3 grid in the centre. Six F-finding boxes (F1: WTP for .edu; F2: Driver supply; F3: Safety WTP; F4: Identity-verified motivation; F5: Driver tolerance; F6: Long-distance supply) appear on the left, connected to the requirements they justify via \texttt{«derive»} arrows (dashed, open triangle). Seven \texttt{«block»} subsystems (Auth, Substrate, Carpool, Rating, Messaging, Outreach, Points) appear on the right, connected via \texttt{«satisfy»} arrows (solid, filled triangle). Twelve test procedures TP.1--TP.12 appear at the bottom, connected via \texttt{«verify»} arrows (dashed, open triangle). Four \texttt{«refine»} arrows (dotted purple) record intra-requirement elaborations: R.5\,$\to$\,R.4, R.6\,$\to$\,R.5, R.7\,$\to$\,R.5, R.11\,$\to$\,R.8.}
+  \label{fig:mbse-req-diagram}
+\end{figure*}
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=\textwidth]{pic/mbse_continuous_opt_loop.pdf}
+  \caption{Continuous Optimization Loop for \campusride{} v4.4 rendered as a control-system block diagram. Four telemetry channels (Registration cadence: 3\,/\,70\,/\,111\,$=$\,184; Notification fan-out residue: 54 rows; WeChat outreach counter: 82 rows; User feedback inbox: 10 \texttt{system\_messages}) feed a summing junction $\Sigma$ that drives the Monthly snapshot review block (human-in-the-loop). The review feeds the HoQ refresh (Figure~\ref{fig:hoq}\,/\,\ref{fig:mbse-req-spec}), which feeds Release-track decisions. Three release tracks branch off: (1)~Provision points subsystem (EC10), (2)~Add dispute-window mechanism (EC5\,/\,EC7), (3)~Institution-domain whitelist (EC12). All three converge on Codebase deploy (Railway push). The closing dashed feedback path returns from Codebase deploy to the four telemetry channels at a monthly cadence (clock icon).}
+  \label{fig:mbse-cont-opt}
+\end{figure*}
+```
+
 ## Notes for the maintainer
 
 - Original 20 `mbe_*` figures + 12 round-1 `mbse_*` figures + 4 round-2
-  `mbse_*` figures live at `output/figures/{mbe,mbse}_*.{pdf,png}`
-  (72 files total) and are registered as `status: ok` in
-  `output/figures/viz_results.json`.
+  `mbse_*` figures + 3 round-3 `mbse_*` figures live at
+  `output/figures/{mbe,mbse}_*.{pdf,png}` (78 files total) and are
+  registered as `status: ok` in `output/figures/viz_results.json`.
 - Per-stem renderer modules: `scripts/{mbe,mbse}_<stem>.py`. Helpers: `scripts/_mbe_helpers.py`.
 - The auto-loader in `scripts/render_mbe_figures.py` now picks up both
   `mbe_*.py` and `mbse_*.py` patterns.

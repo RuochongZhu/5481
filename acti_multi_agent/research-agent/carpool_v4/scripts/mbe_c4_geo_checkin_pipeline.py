@@ -1,26 +1,9 @@
 """mbe_c4 — Geo-Verified Activity Check-in Pipeline.
 
-Vertical (TB) pipeline for activity check-in flow with location verification.
-Source-of-truth:
-  campusride-backend/src/services/activity-checkin.service.js:31-191
-
-Pipeline stages (top to bottom):
-  1) Client POST request
-  2) canUserCheckin guard (line 31)
-  3) is_checkin_period time-window guard (Postgres function)
-  4) location_verification branch (decision diamond)
-  5) calculate_distance Haversine RPC + radius check
-  6) INSERT activity_checkins
-  7) UPDATE activity_participants
-  8) awardPoints -> point_transactions + increment_user_points RPC
-  9) PL/pgSQL trigger update_activity_participant_count
-
-Color legend:
-  - Service-call: light blue
-  - DB INSERT/UPDATE: light green
-  - Decision diamond: yellow
-  - Guard rejections (red dashed)
-  - RPC: orange
+A conceptual check-in funnel for HCI readers. The participant moves from
+left to right through two design gates (time window, distance), then is
+either checked in (and rewarded) or quietly turned away. Spoof attempts
+leave a forensic trail by design.
 """
 
 from __future__ import annotations
@@ -30,303 +13,241 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _mbe_helpers import renderer, make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer, RIDER_COLOR,
+)
 
 
-# Palette ---------------------------------------------------------------------
-SVC_FILL = "#D6EAF8"      # light blue
-SVC_BORDER = "#1F618D"
-
-DB_FILL = "#D5F5E3"       # light green
-DB_BORDER = "#1E8449"
-
-DEC_FILL = "#FCF3CF"      # yellow
-DEC_BORDER = "#B7950B"
-
-RPC_FILL = "#FAE5D3"      # orange
-RPC_BORDER = "#B9540B"
-
-REJ_COLOR = "#C0392B"     # red (dashed) — guard rejections
-
-CLIENT_FILL = "#E8DAEF"
-CLIENT_BORDER = "#6C3483"
-
-ANNOT_FILL = "#FBFCFC"
-ANNOT_BORDER = "#566573"
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"
+NEUTRAL = "#566573"
+REJECT_TINT = "#B0B7BC"
 
 
 @renderer("mbe_c4_geo_checkin_pipeline")
 def render():
-    g = make_digraph("c4_geo_checkin", rankdir="TB")
-    g.attr(
-        nodesep="0.35", ranksep="0.55", splines="spline",
-        label=(
-            "Geo-Verified Activity Check-in Pipeline  "
-            "(services/activity-checkin.service.js:31-191)"
-        ),
-        labelloc="t", fontsize="14", fontname="Helvetica-Bold",
-    )
-    g.attr("node", fontsize="10")
-    g.attr("edge", fontsize="9")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Polygon
 
-    # 1) Client request
-    g.node(
-        "client",
-        label=(
-            "<<B>1. Client</B><BR/>"
-            "POST /api/v1/activities/checkin<BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "body: { activity_id,<BR/>"
-            "  user_location: { latitude, longitude, accuracy } }"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=CLIENT_FILL, color=CLIENT_BORDER, penwidth="1.6",
-    )
+    fig, ax = plt.subplots(figsize=(14, 6.0))
 
-    # 2) canUserCheckin guard
-    g.node(
-        "guard_can_checkin",
-        label=(
-            "<<B>2. canUserCheckin guard</B>"
-            "<FONT POINT-SIZE=\"9\"> [line 31]</FONT><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "activity.checkin_enabled = true<BR/>"
-            "activity.status IN ('ongoing','published','upcoming')<BR/>"
-            "user has activity_participants row<BR/>"
-            "user not already checked_in"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=SVC_FILL, color=SVC_BORDER, penwidth="1.4",
-    )
+    X_MIN, X_MAX = 0.0, 16.0
+    Y_MAIN = 3.2          # main funnel row
+    Y_REJECT = 1.5        # quiet rejection row (faint)
+    Y_FORENSIC = 4.9      # side annotation row
 
-    # 3) is_checkin_period (time window) guard
-    g.node(
-        "guard_time",
-        label=(
-            "<<B>3. is_checkin_period guard</B>"
-            "<FONT POINT-SIZE=\"9\"> [Postgres fn]</FONT><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "checkin_start = start_time - checkin_start_offset (def 30 min)<BR/>"
-            "checkin_end   = end_time   + checkin_end_offset   (def 30 min)"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=SVC_FILL, color=SVC_BORDER, penwidth="1.4",
+    # ------------------------------------------------------------------
+    # Funnel band: a faint wide-to-narrow polygon behind the main row
+    # ------------------------------------------------------------------
+    funnel = Polygon(
+        [
+            (0.6, Y_MAIN + 1.05),
+            (15.4, Y_MAIN + 0.45),
+            (15.4, Y_MAIN - 0.45),
+            (0.6, Y_MAIN - 1.05),
+        ],
+        closed=True,
+        facecolor=RIDER_COLOR, alpha=0.05,
+        edgecolor=RIDER_COLOR, linewidth=0.8,
     )
+    ax.add_patch(funnel)
 
-    # 4) Decision diamond — location_verification branch
-    g.node(
-        "branch_loc",
-        label=(
-            "4. activity.location_verification ?"
-        ),
-        shape="diamond", style="filled",
-        fillcolor=DEC_FILL, color=DEC_BORDER, penwidth="1.8",
-        height="1.0", width="3.0", fixedsize="false",
-        margin="0.18",
-    )
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def card(x, y, w, h, text, color, *, fc="white", fs=10.0,
+             alpha=1.0, bold=False, text_color="#1B2631"):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.4, alpha=alpha,
+            )
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color=text_color,
+            fontweight="bold" if bold else "normal",
+        )
 
-    # 5) Haversine RPC distance check
-    g.node(
-        "rpc_distance",
-        label=(
-            "<<B>5. calculate_distance RPC</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "Supabase RPC (Haversine)<BR/>"
-            "calculate_distance(lat1, lon1, lat2, lon2)<BR/>"
-            "compare to verification_radius<BR/>"
-            "(default 100m, from activity.max_checkin_distance)<BR/>"
-            "if distance &gt; radius: error { distance_meters }<BR/>"
-            "else: location_verified = true"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=RPC_FILL, color=RPC_BORDER, penwidth="1.6",
-    )
+    def diamond(x, y, w, h, text, *, color=ACCENT_COLOR,
+                fc="#FEF5E7", fs=9.5):
+        pts = [(x, y + h / 2), (x + w / 2, y),
+               (x, y - h / 2), (x - w / 2, y)]
+        ax.add_patch(
+            Polygon(pts, closed=True,
+                    facecolor=fc, edgecolor=color, linewidth=1.6)
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color="#1B2631",
+            fontweight="bold",
+        )
 
-    # 6) INSERT activity_checkins
-    g.node(
-        "db_insert_checkin",
-        label=(
-            "<<B>6. INSERT activity_checkins</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "(activity_id, user_id, participation_id, checkin_time,<BR/>"
-            "user_location JSONB, activity_location JSONB,<BR/>"
-            "distance_meters, location_verified, verification_radius,<BR/>"
-            "device_info JSONB, ip_address)"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-    )
+    def arrow(x0, y0, x1, y1, color, *, lw=1.4, ls="-", alpha=1.0,
+              style="-|>"):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle=style, color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=12, alpha=alpha,
+            )
+        )
 
-    # 7) UPDATE activity_participants
-    g.node(
-        "db_update_part",
-        label=(
-            "<<B>7. UPDATE activity_participants</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "SET attendance_status='checked_in',<BR/>"
-            "checkin_time = NOW(), checked_in = true"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-    )
+    # ------------------------------------------------------------------
+    # Stage positions along the funnel (5 main stages)
+    # ------------------------------------------------------------------
+    # 1. Open app  -> 2. Registered? -> 3. Time window -> 4. Distance ->
+    # 5. Checked in + small reward
+    STAGES = [
+        # (x, kind, payload)
+        (1.7, "card",    "Participant\nopens app", RIDER_COLOR, True),
+        (4.6, "card",    "Registered\nfor this activity?", PLATFORM_COLOR, False),
+        (7.8, "diamond", "Within\ncheck-in window\n(~±30 min)"),
+        (10.9, "diamond", "At the venue\n(within ~100 m)"),
+        (14.2, "card",   "Checked in\n+ small reward", ACCENT_COLOR, True),
+    ]
 
-    # 8) Award points — service + RPC
-    g.node(
-        "svc_award",
-        label=(
-            "<<B>8. awardPoints()</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "{ user_id, ruleType: 'activity_checkin', points: 5 }<BR/>"
-            "INSERT point_transactions"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=SVC_FILL, color=SVC_BORDER, penwidth="1.4",
-    )
-    g.node(
-        "rpc_increment",
-        label=(
-            "<<B>increment_user_points RPC</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "atomic balance += 5"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=RPC_FILL, color=RPC_BORDER, penwidth="1.4",
-    )
+    # Stage 1: open app (rider color)
+    card(1.7, Y_MAIN, 2.1, 0.95, "Participant\nopens app",
+         RIDER_COLOR, bold=True)
 
-    # 9) Trigger
-    g.node(
-        "trigger",
-        label=(
-            "<<B>9. Trigger update_activity_participant_count</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "PL/pgSQL: keeps activities.current_participants in sync<BR/>"
-            "(decrement out of 'registered'; no-op increment-side here<BR/>"
-            "since user transitioned out, not in)"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-    )
+    # Stage 2: registered? (platform gate)
+    card(4.6, Y_MAIN, 2.2, 0.95, "Registered\nfor this activity?",
+         PLATFORM_COLOR, bold=True)
 
-    # Reject sink (403)
-    g.node(
-        "reject_403",
-        label="403 Forbidden",
-        shape="octagon", style="filled",
-        fillcolor="#FADBD8", color=REJ_COLOR, penwidth="1.4",
-        fontcolor=REJ_COLOR, fontname="Helvetica-Bold",
-    )
-    # Reject sink (distance exceeded)
-    g.node(
-        "reject_distance",
-        label=(
-            "<<B>error</B><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "{ distance_meters } returned<BR/>"
-            "for client display"
-            "</FONT>>"
-        ),
-        shape="octagon", style="filled",
-        fillcolor="#FADBD8", color=REJ_COLOR, penwidth="1.4",
-        fontcolor=REJ_COLOR,
-    )
+    # Stage 3: time-window gate (accent diamond)
+    diamond(7.8, Y_MAIN, 2.5, 1.4,
+            "Within check-in window\n(~±30 min around\nstart / end)")
 
-    # Side annotations
-    g.node(
-        "annot_forensic",
-        label=(
-            "Spoof attempts leave a forensic\\l"
-            "trail in device_info + ip_address\\l"
-        ),
-        shape="note", style="filled",
-        fillcolor="#FEF9E7", color=ANNOT_BORDER, fontsize="9",
+    # Stage 4: distance gate (accent diamond)
+    diamond(10.9, Y_MAIN, 2.4, 1.4,
+            "At the venue\n(within ~100 m)")
+
+    # Stage 5: success terminal (accent fill)
+    card(14.2, Y_MAIN, 2.4, 0.95,
+         "Check-in record\n+ small reward",
+         ACCENT_COLOR, fc="#FEF5E7", bold=True)
+
+    # ------------------------------------------------------------------
+    # Forward arrows along the main funnel
+    # ------------------------------------------------------------------
+    arrow(2.85, Y_MAIN, 3.45, Y_MAIN, NEUTRAL)
+    arrow(5.85, Y_MAIN, 6.45, Y_MAIN, NEUTRAL)
+    arrow(9.20, Y_MAIN, 9.55, Y_MAIN, NEUTRAL)
+    arrow(12.25, Y_MAIN, 12.95, Y_MAIN, NEUTRAL)
+
+    # ------------------------------------------------------------------
+    # Reject lane (faint) — three quiet rejection paths
+    # ------------------------------------------------------------------
+    reject_label = "Quietly turned away"
+    # Reject hub on the lower row
+    card(7.8, Y_REJECT, 3.3, 0.7, reject_label, REJECT_TINT,
+         fc="#F4F6F7", fs=9.5, text_color=NEUTRAL)
+
+    # 2 -> reject (not registered)
+    arrow(4.6, Y_MAIN - 0.5, 6.4, Y_REJECT + 0.35, REJECT_TINT,
+          ls=(0, (3, 3)), alpha=0.9)
+    ax.text(5.3, (Y_MAIN + Y_REJECT) / 2 + 0.05,
+            "not registered", ha="center", va="center",
+            fontsize=8.5, color=NEUTRAL, style="italic")
+
+    # 3 -> reject (outside window)
+    arrow(7.8, Y_MAIN - 0.7, 7.8, Y_REJECT + 0.36, REJECT_TINT,
+          ls=(0, (3, 3)), alpha=0.9)
+    ax.text(8.32, (Y_MAIN + Y_REJECT) / 2,
+            "outside window", ha="left", va="center",
+            fontsize=8.5, color=NEUTRAL, style="italic")
+
+    # 4 -> reject (too far)
+    arrow(10.9, Y_MAIN - 0.7, 9.3, Y_REJECT + 0.35, REJECT_TINT,
+          ls=(0, (3, 3)), alpha=0.9)
+    ax.text(10.35, (Y_MAIN + Y_REJECT) / 2 + 0.05,
+            "too far away", ha="center", va="center",
+            fontsize=8.5, color=NEUTRAL, style="italic")
+
+    # ------------------------------------------------------------------
+    # Forensic-trail side annotation (small, off to the side)
+    # ------------------------------------------------------------------
+    # Anchored above the distance gate (where spoof attempts are most likely).
+    forensic_x = 10.9
+    ax.add_patch(
+        FancyBboxPatch(
+            (forensic_x - 2.05, Y_FORENSIC - 0.35), 4.1, 0.7,
+            boxstyle="round,pad=0.04",
+            facecolor="#FEF9E7", edgecolor=ACCENT_COLOR, linewidth=1.0,
+        )
     )
-    g.node(
-        "annot_reuse",
-        label=(
-            "Same Haversine primitive available for\\l"
-            "rideshare pickup-point verification\\l"
-            "(mbe_c1 reuse)\\l"
-        ),
-        shape="note", style="filled",
-        fillcolor="#FEF9E7", color=ANNOT_BORDER, fontsize="9",
+    ax.text(
+        forensic_x, Y_FORENSIC,
+        "Spoof attempts captured: device + IP\n"
+        "(privacy-respecting forensic trail)",
+        ha="center", va="center",
+        fontsize=8.8, color="#7D6608", style="italic",
+    )
+    arrow(forensic_x, Y_FORENSIC - 0.38,
+          forensic_x, Y_MAIN + 0.72,
+          ACCENT_COLOR, ls=(0, (2, 2)), lw=1.0, alpha=0.8,
+          style="-")
+
+    # ------------------------------------------------------------------
+    # Stage labels along the bottom (a thin guide axis)
+    # ------------------------------------------------------------------
+    y_axis = 0.45
+    ax.plot([0.6, 15.4], [y_axis, y_axis],
+            color=NEUTRAL, linewidth=0.8, alpha=0.6)
+    STAGE_TICKS = [
+        (1.7, "1. Open app"),
+        (4.6, "2. Identity gate"),
+        (7.8, "3. Time gate"),
+        (10.9, "4. Distance gate"),
+        (14.2, "5. Confirm + reward"),
+    ]
+    for x, lbl in STAGE_TICKS:
+        ax.plot([x, x], [y_axis - 0.05, y_axis + 0.05],
+                color=NEUTRAL, linewidth=0.8, alpha=0.6)
+        ax.text(x, y_axis - 0.18, lbl,
+                ha="center", va="top", fontsize=9, color=NEUTRAL,
+                style="italic")
+
+    # ------------------------------------------------------------------
+    # Snapshot footer (formative, no production check-ins yet)
+    # ------------------------------------------------------------------
+    ax.text(
+        8.0, -0.35,
+        "Snapshot: 0 check-ins recorded in production "
+        "(formative; design exists ahead of deployment)",
+        ha="center", va="center",
+        fontsize=9, color=NEUTRAL, style="italic",
     )
 
-    # Snapshot footer
-    g.node(
-        "footer",
-        label=(
-            "<<I>2026-04-23 snapshot: 0 activity_checkins rows; "
-            "4 historical activity_registered notifications attest to a "
-            "Feb 2026 activity run whose<BR/>transactional rows have since been "
-            "cleaned.</I>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=ANNOT_FILL, color=ANNOT_BORDER, penwidth="1.0",
-        fontsize="10", margin="0.18",
+    # ------------------------------------------------------------------
+    # Title + italic subtitle
+    # ------------------------------------------------------------------
+    ax.set_title(
+        "Geo-verified activity check-in",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        8.0, 5.85,
+        "Two lightweight gates (time window, venue distance) keep check-in "
+        "cheap to pass for honest participants while leaving a forensic "
+        "trail for spoof attempts.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
     )
 
-    # ---- Edges (main happy path) -------------------------------------------
-    g.edge("client", "guard_can_checkin", color=SVC_BORDER, arrowhead="vee")
-    g.edge("guard_can_checkin", "guard_time", color=SVC_BORDER, arrowhead="vee")
-    g.edge("guard_time", "branch_loc", color=SVC_BORDER, arrowhead="vee")
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(-0.7, 6.3)
+    ax.set_aspect("auto")
+    ax.axis("off")
 
-    # Branch — yes (verify location) -> RPC
-    g.edge("branch_loc", "rpc_distance",
-           label="true: verify",
-           color=DEC_BORDER, fontcolor=DEC_BORDER, arrowhead="vee")
-    # Branch — false (skip) -> straight to insert
-    g.edge("branch_loc", "db_insert_checkin",
-           label="false: skip",
-           color=DEC_BORDER, fontcolor=DEC_BORDER,
-           style="dashed", arrowhead="vee", constraint="false")
-
-    # RPC -> insert (within radius)
-    g.edge("rpc_distance", "db_insert_checkin",
-           label="distance <= radius",
-           color=RPC_BORDER, fontcolor=RPC_BORDER, arrowhead="vee")
-
-    # Continue main chain
-    g.edge("db_insert_checkin", "db_update_part",
-           color=DB_BORDER, arrowhead="vee")
-    g.edge("db_update_part", "svc_award", color=DB_BORDER, arrowhead="vee")
-    g.edge("svc_award", "rpc_increment", color=SVC_BORDER, arrowhead="vee")
-    g.edge("rpc_increment", "trigger", color=RPC_BORDER, arrowhead="vee")
-
-    # ---- Reject edges (red dashed) -----------------------------------------
-    g.edge("guard_can_checkin", "reject_403",
-           label="fail",
-           color=REJ_COLOR, fontcolor=REJ_COLOR,
-           style="dashed", arrowhead="vee", constraint="false")
-    g.edge("guard_time", "reject_403",
-           label="out of window",
-           color=REJ_COLOR, fontcolor=REJ_COLOR,
-           style="dashed", arrowhead="vee", constraint="false")
-    g.edge("rpc_distance", "reject_distance",
-           label="distance > radius",
-           color=REJ_COLOR, fontcolor=REJ_COLOR,
-           style="dashed", arrowhead="vee", constraint="false")
-
-    # ---- Side annotations (non-constraint) ---------------------------------
-    g.edge("db_insert_checkin", "annot_forensic",
-           style="dotted", color=ANNOT_BORDER, arrowhead="none",
-           constraint="false")
-    g.edge("rpc_distance", "annot_reuse",
-           style="dotted", color=ANNOT_BORDER, arrowhead="none",
-           constraint="false")
-
-    # Footer anchored below trigger (invisible edge to keep it last)
-    g.edge("trigger", "footer", style="invis")
-
-    pdf, png = render_dot(g, "mbe_c4_geo_checkin_pipeline", dpi=300)
+    pdf, png = save_mpl("mbe_c4_geo_checkin_pipeline", dpi=300)
     register("mbe_c4_geo_checkin_pipeline", "ok", png_path=png)
     print(f"  pdf -> {pdf}")
     print(f"  png -> {png}")

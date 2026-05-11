@@ -1,11 +1,20 @@
-"""mbe_d3 — WeChat Group Outreach Pipeline.
+"""mbe_d3 — WeChat outreach pipeline (grassroots-to-platform bridge).
 
-LR pipeline showing how module events become WeChat-group push notices via
-the `wxgroup_notice_record` queue + batch poller + link service.
+A systems-level LR pipeline showing how three internal producers fan into a
+single outreach queue, get batched, and arrive at external WeChat groups.
+Implementation detail (table names, endpoint paths, code lines, SQL) is
+collapsed into design-intent labels per the unified style guide.
 
-Source-of-truth:
-  campusride-backend/app.js:165-281, 313-328
-  campusride-backend/src/services/wechat-link.service.js:81-88
+Design choices we surface explicitly:
+  - Shareable links built with a web fallback (deep-link to mini-program;
+    if the link API fails, the message still ships with a plain web URL).
+  - Batching is event-driven, not on a clock: dispatch when 3+ posts are
+    pending, or when the oldest pending post is over 24 hours old.
+
+Snapshot finding (2026-04-23): 82 posts (62 marketplace, 16 ride, 4
+activity), 2026-01-17 → 2026-04-11. Marketplace dominates outbound
+outreach but yielded zero buyer activity — cross-posting works but
+organic uptake hasn't followed.
 """
 
 from __future__ import annotations
@@ -15,289 +24,245 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _mbe_helpers import renderer, make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer,
+)
 
 
-# Palette ---------------------------------------------------------------------
-PROD_FILL = "#D6EAF8"      # producers — light blue tints
-PROD_BORDER = "#1F618D"
-PROD_FILL_HI = "#AED6F1"   # the largest producer (62/82)
-
-QUEUE_FILL = "#FCF3CF"     # yellow — queue table
-QUEUE_BORDER = "#B7950B"
-
-LINK_FILL = "#FAE5D3"      # orange — external API
-LINK_BORDER = "#B9540B"
-
-POLL_FILL = "#D5F5E3"      # green — server batch logic
-POLL_BORDER = "#1E8449"
-
-DEC_FILL = "#FCF3CF"
-DEC_BORDER = "#B7950B"
-
-WECHAT_FILL = "#FADBD8"    # pink/light red — external sink
-WECHAT_BORDER = "#922B21"
-
-ANNOT_FILL = "#FBFCFC"
-ANNOT_BORDER = "#566573"
+PLATFORM_COLOR = "#1A5276"   # navy — platform internals (queue, dispatcher)
+PRODUCER_COLOR = "#2980B9"   # blue — producer events
+SINK_COLOR = "#C0392B"       # red — external sink (WeChat groups)
+ACCENT_COLOR = "#F39C12"     # orange — design highlight
+NEUTRAL = "#566573"
 
 
 @renderer("mbe_d3_wechat_outreach_pipeline")
 def render():
-    g = make_digraph("d3_wechat", rankdir="LR")
-    g.attr(
-        nodesep="0.30", ranksep="0.45", splines="spline",
-        label=(
-            "WeChat Group Outreach Pipeline  "
-            "(app.js:165-281, 313-328 · wechat-link.service.js:81-88)"
-        ),
-        labelloc="t", fontsize="14", fontname="Helvetica-Bold",
-    )
-    g.attr("node", fontsize="10")
-    g.attr("edge", fontsize="9")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-    # ---- LEFT: Producers cluster ------------------------------------------
-    with g.subgraph(name="cluster_producers") as c:
-        c.attr(
-            label="Producers (module events → INSERT into queue)",
-            style="rounded,filled", fillcolor="#EBF5FB",
-            color=PROD_BORDER, fontname="Helvetica-Bold", fontsize="11",
-            margin="10",
+    fig, ax = plt.subplots(figsize=(15, 8.0))
+
+    X_MIN, X_MAX = 0.0, 16.5
+    Y_MIN, Y_MAX = -1.6, 7.6
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def card(x, y, w, h, text, color, *, fc="white", fs=10,
+             bold=False, alpha=1.0):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.4, alpha=alpha,
+            )
         )
-        c.node(
-            "prod_ride",
-            label=(
-                "<<B>New ride created</B><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "rideshare module<BR/>"
-                "content: \"rideshare 内容...\"<BR/>"
-                "<B>16 / 82</B> rows in snapshot"
-                "</FONT>>"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=PROD_FILL, color=PROD_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "prod_market",
-            label=(
-                "<<B>New marketplace listing</B><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "marketplace module<BR/>"
-                "content: \"二手上新 &lt;title&gt;...\"<BR/>"
-                "<B>62 / 82</B> rows  (largest producer)"
-                "</FONT>>"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=PROD_FILL_HI, color=PROD_BORDER, penwidth="1.8",
-        )
-        c.node(
-            "prod_act",
-            label=(
-                "<<B>New activity published</B><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "activities module<BR/>"
-                "content: \"新活动 &lt;title&gt;...\"<BR/>"
-                "<B>4 / 82</B> rows"
-                "</FONT>>"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=PROD_FILL, color=PROD_BORDER, penwidth="1.4",
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color="#1B2631",
+            fontweight="bold" if bold else "normal",
+            wrap=True,
         )
 
-    # ---- CENTER 1: link service (used during row construction) ------------
-    g.node(
-        "link_svc",
-        label=(
-            "<<B>wechatLinkService.getBestNoticeLink(h5_url)</B>"
-            "<FONT POINT-SIZE=\"9\"> [wechat-link.service.js:81-88]</FONT><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "<B>try</B> generateMiniProgramShortLink(target_url)<BR/>"
-            "  → WeChat API: page_url_query = {queryKey}={target_url}<BR/>"
-            "<B>fallback</B> on any API failure: return raw H5 URL<BR/>"
-            "(append resulting link to message text)"
-            "</FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=LINK_FILL, color=LINK_BORDER, penwidth="1.6",
+    def arrow(x0, y0, x1, y1, color, *, lw=1.4, ls="-"):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle="-|>", color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=12,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Column x-positions
+    # ------------------------------------------------------------------
+    X_PROD = 2.2
+    X_QUEUE = 6.4
+    X_DISPATCH = 10.6
+    X_SINK = 14.6
+
+    # ------------------------------------------------------------------
+    # Producer cards (left column)
+    # ------------------------------------------------------------------
+    PROD_W, PROD_H = 3.2, 0.95
+    Y_TRIP = 4.8
+    Y_LIST = 3.2
+    Y_ACT = 1.6
+
+    card(X_PROD, Y_TRIP, PROD_W, PROD_H,
+         "New trip posted\n(rideshare)", PRODUCER_COLOR, bold=True)
+    card(X_PROD, Y_LIST, PROD_W, PROD_H,
+         "New marketplace listing\n(buy / sell)", PRODUCER_COLOR, bold=True)
+    card(X_PROD, Y_ACT, PROD_W, PROD_H,
+         "New activity published\n(events)", PRODUCER_COLOR, bold=True)
+
+    ax.text(
+        X_PROD, 5.75,
+        "Producers",
+        ha="center", va="center", fontsize=11, fontweight="bold",
+        color=PRODUCER_COLOR,
     )
 
-    # ---- CENTER 2: queue table -------------------------------------------
-    g.node(
-        "queue",
-        label=(
-            "<<B>wxgroup_notice_record</B>  "
-            "<FONT POINT-SIZE=\"9\">(queue table)</FONT><BR/>"
-            "<FONT POINT-SIZE=\"9\">"
-            "id · content TEXT · sendtime TIMESTAMPTZ (NULL = unsent)<BR/>"
-            "created_at · updated_at<BR/>"
-            "<B>snapshot:</B> 82 rows · 2026-01-17 → 2026-04-11"
-            "</FONT>>"
-        ),
-        shape="cylinder", style="filled",
-        fillcolor=QUEUE_FILL, color=QUEUE_BORDER, penwidth="2.0",
-        fontsize="11",
+    # ------------------------------------------------------------------
+    # Queue (center-left)
+    # ------------------------------------------------------------------
+    QUEUE_W, QUEUE_H = 3.0, 1.4
+    Y_QUEUE = 3.2
+    card(X_QUEUE, Y_QUEUE, QUEUE_W, QUEUE_H,
+         "Outreach queue\n(pending posts,\nawaiting dispatch)",
+         PLATFORM_COLOR, bold=True)
+
+    ax.text(
+        X_QUEUE, 5.75,
+        "Platform",
+        ha="center", va="center", fontsize=11, fontweight="bold",
+        color=PLATFORM_COLOR,
     )
 
-    # ---- CENTER 3: Batch poller cluster -----------------------------------
-    with g.subgraph(name="cluster_poller") as c:
-        c.attr(
-            label="Batch poller endpoints",
-            style="rounded,filled", fillcolor="#E8F8F5",
-            color=POLL_BORDER, fontname="Helvetica-Bold", fontsize="11",
-            margin="10",
-        )
-        c.node(
-            "endpoint_v1",
-            label=(
-                "<<B>GET /wxgroup_notice_wait</B>"
-                "<FONT POINT-SIZE=\"9\"> [app.js:165]</FONT><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "original endpoint (one-row poll)"
-                "</FONT>>"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=POLL_FILL, color=POLL_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "endpoint_v2",
-            label=(
-                "<<B>GET /wxgroup_notice_wait_v2</B>"
-                "<FONT POINT-SIZE=\"9\"> [app.js:220]</FONT><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "v2 with batching"
-                "</FONT>>"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=POLL_FILL, color=POLL_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "batch_decision",
-            label=(
-                "<<B>Batch decision</B>"
-                "<FONT POINT-SIZE=\"9\"> [app.js:313-328]</FONT><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "trigger if <B>3+ unsent rows</B><BR/>"
-                "OR <B>oldest row ≥ 24h old</B>"
-                "</FONT>>"
-            ),
-            shape="diamond", style="filled",
-            fillcolor=DEC_FILL, color=DEC_BORDER, penwidth="1.8",
-            height="1.2", width="2.4", fixedsize="false", margin="0.18",
-        )
-        c.node(
-            "merge",
-            label=(
-                "<<B>Merge + dispatch</B><BR/>"
-                "<FONT POINT-SIZE=\"9\">"
-                "concat: \"1. notice1\\n\\n2. notice2\\n\\n3. notice3\"<BR/>"
-                "on dispatch: <B>UPDATE sendtime = NY_TIMEZONE_NOW</B><BR/>"
-                "for the batched record ids"
-                "</FONT>>"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=POLL_FILL, color=POLL_BORDER, penwidth="1.4",
-        )
-
-    # ---- RIGHT: WeChat groups sink ----------------------------------------
-    g.node(
-        "wechat_groups",
-        label=(
-            "<<B>External WeChat groups</B><BR/>"
-            "<FONT POINT-SIZE=\"10\">(Cornell student channels)</FONT><BR/>"
-            "<FONT POINT-SIZE=\"9\"><I>"
-            "Authors curate; out-of-band from<BR/>"
-            "platform identity verification"
-            "</I></FONT>>"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=WECHAT_FILL, color=WECHAT_BORDER, penwidth="1.8",
-        fontsize="11",
+    # Snapshot annotation under the queue (shifted right of the
+    # accent dotted line so they don't cross)
+    ax.text(
+        X_QUEUE + 0.6, Y_QUEUE - 1.4,
+        "Snapshot (2026-04-23): 82 posts\n"
+        "62 marketplace, 16 ride, 4 activity\n"
+        "2026-01-17 to 2026-04-11",
+        ha="center", va="center", fontsize=9, color=NEUTRAL, style="italic",
     )
 
-    # ---- Bottom annotations ----------------------------------------------
-    g.node(
-        "annot_bridge",
-        label=(
-            "Cross-posting bridges grassroots WeChat coordination practice\\l"
-            "(cf. §2.2 + §5.7.5) to platform-published events.\\l"
-        ),
-        shape="note", style="filled",
-        fillcolor="#FEF9E7", color=ANNOT_BORDER, fontsize="9",
+    # ------------------------------------------------------------------
+    # Shareable link callout (accent) — design highlight
+    # Sits along the producer -> queue path; producers append a deep-link
+    # to message text while building outreach content. Drawn as one
+    # callout attached via a dotted accent line to the queue intake.
+    # ------------------------------------------------------------------
+    LINK_W, LINK_H = 3.4, 1.05
+    X_LINK = X_PROD + 0.4   # slightly right of producer column, below it
+    Y_LINK = 0.0
+    card(
+        X_LINK, Y_LINK, LINK_W, LINK_H,
+        "Build shareable link\nWeChat short link API,\n"
+        "with plain web URL as fallback",
+        ACCENT_COLOR, fc="#FEF5E7", bold=True, fs=9.5,
     )
-    g.node(
-        "annot_uptake",
-        label=(
-            "62 marketplace pushes account for the platform's primary outbound\\l"
-            "channel — yet marketplace_items snapshot is all `removed`,\\l"
-            "suggesting cross-posting works but organic uptake hasn't followed\\l"
-            "(cf. §5.10).\\l"
-        ),
-        shape="note", style="filled",
-        fillcolor="#FEF9E7", color=ANNOT_BORDER, fontsize="9",
+    # Dotted accent line from the link callout up to the queue's left edge
+    # (intake side). Routed to avoid crossing the snapshot annotation.
+    arrow(X_LINK + LINK_W / 2 - 0.3, Y_LINK + LINK_H / 2,
+          X_QUEUE - QUEUE_W / 2 - 0.05, Y_QUEUE - 0.45,
+          ACCENT_COLOR, ls=":", lw=1.1)
+    ax.text(
+        X_LINK, Y_LINK + LINK_H / 2 + 0.25,
+        "Design choice",
+        ha="center", va="center", fontsize=9, color=ACCENT_COLOR,
+        style="italic", fontweight="bold",
     )
 
-    # ---- Edges: producers -> queue (with link_svc as side-call) -----------
-    # Each producer INSERTs directly into the queue; link_svc is a side
-    # helper invoked while building content (drawn off-rank below).
-    for src in ("prod_ride", "prod_market", "prod_act"):
-        g.edge(src, "queue",
-               label="INSERT (sendtime=NULL)",
-               color=PROD_BORDER, fontcolor=PROD_BORDER, arrowhead="vee")
-    # link_svc as a side-call (non-constraining) — every producer calls it
-    # while constructing the content text.
-    g.edge("prod_market", "link_svc",
-           label="getBestNoticeLink(h5_url)",
-           color=LINK_BORDER, fontcolor=LINK_BORDER,
-           style="dashed", arrowhead="vee", constraint="false")
-    g.edge("link_svc", "queue",
-           label="link appended",
-           color=LINK_BORDER, fontcolor=LINK_BORDER,
-           style="dashed", arrowhead="vee", constraint="false")
+    # ------------------------------------------------------------------
+    # Producer -> Queue arrows
+    # ------------------------------------------------------------------
+    for y in (Y_TRIP, Y_LIST, Y_ACT):
+        arrow(X_PROD + PROD_W / 2, y,
+              X_QUEUE - QUEUE_W / 2, Y_QUEUE,
+              PRODUCER_COLOR)
 
-    # ---- Edges: queue -> poller endpoints ---------------------------------
-    g.edge("queue", "endpoint_v1",
-           label="SELECT WHERE sendtime IS NULL",
-           color=QUEUE_BORDER, fontcolor=QUEUE_BORDER, arrowhead="vee")
-    g.edge("queue", "endpoint_v2",
-           label="SELECT unsent rows",
-           color=QUEUE_BORDER, fontcolor=QUEUE_BORDER, arrowhead="vee")
+    # Volume labels next to producer→queue arrows
+    ax.text(
+        (X_PROD + X_QUEUE) / 2 + 0.3, (Y_TRIP + Y_QUEUE) / 2 + 0.55,
+        "16", ha="center", va="center", fontsize=9, color=PRODUCER_COLOR,
+        fontweight="bold",
+    )
+    ax.text(
+        (X_PROD + X_QUEUE) / 2 + 0.3, Y_QUEUE + 0.18,
+        "62", ha="center", va="center", fontsize=10, color=PRODUCER_COLOR,
+        fontweight="bold",
+    )
+    ax.text(
+        (X_PROD + X_QUEUE) / 2 + 0.3, (Y_ACT + Y_QUEUE) / 2 - 0.55,
+        "4", ha="center", va="center", fontsize=9, color=PRODUCER_COLOR,
+        fontweight="bold",
+    )
 
-    # v2 path goes through batch_decision -> merge
-    g.edge("endpoint_v2", "batch_decision",
-           color=POLL_BORDER, arrowhead="vee")
-    g.edge("batch_decision", "merge",
-           label="3+ rows OR ≥24h",
-           color=DEC_BORDER, fontcolor=DEC_BORDER, arrowhead="vee")
-    g.edge("batch_decision", "endpoint_v2",
-           label="hold",
-           color=DEC_BORDER, fontcolor=DEC_BORDER,
-           style="dashed", arrowhead="vee", constraint="false")
+    # ------------------------------------------------------------------
+    # Batch dispatcher (center-right)
+    # ------------------------------------------------------------------
+    DISP_W, DISP_H = 3.4, 1.7
+    Y_DISP = 3.2
+    card(X_DISPATCH, Y_DISP, DISP_W, DISP_H,
+         "Batch dispatcher\n\n"
+         "Sends a batch when\n"
+         "3+ posts are pending,\n"
+         "or oldest is over 24 h old",
+         PLATFORM_COLOR, bold=True)
 
-    # v1 path goes straight to merge (single-row "merge")
-    g.edge("endpoint_v1", "merge",
-           label="single row",
-           color=POLL_BORDER, fontcolor=POLL_BORDER,
-           style="dashed", arrowhead="vee")
+    arrow(X_QUEUE + QUEUE_W / 2, Y_QUEUE,
+          X_DISPATCH - DISP_W / 2, Y_DISP,
+          PLATFORM_COLOR, lw=1.6)
+    ax.text(
+        (X_QUEUE + X_DISPATCH) / 2, Y_QUEUE + 0.35,
+        "pull pending",
+        ha="center", va="center", fontsize=9, color=NEUTRAL, style="italic",
+    )
 
-    # ---- Edges: merge -> wechat groups, and writeback to queue ------------
-    g.edge("merge", "wechat_groups",
-           label="push message",
-           color=POLL_BORDER, fontcolor=POLL_BORDER,
-           penwidth="1.6", arrowhead="vee")
-    g.edge("merge", "queue",
-           label="UPDATE sendtime = NOW",
-           color=POLL_BORDER, fontcolor=POLL_BORDER,
-           style="dotted", arrowhead="vee", constraint="false")
+    # ------------------------------------------------------------------
+    # External WeChat groups sink (right)
+    # ------------------------------------------------------------------
+    SINK_W, SINK_H = 3.4, 1.7
+    Y_SINK = 3.2
+    card(X_SINK, Y_SINK, SINK_W, SINK_H,
+         "External WeChat groups\n(Cornell student channels)\n\n"
+         "Authors curate; out-of-band\nfrom platform identity check",
+         SINK_COLOR, bold=True)
 
-    # ---- Annotation hookups (non-constraining) ----------------------------
-    g.edge("wechat_groups", "annot_bridge",
-           style="dotted", color=ANNOT_BORDER, arrowhead="none",
-           constraint="false")
-    g.edge("prod_market", "annot_uptake",
-           style="dotted", color=ANNOT_BORDER, arrowhead="none",
-           constraint="false")
+    ax.text(
+        X_SINK, 5.75,
+        "External",
+        ha="center", va="center", fontsize=11, fontweight="bold",
+        color=SINK_COLOR,
+    )
 
-    pdf, png = render_dot(g, "mbe_d3_wechat_outreach_pipeline", dpi=200)
+    arrow(X_DISPATCH + DISP_W / 2, Y_DISP,
+          X_SINK - SINK_W / 2, Y_SINK,
+          SINK_COLOR, lw=1.6)
+    ax.text(
+        (X_DISPATCH + X_SINK) / 2, Y_DISP + 0.35,
+        "merged post",
+        ha="center", va="center", fontsize=9, color=NEUTRAL, style="italic",
+    )
+
+    # ------------------------------------------------------------------
+    # Title + italic subtitle
+    # ------------------------------------------------------------------
+    ax.set_title(
+        "WeChat outreach pipeline: bridging platform events to grassroots groups",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        (X_MIN + X_MAX) / 2, 6.55,
+        "Three producers fan into one outreach queue; a batch dispatcher "
+        "pushes merged posts to external groups.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
+    )
+
+    # Bottom italic finding
+    ax.text(
+        (X_MIN + X_MAX) / 2, -1.15,
+        "Marketplace dominates outbound outreach (62/82) but yielded zero "
+        "buyer activity: cross-posting works, organic uptake has not yet followed.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
+    )
+
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(Y_MIN, Y_MAX)
+    ax.set_aspect("auto")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbe_d3_wechat_outreach_pipeline", dpi=300)
     register("mbe_d3_wechat_outreach_pipeline", "ok", png_path=png)
     print(f"  pdf -> {pdf}")
     print(f"  png -> {png}")

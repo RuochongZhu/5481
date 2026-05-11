@@ -1,20 +1,10 @@
-"""mbe_d2 -- Points Award / Deduct Architecture (LR fan-in / fan-out).
+"""mbe_d2 -- Points sources, ledger, and sinks (paper-ready, matplotlib LR fan).
 
-Source-of-truth: campusride-backend/src/services/points.service.js:122-236.
-
-Layout (rankdir=LR):
-  Left  : 13 point sources, partitioned into two sub-clusters
-            * System (registration, verification, daily_login, profile_complete)
-            * Activity-triggered (5 rules)
-            * plus rideshare_completion, marketplace_transaction,
-              referral, consecutive_checkin
-  Center: awardPoints({...}) and deductPoints({...}) services with their
-          three downstream effects each (point_transactions INSERT,
-          increment_user_points RPC, Socket.IO emit).
-  Right : Sinks (coupons table, activities.entry_fee_points).
-
-Top   : RED production-reality flag (NOT yet provisioned).
-Bottom: italic-grey design-rationale annotation (cf. F4).
+Design principles (per `_mbe_style_guide.md`):
+  - matplotlib swim-flow, not graphviz.
+  - English labels only; no SQL, no method names, no error codes, no file:line.
+  - Top red callout: production-reality flag.
+  - Bottom italic subtitle: design rationale (F4 finding 48.3 < 63.6).
 """
 
 from __future__ import annotations
@@ -24,337 +14,286 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _mbe_helpers import renderer, make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer,
+)
 
 
-# --- palette ---------------------------------------------------------------
-SRC_FILL = "#D5F5E3"          # green tint
-SRC_BORDER = "#1E8449"
-SRC_FILL_ALT = "#E8F8F5"      # paler green for sub-cluster bg
-
-CENTER_FILL = "#1A5276"        # dark blue
-CENTER_FONT = "white"
-CENTER_BORDER = "#0E2F44"
-
-EFFECT_FILL = "#D6EAF8"
-EFFECT_BORDER = "#1F618D"
-
-SINK_FILL = "#FAE5D3"          # orange tint
-SINK_BORDER = "#B9540B"
-
-FLAG_FILL = "#F5B7B1"          # red callout fill
-FLAG_BORDER = "#922B21"
-
-RAT_FILL = "#FBFCFC"
-RAT_BORDER = "#7F8C8D"
-
-
-# 13 source rules (label -> (display_name, base_value_text))
-SOURCES_SYSTEM = [
-    ("src_registration",  "registration\\n(+10)\\none-shot on `users` insert"),
-    ("src_verification",  "verification\\n(+5)\\non `is_verified` flip"),
-    ("src_daily_login",   "daily_login\\n(+1)\\nidempotent / calendar day"),
-    ("src_profile",       "profile_complete\\n(+15)\\non avatar + major populated"),
-]
-
-SOURCES_ACTIVITY = [
-    ("src_act_create",    "activity_creation\\n(+15)"),
-    ("src_act_part",      "activity_participation\\n(+10)"),
-    ("src_act_org",       "activity_organization\\n(+30)\\norganizer bonus at completion"),
-    ("src_act_checkin",   "activity_checkin\\n(+5)\\ngeo-verified  (cf. mbe_c4)"),
-    ("src_act_complete",  "activity_completion\\n(+15)"),
-]
-
-SOURCES_OTHER = [
-    ("src_rideshare",     "rideshare_completion\\n(+15)"),
-    ("src_market",        "marketplace_transaction\\n(+8)"),
-    ("src_referral",      "referral\\n(+30)"),
-    ("src_streak",        "consecutive_checkin\\n(streak; multiplier honored)"),
-]
+PLATFORM_COLOR = "#1A5276"   # navy — the platform / ledger
+ACCENT_COLOR = "#F39C12"     # orange — design highlight
+SOURCE_COLOR = "#1E8449"     # green — earning
+SINK_COLOR = "#B9540B"       # burnt orange — spending
+FLAG_RED = "#922B21"         # red — production-reality callout
+GREY = "#566573"             # neutral text / subtitle
 
 
 @renderer("mbe_d2_points_award_deduct")
 def render():
-    g = make_digraph("d2_points", rankdir="LR")
-    g.attr(
-        nodesep="0.35", ranksep="1.0", splines="spline",
-        label=(
-            "Points Award / Deduct Architecture  "
-            "(services/points.service.js:122-236)"
-        ),
-        labelloc="t", fontsize="14", fontname="Helvetica-Bold",
-    )
-    g.attr("node", fontsize="10")
-    g.attr("edge", fontsize="9")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-    # =========================================================================
-    # TOP: production reality flag (red)
-    # =========================================================================
-    flag_label = (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"2\">"
-        "<TR><TD><FONT POINT-SIZE=\"13\"><B>"
-        "&#9888; Production deployment status: NOT yet provisioned"
-        "</B></FONT></TD></TR>"
-        "<TR><TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"10\">"
-        "&#8226; <B>point_rules</B> rows: <B>0</B><BR ALIGN=\"LEFT\"/>"
-        "&#8226; <B>point_transactions</B> table: <B>DOES NOT EXIST</B> (REST returns PGRST205)<BR ALIGN=\"LEFT\"/>"
-        "&#8226; 184 user rows, all <B>users.points = 0</B><BR ALIGN=\"LEFT\"/>"
-        "&#8226; Design is implementation-ready but behaviorally inert"
-        "</FONT></TD></TR>"
-        "</TABLE>>"
-    )
-    g.node(
-        "prod_flag",
-        label=flag_label,
-        shape="box", style="rounded,filled,bold",
-        fillcolor=FLAG_FILL, color=FLAG_BORDER,
-        penwidth="3.0", margin="0.22",
-    )
+    fig, ax = plt.subplots(figsize=(15, 8.2))
 
-    # =========================================================================
-    # LEFT: sources — three sub-clusters
-    # =========================================================================
-    with g.subgraph(name="cluster_sources") as outer:
-        outer.attr(
-            label="13 point sources (base values from POINT_RULES)",
-            style="rounded,filled",
-            fillcolor="#FBFEFC", color=SRC_BORDER,
-            penwidth="1.6",
-            fontname="Helvetica-Bold", fontsize="12",
-            margin="14",
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def card(x, y, w, h, text, color, *, fc="white", fs=9.5,
+             alpha=1.0, bold=False, fontcolor="#1B2631"):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.4, alpha=alpha,
+            )
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color=fontcolor,
+            fontweight="bold" if bold else "normal",
+            wrap=True,
         )
 
-        # --- System sub-cluster ---
-        with outer.subgraph(name="cluster_sys") as c:
-            c.attr(
-                label="System: registration, verification, daily, profile",
-                style="rounded,filled",
-                fillcolor=SRC_FILL_ALT, color=SRC_BORDER,
-                penwidth="1.4",
-                fontname="Helvetica-Bold", fontsize="10",
-                margin="10",
+    def cluster_band(x, y, w, h, color, label, *, fs=11):
+        # Faint background band per source-cluster.
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.02",
+                facecolor=color, alpha=0.08,
+                edgecolor=color, linewidth=0.8,
             )
-            for nid, lbl in SOURCES_SYSTEM:
-                c.node(nid, label=lbl,
-                       shape="box", style="rounded,filled",
-                       fillcolor=SRC_FILL, color=SRC_BORDER, penwidth="1.2")
+        )
+        # Label sits ABOVE the band, not inside (avoids card overlap).
+        ax.text(
+            x, y + h / 2 + 0.10, label,
+            ha="center", va="bottom",
+            fontsize=fs, fontweight="bold", color=color,
+        )
 
-        # --- Activity-triggered sub-cluster ---
-        with outer.subgraph(name="cluster_act") as c:
-            c.attr(
-                label="Activity-triggered: 5 rules",
-                style="rounded,filled",
-                fillcolor=SRC_FILL_ALT, color=SRC_BORDER,
-                penwidth="1.4",
-                fontname="Helvetica-Bold", fontsize="10",
-                margin="10",
+    def arrow(x0, y0, x1, y1, color, *, lw=1.2, ls="-", alpha=0.85):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle="-|>", color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=12, alpha=alpha,
             )
-            for nid, lbl in SOURCES_ACTIVITY:
-                c.node(nid, label=lbl,
-                       shape="box", style="rounded,filled",
-                       fillcolor=SRC_FILL, color=SRC_BORDER, penwidth="1.2")
+        )
 
-        # --- Other (rideshare/market/referral/streak) ---
-        with outer.subgraph(name="cluster_other") as c:
-            c.attr(
-                label="Other: rideshare, marketplace, referral, streak",
-                style="rounded,filled",
-                fillcolor=SRC_FILL_ALT, color=SRC_BORDER,
-                penwidth="1.4",
-                fontname="Helvetica-Bold", fontsize="10",
-                margin="10",
-            )
-            for nid, lbl in SOURCES_OTHER:
-                c.node(nid, label=lbl,
-                       shape="box", style="rounded,filled",
-                       fillcolor=SRC_FILL, color=SRC_BORDER, penwidth="1.2")
+    # ------------------------------------------------------------------
+    # Canvas extent
+    # ------------------------------------------------------------------
+    X_MIN, X_MAX = 0.0, 18.0
+    Y_MIN, Y_MAX = 0.0, 10.0
 
-    # =========================================================================
-    # CENTER: awardPoints + deductPoints
-    # =========================================================================
-    award_label = (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"2\">"
-        "<TR><TD><FONT POINT-SIZE=\"13\"><B>awardPoints(...)</B></FONT></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"9\">"
-        "{user_id, source, reason, points,<BR/>"
-        " ruleType, multiplier}"
-        "</FONT></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"9\">points.service.js:122-185</FONT></TD></TR>"
-        "</TABLE>>"
+    # ------------------------------------------------------------------
+    # TOP: production-reality flag (red callout)
+    # ------------------------------------------------------------------
+    flag_y = 9.35
+    ax.add_patch(
+        FancyBboxPatch(
+            (1.0, flag_y - 0.45), X_MAX - 2.0, 0.9,
+            boxstyle="round,pad=0.04",
+            facecolor="#FDEDEC", edgecolor=FLAG_RED, linewidth=2.0,
+        )
     )
-    g.node(
-        "awardPoints",
-        label=award_label,
-        shape="box", style="filled,bold",
-        fillcolor=CENTER_FILL, fontcolor=CENTER_FONT,
-        color=CENTER_BORDER, penwidth="3.0", margin="0.22",
+    ax.text(
+        X_MAX / 2, flag_y + 0.10,
+        "Not yet provisioned in production  -  design ready, behaviorally inert",
+        ha="center", va="center",
+        fontsize=12, fontweight="bold", color=FLAG_RED,
+    )
+    ax.text(
+        X_MAX / 2, flag_y - 0.22,
+        "Zero earning rules active  |  ledger not provisioned  |  all 184 verified users carry a zero balance",
+        ha="center", va="center",
+        fontsize=9.5, color=FLAG_RED, style="italic",
     )
 
-    deduct_label = (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"2\">"
-        "<TR><TD><FONT POINT-SIZE=\"13\"><B>deductPoints(...)</B></FONT></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"9\">{user_id, points}</FONT></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"9\">points.service.js:188-236</FONT></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"9\">"
-        "guard: users.points &#8805; points<BR/>"
-        "else  INSUFFICIENT_POINTS"
-        "</FONT></TD></TR>"
-        "</TABLE>>"
+    # ------------------------------------------------------------------
+    # LEFT: source clusters (3 sub-clusters)
+    # ------------------------------------------------------------------
+    SRC_X = 2.5
+    SRC_W = 3.4
+
+    # System bonuses cluster
+    sys_y, sys_band_h = 7.20, 1.70
+    cluster_band(SRC_X, sys_y, SRC_W + 0.3, sys_band_h,
+                 SOURCE_COLOR, "System bonuses")
+    sys_items = [
+        (sys_y + 0.50, "Registration bonus"),
+        (sys_y + 0.00, "Profile completion bonus"),
+        (sys_y - 0.50, "Daily login bonus"),
+    ]
+    for yy, lbl in sys_items:
+        card(SRC_X, yy, SRC_W, 0.42, lbl, SOURCE_COLOR, fs=9.5)
+
+    # Activity rewards cluster
+    act_y, act_band_h = 5.05, 1.70
+    cluster_band(SRC_X, act_y, SRC_W + 0.3, act_band_h,
+                 SOURCE_COLOR, "Activity rewards")
+    act_items = [
+        (act_y + 0.50, "Activity participation"),
+        (act_y + 0.00, "Activity check-in reward"),
+        (act_y - 0.50, "Streak bonus (consecutive days)"),
+    ]
+    for yy, lbl in act_items:
+        card(SRC_X, yy, SRC_W, 0.42, lbl, SOURCE_COLOR, fs=9.5)
+
+    # Trip & community rewards cluster
+    trip_y, trip_band_h = 2.90, 1.70
+    cluster_band(SRC_X, trip_y, SRC_W + 0.3, trip_band_h,
+                 SOURCE_COLOR, "Trip & community rewards")
+    trip_items = [
+        (trip_y + 0.50, "Ride completion"),
+        (trip_y + 0.00, "Marketplace transaction"),
+        (trip_y - 0.50, "Referral bonus"),
+    ]
+    for yy, lbl in trip_items:
+        card(SRC_X, yy, SRC_W, 0.42, lbl, SOURCE_COLOR, fs=9.5)
+
+    # ------------------------------------------------------------------
+    # CENTER: Points ledger (atomic balance update)
+    # ------------------------------------------------------------------
+    LED_X = 9.0
+    LED_Y = 5.05
+    LED_W = 4.2
+    LED_H = 1.9
+    ax.add_patch(
+        FancyBboxPatch(
+            (LED_X - LED_W / 2, LED_Y - LED_H / 2), LED_W, LED_H,
+            boxstyle="round,pad=0.04",
+            facecolor=PLATFORM_COLOR, edgecolor="#0E2F44", linewidth=2.4,
+        )
     )
-    g.node(
-        "deductPoints",
-        label=deduct_label,
-        shape="box", style="filled,bold",
-        fillcolor=CENTER_FILL, fontcolor=CENTER_FONT,
-        color=CENTER_BORDER, penwidth="3.0", margin="0.22",
+    ax.text(
+        LED_X, LED_Y + 0.42,
+        "Points ledger",
+        ha="center", va="center",
+        fontsize=14, fontweight="bold", color="white",
+    )
+    ax.text(
+        LED_X, LED_Y + 0.02,
+        "atomic balance update",
+        ha="center", va="center",
+        fontsize=10.5, color="white", style="italic",
+    )
+    ax.text(
+        LED_X, LED_Y - 0.45,
+        "earn  +  spend  ->  user balance",
+        ha="center", va="center",
+        fontsize=9.5, color="#D4E6F1",
     )
 
-    # --- award effects ---
-    g.node(
-        "award_eff_tx",
-        label=(
-            "INSERT  point_transactions\\l"
-            "  (user_id, rule_type, points,\\l"
-            "   source, reason, metadata,\\l"
-            "   multiplier, created_at)\\l"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=EFFECT_FILL, color=EFFECT_BORDER, penwidth="1.4",
-    )
-    g.node(
-        "award_eff_rpc",
-        label=(
-            "RPC  increment_user_points(\\l"
-            "  user_id, points_to_add)\\l"
-            "atomic UPDATE  users.points\\l"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=EFFECT_FILL, color=EFFECT_BORDER, penwidth="1.4",
-    )
-    g.node(
-        "award_eff_socket",
-        label=(
-            "Socket.IO\\l"
-            "socketManager.sendPointsUpdate\\l"
-            "-> emit on  user:{userId}  room\\l"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=EFFECT_FILL, color=EFFECT_BORDER, penwidth="1.4",
-    )
-
-    g.edge("awardPoints", "award_eff_tx",
-           color=EFFECT_BORDER, arrowhead="vee", penwidth="1.4")
-    g.edge("awardPoints", "award_eff_rpc",
-           color=EFFECT_BORDER, arrowhead="vee", penwidth="1.4")
-    g.edge("awardPoints", "award_eff_socket",
-           color=EFFECT_BORDER, arrowhead="vee", penwidth="1.4")
-
-    # --- deduct effects ---
-    g.node(
-        "deduct_eff_rpc",
-        label=(
-            "RPC  increment_user_points(\\l"
-            "  user_id, -points)   <- NEGATIVE\\l"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=EFFECT_FILL, color=EFFECT_BORDER, penwidth="1.4",
-    )
-    g.node(
-        "deduct_eff_tx",
-        label=(
-            "INSERT  point_transactions\\l"
-            "  type='spent'\\l"
-        ),
-        shape="box", style="rounded,filled",
-        fillcolor=EFFECT_FILL, color=EFFECT_BORDER, penwidth="1.4",
-    )
-    g.edge("deductPoints", "deduct_eff_rpc",
-           color=EFFECT_BORDER, arrowhead="vee", penwidth="1.4")
-    g.edge("deductPoints", "deduct_eff_tx",
-           color=EFFECT_BORDER, arrowhead="vee", penwidth="1.4")
-
-    # =========================================================================
+    # ------------------------------------------------------------------
     # RIGHT: sinks
-    # =========================================================================
-    with g.subgraph(name="cluster_sinks") as c:
-        c.attr(
-            label="Sinks (spend targets)",
-            style="rounded,filled",
-            fillcolor="#FEF5E7", color=SINK_BORDER,
-            penwidth="1.6",
-            fontname="Helvetica-Bold", fontsize="12",
-            margin="14",
-        )
-        c.node(
-            "sink_coupons",
-            label=(
-                "coupons table\\l"
-                "(currently EMPTY: 0 rows)\\l"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=SINK_FILL, color=SINK_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "sink_entry_fee",
-            label=(
-                "activities.entry_fee_points\\l"
-                "pay-with-points option for\\l"
-                "organizer-priced activities\\l"
-            ),
-            shape="box", style="rounded,filled",
-            fillcolor=SINK_FILL, color=SINK_BORDER, penwidth="1.4",
-        )
+    # ------------------------------------------------------------------
+    SINK_X = 15.3
+    SINK_W = 3.5
 
-    # deductPoints feeds the sinks (logically the user redeems)
-    g.edge("deduct_eff_rpc", "sink_coupons",
-           color=SINK_BORDER, arrowhead="vee", style="dashed",
-           label="redeem", fontcolor=SINK_BORDER)
-    g.edge("deduct_eff_rpc", "sink_entry_fee",
-           color=SINK_BORDER, arrowhead="vee", style="dashed",
-           label="pay entry", fontcolor=SINK_BORDER)
+    sink_y_top = 5.85
+    sink_y_bot = 4.25
 
-    # =========================================================================
-    # Sources -> awardPoints  (fan-in)
-    # =========================================================================
-    all_sources = (
-        [nid for nid, _ in SOURCES_SYSTEM]
-        + [nid for nid, _ in SOURCES_ACTIVITY]
-        + [nid for nid, _ in SOURCES_OTHER]
+    # Cluster band around sinks (drawn first so cards sit on top)
+    cluster_band(SINK_X, 5.05, SINK_W + 0.4, 2.6, SINK_COLOR, "Sinks")
+
+    card(SINK_X, sink_y_top, SINK_W, 0.95,
+         "Coupons\n(redeem for discounts)",
+         SINK_COLOR, fs=10.5, bold=True)
+    card(SINK_X, sink_y_bot, SINK_W, 0.95,
+         "Pay-with-points\n(activity entry fees)",
+         SINK_COLOR, fs=10.5, bold=True)
+
+    # ------------------------------------------------------------------
+    # Arrows: sources -> ledger (fan-in)
+    # ------------------------------------------------------------------
+    src_right_x = SRC_X + SRC_W / 2 + 0.05
+    led_left_x = LED_X - LED_W / 2 - 0.05
+    for cluster_center_y in (sys_y, act_y, trip_y):
+        for offset in (0.50, 0.00, -0.50):
+            arrow(src_right_x, cluster_center_y + offset,
+                  led_left_x, LED_Y,
+                  SOURCE_COLOR, lw=1.0, alpha=0.65)
+
+    # Arrows: ledger -> sinks (fan-out)
+    led_right_x = LED_X + LED_W / 2 + 0.05
+    sink_left_x = SINK_X - SINK_W / 2 - 0.05
+    arrow(led_right_x, LED_Y + 0.20, sink_left_x, sink_y_top,
+          SINK_COLOR, lw=1.6)
+    arrow(led_right_x, LED_Y - 0.20, sink_left_x, sink_y_bot,
+          SINK_COLOR, lw=1.6)
+
+    # Earn / spend captions on the central pipes
+    ax.text(
+        (src_right_x + led_left_x) / 2, LED_Y + LED_H / 2 + 0.30,
+        "earn",
+        ha="center", va="bottom",
+        fontsize=11, color=SOURCE_COLOR, fontweight="bold", style="italic",
     )
-    for nid in all_sources:
-        g.edge(nid, "awardPoints",
-               color=SRC_BORDER, arrowhead="vee",
-               penwidth="1.0", arrowsize="0.7")
-
-    # =========================================================================
-    # BOTTOM: design rationale (italic grey)
-    # =========================================================================
-    rat_label = (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\">"
-        "<TR><TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"10\" COLOR=\"#566573\">"
-        "<I><B>Design rationale.</B>  "
-        "Base-point payouts are capped well below per-seat cash price "
-        "(~$22-38) so points <B>complement</B>, not <B>substitute</B>, "
-        "the cash motivation lever<BR ALIGN=\"LEFT\"/>"
-        "(cf. F4: gamification 48.3 vs financial 63.6 in &#167;4 motivation finding).</I>"
-        "</FONT></TD></TR>"
-        "</TABLE>>"
-    )
-    g.node(
-        "rationale",
-        label=rat_label,
-        shape="box", style="rounded,filled",
-        fillcolor=RAT_FILL, color=RAT_BORDER,
-        penwidth="1.0", margin="0.18",
+    ax.text(
+        (led_right_x + sink_left_x) / 2, LED_Y + LED_H / 2 + 0.30,
+        "spend",
+        ha="center", va="bottom",
+        fontsize=11, color=SINK_COLOR, fontweight="bold", style="italic",
     )
 
-    # Invisible anchors to push flag to top and rationale to bottom of the
-    # rank order without distorting the LR backbone.
-    g.edge("prod_flag", "awardPoints", style="invis", constraint="false")
-    g.edge("awardPoints", "rationale", style="invis", constraint="false")
-    g.edge("deductPoints", "rationale", style="invis", constraint="false")
+    # ------------------------------------------------------------------
+    # Accent callout: design choice (cap below cash price)
+    # ------------------------------------------------------------------
+    callout_x, callout_y = LED_X, 2.55
+    callout_w, callout_h = 6.6, 0.85
+    ax.add_patch(
+        FancyBboxPatch(
+            (callout_x - callout_w / 2, callout_y - callout_h / 2),
+            callout_w, callout_h,
+            boxstyle="round,pad=0.04",
+            facecolor="#FEF5E7", edgecolor=ACCENT_COLOR, linewidth=1.6,
+        )
+    )
+    ax.text(
+        callout_x, callout_y,
+        "Design choice: point value capped well below per-seat cash price\n"
+        "so points complement (not substitute) financial motivation",
+        ha="center", va="center",
+        fontsize=10, color="#7E5109", fontweight="bold",
+    )
+    # Dotted tether from ledger down to callout
+    ax.plot([callout_x, callout_x],
+            [LED_Y - LED_H / 2 - 0.05, callout_y + callout_h / 2 + 0.02],
+            linestyle=":", color=ACCENT_COLOR, linewidth=1.2)
 
-    pdf, png = render_dot(g, "mbe_d2_points_award_deduct", dpi=300)
+    # ------------------------------------------------------------------
+    # Title + subtitle
+    # ------------------------------------------------------------------
+    ax.set_title(
+        "Points: sources, ledger, and sinks",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        X_MAX / 2, 8.55,
+        "Earning fans in from system, activity, and trip rewards; spending fans out "
+        "to coupons and pay-with-points entry fees.",
+        ha="center", va="center", fontsize=10.5, style="italic", color=GREY,
+    )
+
+    # Bottom rationale subtitle (italic grey, F4 finding)
+    ax.text(
+        X_MAX / 2, 0.55,
+        "Design rationale: gamification ranked 48.3 vs financial 63.6 (F4) — points are "
+        "intentionally a complement to cash, not a replacement.",
+        ha="center", va="center",
+        fontsize=10, style="italic", color=GREY,
+    )
+
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(Y_MIN - 0.2, Y_MAX + 0.1)
+    ax.set_aspect("auto")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbe_d2_points_award_deduct", dpi=300)
     register("mbe_d2_points_award_deduct", "ok", png_path=png)
     print(f"  pdf -> {pdf}")
     print(f"  png -> {png}")

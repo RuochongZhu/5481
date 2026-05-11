@@ -1,14 +1,12 @@
-"""mbe_b2 — Activity Lifecycle + Participant Lifecycle.
+"""mbe_b2 — Activity & Participant Lifecycles.
 
-Two co-located state machines:
-  Top:    activities.status            (draft / published / ongoing / completed / cancelled)
-  Bottom: activity_participants.attendance_status
-          (registered / checked_in / absent / no_show)
+Two co-located state machines, paper-style:
+  Top cluster:    Activity    (draft -> published -> ongoing -> completed | cancelled)
+  Bottom cluster: Participant (registered -> checked-in | absent | no-show)
 
-Source-of-truth:
-  integration-production/campusride-backend/src/services/activity-checkin.service.js:31-191
-  supabase/migrations/000_complete_schema.sql  (activities, activity_participants,
-  triggers: increment current_participants, RPC: calculate_distance, increment_user_points)
+The participant transition into "checked-in" carries the two design gates
+(check-in window and venue radius) as plain-English annotations; reward
+earned on check-in. No code references, file paths, or column names.
 """
 
 from __future__ import annotations
@@ -18,268 +16,274 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_mbe_figures import renderer  # noqa: E402
-from _mbe_helpers import make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer, RIDER_COLOR, DRIVER_COLOR,
+)
 
 
-# State palette (per spec)
-STATE_FILL = {
-    "draft":     "#BDC3C7",  # grey
-    "published": "#2ECC71",  # green
-    "ongoing":   "#3498DB",  # blue
-    "completed": "#8E44AD",  # purple
-    "cancelled": "#E74C3C",  # red
-}
-STATE_BORDER = {
-    "draft":     "#7F8C8D",
-    "published": "#1E8449",
-    "ongoing":   "#1F618D",
-    "completed": "#5B2C6F",
-    "cancelled": "#922B21",
-}
-
-# Participant palette (re-uses the activity-side hues but distinct enough)
-P_STATE_FILL = {
-    "registered": "#F4D03F",   # warm yellow (pending)
-    "checked_in": "#27AE60",   # rich green (success terminal)
-    "absent":     "#7F8C8D",   # grey terminal
-    "no_show":    "#C0392B",   # red terminal
-}
-P_STATE_BORDER = {
-    "registered": "#9A7D0A",
-    "checked_in": "#196F3D",
-    "absent":     "#566573",
-    "no_show":    "#641E16",
-}
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"
+NEUTRAL = "#566573"
+TERMINAL_GOOD = "#196F3D"   # checked-in (good terminal)
+TERMINAL_NEU = "#7F8C8D"    # absent / cancelled (neutral terminal)
+TERMINAL_BAD = "#922B21"    # no-show (bad terminal)
 
 
-def _state_node(graph, node_id: str, label: str, fill: str, border: str,
-                fontcolor: str = "white", penwidth: str = "1.6") -> None:
-    graph.node(
-        node_id,
-        label=label,
-        shape="box",
-        style="rounded,filled,bold",
-        fillcolor=fill,
-        color=border,
-        fontcolor=fontcolor,
-        fontname="Helvetica-Bold",
-        fontsize="12",
-        penwidth=penwidth,
-        margin="0.18,0.10",
-    )
-
-
-def _start_node(graph, node_id: str) -> None:
-    graph.node(
-        node_id,
-        label="",
-        shape="circle",
-        style="filled",
-        fillcolor="#2C3E50",
-        color="#1A252F",
-        width="0.28",
-        height="0.28",
-        fixedsize="true",
-    )
-
-
-def _terminal_ring(graph, node_id: str, label: str, fill: str, border: str) -> None:
-    """Render a terminal state with a double border (peripheries=2)."""
-    graph.node(
-        node_id,
-        label=label,
-        shape="box",
-        style="rounded,filled,bold",
-        fillcolor=fill,
-        color=border,
-        fontcolor="white",
-        fontname="Helvetica-Bold",
-        fontsize="12",
-        peripheries="2",
-        penwidth="1.6",
-        margin="0.18,0.10",
-    )
+# Activity-cluster palette (re-uses b1 hues; live=blue lane, terminal greys/red)
+ACTIVITY_LANE = RIDER_COLOR     # blue lane band
+PARTICIPANT_LANE = DRIVER_COLOR  # red lane band — distinguishes from activity
 
 
 @renderer("mbe_b2_activity_state_machine")
 def render():
-    g = make_digraph("b2_activity_state_machine", rankdir="LR")
-    g.attr(
-        ranksep="0.95", nodesep="0.45", splines="spline",
-        compound="true", newrank="true",
-        label=("Activity & Participant State Machines  "
-               "(activity-checkin.service.js:31-191; "
-               "migrations/000_complete_schema.sql)"),
-        labelloc="t", fontsize="14", fontname="Helvetica-Bold",
-    )
-    g.attr("edge", fontsize="9")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-    # =========================================================================
-    # TOP CLUSTER: ACTIVITY STATE MACHINE  (activities.status)
-    # =========================================================================
-    with g.subgraph(name="cluster_activity") as a:
-        a.attr(
-            label=("Activity  —  activities.status\\n"
-                   "(transitions in activity.controller / scheduler / "
-                   "activity-cleanup.service)"),
-            style="rounded,filled",
-            fillcolor="#FBFCFC",
-            color="#1F618D",
-            penwidth="2.0",
-            fontname="Helvetica-Bold",
-            fontsize="12",
-            margin="16",
+    fig, ax = plt.subplots(figsize=(14, 8.2))
+
+    X_MIN, X_MAX = 0.0, 16.5
+
+    # ------------------------------------------------------------------
+    # Cluster vertical layout
+    #   Activity cluster:    y in [4.6, 7.4],   row centerline yA = 6.0
+    #   Participant cluster: y in [0.6, 3.4],   row centerline yP = 2.0
+    # ------------------------------------------------------------------
+    yA = 6.0
+    yP = 2.0
+    BAND_HEIGHT = 2.8
+
+    def lane_band(y_center, color, title, subtitle):
+        ax.add_patch(
+            FancyBboxPatch(
+                (X_MIN, y_center - BAND_HEIGHT / 2),
+                X_MAX - X_MIN, BAND_HEIGHT,
+                boxstyle="round,pad=0.02",
+                facecolor=color, alpha=0.07,
+                edgecolor=color, linewidth=0.8,
+            )
+        )
+        ax.text(
+            X_MIN + 0.15, y_center + BAND_HEIGHT / 2 - 0.22,
+            title,
+            ha="left", va="top",
+            fontsize=12, fontweight="bold", color=color,
+        )
+        ax.text(
+            X_MIN + 0.15, y_center + BAND_HEIGHT / 2 - 0.55,
+            subtitle,
+            ha="left", va="top",
+            fontsize=9.5, style="italic", color=NEUTRAL,
         )
 
-        _start_node(a, "a_start")
-        _state_node(a, "a_draft",     "draft",
-                    STATE_FILL["draft"], STATE_BORDER["draft"],
-                    fontcolor="#2C3E50")
-        _state_node(a, "a_published",
-                    "published\\ncheckin_enabled flag\\nopens geo-checkin (mbe_c4)",
-                    STATE_FILL["published"], STATE_BORDER["published"])
-        _state_node(a, "a_ongoing",   "ongoing",
-                    STATE_FILL["ongoing"], STATE_BORDER["ongoing"])
-        _state_node(a, "a_completed", "completed",
-                    STATE_FILL["completed"], STATE_BORDER["completed"])
-        _state_node(a, "a_cancelled", "cancelled",
-                    STATE_FILL["cancelled"], STATE_BORDER["cancelled"])
+    lane_band(yA, ACTIVITY_LANE,
+              "Activity lifecycle",
+              "Organiser-owned event, advances on time and on demand.")
+    lane_band(yP, PARTICIPANT_LANE,
+              "Participant lifecycle",
+              "Per-attendee outcome.")
 
-        # Forward path
-        a.edge("a_start", "a_draft",
-               label="createActivity()",
-               color=STATE_BORDER["draft"], fontcolor=STATE_BORDER["draft"],
-               penwidth="1.4")
-        a.edge("a_draft", "a_published",
-               label="publishActivity()",
-               color=STATE_BORDER["published"],
-               fontcolor=STATE_BORDER["published"], penwidth="1.4")
-        a.edge("a_published", "a_ongoing",
-               label="auto @ start_time\\n(scheduler / on-demand check)",
-               color=STATE_BORDER["ongoing"],
-               fontcolor=STATE_BORDER["ongoing"], penwidth="1.4")
-        a.edge("a_ongoing", "a_completed",
-               label="auto @ end_time  OR\\ncompleteActivity()",
-               color=STATE_BORDER["completed"],
-               fontcolor=STATE_BORDER["completed"], penwidth="1.4")
-
-        # Cancellation edges (any -> cancelled per spec: published / ongoing)
-        a.edge("a_published", "a_cancelled",
-               label="cancelActivity()",
-               color=STATE_BORDER["cancelled"],
-               fontcolor=STATE_BORDER["cancelled"],
-               style="dashed", penwidth="1.2")
-        a.edge("a_ongoing", "a_cancelled",
-               label="cancelActivity()",
-               color=STATE_BORDER["cancelled"],
-               fontcolor=STATE_BORDER["cancelled"],
-               style="dashed", penwidth="1.2")
-        a.edge("a_draft", "a_cancelled",
-               label="cancelActivity()",
-               color=STATE_BORDER["cancelled"],
-               fontcolor=STATE_BORDER["cancelled"],
-               style="dotted", penwidth="1.0",
-               constraint="false")
-
-    # =========================================================================
-    # BOTTOM CLUSTER: PARTICIPANT STATE MACHINE
-    #   activity_participants.attendance_status
-    # =========================================================================
-    with g.subgraph(name="cluster_participant") as p:
-        p.attr(
-            label=("Participant  —  activity_participants.attendance_status\\n"
-                   "(performCheckin gated by is_checkin_period AND "
-                   "Haversine distance ≤ verification_radius)"),
-            style="rounded,filled",
-            fillcolor="#FBFCFC",
-            color="#196F3D",
-            penwidth="2.0",
-            fontname="Helvetica-Bold",
-            fontsize="12",
-            margin="16",
+    # ------------------------------------------------------------------
+    # Helper: draw a state card (rounded box, white fill, colored edge)
+    # ------------------------------------------------------------------
+    def state(x, y, w, h, text, color, *, fc="white", fs=10.5,
+              bold=True, terminal=False):
+        # Outer ring for terminal states (UML "double border")
+        if terminal:
+            ax.add_patch(
+                FancyBboxPatch(
+                    (x - w / 2 - 0.07, y - h / 2 - 0.07),
+                    w + 0.14, h + 0.14,
+                    boxstyle="round,pad=0.04",
+                    facecolor="none", edgecolor=color, linewidth=1.0,
+                )
+            )
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.6,
+            )
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color="#1B2631",
+            fontweight="bold" if bold else "normal",
         )
 
-        _start_node(p, "p_start")
-        _state_node(p, "p_registered", "registered",
-                    P_STATE_FILL["registered"], P_STATE_BORDER["registered"],
-                    fontcolor="#1B2631")
-        _terminal_ring(p, "p_checked_in",
-                       "checked_in\\n(points awarded)",
-                       P_STATE_FILL["checked_in"], P_STATE_BORDER["checked_in"])
-        _terminal_ring(p, "p_absent", "absent",
-                       P_STATE_FILL["absent"], P_STATE_BORDER["absent"])
-        _terminal_ring(p, "p_no_show", "no_show",
-                       P_STATE_FILL["no_show"], P_STATE_BORDER["no_show"])
+    def init_dot(x, y, color="#1B2631"):
+        ax.plot(x, y, marker="o", markersize=9,
+                markerfacecolor=color, markeredgecolor=color)
 
-        # Entry: registration triggers PL/pgSQL increment of current_participants
-        p.edge("p_start", "p_registered",
-               label=("registerActivity()\\n"
-                      "trigger: current_participants += 1"),
-               color=P_STATE_BORDER["registered"],
-               fontcolor=P_STATE_BORDER["registered"], penwidth="1.4")
+    def arrow(x0, y0, x1, y1, color, *, lw=1.5, ls="-"):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle="-|>", color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=14,
+                shrinkA=2, shrinkB=2,
+            )
+        )
 
-        # registered -> checked_in (the load-bearing edge)
-        p.edge("p_registered", "p_checked_in",
-               label=("performCheckin()\\n"
-                      "guard: is_checkin_period (default ±30 min)\\n"
-                      "guard: calculate_distance (Haversine RPC)\\n"
-                      "        ≤ verification_radius (default 100m)\\n"
-                      "effect: increment_user_points('activity_checkin', 5)"),
-               color=P_STATE_BORDER["checked_in"],
-               fontcolor=P_STATE_BORDER["checked_in"], penwidth="1.8")
+    def edge_label(x, y, text, color, fs=8.8, italic=False, bg=True):
+        if bg:
+            ax.text(
+                x, y, text,
+                ha="center", va="center",
+                fontsize=fs, color=color,
+                style="italic" if italic else "normal",
+                bbox=dict(boxstyle="round,pad=0.2",
+                          facecolor="white", edgecolor="none", alpha=0.85),
+            )
+        else:
+            ax.text(
+                x, y, text,
+                ha="center", va="center",
+                fontsize=fs, color=color,
+                style="italic" if italic else "normal",
+            )
 
-        # registered -> absent (organizer-driven)
-        p.edge("p_registered", "p_absent",
-               label="organizer marks absent\\n(during / after activity)",
-               color=P_STATE_BORDER["absent"],
-               fontcolor=P_STATE_BORDER["absent"],
-               style="dashed", penwidth="1.2")
+    # ==================================================================
+    # ACTIVITY CLUSTER  (top)
+    # ==================================================================
+    # Horizontal layout: start dot -> draft -> published -> ongoing -> completed
+    # Cancelled sits below the main row (fork from published / ongoing).
+    A_y = yA + 0.25  # main horizontal row
+    cancel_y = yA - 0.85
 
-        # registered -> no_show (auto on completion if not checked_in)
-        p.edge("p_registered", "p_no_show",
-               label=("auto on activity.status -> completed\\n"
-                      "if checked_in = false"),
-               color=P_STATE_BORDER["no_show"],
-               fontcolor=P_STATE_BORDER["no_show"],
-               style="dashed", penwidth="1.2")
+    init_dot(1.0, A_y, color=ACTIVITY_LANE)
 
-    # ---- Cross-cluster contextual link (visually ties the two SMs) ----------
-    # An invisible-style link from activity 'completed' to participant 'no_show'
-    # makes the temporal causation legible (completion fires the no_show check).
-    g.edge("a_completed", "p_no_show",
-           label=("on completion:\\n"
-                  "WHERE checked_in = false  →  no_show"),
-           color="#7F8C8D", fontcolor="#566573",
-           style="dotted", penwidth="1.0",
-           ltail="cluster_activity", lhead="cluster_participant",
-           constraint="false")
+    # State cards
+    state(2.6, A_y, 1.7, 0.7, "draft", ACTIVITY_LANE, fc="#F4F6F7")
+    state(5.4, A_y, 2.0, 0.7, "published", ACTIVITY_LANE, fc="#EBF5FB")
+    state(8.6, A_y, 2.0, 0.7, "ongoing", ACTIVITY_LANE, fc="#D6EAF8")
+    state(11.8, A_y, 2.0, 0.7, "completed", ACTIVITY_LANE,
+          fc="#F4ECF7", terminal=True)
+    state(8.6, cancel_y, 2.1, 0.7, "cancelled", TERMINAL_BAD,
+          fc="#FDEDEC", terminal=True)
 
-    # Legend (compact)
-    legend_label = (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"4\">"
-        "<TR><TD COLSPAN=\"2\"><B>Legend</B></TD></TR>"
-        "<TR><TD BGCOLOR=\"#BDC3C7\" WIDTH=\"18\"></TD>"
-        "<TD ALIGN=\"LEFT\">draft</TD></TR>"
-        "<TR><TD BGCOLOR=\"#2ECC71\"></TD>"
-        "<TD ALIGN=\"LEFT\">published</TD></TR>"
-        "<TR><TD BGCOLOR=\"#3498DB\"></TD>"
-        "<TD ALIGN=\"LEFT\">ongoing</TD></TR>"
-        "<TR><TD BGCOLOR=\"#8E44AD\"></TD>"
-        "<TD ALIGN=\"LEFT\">completed</TD></TR>"
-        "<TR><TD BGCOLOR=\"#E74C3C\"></TD>"
-        "<TD ALIGN=\"LEFT\">cancelled</TD></TR>"
-        "<TR><TD COLSPAN=\"2\"><FONT POINT-SIZE=\"9\">"
-        "double border = terminal participant state"
-        "</FONT></TD></TR>"
-        "</TABLE>>"
+    # Forward edges
+    arrow(1.18, A_y, 1.75, A_y, ACTIVITY_LANE)
+    arrow(3.45, A_y, 4.4, A_y, ACTIVITY_LANE)
+    edge_label(3.93, A_y + 0.32, "Organiser publishes",
+               ACTIVITY_LANE)
+
+    arrow(6.4, A_y, 7.6, A_y, ACTIVITY_LANE)
+    edge_label(7.0, A_y + 0.32, "Start time reached",
+               ACTIVITY_LANE)
+
+    arrow(9.6, A_y, 10.8, A_y, ACTIVITY_LANE)
+    edge_label(10.2, A_y + 0.32, "End time reached",
+               ACTIVITY_LANE)
+
+    # Cancellation edges (dashed, fork down to cancelled)
+    arrow(5.4, A_y - 0.36, 8.0, cancel_y + 0.4,
+          NEUTRAL, ls="--", lw=1.2)
+    arrow(8.6, A_y - 0.36, 8.6, cancel_y + 0.4,
+          NEUTRAL, ls="--", lw=1.2)
+    edge_label(6.6, (A_y + cancel_y) / 2 - 0.15,
+               "Organiser cancels", NEUTRAL, italic=True)
+
+    # ==================================================================
+    # PARTICIPANT CLUSTER  (bottom)
+    # ==================================================================
+    P_y = yP + 0.15
+
+    init_dot(1.0, P_y, color=PARTICIPANT_LANE)
+
+    state(2.6, P_y, 1.9, 0.7, "registered", PARTICIPANT_LANE, fc="#FDEBD0")
+    state(8.6, P_y + 0.85, 2.5, 0.85,
+          "checked-in\n(reward earned)", TERMINAL_GOOD,
+          fc="#E9F7EF", fs=10.0, terminal=True)
+    state(8.6, P_y - 1.0, 2.1, 0.7,
+          "absent", TERMINAL_NEU, fc="#F4F6F7", terminal=True)
+    state(12.5, P_y - 1.0, 2.1, 0.7,
+          "no-show", TERMINAL_BAD, fc="#FDEDEC", terminal=True)
+
+    # registered <- start
+    arrow(1.18, P_y, 1.65, P_y, PARTICIPANT_LANE)
+    edge_label(1.4, P_y - 0.42, "Sign-up",
+               PARTICIPANT_LANE, fs=8.6, bg=False)
+
+    # registered -> checked-in (the load-bearing transition)
+    arrow(3.6, P_y + 0.15, 7.3, P_y + 0.7,
+          TERMINAL_GOOD, lw=2.0)
+
+    # Two design-parameter gates, plain English, on the gated edge.
+    # Place them stacked above the slanted arrow so neither overlaps the
+    # registered card or the lane subtitle.
+    gate_x = 5.6
+    gate_y_top = P_y + 1.55
+    gate_y_bot = P_y + 0.85
+
+    ax.text(
+        gate_x, gate_y_top,
+        "Within check-in window\n(design parameter: ~ +/- 30 min)",
+        ha="center", va="center", fontsize=8.6,
+        color=ACCENT_COLOR, fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.25",
+                  facecolor="#FEF5E7", edgecolor=ACCENT_COLOR,
+                  linewidth=1.0),
     )
-    g.node("legend", label=legend_label,
-           shape="box", style="rounded,filled",
-           fillcolor="#FDFEFE", color="#34495E",
-           fontname="Helvetica", fontsize="10", margin="0.10")
+    ax.text(
+        gate_x, gate_y_bot,
+        "At venue\n(design parameter: within ~ 100 m)",
+        ha="center", va="center", fontsize=8.6,
+        color=ACCENT_COLOR, fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.25",
+                  facecolor="#FEF5E7", edgecolor=ACCENT_COLOR,
+                  linewidth=1.0),
+    )
+    edge_label(7.05, P_y + 0.30, "Awards small reward",
+               TERMINAL_GOOD, fs=8.8, italic=True)
 
-    pdf, png = render_dot(g, "mbe_b2_activity_state_machine", dpi=300)
+    # registered -> absent  (organiser-marked, dashed)
+    arrow(3.6, P_y - 0.18, 7.55, P_y - 0.95,
+          NEUTRAL, ls="--", lw=1.3)
+    edge_label(5.4, P_y - 0.65, "Organiser marks absent",
+               NEUTRAL, fs=8.6, italic=True)
+
+    # registered -> no-show  (auto on activity completion)
+    arrow(3.6, P_y - 0.05, 11.45, P_y - 0.95,
+          NEUTRAL, ls=":", lw=1.3)
+    edge_label(8.0, P_y - 1.4,
+               "Auto-resolved when activity completes  (no check-in recorded)",
+               NEUTRAL, fs=8.6, italic=True)
+
+    # ==================================================================
+    # Cross-cluster contextual link (activity completes -> no-show fires)
+    # ==================================================================
+    arrow(11.8, A_y - 0.36, 12.5, P_y - 0.62,
+          NEUTRAL, ls=":", lw=1.0)
+    edge_label(13.3, (A_y + (P_y - 0.4)) / 2,
+               "On activity end:\nunchecked  ->  no-show",
+               NEUTRAL, fs=8.4, italic=True)
+
+    # ==================================================================
+    # Title + subtitle
+    # ==================================================================
+    ax.set_title(
+        "Activity and participant lifecycles",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        (X_MIN + X_MAX) / 2, 8.0,
+        "Two co-located state machines; check-in is gated by a time "
+        "window and a venue radius, and a successful check-in awards a "
+        "small reward.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
+    )
+
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(-0.4, 8.4)
+    ax.set_aspect("auto")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbe_b2_activity_state_machine", dpi=300)
     register("mbe_b2_activity_state_machine", "ok", png_path=png)
     print(f"  pdf -> {pdf}")
     print(f"  png -> {png}")

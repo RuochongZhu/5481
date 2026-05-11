@@ -1,14 +1,14 @@
 """mbse_req_spec - System requirements specification table.
 
-Twelve "The system shall..." requirements anchored to the HoQ engineering
-characteristics (EC1-EC12) and the §5.11-5.15 design decisions DD1-DD5.
-Status reflects the 2026-04-23 Railway-backed production snapshot reported
-in §5.10:
-  - Deployed (green): observed in production schema or controllers
-  - Specified (yellow): present in code but not yet provisioned in prod
-  - Pending (red): explicitly future work / out of current cohort
+Twelve concept-level requirements grouped by four design primitives
+(Identity, Safety, Rating, Rewards). The table reads as a paper-ready
+specification list, not an engineering checklist: statements are in
+plain English, sources point to the formative survey findings or
+adversarial categories, and priority is graded High / Medium / Low.
 
-Modeled on a SysML / MBSE requirements-spec table.
+Style: per `_mbe_style_guide.md` §1 and §4 (matrix / traceability row).
+Navy header, alternating white / light-grey body rows, accent colour
+(#F39C12) reserved for the highest-priority category band (Safety).
 """
 
 from __future__ import annotations
@@ -22,85 +22,95 @@ from render_mbe_figures import renderer  # noqa: E402
 from _mbe_helpers import setup_mpl, save_mpl, register  # noqa: E402
 
 
-# (id, anchor, requirement_text, subsystem, verification_method, status, evidence)
-REQS = [
-    ("R.1", "EC1", "The system shall verify .edu institutional identity "
-                   "before granting access to any module.",
-     "Auth", "Test", "Deployed",
-     "170/184 verified (92.4%) at 2026-04-23"),
-    ("R.2", "EC2", "The system shall maintain bidirectional Socket.IO + "
-                   "REST channels secured by JWT.",
-     "Substrate", "Test", "Deployed",
-     "Express 5.1 + Socket.IO on Railway"),
-    ("R.3", "EC3", "The system shall display a verified-Cornell badge on "
-                   "every driver and rider profile card.",
-     "Carpool", "Inspection", "Deployed",
-     "ride/profile cards live in UI"),
-    ("R.4", "EC4", "The system shall enforce a 2-hour post-departure "
-                   "delay before opening the rating window.",
-     "Rating", "Test", "Deployed",
-     "RATING_READY_DELAY_MS const"),
-    ("R.5", "EC5", "The system shall persist bidirectional ratings keyed "
-                   "on (trip_id, rater_id, ratee_id).",
-     "Rating", "Test", "Deployed",
-     "schema enforced; 0 rows in prod"),
-    ("R.6", "EC6", "The system shall recompute users.avg_rating across "
-                   "ratings + activity_ratings on each rating UPSERT.",
-     "Rating", "Test", "Deployed",
-     "RPC recompute_user_rating"),
-    ("R.7", "EC7", "The system shall offer update-in-place rating "
-                   "revision (with documented dispute-window limitation).",
-     "Rating", "Demo", "Deployed",
-     "1 row per (trip,rater,ratee)"),
-    ("R.8", "EC8", "The system shall auto-create a ride-scoped group "
-                   "chat on first booking, expiring departure +1h.",
-     "Messaging", "Test", "Deployed",
-     "8 rating-reminder + 16 ride pushes"),
-    ("R.9", "EC9", "The system shall write to wxgroup_notice_record on "
-                   "createRide / marketplace_item / activity creation.",
-     "Outreach", "Test", "Deployed",
-     "82 rows: 62 mkt / 16 ride / 4 act"),
-    ("R.10", "EC10", "The system shall award/deduct points via "
-                     "point_transactions atomic with users.points RPC.",
-     "Points", "Test", "Specified",
-     "point_rules=0; table missing in prod"),
-    ("R.11", "EC11", "The system shall implement REPLY_REQUIRED guard on "
-                     "cold DMs (HTTP 403 until the recipient replies).",
-     "Messaging", "Test", "Deployed",
-     "context_type DM gating live"),
-    ("R.12", "EC12", "The system shall accept multi-institution domains "
-                     "via a configurable .edu whitelist.",
-     "Auth", "Test", "Pending",
-     "Cornell-only as of 2026-04"),
+PLATFORM_COLOR = "#1A5276"   # navy header band
+ACCENT_COLOR = "#F39C12"     # highest-priority category accent
+TEXT_COLOR = "#1B2631"
+MUTED_COLOR = "#566573"
+ROW_LIGHT = "#FFFFFF"
+ROW_DARK = "#F4F6F7"
+BORDER_COLOR = "#AEB6BF"
+
+# Four design-primitive categories. Each category maps to a soft band
+# colour used in the leftmost group label. Safety carries the accent.
+CATEGORIES = [
+    {
+        "name": "Identity",
+        "band": "#D6EAF8",
+        "stripe": PLATFORM_COLOR,
+        "is_accent": False,
+    },
+    {
+        "name": "Safety",
+        "band": "#FDEBD0",
+        "stripe": ACCENT_COLOR,
+        "is_accent": True,
+    },
+    {
+        "name": "Rating",
+        "band": "#FCF3CF",
+        "stripe": "#9A7D0A",
+        "is_accent": False,
+    },
+    {
+        "name": "Rewards",
+        "band": "#E8DAEF",
+        "stripe": "#6C3483",
+        "is_accent": False,
+    },
 ]
 
-# Subsystem palette (adds visual orientation to the Subsystem column).
-SUBSYSTEM_COLORS = {
-    "Auth":      "#D6EAF8",
-    "Substrate": "#E8DAEF",
-    "Carpool":   "#D5F5E3",
-    "Rating":    "#FCF3CF",
-    "Messaging": "#FADBD8",
-    "Outreach":  "#FDEBD0",
-    "Points":    "#F4ECF7",
-}
+# (category, req_id, statement, source, priority)
+# Statements are in plain English, no implementation references.
+REQS = [
+    # ---------- Identity ----------
+    ("Identity", "R1.1",
+     "Only verified campus members can access ride and activity modules.",
+     "Beat 3 - identity primitive", "High"),
+    ("Identity", "R1.2",
+     "Every profile card shows a verified-campus badge alongside the name.",
+     "Beat 5 - rider trust signal", "High"),
+    ("Identity", "R1.3",
+     "Guests may browse posts read-only without the ability to message.",
+     "Beat 7 - sample scoping", "Medium"),
 
-STATUS_COLORS = {
-    "Deployed":  "#82E0AA",   # green
-    "Specified": "#F8C471",   # yellow / amber
-    "Pending":   "#F1948A",   # red / coral
-}
-STATUS_TEXT = {
-    "Deployed":  "#1D8348",
-    "Specified": "#9C640C",
-    "Pending":   "#922B21",
-}
+    # ---------- Safety (highest priority category) ----------
+    ("Safety", "R2.1",
+     "First-message contact requires the receiver to reply before a thread opens.",
+     "Beat 5 - cold-DM concern", "High"),
+    ("Safety", "R2.2",
+     "Trip-bound chat closes automatically one hour after the trip ends.",
+     "Beat 6 - trip-bound chat", "High"),
+    ("Safety", "R2.3",
+     "Check-in is granted only inside the venue radius and time window.",
+     "Beat 6 - check-in design", "High"),
 
-VM_COLORS = {
-    "Test":       "#5DADE2",
-    "Inspection": "#A569BD",
-    "Demo":       "#48C9B0",
-    "Analysis":   "#F5B041",
+    # ---------- Rating ----------
+    ("Rating", "R3.1",
+     "The rating prompt opens two hours after the trip ends, not in the vehicle.",
+     "Beat 5 - F4 rating fairness", "High"),
+    ("Rating", "R3.2",
+     "Driver and passenger rate each other independently and bidirectionally.",
+     "Beat 5 - F4 mutual rating", "High"),
+    ("Rating", "R3.3",
+     "A user may revise their own rating until the dispute window closes.",
+     "Beat 7 - dispute scoping", "Medium"),
+
+    # ---------- Rewards ----------
+    ("Rewards", "R4.1",
+     "Posting a trip, activity, or item earns campus points on completion.",
+     "Beat 6 - rewards loop", "Medium"),
+    ("Rewards", "R4.2",
+     "Point balance updates atomically so award and redemption never desync.",
+     "Beat 6 - rewards integrity", "Medium"),
+    ("Rewards", "R4.3",
+     "Highest-value redemptions are gated behind a verified-campus badge.",
+     "Beat 7 - gamification risk", "Low"),
+]
+
+PRIORITY_COLORS = {
+    "High":   {"fill": "#F5B7B1", "edge": "#922B21", "text": "#641E16"},
+    "Medium": {"fill": "#FAD7A0", "edge": "#9A7D0A", "text": "#7D6608"},
+    "Low":    {"fill": "#D5DBDB", "edge": "#566573", "text": "#1B2631"},
 }
 
 
@@ -110,198 +120,220 @@ def render():
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
-    headers = ["ID", "EC", "Requirement (\"The system shall...\")",
-               "Subsystem", "Verification", "Status", "Evidence / Live trace"]
-    # Column widths (relative units, must sum to 1.0 for x in [0,1]).
-    col_widths = [0.040, 0.040, 0.435, 0.080, 0.085, 0.090, 0.230]
-    assert abs(sum(col_widths) - 1.0) < 1e-9
+    # --------------------------------------------------------------
+    # Geometry. Coordinate system: x in [0, 1], y in figure units.
+    # --------------------------------------------------------------
+    headers = ["Req ID", "Statement", "Source", "Priority"]
+    # Leftmost group-label strip + 4 data columns. Widths sum to 1.
+    group_w = 0.090
+    col_widths = [0.075, 0.520, 0.225, 0.090]
+    assert abs(group_w + sum(col_widths) - 1.0) < 1e-9
 
     n_rows = len(REQS)
-    fig_w = 17.0
-    row_h = 0.78           # taller rows so 2-line wrapped text fits
-    header_h = 0.95
-    title_h = 0.95
-    fig_h = title_h + header_h + n_rows * row_h + 0.85
+    fig_w = 14.0
+    row_h = 0.62
+    header_h = 0.75
+    title_h = 1.05
+    legend_h = 0.55
+    fig_h = title_h + header_h + n_rows * row_h + legend_h + 0.30
 
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.set_xlim(0, 1)
     ax.set_ylim(0, fig_h)
     ax.axis("off")
 
-    # Compute x offsets for each column.
-    x_edges = [0.0]
+    # Column edges (inside the data area, after the group strip).
+    x_edges = [group_w]
     for w in col_widths:
         x_edges.append(x_edges[-1] + w)
 
-    # ----- Title -----
-    title_y = fig_h - 0.30
+    # --------------------------------------------------------------
+    # Title + italic subtitle (design intent, one sentence)
+    # --------------------------------------------------------------
+    title_y = fig_h - 0.32
     ax.text(0.5, title_y,
-            "Figure: CampusRide v4.4 - Requirements Specification "
-            "(R.1-R.12 anchored to HoQ EC1-EC12)",
-            ha="center", va="center", fontsize=13.5, fontweight="bold",
-            color="#1A1A1A")
-    ax.text(0.5, title_y - 0.45,
-            "Status reflects the Railway-backed production snapshot of 2026-04-23 "
-            "(184 users, 170 verified). Evidence column quotes deployed rows / files.",
-            ha="center", va="center", fontsize=9.2, style="italic", color="#566573")
+            "Requirements specification by design primitive",
+            ha="center", va="center",
+            fontsize=14, fontweight="bold", color=TEXT_COLOR)
+    ax.text(0.5, title_y - 0.42,
+            "Twelve concept-level requirements grouped by primitive; "
+            "Safety carries the highest-priority band by design.",
+            ha="center", va="center",
+            fontsize=10, style="italic", color=MUTED_COLOR)
 
-    # ----- Header row -----
-    header_y_top = fig_h - title_h
-    header_y_bot = header_y_top - header_h
-    # Banner background
+    # --------------------------------------------------------------
+    # Header row (navy banner)
+    # --------------------------------------------------------------
+    header_top = fig_h - title_h
+    header_bot = header_top - header_h
+
+    # Group-strip header cell (matches navy banner)
     ax.add_patch(mpatches.Rectangle(
-        (0, header_y_bot), 1, header_h,
-        facecolor="#34495E", edgecolor="#1B2631", linewidth=1.0, zorder=2))
+        (0, header_bot), 1, header_h,
+        facecolor=PLATFORM_COLOR, edgecolor=PLATFORM_COLOR,
+        linewidth=0, zorder=2))
+    ax.text(group_w / 2, (header_top + header_bot) / 2, "Category",
+            ha="center", va="center", fontsize=10.5,
+            fontweight="bold", color="white", zorder=3)
     for j, h in enumerate(headers):
-        x0 = x_edges[j]
-        x1 = x_edges[j + 1]
-        ax.text((x0 + x1) / 2, (header_y_top + header_y_bot) / 2, h,
-                ha="center", va="center", fontsize=10.5, fontweight="bold",
-                color="white", zorder=3)
-        # Vertical separator
-        if j > 0:
-            ax.plot([x0, x0], [header_y_bot, header_y_top],
-                    color="#5D6D7E", linewidth=0.6, zorder=3)
+        x0, x1 = x_edges[j], x_edges[j + 1]
+        ax.text((x0 + x1) / 2, (header_top + header_bot) / 2, h,
+                ha="center", va="center", fontsize=10.5,
+                fontweight="bold", color="white", zorder=3)
+        # Subtle vertical separator between header cells
+        ax.plot([x0, x0], [header_bot, header_top],
+                color="#5D6D7E", linewidth=0.6, zorder=3)
+    ax.plot([group_w, group_w], [header_bot, header_top],
+            color="#FFFFFF", linewidth=0.8, alpha=0.4, zorder=3)
 
-    # ----- Body rows -----
-    body_top = header_y_bot
-    for i, (rid, ec, text, subsys, vm, status, evid) in enumerate(REQS):
-        y_top = body_top - i * row_h
-        y_bot = y_top - row_h
-        y_mid = (y_top + y_bot) / 2
+    # --------------------------------------------------------------
+    # Body rows, grouped by category. We draw category bands first
+    # (one per group) and then individual rows on top.
+    # --------------------------------------------------------------
+    body_top = header_bot
+    # Walk categories in declared order.
+    row_index = 0
+    for cat in CATEGORIES:
+        cat_rows = [r for r in REQS if r[0] == cat["name"]]
+        if not cat_rows:
+            continue
+        n = len(cat_rows)
+        cat_top = body_top - row_index * row_h
+        cat_bot = cat_top - n * row_h
 
-        # Row background tinted by status (very pale)
-        row_tint = {
-            "Deployed":  "#EAFAF1",
-            "Specified": "#FEF9E7",
-            "Pending":   "#FDEDEC",
-        }[status]
+        # Group-label strip (left band, full category height)
         ax.add_patch(mpatches.Rectangle(
-            (0, y_bot), 1, row_h,
-            facecolor=row_tint, edgecolor="none", zorder=1))
+            (0, cat_bot), group_w, n * row_h,
+            facecolor=cat["band"],
+            edgecolor=cat["stripe"], linewidth=1.0,
+            zorder=2))
+        # Vertical accent stripe on the inner edge
+        stripe_w = 0.008
+        ax.add_patch(mpatches.Rectangle(
+            (group_w - stripe_w, cat_bot), stripe_w, n * row_h,
+            facecolor=cat["stripe"], edgecolor="none", zorder=3))
+        # Category label, rotated, vertically centred
+        ax.text(group_w / 2 - 0.005, (cat_top + cat_bot) / 2,
+                cat["name"], ha="center", va="center",
+                fontsize=11, fontweight="bold", color=cat["stripe"],
+                rotation=90, zorder=4)
+        # Optional accent flag on the highest-priority category
+        if cat["is_accent"]:
+            ax.text(group_w / 2 - 0.005, cat_top - 0.18,
+                    "TOP", ha="center", va="center",
+                    fontsize=7, fontweight="bold",
+                    color=ACCENT_COLOR, zorder=5)
 
-        # ID column - bold dark
-        cx = (x_edges[0] + x_edges[1]) / 2
-        ax.text(cx, y_mid, rid, ha="center", va="center",
-                fontsize=10.0, fontweight="bold", color="#1A1A1A", zorder=4)
+        # Individual rows
+        for k, (_, rid, stmt, source, prio) in enumerate(cat_rows):
+            y_top = cat_top - k * row_h
+            y_bot = y_top - row_h
+            y_mid = (y_top + y_bot) / 2
 
-        # EC anchor column - small badge style
-        cx = (x_edges[1] + x_edges[2]) / 2
-        ax.add_patch(mpatches.FancyBboxPatch(
-            (cx - 0.014, y_mid - 0.18), 0.028, 0.36,
-            boxstyle="round,pad=0.005,rounding_size=0.006",
-            facecolor="#D6EAF8", edgecolor="#2874A6", linewidth=0.7,
-            zorder=4))
-        ax.text(cx, y_mid, ec, ha="center", va="center",
-                fontsize=8.4, fontweight="bold", color="#1B4F72", zorder=5)
+            # Alternating row tint (white / light grey)
+            row_bg = ROW_LIGHT if (row_index + k) % 2 == 0 else ROW_DARK
+            ax.add_patch(mpatches.Rectangle(
+                (group_w, y_bot), 1 - group_w, row_h,
+                facecolor=row_bg, edgecolor="none", zorder=1))
 
-        # Requirement text (left aligned, padded). Wrap to fit column width.
-        import textwrap
-        x0 = x_edges[2] + 0.008
-        wrapped = textwrap.fill(text, width=80)
-        # Limit to 2 lines max for vertical fit
-        lines = wrapped.split("\n")
-        if len(lines) > 2:
-            lines = [lines[0], " ".join(lines[1:])]
-            # If second line still too long, truncate with ellipsis
-            if len(lines[1]) > 90:
-                lines[1] = lines[1][:87] + "..."
-        wrapped = "\n".join(lines)
-        ax.text(x0, y_mid, wrapped, ha="left", va="center",
-                fontsize=9.0, color="#1A1A1A", zorder=4,
-                linespacing=1.15)
+            # Req ID (centred, monospace-like)
+            cx = (x_edges[0] + x_edges[1]) / 2
+            ax.text(cx, y_mid, rid,
+                    ha="center", va="center",
+                    fontsize=10, fontweight="bold",
+                    color=TEXT_COLOR, zorder=4)
 
-        # Subsystem chip
-        cx = (x_edges[3] + x_edges[4]) / 2
-        chip_color = SUBSYSTEM_COLORS.get(subsys, "#ECECEC")
-        ax.add_patch(mpatches.FancyBboxPatch(
-            (cx - 0.034, y_mid - 0.20), 0.068, 0.40,
-            boxstyle="round,pad=0.005,rounding_size=0.012",
-            facecolor=chip_color, edgecolor="#566573", linewidth=0.6,
-            zorder=4))
-        ax.text(cx, y_mid, subsys, ha="center", va="center",
-                fontsize=8.6, fontweight="bold", color="#1A1A1A", zorder=5)
+            # Statement (left-aligned, wrapped)
+            import textwrap
+            x0 = x_edges[1] + 0.010
+            wrapped = textwrap.fill(stmt, width=72)
+            lines = wrapped.split("\n")
+            if len(lines) > 2:
+                lines = [lines[0], " ".join(lines[1:])]
+                if len(lines[1]) > 80:
+                    lines[1] = lines[1][:77] + "..."
+            ax.text(x0, y_mid, "\n".join(lines),
+                    ha="left", va="center",
+                    fontsize=9.5, color=TEXT_COLOR, zorder=4,
+                    linespacing=1.2)
 
-        # Verification method chip
-        cx = (x_edges[4] + x_edges[5]) / 2
-        vm_color = VM_COLORS.get(vm, "#BDC3C7")
-        ax.add_patch(mpatches.FancyBboxPatch(
-            (cx - 0.030, y_mid - 0.18), 0.060, 0.36,
-            boxstyle="round,pad=0.005,rounding_size=0.010",
-            facecolor=vm_color, edgecolor="#34495E", linewidth=0.6,
-            alpha=0.85, zorder=4))
-        ax.text(cx, y_mid, vm, ha="center", va="center",
-                fontsize=8.6, fontweight="bold", color="white", zorder=5)
+            # Source (left-aligned, italic muted)
+            x0 = x_edges[2] + 0.010
+            ax.text(x0, y_mid, source,
+                    ha="left", va="center",
+                    fontsize=9, style="italic",
+                    color=MUTED_COLOR, zorder=4)
 
-        # Status badge (filled)
-        cx = (x_edges[5] + x_edges[6]) / 2
-        st_color = STATUS_COLORS[status]
-        ax.add_patch(mpatches.FancyBboxPatch(
-            (cx - 0.038, y_mid - 0.20), 0.076, 0.40,
-            boxstyle="round,pad=0.005,rounding_size=0.014",
-            facecolor=st_color, edgecolor=STATUS_TEXT[status],
-            linewidth=1.0, zorder=4))
-        ax.text(cx, y_mid, status, ha="center", va="center",
-                fontsize=9.0, fontweight="bold", color=STATUS_TEXT[status],
-                zorder=5)
+            # Priority badge (rounded fill)
+            cx = (x_edges[3] + x_edges[4]) / 2
+            pc = PRIORITY_COLORS[prio]
+            ax.add_patch(mpatches.FancyBboxPatch(
+                (cx - 0.034, y_mid - 0.16), 0.068, 0.32,
+                boxstyle="round,pad=0.005,rounding_size=0.012",
+                facecolor=pc["fill"], edgecolor=pc["edge"],
+                linewidth=0.9, zorder=4))
+            ax.text(cx, y_mid, prio,
+                    ha="center", va="center",
+                    fontsize=9, fontweight="bold",
+                    color=pc["text"], zorder=5)
 
-        # Evidence column
-        x0 = x_edges[6] + 0.008
-        ax.text(x0, y_mid, evid, ha="left", va="center",
-                fontsize=8.4, style="italic", color="#566573", zorder=4)
+            # Row separator (thin)
+            ax.plot([group_w, 1], [y_bot, y_bot],
+                    color="#E5E8E8", linewidth=0.5, zorder=2)
 
-        # Row separator
-        ax.plot([0, 1], [y_bot, y_bot],
-                color="#D5DBDB", linewidth=0.5, zorder=2)
-        # Vertical separators inside body
-        for j in range(1, len(col_widths)):
-            x = x_edges[j]
-            ax.plot([x, x], [y_bot, y_top],
-                    color="#E5E8E8", linewidth=0.4, zorder=2)
+            # Vertical separators inside body
+            for j in range(1, len(col_widths)):
+                x = x_edges[j]
+                ax.plot([x, x], [y_bot, y_top],
+                        color="#E5E8E8", linewidth=0.4, zorder=2)
 
-    # Outer border
-    bottom = body_top - n_rows * row_h
+        # Heavier separator at the end of the category block
+        ax.plot([0, 1], [cat_bot, cat_bot],
+                color=BORDER_COLOR, linewidth=1.0, zorder=3)
+        row_index += n
+
+    body_bot = body_top - n_rows * row_h
+
+    # Outer border around the whole table (header + body)
     ax.add_patch(mpatches.Rectangle(
-        (0, bottom), 1, header_y_top - bottom,
-        facecolor="none", edgecolor="#1B2631", linewidth=1.2, zorder=10))
+        (0, body_bot), 1, header_top - body_bot,
+        facecolor="none", edgecolor=PLATFORM_COLOR,
+        linewidth=1.4, zorder=10))
 
-    # ----- Legend below table -----
-    legend_y = bottom - 0.20
-    ax.text(0.005, legend_y, "Verification:",
-            ha="left", va="center", fontsize=8.8, fontweight="bold",
-            color="#1A1A1A")
-    x_cursor = 0.078
-    for vm, color in VM_COLORS.items():
+    # --------------------------------------------------------------
+    # Legend strip (priority key)
+    # --------------------------------------------------------------
+    legend_y = body_bot - 0.30
+    ax.text(0.005, legend_y, "Priority key:",
+            ha="left", va="center",
+            fontsize=9, fontweight="bold", color=TEXT_COLOR)
+    x_cursor = 0.090
+    for prio in ["High", "Medium", "Low"]:
+        pc = PRIORITY_COLORS[prio]
         ax.add_patch(mpatches.FancyBboxPatch(
-            (x_cursor, legend_y - 0.10), 0.040, 0.20,
-            boxstyle="round,pad=0.004,rounding_size=0.008",
-            facecolor=color, edgecolor="#34495E", linewidth=0.5))
-        ax.text(x_cursor + 0.020, legend_y, vm,
-                ha="center", va="center", fontsize=7.8,
-                fontweight="bold", color="white")
-        x_cursor += 0.052
-
-    ax.text(0.385, legend_y, "Status:",
-            ha="left", va="center", fontsize=8.8, fontweight="bold",
-            color="#1A1A1A")
-    x_cursor = 0.435
-    for st, color in STATUS_COLORS.items():
-        ax.add_patch(mpatches.FancyBboxPatch(
-            (x_cursor, legend_y - 0.10), 0.058, 0.20,
-            boxstyle="round,pad=0.004,rounding_size=0.012",
-            facecolor=color, edgecolor=STATUS_TEXT[st], linewidth=0.8))
-        ax.text(x_cursor + 0.029, legend_y, st,
-                ha="center", va="center", fontsize=7.8,
-                fontweight="bold", color=STATUS_TEXT[st])
+            (x_cursor, legend_y - 0.11), 0.058, 0.22,
+            boxstyle="round,pad=0.004,rounding_size=0.010",
+            facecolor=pc["fill"], edgecolor=pc["edge"], linewidth=0.7))
+        ax.text(x_cursor + 0.029, legend_y, prio,
+                ha="center", va="center",
+                fontsize=8, fontweight="bold", color=pc["text"])
         x_cursor += 0.072
 
-    ax.text(0.665, legend_y,
-            "EC = Engineering Characteristic anchor (HoQ §5.16). "
-            "Subsystem chips colored by service.",
-            ha="left", va="center", fontsize=7.8,
-            style="italic", color="#566573")
+    # Accent legend chip
+    ax.add_patch(mpatches.FancyBboxPatch(
+        (0.330, legend_y - 0.11), 0.018, 0.22,
+        boxstyle="round,pad=0.004,rounding_size=0.008",
+        facecolor=ACCENT_COLOR, edgecolor=ACCENT_COLOR, linewidth=0.6))
+    ax.text(0.355, legend_y,
+            "Accent marks the top-priority category (Safety).",
+            ha="left", va="center",
+            fontsize=8.5, style="italic", color=MUTED_COLOR)
 
-    pdf, png = save_mpl("mbse_req_spec")
+    pdf, png = save_mpl("mbse_req_spec", dpi=300)
     register("mbse_req_spec", "ok", png_path=png)
     print(f"  pdf -> {pdf}")
     print(f"  png -> {png}")
+
+
+if __name__ == "__main__":
+    render()

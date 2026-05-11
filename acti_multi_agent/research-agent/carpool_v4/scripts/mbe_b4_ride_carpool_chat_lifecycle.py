@@ -1,23 +1,10 @@
-"""mbe_b4 — Ride-Scoped Group Chat Lifecycle.
+"""mbe_b4 — Trip-Bound Group Chat Lifecycle.
 
-Lifecycle diagram for the auto-managed `group_kind='ride_carpool'` group that
-is provisioned inline by `bookRide()`. Source-of-truth:
-  campusride-backend/src/services/rideCarpoolGroup.service.js:28-73
-  draft §5.7.5
-
-Layout:
-  - Main flow vertical (TB): bookRide -> service entry -> exists? decision
-    -> INSERT groups (no) | reuse (yes) -> INSERT group_members (idempotent)
-    -> Group ready / Socket.IO thread namespace
-  - Side branches (dashed light grey):
-      A) cancelBooking -> removePassengerFromRideGroup (member row delete)
-      B) updateRide(departure_time) -> syncRideCarpoolGroupExpiry
-      C) chat_expires_at reached -> read-only fallback
-  - Snapshot footer (italic, 2026-04-23): 0 live ride_carpool rows; indirect
-    evidence via 8 reminder rows + 16 wxgroup_notice_record pushes.
-  - Limitation callout (orange, bottom-right):
-      * 1-h post-departure expiry forecloses post-trip reconciliation
-      * Migration-010 mute / message-delete affordances NOT inherited
+Conceptual lifecycle diagram (HCI/CHI readers, not engineers). A horizontal
+timeline shows the chat moving through Created -> Open -> Expired, with two
+side branches: cancellation removes a member (chat survives), reschedule
+shifts the expiry. The 1-hour-after-trip expiry is the design choice worth
+highlighting.
 """
 
 from __future__ import annotations
@@ -27,235 +14,224 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_mbe_figures import renderer  # noqa: E402
-from _mbe_helpers import make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer, DRIVER_COLOR, RIDER_COLOR,
+)
 
 
-# Palette
-SERVICE_FILL = "#D6EAF8"   # light blue — service-call nodes
-DB_FILL = "#D5F5E3"        # light green — DB INSERT/UPDATE nodes
-DECISION_FILL = "#FCF3CF"  # yellow — decision diamond
-SIDE_FILL = "#F4F6F7"      # very light grey — side-branch nodes
-CALLOUT_FILL = "#FAE5D3"   # orange-tinted — limitation callout
-FOOTER_FILL = "#FDFEFE"    # near-white — snapshot footer
-
-SERVICE_BORDER = "#1F618D"
-DB_BORDER = "#1E8449"
-DECISION_BORDER = "#B7950B"
-SIDE_BORDER = "#909497"
-CALLOUT_BORDER = "#CA6F1E"
-FOOTER_BORDER = "#566573"
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"  # for the 1h-after-trip expiry choice
+NEUTRAL = "#566573"
 
 
 @renderer("mbe_b4_ride_carpool_chat_lifecycle")
 def render():
-    g = make_digraph("b4_ride_carpool_chat_lifecycle", rankdir="TB")
-    g.attr(
-        ranksep="0.55", nodesep="0.45", splines="spline",
-        label=(
-            "Ride-scoped group-chat lifecycle  "
-            "(rideCarpoolGroup.service.js:28-73, draft §5.7.5)"
-        ),
-        labelloc="t", fontsize="14",
-    )
-    g.attr("node", fontsize="11")
-    g.attr("edge", fontsize="9")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle
+
+    fig, ax = plt.subplots(figsize=(14, 8.0))
 
     # ------------------------------------------------------------------
-    # Main vertical flow
+    # Layout
     # ------------------------------------------------------------------
-    # 1. bookRide entry
-    g.node(
-        "n1_book_ride",
-        "bookRide(ride_id, passenger_id)\n"
-        "[carpooling.controller.js:511-709]",
-        shape="box", style="rounded,filled",
-        fillcolor=SERVICE_FILL, color=SERVICE_BORDER, penwidth="1.4",
-    )
-
-    # 2. service entry
-    g.node(
-        "n2_ensure",
-        "ensureRideCarpoolGroupOnBooking(ride_id, passenger_id)\n"
-        "[rideCarpoolGroup.service.js:28-73]",
-        shape="box", style="rounded,filled",
-        fillcolor=SERVICE_FILL, color=SERVICE_BORDER, penwidth="1.4",
-    )
-
-    # 3. decision diamond
-    g.node(
-        "n3_exists",
-        "SELECT * FROM groups\nWHERE ride_id = $1\n"
-        "AND group_kind = 'ride_carpool'\nexists?",
-        shape="diamond", style="filled",
-        fillcolor=DECISION_FILL, color=DECISION_BORDER, penwidth="1.4",
-        fontsize="10", height="1.6", width="2.6", fixedsize="false",
-    )
-
-    # 4a. INSERT groups (no branch)
-    g.node(
-        "n4a_insert_group",
-        "INSERT INTO groups\n"
-        "(group_kind = 'ride_carpool',\n"
-        " name = 'Ride: <title>',\n"
-        " creator_id = driver_id,\n"
-        " ride_id,\n"
-        " chat_expires_at = departure_time + 1h)",
-        shape="box", style="rounded,filled",
-        fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-    )
-
-    # 4b. reuse existing group (yes branch)
-    g.node(
-        "n4b_reuse",
-        "Group already exists; reuse\n(idempotent ensure)",
-        shape="box", style="rounded,filled",
-        fillcolor=SERVICE_FILL, color=SERVICE_BORDER, penwidth="1.2",
-    )
-
-    # 5. INSERT group_members (idempotent)
-    g.node(
-        "n5_insert_members",
-        "INSERT INTO group_members\n"
-        "(driver: role = 'creator';\n"
-        " passenger: role = 'member')\n"
-        "Duplicate-key (Postgres 23505)\n"
-        "silently swallowed -> idempotent",
-        shape="box", style="rounded,filled",
-        fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-    )
-
-    # 6. group ready
-    g.node(
-        "n6_ready",
-        "Group ready;\n"
-        "messaging-substrate inherits Socket.IO\n"
-        "`thread:{thread_id}` namespace\n"
-        "[messages.controller.js, mbe_a3]",
-        shape="box", style="rounded,filled",
-        fillcolor=SERVICE_FILL, color=SERVICE_BORDER, penwidth="1.4",
-    )
-
-    # Main-flow edges
-    g.edge("n1_book_ride", "n2_ensure", color=SERVICE_BORDER)
-    g.edge("n2_ensure", "n3_exists", color=SERVICE_BORDER)
-    g.edge(
-        "n3_exists", "n4a_insert_group",
-        label="No", color=DB_BORDER, fontcolor=DB_BORDER,
-    )
-    g.edge(
-        "n3_exists", "n4b_reuse",
-        label="Yes", color=SERVICE_BORDER, fontcolor=SERVICE_BORDER,
-    )
-    g.edge("n4a_insert_group", "n5_insert_members", color=DB_BORDER)
-    g.edge("n4b_reuse", "n5_insert_members", color=SERVICE_BORDER)
-    g.edge("n5_insert_members", "n6_ready", color=SERVICE_BORDER)
+    X_MIN, X_MAX = 0.0, 16.5
+    MAIN_Y = 5.0          # main lane (chat lifecycle)
+    BRANCH_UP_Y = 6.7     # reschedule branch (above)
+    MEMBER_Y = 3.55       # membership icons row (just below main lane)
+    BRANCH_DN_Y = 2.0     # cancellation branch (below)
+    AXIS_Y = 0.55         # temporal axis
 
     # ------------------------------------------------------------------
-    # Side branches (dashed light grey)
+    # Helpers
     # ------------------------------------------------------------------
-    # (A) cancelBooking -> removePassengerFromRideGroup
-    g.node(
-        "sA_cancel",
-        "(A) cancelBooking(ride_id, passenger_id)\n"
-        "  -> removePassengerFromRideGroup(...)\n"
-        "  DELETE group_members WHERE\n"
-        "  group_id = $1 AND user_id = $2;\n"
-        "  group itself NOT deleted\n"
-        "  (other passengers may remain)",
-        shape="box", style="rounded,filled,dashed",
-        fillcolor=SIDE_FILL, color=SIDE_BORDER, fontsize="9",
-    )
-    g.edge(
-        "n5_insert_members", "sA_cancel",
-        style="dashed", color=SIDE_BORDER, arrowhead="vee",
-        constraint="false", minlen="2",
-        label="on cancel", fontcolor=SIDE_BORDER,
-    )
+    def card(x, y, w, h, text, color, *, fc="white", fs=10,
+             alpha=1.0, bold=False, ls="solid"):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.4,
+                linestyle=ls, alpha=alpha,
+            )
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color="#1B2631",
+            fontweight="bold" if bold else "normal",
+            wrap=True,
+        )
 
-    # (B) updateRide(departure_time) -> syncRideCarpoolGroupExpiry
-    g.node(
-        "sB_sync",
-        "(B) updateRide(departure_time)\n"
-        "  -> syncRideCarpoolGroupExpiry(ride_id)\n"
-        "  UPDATE groups SET\n"
-        "  chat_expires_at = new_departure_time + 1h",
-        shape="box", style="rounded,filled,dashed",
-        fillcolor=SIDE_FILL, color=SIDE_BORDER, fontsize="9",
-    )
-    g.edge(
-        "n6_ready", "sB_sync",
-        style="dashed", color=SIDE_BORDER, arrowhead="vee",
-        constraint="false", minlen="2",
-        label="on departure_time edit", fontcolor=SIDE_BORDER,
-    )
+    def arrow(x0, y0, x1, y1, color, *, lw=1.6, ls="-", scale=14):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle="-|>", color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=scale,
+            )
+        )
 
-    # (C) chat_expires_at reached -> read-only fallback
-    g.node(
-        "sC_expired",
-        "(C) on chat_expires_at reached\n"
-        "  read-only fallback:\n"
-        "  no new messages accepted;\n"
-        "  existing thread visible until cleanup",
-        shape="note", style="filled,dashed",
-        fillcolor=SIDE_FILL, color=SIDE_BORDER, fontsize="9",
+    # ------------------------------------------------------------------
+    # Main lane band (chat lifecycle)
+    # ------------------------------------------------------------------
+    ax.add_patch(
+        FancyBboxPatch(
+            (X_MIN, MAIN_Y - 0.65), X_MAX - X_MIN, 1.3,
+            boxstyle="round,pad=0.02",
+            facecolor=PLATFORM_COLOR, alpha=0.07,
+            edgecolor=PLATFORM_COLOR, linewidth=0.8,
+        )
     )
-    g.edge(
-        "n6_ready", "sC_expired",
-        style="dashed", color=SIDE_BORDER, arrowhead="vee",
-        constraint="false", minlen="2",
-        label="on TTL expiry", fontcolor=SIDE_BORDER,
+    ax.text(
+        X_MIN + 0.15, MAIN_Y + 0.78, "Chat lifecycle",
+        ha="left", va="center",
+        fontsize=11, fontweight="bold", color=PLATFORM_COLOR,
     )
 
     # ------------------------------------------------------------------
-    # Limitation callout (orange-tinted, off-flow, bottom-right)
+    # Main timeline cards: Created -> Open -> Expired
     # ------------------------------------------------------------------
-    g.node(
-        "callout_limits",
-        "Limitations (§7.2 scope):\n"
-        "• 1-hour post-departure expiry forecloses\n"
-        "  post-trip reconciliation chat\n"
-        "  (lost items, fare corrections, rating disputes).\n"
-        "• Group muting / message-deletion affordances\n"
-        "  (migration 010) NOT inherited by\n"
-        "  ride_carpool groups.",
-        shape="box", style="rounded,filled",
-        fillcolor=CALLOUT_FILL, color=CALLOUT_BORDER, penwidth="1.4",
-        fontsize="10", fontcolor="#7E5109",
-    )
-    g.edge(
-        "sC_expired", "callout_limits",
-        style="invis", constraint="false",
-    )
-    # Light dotted reference into main flow so the callout is visually anchored
-    g.edge(
-        "n6_ready", "callout_limits",
-        style="dotted", color=CALLOUT_BORDER, arrowhead="none",
-        constraint="false",
+    X_CREATED = 2.6
+    X_OPEN = 7.5
+    X_TRIP = 10.6
+    X_EXPIRED = 13.8
+
+    # 1. Created (first booking auto-creates the chat)
+    card(X_CREATED, MAIN_Y, 3.4, 0.95,
+         "Chat created\nFirst booking opens the\ntrip-bound group chat",
+         PLATFORM_COLOR, bold=True, fs=10)
+
+    # 2. Open (driver = creator, passengers = members)
+    card(X_OPEN, MAIN_Y, 3.0, 0.95,
+         "Open\nMembers exchange\ntrip-coordination messages",
+         PLATFORM_COLOR, bold=True, fs=10)
+
+    # 3. Expired (1 h after trip end) -- accent
+    card(X_EXPIRED, MAIN_Y, 3.2, 0.95,
+         "Expired\nChat closes 1 hour\nafter the trip ends",
+         ACCENT_COLOR, fc="#FEF5E7", bold=True, fs=10)
+
+    # Arrows along the main lane
+    arrow(X_CREATED + 1.7, MAIN_Y, X_OPEN - 1.5, MAIN_Y, PLATFORM_COLOR)
+    arrow(X_OPEN + 1.5, MAIN_Y, X_EXPIRED - 1.6, MAIN_Y, PLATFORM_COLOR)
+
+    # ------------------------------------------------------------------
+    # Membership icons just below the "Open" card: 1 driver + 2 passengers
+    # Placed compactly on a single row so they sit above the cancel branch.
+    # ------------------------------------------------------------------
+    ax.text(X_OPEN - 1.65, MEMBER_Y, "Members:",
+            ha="right", va="center", fontsize=9,
+            color=NEUTRAL, style="italic")
+
+    def member_icon(x, y, color, label):
+        ax.add_patch(Circle((x, y), 0.16, facecolor=color,
+                            edgecolor="white", linewidth=1.2))
+        ax.text(x + 0.24, y, label,
+                ha="left", va="center", fontsize=8.5, color=color,
+                fontweight="bold")
+
+    member_icon(X_OPEN - 1.45, MEMBER_Y, DRIVER_COLOR, "Driver (creator)")
+    member_icon(X_OPEN + 0.20, MEMBER_Y, RIDER_COLOR, "Passenger")
+    member_icon(X_OPEN + 1.55, MEMBER_Y, RIDER_COLOR, "Passenger")
+
+    # ------------------------------------------------------------------
+    # Side branch (above): Reschedule shifts the expiry
+    # ------------------------------------------------------------------
+    card(X_OPEN + 1.4, BRANCH_UP_Y, 4.4, 0.95,
+         "Trip rescheduled\nExpiry shifts to 1 hour after\nthe new trip end time",
+         ACCENT_COLOR, fc="#FFFFFF", fs=9.5, ls="dashed")
+    UP_X = X_OPEN + 1.0
+    arrow(UP_X, MAIN_Y + 0.5, UP_X, BRANCH_UP_Y - 0.5,
+          ACCENT_COLOR, ls="--", lw=1.4)
+    ax.text(UP_X + 0.18, (MAIN_Y + 0.5 + BRANCH_UP_Y - 0.5) / 2,
+            "on reschedule", ha="left", va="center",
+            fontsize=9, color=ACCENT_COLOR, style="italic")
+    # Effect arrow back into the expired box
+    arrow(X_OPEN + 3.6, BRANCH_UP_Y - 0.5, X_EXPIRED - 0.4, MAIN_Y + 0.5,
+          ACCENT_COLOR, ls=":", lw=1.4, scale=12)
+    ax.text(X_EXPIRED - 1.4, MAIN_Y + 0.85, "expiry shifts",
+            ha="center", va="center",
+            fontsize=8.5, color=ACCENT_COLOR, style="italic")
+
+    # ------------------------------------------------------------------
+    # Side branch (below): Cancellation removes a member
+    # ------------------------------------------------------------------
+    card(X_OPEN + 1.4, BRANCH_DN_Y, 4.4, 0.95,
+         "Passenger cancels\nThe member is removed;\nchat survives for the others",
+         RIDER_COLOR, fc="#FFFFFF", fs=9.5, ls="dashed")
+    # Drop from the main lane down past the membership row, routed slightly
+    # right of the membership icons so the "on cancel" label has clean space.
+    DN_X = X_OPEN + 2.7
+    arrow(DN_X, MAIN_Y - 0.5, DN_X, BRANCH_DN_Y + 0.5,
+          RIDER_COLOR, ls="--", lw=1.4)
+    ax.text(DN_X + 0.18, (MAIN_Y - 0.5 + BRANCH_DN_Y + 0.5) / 2,
+            "on cancel", ha="left", va="center",
+            fontsize=9, color=RIDER_COLOR, style="italic")
+
+    # ------------------------------------------------------------------
+    # Temporal axis at the bottom
+    # ------------------------------------------------------------------
+    ax.plot([X_MIN + 0.6, X_MAX - 0.4], [AXIS_Y, AXIS_Y],
+            color=NEUTRAL, linewidth=1.0)
+    TIMES = [
+        (X_CREATED, "First booking"),
+        (X_OPEN,   "Trip-coordination window"),
+        (X_TRIP,   "Trip ends"),
+        (X_EXPIRED, "Trip end + 1 hour"),
+    ]
+    for x, lbl in TIMES:
+        ax.plot([x, x], [AXIS_Y - 0.07, AXIS_Y + 0.07],
+                color=NEUTRAL, linewidth=1.0)
+        ax.text(x, AXIS_Y - 0.25, lbl,
+                ha="center", va="top", fontsize=9, color=NEUTRAL,
+                style="italic")
+
+    # Faint vertical guideline tying "Trip ends" / "+1 hour" to the lane
+    ax.plot([X_TRIP, X_TRIP], [AXIS_Y + 0.1, BRANCH_DN_Y - 0.6],
+            linestyle=":", color=NEUTRAL, linewidth=0.9, alpha=0.6)
+    ax.plot([X_EXPIRED, X_EXPIRED], [AXIS_Y + 0.1, MAIN_Y - 0.55],
+            linestyle=":", color=ACCENT_COLOR, linewidth=0.9, alpha=0.8)
+
+    # ------------------------------------------------------------------
+    # Snapshot footer (findings, not implementation)
+    # ------------------------------------------------------------------
+    ax.text(
+        (X_MIN + X_MAX) / 2, -0.05,
+        "Snapshot: 0 trip-bound chats currently live; indirect evidence "
+        "from 8 post-trip rating reminders and 16 WeChat ride pushes "
+        "tied to historical bookings.",
+        ha="center", va="center", fontsize=9.5, color=NEUTRAL, style="italic",
     )
 
     # ------------------------------------------------------------------
-    # Snapshot footer (italic, full-width)
+    # Title + subtitle
     # ------------------------------------------------------------------
-    g.node(
-        "footer_snapshot",
-        "<<i>2026-04-23 snapshot: 0 group_kind='ride_carpool' rows live. "
-        "Indirect evidence via 8 ride_rating_reminder notification rows "
-        "+ 16 ride wxgroup_notice_record pushes from historical bookings "
-        "whose rides table entries were cleaned.</i>>",
-        shape="box", style="rounded,filled",
-        fillcolor=FOOTER_FILL, color=FOOTER_BORDER, penwidth="1.0",
-        fontsize="9",
+    ax.set_title(
+        "Trip-bound group chat lifecycle",
+        fontsize=14, fontweight="bold", pad=14,
     )
-    g.edge(
-        "callout_limits", "footer_snapshot",
-        style="invis", constraint="true",
-    )
-    g.edge(
-        "n6_ready", "footer_snapshot",
-        style="invis", constraint="true",
+    ax.text(
+        (X_MIN + X_MAX) / 2, 7.85,
+        "The chat is scoped to a single trip and closes one hour after "
+        "it ends, by design, to keep coordination time-boxed.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
     )
 
-    pdf, png = render_dot(g, "mbe_b4_ride_carpool_chat_lifecycle")
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(-0.4, 8.1)
+    ax.set_aspect("auto")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbe_b4_ride_carpool_chat_lifecycle", dpi=300)
     register("mbe_b4_ride_carpool_chat_lifecycle", "ok", png_path=png)
+    print(f"  pdf -> {pdf}")
+    print(f"  png -> {png}")
     return pdf, png
+
+
+if __name__ == "__main__":
+    render()

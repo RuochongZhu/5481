@@ -1,16 +1,15 @@
-"""mbse_act_full_ride_lifecycle — Full activity diagram for createRide -> completeRide.
+"""mbse_act_full_ride_lifecycle — Full ride lifecycle as an activity diagram.
 
-Single-lane vertical activity diagram (with branches & decisions).  Visual
-distinction between deployed-and-exercised (green fill, solid border) and
-designed-but-uninstrumented (light grey fill, dashed border) elements.
+A SysML-flavored activity view across three swim-lanes (Driver / Platform /
+Passenger). This is the longer-timeline counterpart to c1: where c1 zooms
+into the booking moment, this figure stretches across the whole ride
+(publish -> list -> book -> meet -> trip -> rate -> close).
 
-Source-of-truth:
-  campusride-backend/src/controllers/carpooling.controller.js
-    createRide  ~ line 60-172
-    bookRide    ~ line 511-709
-    completeRide ~ line 875-960
-  campusride-backend/src/controllers/rating.controller.js
-    RATING_READY_DELAY_MS = 2 * 60 * 60 * 1000
+Design principles (shared with the unified mbe / mbse style):
+  - matplotlib only; no graphviz code-language artifacts.
+  - User-facing outcomes only; engineering machinery is collapsed away.
+  - Snapshot numbers (184 verified members, 16/82 pushes) are kept as
+    findings, not as implementation notes.
 """
 
 from __future__ import annotations
@@ -20,201 +19,237 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _mbe_helpers import make_digraph, render_dot, register, renderer  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer, DRIVER_COLOR, RIDER_COLOR,
+)
 
 
-# Deployed = #2ECC71 fill; designed-only = #ECF0F1 with dashed border
-DEPLOYED_FILL = "#ABEBC6"
-DEPLOYED_BORDER = "#1E8449"
-DESIGNED_FILL = "#ECF0F1"
-DESIGNED_BORDER = "#7B7D7D"
-DECISION_FILL = "#FCF3CF"
-DECISION_BORDER = "#9A7D0A"
-DESIGNED_DEC_FILL = "#F2F3F4"
-DESIGNED_DEC_BORDER = "#7B7D7D"
-ACTION_BORDER = "#1E8449"
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"   # orange — design highlights (deferred rating)
+GREY = "#566573"
 
 
 @renderer("mbse_act_full_ride_lifecycle")
 def render():
-    g = make_digraph("mbse_full_ride_lifecycle", rankdir="TB")
-    g.attr(
-        ranksep="0.45", nodesep="0.45", splines="spline",
-        label=(
-            "Full ride lifecycle activity diagram  "
-            "(createRide -> bookRide -> completeRide)"
-        ),
-        labelloc="t", fontsize="14",
-    )
-    g.attr("node", fontsize="10", fontname="Helvetica")
-    g.attr("edge", fontsize="9")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+
+    fig, ax = plt.subplots(figsize=(16, 7.0))
+
+    # ------------------------------------------------------------------
+    # Swim-lane y-coordinates
+    # ------------------------------------------------------------------
+    LANES = {
+        "Driver":    (DRIVER_COLOR, 4.0),
+        "Platform":  (PLATFORM_COLOR, 2.5),
+        "Passenger": (RIDER_COLOR, 1.0),
+    }
+    LANE_HEIGHT = 1.15
+
+    X_MIN, X_MAX = 0.0, 19.0
+    LABEL_RIGHT = 1.4
+
+    # Lane bands + labels
+    for name, (color, y) in LANES.items():
+        ax.add_patch(
+            FancyBboxPatch(
+                (X_MIN, y - LANE_HEIGHT / 2),
+                X_MAX - X_MIN, LANE_HEIGHT,
+                boxstyle="round,pad=0.02",
+                facecolor=color, alpha=0.07,
+                edgecolor=color, linewidth=0.8,
+            )
+        )
+        ax.text(
+            X_MIN + 0.1, y, name,
+            ha="left", va="center",
+            fontsize=12, fontweight="bold",
+            color=color,
+        )
+
+    # ------------------------------------------------------------------
+    # Temporal axis along the bottom
+    # ------------------------------------------------------------------
+    PHASES = [
+        (2.5,  "Trip published"),
+        (5.0,  "Listed in feed"),
+        (7.5,  "Booking moment"),
+        (10.0, "Pre-trip coordination"),
+        (12.5, "Trip happens"),
+        (15.0, "Trip + 2 hours"),
+        (17.5, "Trip closed"),
+    ]
+    y_axis = 0.05
+    ax.plot([X_MIN + 0.4, X_MAX - 0.3], [y_axis, y_axis],
+            color=GREY, linewidth=1.0)
+    for x, lbl in PHASES:
+        ax.plot([x, x], [y_axis - 0.05, y_axis + 0.05],
+                color=GREY, linewidth=1.0)
+        ax.text(x, y_axis - 0.20, lbl,
+                ha="center", va="top", fontsize=9, color=GREY,
+                style="italic")
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def deployed(name, label, shape="box"):
-        g.node(name, label,
-               shape=shape, style="rounded,filled",
-               fillcolor=DEPLOYED_FILL, color=DEPLOYED_BORDER,
-               penwidth="1.4")
-
-    def designed(name, label, shape="box"):
-        # Dashed outline + grey fill
-        style = "rounded,filled,dashed" if shape == "box" else "filled,dashed"
-        g.node(name, label,
-               shape=shape, style=style,
-               fillcolor=DESIGNED_FILL, color=DESIGNED_BORDER,
-               penwidth="1.4", fontcolor="#566573")
-
-    def decision(name, label, designed_only=False):
-        fc = DESIGNED_DEC_FILL if designed_only else DECISION_FILL
-        bc = DESIGNED_DEC_BORDER if designed_only else DECISION_BORDER
-        style = "filled,dashed" if designed_only else "filled"
-        g.node(name, label,
-               shape="diamond", style=style,
-               fillcolor=fc, color=bc, penwidth="1.4",
-               fontsize="9", height="1.2", width="2.0", fixedsize="true",
-               fontcolor="#566573" if designed_only else "#1B2631")
-
-    # ------------------------------------------------------------------
-    # Nodes
-    # ------------------------------------------------------------------
-    # Start
-    g.node("start", "", shape="circle", style="filled",
-           fillcolor="#1B2631", color="#1B2631",
-           width="0.30", height="0.30", fixedsize="true")
-
-    deployed("create",
-             "Driver: createRide()\nPOST /carpooling/rides")
-    deployed("ins_rides", "INSERT rides\n(status='active')")
-    deployed("ins_wx",
-             "INSERT wxgroup_notice_record\n(WeChat outreach\n– 16 pushes / snapshot)")
-
-    deployed("browse",
-             "Riders: search / browse rides\nGET /carpooling/rides")
-    deployed("book", "Rider: bookRide()\nPOST .../rides/:id/book")
-
-    decision("dec_seats", "seats > 0?")
-
-    deployed("ins_book",
-             "INSERT ride_bookings\n(status='confirmed')")
-    deployed("notif_fan",
-             "Notification fan-out\n(6 sendNotification +\n6 socket.emit)")
-    deployed("ensure_grp",
-             "ensureRideCarpoolGroup\nOnBooking(...)\n(auto-create chat)")
-
-    deployed("departure", "Departure time reached")
-
-    deployed("delay_2h",
-             "2h delay timer\n(RATING_READY_DELAY_MS\n= 2 * 60 * 60 * 1000 ms)")
-
-    decision("dec_rating", "rating window\nopen?")
-    designed("rate_submit",
-             "Both submit rating\n(designed; ratings table\nhas 0 rows in production)")
-    deployed("rate_skip", "Skip rating")
-
-    decision("dec_sos", "SOS triggered?", designed_only=True)
-    designed("sos_fan",
-             "High-priority notification\nfan-out + emergency contacts\n(designed; 0 invocations)")
-
-    deployed("complete",
-             "Driver: completeRide()\nUPDATE rides\nSET status='completed'")
-    deployed("recompute_avg",
-             "Recompute users.avg_rating\n(only fires if ratings exist)")
-
-    designed("award_pts",
-             "Award points\n(designed; point_rules=0 rows /\npoint_transactions table missing)")
-
-    g.node("end", "", shape="doublecircle", style="filled",
-           fillcolor="#1B2631", color="#1B2631",
-           width="0.30", height="0.30", fixedsize="true")
-
-    # Booking-failure end (seats == 0)
-    designed("book_fail",
-             "Reject (400):\n'No seats available'")
-
-    # ------------------------------------------------------------------
-    # Edges (main flow)
-    # ------------------------------------------------------------------
-    g.edge("start", "create", color=DEPLOYED_BORDER)
-    g.edge("create", "ins_rides", color=DEPLOYED_BORDER)
-    g.edge("ins_rides", "ins_wx", color=DEPLOYED_BORDER)
-    g.edge("ins_wx", "browse", color=DEPLOYED_BORDER)
-    g.edge("browse", "book", color=DEPLOYED_BORDER)
-    g.edge("book", "dec_seats", color=DEPLOYED_BORDER)
-
-    g.edge("dec_seats", "ins_book",
-           label="Yes", color=DEPLOYED_BORDER, fontcolor=DEPLOYED_BORDER)
-    g.edge("dec_seats", "book_fail",
-           label="No", color=DESIGNED_BORDER, fontcolor=DESIGNED_BORDER,
-           style="dashed")
-
-    g.edge("ins_book", "notif_fan", color=DEPLOYED_BORDER)
-    g.edge("notif_fan", "ensure_grp", color=DEPLOYED_BORDER)
-    g.edge("ensure_grp", "departure", color=DEPLOYED_BORDER)
-    g.edge("departure", "delay_2h", color=DEPLOYED_BORDER)
-    g.edge("delay_2h", "dec_rating", color=DEPLOYED_BORDER)
-
-    g.edge("dec_rating", "rate_submit",
-           label="Yes", color=DESIGNED_BORDER, fontcolor=DESIGNED_BORDER,
-           style="dashed")
-    g.edge("dec_rating", "rate_skip",
-           label="No", color=DEPLOYED_BORDER, fontcolor=DEPLOYED_BORDER)
-
-    g.edge("rate_submit", "dec_sos",
-           color=DEPLOYED_BORDER, style="dashed")
-    g.edge("rate_skip", "dec_sos", color=DEPLOYED_BORDER)
-
-    g.edge("dec_sos", "sos_fan",
-           label="Yes", color=DESIGNED_BORDER, fontcolor=DESIGNED_BORDER,
-           style="dashed")
-    g.edge("dec_sos", "complete",
-           label="No", color=DEPLOYED_BORDER, fontcolor=DEPLOYED_BORDER)
-    g.edge("sos_fan", "complete",
-           color=DESIGNED_BORDER, style="dashed")
-
-    g.edge("complete", "recompute_avg", color=DEPLOYED_BORDER)
-    g.edge("recompute_avg", "award_pts",
-           color=DESIGNED_BORDER, style="dashed")
-    g.edge("award_pts", "end",
-           color=DESIGNED_BORDER, style="dashed")
-
-    # Booking-fail goes to end (alternate terminator)
-    g.edge("book_fail", "end",
-           color=DESIGNED_BORDER, style="dashed", constraint="false")
-
-    # ------------------------------------------------------------------
-    # Legend (cluster, off the main flow)
-    # ------------------------------------------------------------------
-    with g.subgraph(name="cluster_legend") as c:
-        c.attr(
-            label="Legend", style="rounded,filled",
-            color="#566573", fillcolor="#FBFCFC",
-            fontsize="11", penwidth="1.2", labeljust="l", labelloc="t",
+    def card(x, y, w, h, text, color, *, fc="white", fs=9.2,
+             alpha=1.0, bold=False):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.4, alpha=alpha,
+            )
         )
-        c.node("legend_dep",
-               "Deployed & exercised",
-               shape="box", style="rounded,filled",
-               fillcolor=DEPLOYED_FILL, color=DEPLOYED_BORDER, penwidth="1.4",
-               fontsize="9.5")
-        c.node("legend_des",
-               "Designed only;\nuninstrumented in production",
-               shape="box", style="rounded,filled,dashed",
-               fillcolor=DESIGNED_FILL, color=DESIGNED_BORDER, penwidth="1.4",
-               fontsize="9.5", fontcolor="#566573")
-        c.node("legend_dec",
-               "Decision",
-               shape="diamond", style="filled",
-               fillcolor=DECISION_FILL, color=DECISION_BORDER, penwidth="1.4",
-               fontsize="9.5", width="1.6", height="0.9", fixedsize="true")
-        c.edge("legend_dep", "legend_des", style="invis")
-        c.edge("legend_des", "legend_dec", style="invis")
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color="#1B2631",
+            fontweight="bold" if bold else "normal",
+            wrap=True,
+        )
 
-    # Anchor legend off the main flow without forcing rank
-    g.edge("end", "legend_dep", style="invis", constraint="false")
+    def arrow(x0, y0, x1, y1, color, *, style="-|>", lw=1.4, ls="-"):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle=style, color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=12,
+            )
+        )
 
-    pdf, png = render_dot(g, "mbse_act_full_ride_lifecycle")
+    dy_ = LANES["Driver"][1]
+    sy_ = LANES["Platform"][1]
+    py_ = LANES["Passenger"][1]
+
+    # ------------------------------------------------------------------
+    # Phase 1 — Trip published (Driver -> Platform)
+    # ------------------------------------------------------------------
+    card(2.5, dy_, 2.0, 0.55, "Driver publishes trip",
+         DRIVER_COLOR, bold=True)
+    card(2.5, sy_, 2.2, 0.65,
+         "Trip recorded\n(184 verified members eligible)",
+         PLATFORM_COLOR)
+    arrow(2.5, dy_ - 0.28, 2.5, sy_ + 0.33, DRIVER_COLOR)
+
+    # ------------------------------------------------------------------
+    # Phase 2 — Listed in feed + external outreach
+    # ------------------------------------------------------------------
+    card(5.0, sy_, 2.4, 0.65,
+         "Trip appears in feed\n+ external outreach queue\n(16 of 82 pushes sent)",
+         PLATFORM_COLOR)
+    card(5.0, py_, 2.0, 0.55, "Riders browse feed",
+         RIDER_COLOR)
+    arrow(3.7, sy_, 3.8, sy_, PLATFORM_COLOR)
+    arrow(5.0, sy_ - 0.33, 5.0, py_ + 0.28, PLATFORM_COLOR, ls="--")
+
+    # ------------------------------------------------------------------
+    # Phase 3 — Booking moment (the c1-zoom)
+    # ------------------------------------------------------------------
+    card(7.5, py_, 1.9, 0.55, "Request to join trip",
+         RIDER_COLOR, bold=True)
+    card(7.5, sy_, 2.4, 0.65,
+         "Reserve seat\n(close trip if last seat)",
+         PLATFORM_COLOR, bold=True)
+    arrow(7.5, py_ + 0.28, 7.5, sy_ - 0.33, RIDER_COLOR)
+
+    # Confirmation back to passenger + driver gets notified
+    card(8.7, py_, 1.7, 0.5, "Booking confirmed",
+         RIDER_COLOR, fs=8.8)
+    card(8.7, dy_, 1.7, 0.5, "New rider notified",
+         DRIVER_COLOR, fs=8.8)
+    arrow(8.4, sy_ + 0.33, 8.55, dy_ - 0.25, PLATFORM_COLOR)
+    arrow(8.4, sy_ - 0.33, 8.55, py_ + 0.25, PLATFORM_COLOR)
+
+    # ------------------------------------------------------------------
+    # Phase 4 — Pre-trip coordination (chat opened, departure approach)
+    # ------------------------------------------------------------------
+    card(10.0, sy_, 2.6, 0.7,
+         "Trip-bound chat opened\n(expires 1 h after trip)",
+         PLATFORM_COLOR)
+    arrow(10.0, sy_ + 0.36, 10.0, dy_ - 0.28, PLATFORM_COLOR, ls="--")
+    arrow(10.0, sy_ - 0.36, 10.0, py_ + 0.28, PLATFORM_COLOR, ls="--")
+
+    # ------------------------------------------------------------------
+    # Phase 5 — Trip happens (driver picks up, ride completes)
+    # ------------------------------------------------------------------
+    card(12.5, dy_, 2.0, 0.55, "Pick up & drive",
+         DRIVER_COLOR, bold=True)
+    card(12.5, py_, 2.0, 0.55, "Ride completed",
+         RIDER_COLOR)
+    card(12.5, sy_, 2.2, 0.6, "Trip marked complete",
+         PLATFORM_COLOR)
+    arrow(12.5, dy_ - 0.28, 12.5, sy_ + 0.30, DRIVER_COLOR)
+    arrow(12.5, sy_ - 0.30, 12.5, py_ + 0.28, PLATFORM_COLOR)
+
+    # ------------------------------------------------------------------
+    # Phase 6 — Deferred rating window (accent callout)
+    # ------------------------------------------------------------------
+    card(15.0, sy_, 2.6, 0.7,
+         "Rating window opens\n2 hours after trip ends",
+         ACCENT_COLOR, fc="#FEF5E7", bold=True)
+    ax.plot([15.0, 15.0], [y_axis + 0.05, sy_ - 0.40],
+            linestyle=":", color=ACCENT_COLOR, linewidth=1.0)
+    arrow(13.6, sy_, 13.7, sy_, PLATFORM_COLOR)
+
+    card(15.0, dy_, 2.4, 0.6,
+         "Tap-to-rate prompt\n(driver rates passenger)",
+         DRIVER_COLOR)
+    card(15.0, py_, 2.4, 0.6,
+         "Tap-to-rate prompt\n(passenger rates driver)",
+         RIDER_COLOR)
+    arrow(15.0, sy_ + 0.36, 15.0, dy_ - 0.30, ACCENT_COLOR)
+    arrow(15.0, sy_ - 0.36, 15.0, py_ + 0.30, ACCENT_COLOR)
+
+    # ------------------------------------------------------------------
+    # Phase 7 — Trip closed (chat retired, reputation updated)
+    # ------------------------------------------------------------------
+    card(17.6, sy_, 2.4, 0.7,
+         "Reputation updated\nchat retired",
+         PLATFORM_COLOR)
+    arrow(16.2, dy_ - 0.30, 17.0, sy_ + 0.35, DRIVER_COLOR, ls="--")
+    arrow(16.2, py_ + 0.30, 17.0, sy_ - 0.35, RIDER_COLOR, ls="--")
+
+    # End marker
+    ax.add_patch(
+        FancyBboxPatch(
+            (18.55, sy_ - 0.18), 0.36, 0.36,
+            boxstyle="round,pad=0.02",
+            facecolor=GREY, edgecolor=GREY, linewidth=1.0,
+        )
+    )
+    ax.text(18.73, sy_, "End",
+            ha="center", va="center",
+            fontsize=8.5, color="white", fontweight="bold")
+    arrow(18.2, sy_, 18.55, sy_, PLATFORM_COLOR)
+
+    # ------------------------------------------------------------------
+    # Title + italic subtitle
+    # ------------------------------------------------------------------
+    ax.set_title(
+        "Full ride lifecycle: publish to close",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        9.5, 5.10,
+        "Three actors meet only at the trip itself; the rating moment is "
+        "deliberately deferred so judgement happens off-vehicle.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=GREY,
+    )
+
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(-0.7, 5.4)
+    ax.set_aspect("auto")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbse_act_full_ride_lifecycle", dpi=300)
     register("mbse_act_full_ride_lifecycle", "ok", png_path=png)
+    print(f"  pdf -> {pdf}")
+    print(f"  png -> {png}")
     return pdf, png
 
 

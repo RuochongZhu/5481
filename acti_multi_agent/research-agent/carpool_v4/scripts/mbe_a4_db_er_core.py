@@ -2,10 +2,16 @@
 
 HTML-like Graphviz nodes for each production table. Foreign-key edges
 shown child -> parent with crow's-foot on the many-side. Tables grouped
-into clusters by domain. Snapshot row counts appear in each header.
+into six domain clusters: Identity, Carpool, Activities, Marketplace,
+Groups & Messaging, Cross-module. Snapshot row counts in each header
+are findings (not implementation noise) and are kept.
 
-Source-of-truth: integration-production/campusride-backend/database/
-migrations/{000,005,006,007,008,009,010,011}_*.sql.
+Style: per `_mbe_style_guide.md` §4 (ER row), graphviz HTML-table nodes
+are acceptable. SQL types (UUID, text, bool, numeric), file paths,
+migration numbers, and the PGRST205 / "REST returns" annotations are
+stripped. Foreign-key columns appear in italics; primary keys are bold
+"id". The points ledger is annotated with the design-language phrase
+"not yet provisioned in production".
 """
 
 from __future__ import annotations
@@ -80,8 +86,8 @@ def _table_node(name: str, count: str, columns: list[tuple[str, str, str]],
 def render():
     g = make_digraph("a4_db_er_core", rankdir="TB")
     g.attr(splines="spline", nodesep="0.35", ranksep="0.7", concentrate="false",
-           label=("CampusRide production schema — 18 core tables "
-                  "(snapshot 2026-04-23)"),
+           label=("CampusRide production schema — 18 core tables across six "
+                  "domain clusters (snapshot 2026-04-23)"),
            labelloc="t", fontsize="14")
     g.attr("node", shape="plaintext", style="", fontname="Helvetica",
            fontsize="10")
@@ -95,13 +101,12 @@ def render():
         c.node("users", _table_node(
             "users", "184",
             [
-                ("id",    "id : uuid",                "pk"),
-                (None,    "email",                    "col"),
-                (None,    "university",               "col"),
-                (None,    "is_verified",              "col"),
-                (None,    "verification_status",      "col"),
-                (None,    "avg_rating, total_ratings", "col"),
-                (None,    "points",                   "col"),
+                ("id",    "id",                              "pk"),
+                (None,    "email",                           "col"),
+                (None,    "university",                      "col"),
+                (None,    "verified, verification status",   "col"),
+                (None,    "average rating, total ratings",   "col"),
+                (None,    "points balance",                  "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
 
@@ -114,32 +119,32 @@ def render():
         c.node("rides", _table_node(
             "rides", "0",
             [
-                ("id",        "id : uuid",                                 "pk"),
-                ("driver",    "driver_id &#8594; users",                   "fk"),
-                (None,        "departure_time",                            "col"),
-                (None,        "available_seats",                           "col"),
-                (None,        "status (active/full/completed/cancelled)",  "col"),
+                ("id",        "id",                                          "pk"),
+                ("driver",    "driver &#8594; users",                        "fk"),
+                (None,        "departure time",                              "col"),
+                (None,        "seats remaining",                             "col"),
+                (None,        "status (active / full / completed / cancelled)", "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("ride_bookings", _table_node(
             "ride_bookings", "0",
             [
-                ("id",     "id : uuid",                              "pk"),
-                ("ride",   "ride_id &#8594; rides",                  "fk"),
-                ("pax",    "passenger_id &#8594; users",             "fk"),
-                (None,     "status (confirmed/cancelled)",           "col"),
-                (None,     "seats_booked",                           "col"),
+                ("id",     "id",                              "pk"),
+                ("ride",   "ride &#8594; rides",              "fk"),
+                ("pax",    "passenger &#8594; users",         "fk"),
+                (None,     "status (confirmed / cancelled)",  "col"),
+                (None,     "seats booked",                    "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("ratings", _table_node(
             "ratings", "0",
             [
-                ("id",     "id : uuid",                       "pk"),
-                ("trip",   "trip_id &#8594; rides",           "fk"),
-                ("rater",  "rater_id &#8594; users",          "fk"),
-                ("ratee",  "ratee_id &#8594; users",          "fk"),
-                (None,     "role_of_rater (driver/passenger)", "col"),
-                (None,     "score : 1..5",                    "col"),
+                ("id",     "id",                              "pk"),
+                ("trip",   "trip &#8594; rides",              "fk"),
+                ("rater",  "rater &#8594; users",             "fk"),
+                ("ratee",  "ratee &#8594; users",             "fk"),
+                (None,     "rater role (driver / passenger)", "col"),
+                (None,     "score (1-5)",                     "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
 
@@ -152,40 +157,40 @@ def render():
         c.node("activities", _table_node(
             "activities", "0",
             [
-                ("id",     "id : uuid",                                       "pk"),
-                ("org",    "organizer_id &#8594; users",                      "fk"),
-                ("group",  "group_id &#8594; groups",                         "fk"),
-                (None,     "status (draft/published/ongoing/completed/...)",  "col"),
-                (None,     "checkin_enabled",                                 "col"),
-                (None,     "location_coordinates",                            "col"),
+                ("id",     "id",                                          "pk"),
+                ("org",    "organizer &#8594; users",                     "fk"),
+                ("group",  "group &#8594; groups",                        "fk"),
+                (None,     "status (draft / published / ongoing / done)", "col"),
+                (None,     "check-in enabled",                            "col"),
+                (None,     "venue coordinates",                           "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("activity_participants", _table_node(
             "activity_participants", "0",
             [
-                ("id",   "id : uuid",                              "pk"),
-                ("act",  "activity_id &#8594; activities",         "fk"),
-                ("usr",  "user_id &#8594; users",                  "fk"),
-                (None,   "attendance_status",                      "col"),
+                ("id",   "id",                          "pk"),
+                ("act",  "activity &#8594; activities", "fk"),
+                ("usr",  "user &#8594; users",          "fk"),
+                (None,   "attendance status",           "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("activity_checkins", _table_node(
             "activity_checkins", "0",
             [
-                ("id",   "id : uuid",                              "pk"),
-                ("act",  "activity_id &#8594; activities",         "fk"),
-                ("usr",  "user_id &#8594; users",                  "fk"),
-                (None,   "distance_meters",                        "col"),
-                (None,   "location_verified",                      "col"),
+                ("id",   "id",                          "pk"),
+                ("act",  "activity &#8594; activities", "fk"),
+                ("usr",  "user &#8594; users",          "fk"),
+                (None,   "distance to venue",           "col"),
+                (None,   "location verified",           "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("activity_chat_messages", _table_node(
             "activity_chat_messages", "0",
             [
-                ("id",   "id : uuid",                              "pk"),
-                ("act",  "activity_id &#8594; activities",         "fk"),
-                ("usr",  "user_id &#8594; users",                  "fk"),
-                (None,   "content",                                "col"),
+                ("id",   "id",                          "pk"),
+                ("act",  "activity &#8594; activities", "fk"),
+                ("usr",  "user &#8594; users",          "fk"),
+                (None,   "content",                     "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
 
@@ -198,20 +203,20 @@ def render():
         c.node("marketplace_items", _table_node(
             "marketplace_items", "15",
             [
-                ("id",     "id : uuid",                            "pk"),
-                ("seller", "seller_id &#8594; users",              "fk"),
-                (None,     "status (active/sold/removed)",         "col"),
-                (None,     "views_count",                          "col"),
-                (None,     "favorites_count",                      "col"),
+                ("id",     "id",                                  "pk"),
+                ("seller", "seller &#8594; users",                "fk"),
+                (None,     "status (active / sold / removed)",    "col"),
+                (None,     "view count",                          "col"),
+                (None,     "favorite count",                      "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("marketplace_comments", _table_node(
             "marketplace_comments", "0",
             [
-                ("id",      "id : uuid",                                 "pk"),
-                ("item",    "item_id &#8594; marketplace_items",         "fk"),
-                ("usr",     "user_id &#8594; users",                     "fk"),
-                ("parent",  "parent_id &#8594; (self)",                  "self_fk"),
+                ("id",      "id",                                "pk"),
+                ("item",    "item &#8594; marketplace_items",    "fk"),
+                ("usr",     "user &#8594; users",                "fk"),
+                ("parent",  "parent &#8594; (self, threaded)",   "self_fk"),
             ],
             fill=cl["fill"], border=cl["border"]))
 
@@ -224,48 +229,48 @@ def render():
         c.node("groups", _table_node(
             "groups", "5",
             [
-                ("id",       "id : uuid",                                 "pk"),
-                ("creator",  "creator_id &#8594; users",                  "fk"),
-                (None,       "group_kind (community/ride_carpool)",       "col"),
-                ("ride",     "ride_id &#8594; rides (NULL community)",    "fk"),
-                (None,       "chat_expires_at",                           "col"),
+                ("id",       "id",                                       "pk"),
+                ("creator",  "creator &#8594; users",                    "fk"),
+                (None,       "kind (community / ride-bound)",            "col"),
+                ("ride",     "ride &#8594; rides (null for community)",  "fk"),
+                (None,       "chat expires at",                          "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("group_members", _table_node(
             "group_members", "10",
             [
-                ("id",     "id : uuid",                          "pk"),
-                ("group",  "group_id &#8594; groups",            "fk"),
-                ("usr",    "user_id &#8594; users",              "fk"),
-                (None,     "role",                               "col"),
+                ("id",     "id",                       "pk"),
+                ("group",  "group &#8594; groups",     "fk"),
+                ("usr",    "user &#8594; users",       "fk"),
+                (None,     "role",                     "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("group_messages", _table_node(
             "group_messages", "2",
             [
-                ("id",     "id : uuid",                                "pk"),
-                ("group",  "group_id &#8594; groups",                  "fk"),
-                (None,     "sender_id (= auth.uid)",                   "col"),
-                (None,     "content",                                  "col"),
+                ("id",     "id",                       "pk"),
+                ("group",  "group &#8594; groups",     "fk"),
+                (None,     "sender",                   "col"),
+                (None,     "content",                  "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("messages", _table_node(
             "messages", "22",
             [
-                ("id",     "id : uuid",                       "pk"),
-                ("send",   "sender_id &#8594; users",         "fk"),
-                ("recv",   "receiver_id &#8594; users",       "fk"),
-                (None,     "thread_id",                       "col"),
-                (None,     "context_type, context_id",        "col"),
-                (None,     "message_type",                    "col"),
+                ("id",     "id",                       "pk"),
+                ("send",   "sender &#8594; users",     "fk"),
+                ("recv",   "receiver &#8594; users",   "fk"),
+                (None,     "thread",                   "col"),
+                (None,     "context (type, id)",       "col"),
+                (None,     "message type",             "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("system_messages", _table_node(
             "system_messages", "10",
             [
-                ("id",   "id : uuid",                       "pk"),
-                ("usr",  "user_id &#8594; users",           "fk"),
-                (None,   "sender_type (admin/user)",        "col"),
+                ("id",   "id",                            "pk"),
+                ("usr",  "user &#8594; users",            "fk"),
+                (None,   "sender type (admin / user)",    "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
 
@@ -278,33 +283,33 @@ def render():
         c.node("notifications", _table_node(
             "notifications", "54",
             [
-                ("id",   "id : uuid",                       "pk"),
-                ("usr",  "user_id &#8594; users",           "fk"),
-                (None,   "type",                            "col"),
-                (None,   "data : JSONB",                    "col"),
+                ("id",   "id",                       "pk"),
+                ("usr",  "user &#8594; users",       "fk"),
+                (None,   "type",                     "col"),
+                (None,   "payload",                  "col"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("point_rules", _table_node(
             "point_rules", "0",
             [
-                (None, "(NOT MIGRATED in production)", "note"),
-                (None, "schema deferred",              "note"),
+                (None, "(schema deferred)",                          "note"),
+                (None, "not yet provisioned in production",          "note"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("point_transactions", _table_node(
             "point_transactions", "&mdash;",
             [
-                (None, "(table does not exist)",       "note"),
-                (None, "REST returns PGRST205",        "note"),
+                (None, "(points ledger)",                            "note"),
+                (None, "not yet provisioned in production",          "note"),
             ],
             fill=cl["fill"], border=cl["border"]))
         c.node("wxgroup_notice_record", _table_node(
             "wxgroup_notice_record", "82",
             [
-                ("id",   "id : uuid",                                "pk"),
-                (None,   "content",                                  "col"),
-                (None,   "sendtime",                                 "col"),
-                (None,   "62 marketplace + 16 ride + 4 activity",    "note"),
+                ("id",   "id",                                            "pk"),
+                (None,   "content",                                       "col"),
+                (None,   "send time",                                     "col"),
+                (None,   "62 marketplace + 16 ride + 4 activity",         "note"),
             ],
             fill=cl["fill"], border=cl["border"]))
 
@@ -351,7 +356,7 @@ def render():
     fk("ride_bookings", "ride", "rides", color=CAR)
     fk("ratings", "trip", "rides", color=CAR)
     fk("groups", "ride", "rides", color=CAR, style="dashed",
-       label="NULL for community")
+       label="null for community")
 
     # Activities links
     ACT = "#1E8449"

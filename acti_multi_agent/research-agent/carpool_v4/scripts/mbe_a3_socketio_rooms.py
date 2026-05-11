@@ -1,9 +1,17 @@
-"""mbe_a3 — Socket.IO Room Namespacing.
+"""mbe_a3 — Real-time substrate (hub-and-spoke).
 
-Hub-and-spoke: server hub on the left, four room clusters on the right
-(user / activity / thread / ride). Edges labeled with event names.
+Three concept-level channel types radiate from a single authenticated
+real-time hub:
 
-Source: campusride-backend/src/config/socket.js:1-247.
+  - Per-user channel        (real-time push targeted at one person)
+  - Per-activity channel    (live chat scoped to one activity)
+  - Per-thread channel      (DM and group-typing indicators)
+
+A small dashed inset shows that guests connect read-only without an
+account. Multi-instance support is mentioned in the caption as a design
+choice (no product names).
+
+Style follows scripts/_mbe_style_guide.md.
 """
 
 from __future__ import annotations
@@ -13,174 +21,210 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_mbe_figures import renderer  # noqa: E402
-from _mbe_helpers import make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer,
+)
 
 
-# Distinct fillcolors per room cluster (keep readable on light bg).
-ROOM_STYLES = {
-    "user": {
-        "fill": "#FDEBD0",      # warm peach
-        "border": "#B9770E",
-        "title": "user:{userId} -- personal/notification room",
-        "annot": "sendNotificationToUser()  [socket.js:184]",
-    },
-    "activity": {
-        "fill": "#D5F5E3",      # mint
-        "border": "#1E8449",
-        "title": "activity:{activityId} -- activity live chat",
-        "annot": "sendNotificationToActivity()  [socket.js:190]\\l"
-                 "client emits join_activity   [socket.js:124]\\l",
-    },
-    "thread": {
-        "fill": "#D6EAF8",      # sky
-        "border": "#1F618D",
-        "title": "thread:{threadId} -- DM and group typing",
-        "annot": "sendMessageToThread()  [socket.js:211]\\l"
-                 "client emits join_message_thread  [socket.js:139]\\l"
-                 "typing_indicator broadcast excludes sender  [socket.js:151-158]\\l",
-    },
-    "ride": {
-        "fill": "#FADBD8",      # rose
-        "border": "#922B21",
-        "title": "ride:{rideId} -- ride-scoped (implicit)",
-        "annot": "sendRideshareUpdate()  [socket.js:201]",
-    },
-}
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"
+NEUTRAL = "#566573"
 
-
-def _add_room(g, key: str, events: list[tuple[str, str]]) -> str:
-    """Add a room cluster. events = [(node_id, label), ...].
-
-    Returns the cluster's representative node-id (the "title card") so the
-    server hub can connect into the cluster.
-    """
-    style = ROOM_STYLES[key]
-    cname = f"cluster_{key}"
-    title_id = f"{key}_title"
-    with g.subgraph(name=cname) as c:
-        c.attr(
-            label=f"{style['title']}\\n\\n{style['annot']}",
-            style="rounded,filled",
-            fillcolor=style["fill"],
-            color=style["border"],
-            penwidth="2.0",
-            fontname="Helvetica-Bold",
-            fontsize="11",
-            margin="14",
-        )
-        # An invisible anchor so we can route hub -> cluster cleanly.
-        c.node(
-            title_id,
-            label=f"room\\n{style['title'].split(' -- ')[0]}",
-            shape="folder",
-            style="filled,bold",
-            fillcolor="white",
-            color=style["border"],
-            fontname="Helvetica-Bold",
-            fontsize="11",
-        )
-        for node_id, label in events:
-            c.node(
-                node_id,
-                label=label,
-                shape="box",
-                style="rounded,filled",
-                fillcolor="white",
-                color=style["border"],
-                fontname="Helvetica",
-                fontsize="10",
-            )
-            c.edge(title_id, node_id,
-                   color=style["border"], penwidth="1.0",
-                   arrowhead="vee", arrowsize="0.7")
-    return title_id
+# Per-channel accent colors (kept distinct, paper-style muted).
+USER_COLOR = "#B9770E"      # warm amber — per-user
+ACT_COLOR = "#1E8449"       # mint green — per-activity
+THREAD_COLOR = "#1F618D"    # deep blue — per-thread
 
 
 @renderer("mbe_a3_socketio_rooms")
 def render():
-    g = make_digraph("a3_socketio_rooms", rankdir="LR")
-    g.attr(nodesep="0.35", ranksep="1.1", splines="spline",
-           label="Socket.IO Room Namespacing  (campusride-backend/src/config/socket.js)",
-           labelloc="t", fontsize="13", fontname="Helvetica-Bold")
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle
 
-    # --- Server hub --------------------------------------------------------
-    hub_label = (
-        "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"2\">"
-        "<TR><TD><B>Socket.IO Server</B></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"10\">SocketManager (singleton)</FONT></TD></TR>"
-        "<TR><TD><FONT POINT-SIZE=\"9\">[socket.js:5-244]</FONT></TD></TR>"
-        "<TR><TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"9\">"
-        "<B>Auth (mandatory):</B><BR ALIGN=\"LEFT\"/>"
-        "&#8226; JWT via handshake.auth.token<BR ALIGN=\"LEFT\"/>"
-        "&#8226; type='guest' -&gt; read-only<BR ALIGN=\"LEFT\"/>"
-        "&#8226; Redis adapter (multi-instance)<BR ALIGN=\"LEFT\"/>"
-        "</FONT></TD></TR>"
-        "</TABLE>>"
+    fig, ax = plt.subplots(figsize=(13, 7.6))
+
+    # ------------------------------------------------------------------
+    # Hub (center)
+    # ------------------------------------------------------------------
+    HUB_X, HUB_Y = 6.5, 3.9
+    HUB_R = 1.15
+
+    ax.add_patch(
+        Circle(
+            (HUB_X, HUB_Y), HUB_R,
+            facecolor=PLATFORM_COLOR, edgecolor="#0E2F44",
+            linewidth=1.6, zorder=2,
+        )
     )
-    g.node(
-        "hub",
-        label=hub_label,
-        shape="box",
-        style="filled,bold",
-        fillcolor="#2C3E50",
-        fontcolor="white",
-        color="#1A252F",
-        penwidth="2.5",
-        margin="0.18",
+    ax.text(
+        HUB_X, HUB_Y + 0.18,
+        "Real-time substrate",
+        ha="center", va="center",
+        color="white", fontsize=12.5, fontweight="bold", zorder=3,
+    )
+    ax.text(
+        HUB_X, HUB_Y - 0.18,
+        "(authenticated)",
+        ha="center", va="center",
+        color="white", fontsize=10.5, style="italic", zorder=3,
     )
 
-    # --- Client (left of hub, drives connection auth) ---------------------
-    g.node(
-        "client",
-        label="Client\\n(handshake.auth.token)",
-        shape="component",
-        style="filled",
-        fillcolor="#ECF0F1",
-        color="#7F8C8D",
-        fontsize="10",
+    # ------------------------------------------------------------------
+    # Helper: spoke card
+    # ------------------------------------------------------------------
+    def spoke(cx, cy, w, h, title, lines, color):
+        ax.add_patch(
+            FancyBboxPatch(
+                (cx - w / 2, cy - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor="white", edgecolor=color, linewidth=1.4,
+                zorder=2,
+            )
+        )
+        # Title bar
+        ax.text(
+            cx, cy + h / 2 - 0.32,
+            title,
+            ha="center", va="center",
+            fontsize=11.5, fontweight="bold", color=color,
+        )
+        # Body lines (concept-level descriptions of what flows through)
+        body_top = cy + h / 2 - 0.78
+        for i, line in enumerate(lines):
+            ax.text(
+                cx, body_top - i * 0.34,
+                line,
+                ha="center", va="center",
+                fontsize=9.7, color="#1B2631",
+            )
+
+    def hub_arrow(x1, y1, color):
+        # Arrow goes from hub edge (toward target) to a point just outside
+        # the spoke card. We trim from both ends.
+        import math
+        dx, dy = x1 - HUB_X, y1 - HUB_Y
+        dist = math.hypot(dx, dy)
+        ux, uy = dx / dist, dy / dist
+        sx, sy = HUB_X + ux * (HUB_R + 0.05), HUB_Y + uy * (HUB_R + 0.05)
+        ex, ey = x1 - ux * 0.05, y1 - uy * 0.05
+        ax.add_patch(
+            FancyArrowPatch(
+                (sx, sy), (ex, ey),
+                arrowstyle="-|>", color=color,
+                linewidth=1.8, mutation_scale=14, zorder=1,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Three spokes (top, lower-left, lower-right)
+    # ------------------------------------------------------------------
+    SPOKE_W, SPOKE_H = 4.2, 1.85
+
+    # 1. Per-user channel (top)
+    user_cx, user_cy = HUB_X, HUB_Y + 2.65
+    spoke(
+        user_cx, user_cy, SPOKE_W, SPOKE_H,
+        "Per-user channel",
+        [
+            "Real-time push to a single user",
+            "Personal alerts and reminders",
+            "Presence updates (online / away)",
+        ],
+        USER_COLOR,
     )
-    g.edge("client", "hub",
-           label="connect + JWT",
-           fontsize="9", color="#7F8C8D",
-           style="dashed", arrowhead="normal")
+    # arrow ends at bottom-center of spoke card
+    hub_arrow(user_cx, user_cy - SPOKE_H / 2, USER_COLOR)
 
-    # --- 4 room clusters ---------------------------------------------------
-    user_anchor = _add_room(g, "user", [
-        ("evt_notification", "notification"),
-        ("evt_user_online", "user_online"),
-        ("evt_user_offline", "user_offline"),
-        ("evt_online_users", "online_users"),
-    ])
-    activity_anchor = _add_room(g, "activity", [
-        ("evt_activity_notification", "activity_notification"),
-        ("evt_activity_message", "activity_message"),
-        ("evt_join_activity", "join_activity (in)"),
-    ])
-    thread_anchor = _add_room(g, "thread", [
-        ("evt_new_message", "new_message"),
-        ("evt_typing_indicator", "typing_indicator\\n(broadcast excl. sender)"),
-        ("evt_join_message_thread", "join_message_thread (in)"),
-    ])
-    ride_anchor = _add_room(g, "ride", [
-        ("evt_rideshare_update", "rideshare_update"),
-    ])
+    # 2. Per-activity channel (lower-left)
+    act_cx, act_cy = HUB_X - 4.0, HUB_Y - 2.05
+    spoke(
+        act_cx, act_cy, SPOKE_W, SPOKE_H,
+        "Per-activity channel",
+        [
+            "Live chat scoped to one activity",
+            "Activity-wide announcements",
+            "Members join on entering activity",
+        ],
+        ACT_COLOR,
+    )
+    hub_arrow(act_cx + SPOKE_W / 2 - 0.1, act_cy + SPOKE_H / 2 - 0.1, ACT_COLOR)
 
-    # --- Hub -> room edges with the primary event/label -------------------
-    edge_specs = [
-        (user_anchor,     "emit  notification\\n(to user:{userId})",        "#B9770E"),
-        (activity_anchor, "emit  activity_notification\\n(to activity:{id})", "#1E8449"),
-        (thread_anchor,   "emit  new_message / typing_indicator\\n(to thread:{id})", "#1F618D"),
-        (ride_anchor,     "emit  rideshare_update\\n(to ride:{rideId})",     "#922B21"),
-    ]
-    for tgt, lbl, col in edge_specs:
-        g.edge("hub", tgt,
-               label=lbl,
-               color=col, fontcolor=col,
-               penwidth="1.6", fontsize="10",
-               arrowhead="normal", arrowsize="0.9")
+    # 3. Per-thread channel (lower-right)
+    th_cx, th_cy = HUB_X + 4.0, HUB_Y - 2.05
+    spoke(
+        th_cx, th_cy, SPOKE_W, SPOKE_H,
+        "Per-thread channel",
+        [
+            "Direct messages and group threads",
+            "Typing indicators (sender excluded)",
+            "Members join on opening the thread",
+        ],
+        THREAD_COLOR,
+    )
+    hub_arrow(th_cx - SPOKE_W / 2 + 0.1,
+              th_cy + SPOKE_H / 2 - 0.1, THREAD_COLOR)
 
-    pdf, png = render_dot(g, "mbe_a3_socketio_rooms", dpi=300)
+    # ------------------------------------------------------------------
+    # Guest read-only inset (small, dashed, lower-left of hub)
+    # ------------------------------------------------------------------
+    guest_w, guest_h = 2.6, 0.95
+    guest_cx, guest_cy = 1.7, 5.7
+    ax.add_patch(
+        FancyBboxPatch(
+            (guest_cx - guest_w / 2, guest_cy - guest_h / 2),
+            guest_w, guest_h,
+            boxstyle="round,pad=0.04",
+            facecolor="white", edgecolor=NEUTRAL,
+            linewidth=1.2, linestyle="--", zorder=2,
+        )
+    )
+    ax.text(
+        guest_cx, guest_cy + 0.18,
+        "Guest connection",
+        ha="center", va="center",
+        fontsize=10.5, fontweight="bold", color=NEUTRAL,
+    )
+    ax.text(
+        guest_cx, guest_cy - 0.18,
+        "Read-only access token",
+        ha="center", va="center",
+        fontsize=9.5, style="italic", color=NEUTRAL,
+    )
+    # Dashed connector to the hub
+    ax.add_patch(
+        FancyArrowPatch(
+            (guest_cx + guest_w / 2 - 0.05, guest_cy - 0.25),
+            (HUB_X - HUB_R - 0.05, HUB_Y + 0.55),
+            arrowstyle="-|>", color=NEUTRAL,
+            linewidth=1.0, linestyle="--",
+            mutation_scale=10, zorder=1,
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # Title + subtitle + caption
+    # ------------------------------------------------------------------
+    ax.set_title(
+        "Real-time substrate: three channel types from one authenticated hub",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        HUB_X, 7.55,
+        "An authenticated connection is required; messages are scoped by "
+        "channel type, and the substrate is designed to fan out across "
+        "multiple instances.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
+    )
+
+    # Cosmetic
+    ax.set_xlim(-0.4, 13.4)
+    ax.set_ylim(-0.4, 7.9)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbe_a3_socketio_rooms", dpi=300)
     register("mbe_a3_socketio_rooms", "ok", png_path=png)
     print(f"  pdf -> {pdf}")
     print(f"  png -> {png}")

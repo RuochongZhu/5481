@@ -1,11 +1,15 @@
-"""mbe_c2 — `.edu` Identity Verification Flow.
+"""mbe_c2 — Identity verification: a three-phase user journey.
 
-Sequence/flow diagram of the registration -> email-verification -> JWT issuance
-pipeline, plus the parallel guest-token branch consumed by Socket.IO.
+A conceptual user-journey strip (HCI-paper-ready), not an engineering
+call-graph. Three temporal phases — sign up, email verify, authenticated
+use — with a small dashed parallel branch for guest read-only access.
 
-Source-of-truth:
-  campusride-backend/src/controllers/auth.controller.js:35-178
-  campusride-backend/src/config/socket.js:44
+Design principles:
+  - No file/line, no SQL, no JS, no JWT payload literals, no regex.
+  - Snapshot numbers (184 / 100% / 170) live in a footnote box, not in
+    the primary cards.
+  - The two-tier verification model is shown collapsing into a single
+    automatic tier (no manual review queue).
 """
 
 from __future__ import annotations
@@ -15,319 +19,232 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from render_mbe_figures import renderer  # noqa: E402
-from _mbe_helpers import make_digraph, render_dot, register  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer, RIDER_COLOR,
+)
 
 
-# Palette per spec
-CLIENT_FILL = "#FCF3CF"     # yellow
-SERVER_FILL = "#D6EAF8"     # light blue
-DB_FILL     = "#A9DFBF"     # green
-EMAIL_FILL  = "#F5CBA7"     # orange
-NOTE_FILL   = "#FDEBD0"
-GUEST_FILL  = "#E8DAEF"
-
-CLIENT_BORDER = "#9A7D0A"
-SERVER_BORDER = "#1F618D"
-DB_BORDER     = "#196F3D"
-EMAIL_BORDER  = "#A04000"
-GUEST_BORDER  = "#6C3483"
-GUARD_COLOR   = "#922B21"   # italic red-tinted
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"   # verified-badge highlight
+NEUTRAL = "#566573"
+GHOST = "#B2BABB"          # collapsed/unwired second tier
 
 
 @renderer("mbe_c2_identity_verification_flow")
 def render():
-    g = make_digraph("c2_identity_flow", rankdir="TB")
-    g.attr(
-        ranksep="0.55", nodesep="0.45", splines="spline",
-        label=(
-            "`.edu` Identity Verification Flow  "
-            "(auth.controller.js:35-178, config/socket.js:44)"
-        ),
-        labelloc="t", fontsize="14",
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+
+    fig, ax = plt.subplots(figsize=(14, 6.6))
+
+    X_MIN, X_MAX = 0.0, 16.5
+
+    # ------------------------------------------------------------------
+    # Y geometry
+    # ------------------------------------------------------------------
+    Y_GUEST = 4.6     # parallel guest branch (above main flow)
+    Y_MAIN = 2.7      # primary user-journey strip
+    Y_TIER = 1.45     # collapsed second-tier indicator
+    Y_AXIS = 0.55     # phase labels (a)/(b)/(c)
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def card(x, y, w, h, text, color, *, fc="white", fs=10.0,
+             bold=False, alpha=1.0, ls="-"):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color,
+                linewidth=1.4, alpha=alpha, linestyle=ls,
+            )
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center", fontsize=fs,
+            color="#1B2631",
+            fontweight="bold" if bold else "normal",
+            wrap=True,
+        )
+
+    def arrow(x0, y0, x1, y1, color, *, lw=1.4, ls="-",
+              style="-|>", ms=12):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle=style, color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=ms,
+            )
+        )
+
+    # ------------------------------------------------------------------
+    # Phase backdrop bands: (a) sign up | (b) verify | (c) authenticated
+    # ------------------------------------------------------------------
+    PHASES = [
+        ("(a) Sign up",          1.2,  5.7,  RIDER_COLOR),
+        ("(b) Email verify",     5.9,  10.7, ACCENT_COLOR),
+        ("(c) Authenticated use", 10.9, 16.3, PLATFORM_COLOR),
+    ]
+    band_top, band_bot = 5.7, 1.05
+    for label, x0, x1, color in PHASES:
+        ax.add_patch(
+            FancyBboxPatch(
+                (x0, band_bot),
+                x1 - x0, band_top - band_bot,
+                boxstyle="round,pad=0.02",
+                facecolor=color, alpha=0.06,
+                edgecolor=color, linewidth=0.8,
+            )
+        )
+        ax.text(
+            (x0 + x1) / 2, band_top - 0.22, label,
+            ha="center", va="top", fontsize=11,
+            fontweight="bold", color=color,
+        )
+
+    # ------------------------------------------------------------------
+    # Main journey cards (left to right)
+    # ------------------------------------------------------------------
+    # 1. Cornell student opens the app
+    card(2.6, Y_MAIN, 2.4, 0.85,
+         "Student opens app\nenters Cornell email",
+         RIDER_COLOR, bold=True)
+
+    # 2. Platform performs the .edu check (the contribution: identity primitive)
+    card(5.0, Y_MAIN, 2.0, 0.85,
+         "Cornell email check\n(automatic)",
+         PLATFORM_COLOR)
+    arrow(3.85, Y_MAIN, 3.95, Y_MAIN, NEUTRAL)
+
+    # 3. Verification email sent (accent-highlighted: the design pivot)
+    card(7.6, Y_MAIN, 2.4, 0.85,
+         "Verification email\nsent to inbox",
+         ACCENT_COLOR, fc="#FEF5E7", bold=True)
+    arrow(6.05, Y_MAIN, 6.35, Y_MAIN, PLATFORM_COLOR)
+
+    # 4. User taps the link
+    card(10.0, Y_MAIN, 2.0, 0.85,
+         "User taps\nverification link",
+         RIDER_COLOR)
+    arrow(8.85, Y_MAIN, 8.95, Y_MAIN, ACCENT_COLOR)
+
+    # 5. Verified badge granted -> authenticated session
+    card(13.0, Y_MAIN, 2.6, 0.95,
+         "Verified badge granted\nAuthenticated session",
+         PLATFORM_COLOR, bold=True)
+    arrow(11.05, Y_MAIN, 11.65, Y_MAIN, ACCENT_COLOR, lw=1.8)
+
+    # Small accent badge tag near the final card
+    ax.add_patch(
+        FancyBboxPatch(
+            (13.0 - 0.55, Y_MAIN + 0.62), 1.1, 0.32,
+            boxstyle="round,pad=0.02",
+            facecolor=ACCENT_COLOR, edgecolor=ACCENT_COLOR,
+            linewidth=1.0,
+        )
     )
-    g.attr("node", fontsize="11")
-    g.attr("edge", fontsize="10")
-
-    # =====================================================================
-    # MAIN FLOW cluster (left/center, top-to-bottom)
-    # =====================================================================
-    with g.subgraph(name="cluster_main") as c:
-        c.attr(
-            label="Main flow: register -> verify -> login -> JWT",
-            style="rounded", color=SERVER_BORDER,
-            fontsize="12", penwidth="1.2",
-        )
-
-        # 1. Client register
-        c.node(
-            "n1_client_register",
-            ("CLIENT\nPOST /api/v1/auth/register\n"
-             "{ email, password, first_name,\n"
-             "  last_name, student_id }"),
-            shape="box", style="rounded,filled",
-            fillcolor=CLIENT_FILL, color=CLIENT_BORDER, penwidth="1.4",
-        )
-
-        # 2. Validation node (server)
-        c.node(
-            "n2_validate",
-            ("SERVER  validate()\n"
-             "email regex: must end @cornell.edu\n"
-             "password: >=8 chars, >=1 upper,\n"
-             ">=1 lower, >=1 digit"),
-            shape="box", style="rounded,filled",
-            fillcolor=SERVER_FILL, color=SERVER_BORDER, penwidth="1.4",
-        )
-
-        # 3. Generate token
-        c.node(
-            "n3_token",
-            ("SERVER  generate verification token\n"
-             "email_verification_token = crypto.random()\n"
-             "email_verification_expires = now + 24h"),
-            shape="box", style="rounded,filled",
-            fillcolor=SERVER_FILL, color=SERVER_BORDER, penwidth="1.4",
-        )
-
-        # 4. DB insert
-        c.node(
-            "n4_db_insert",
-            ("DB  INSERT INTO users\n"
-             "is_verified = false\n"
-             "verification_status = 'pending'"),
-            shape="cylinder", style="filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-
-        # 6. Award points (between insert and email click)
-        c.node(
-            "n6_points",
-            ("SERVER  awardPoints('registration')  +10\n"
-             "INSERT point_transactions\n"
-             "(production point_rules has 0 rows ->\n"
-             "this is currently a no-op in deploy)"),
-            shape="box", style="rounded,filled",
-            fillcolor=SERVER_FILL, color=SERVER_BORDER, penwidth="1.2",
-        )
-
-        # 7. Email click
-        c.node(
-            "n7_click",
-            ("CLIENT (email link)\n"
-             "GET /api/v1/auth/verify?token=<...>"),
-            shape="box", style="rounded,filled",
-            fillcolor=CLIENT_FILL, color=CLIENT_BORDER, penwidth="1.4",
-        )
-
-        # 8. Validate token + expiry
-        c.node(
-            "n8_validate_token",
-            ("SERVER  verifyEmail()\n"
-             "lookup token, check expiry"),
-            shape="box", style="rounded,filled",
-            fillcolor=SERVER_FILL, color=SERVER_BORDER, penwidth="1.4",
-        )
-
-        # 9. DB update verified
-        c.node(
-            "n9_db_update",
-            ("DB  UPDATE users\n"
-             "is_verified = true\n"
-             "verification_status = 'verified'\n"
-             "email_verification_token = NULL"),
-            shape="cylinder", style="filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-
-        # 10. Login
-        c.node(
-            "n10_login",
-            ("CLIENT  POST /api/v1/auth/login\n"
-             "SERVER  bcrypt.compare(password)\n"
-             "+ guard: is_verified == true"),
-            shape="box", style="rounded,filled",
-            fillcolor=SERVER_FILL, color=SERVER_BORDER, penwidth="1.4",
-        )
-
-        # 11. Issue JWT
-        c.node(
-            "n11_jwt",
-            ("SERVER  jwt.sign(\n"
-             "  { userId, type: 'user' },\n"
-             "  JWT_SECRET, HS256, 7d )"),
-            shape="box", style="rounded,filled",
-            fillcolor=SERVER_FILL, color=SERVER_BORDER, penwidth="1.4",
-        )
-
-        # 12. Authenticated calls
-        c.node(
-            "n12_authn",
-            ("CLIENT  authenticated calls\n"
-             "REST: Authorization: Bearer <jwt>\n"
-             "Socket.IO: handshake.auth.token"),
-            shape="box", style="rounded,filled",
-            fillcolor=CLIENT_FILL, color=CLIENT_BORDER, penwidth="1.4",
-        )
-
-        # Edges with guard labels (italic red-tinted)
-        c.edge(
-            "n1_client_register", "n2_validate",
-            label="<<i>guard: HTTPS, body parsed</i>>",
-            fontcolor=GUARD_COLOR, color=SERVER_BORDER,
-        )
-        c.edge(
-            "n2_validate", "n3_token",
-            label=("<<i>guard: email ~ /@cornell\\.edu$/<br/>"
-                   "AND pwd matches policy</i>>"),
-            fontcolor=GUARD_COLOR, color=SERVER_BORDER,
-        )
-        c.edge(
-            "n3_token", "n4_db_insert",
-            label="persist user row",
-            color=DB_BORDER, fontcolor=DB_BORDER,
-        )
-        c.edge(
-            "n4_db_insert", "n6_points",
-            label="post-insert hook",
-            color=SERVER_BORDER, fontcolor=SERVER_BORDER,
-        )
-        c.edge(
-            "n6_points", "n7_click",
-            label=("<<i>guard: user clicks within<br/>"
-                   "email_verification_expires (24h)</i>>"),
-            style="dashed",
-            fontcolor=GUARD_COLOR, color=CLIENT_BORDER,
-        )
-        c.edge(
-            "n7_click", "n8_validate_token",
-            color=SERVER_BORDER,
-        )
-        c.edge(
-            "n8_validate_token", "n9_db_update",
-            label=("<<i>guard: token matches<br/>"
-                   "AND now &lt; expires</i>>"),
-            fontcolor=GUARD_COLOR, color=DB_BORDER,
-        )
-        c.edge(
-            "n9_db_update", "n10_login",
-            label="user can now log in",
-            color=SERVER_BORDER, fontcolor=SERVER_BORDER,
-        )
-        c.edge(
-            "n10_login", "n11_jwt",
-            label=("<<i>guard: bcrypt match<br/>"
-                   "AND is_verified == true</i>>"),
-            fontcolor=GUARD_COLOR, color=SERVER_BORDER,
-        )
-        c.edge(
-            "n11_jwt", "n12_authn",
-            label="return token to client",
-            color=SERVER_BORDER, fontcolor=SERVER_BORDER,
-        )
-
-    # =====================================================================
-    # PARALLEL email branch (off step 4)
-    # =====================================================================
-    g.node(
-        "n5_email",
-        ("EMAIL SERVICE (Resend)\n"
-         "sendVerificationEmail(\n"
-         "  email, token )\n"
-         "subject: 'Verify your Cornell email'"),
-        shape="box", style="rounded,filled",
-        fillcolor=EMAIL_FILL, color=EMAIL_BORDER, penwidth="1.4",
-    )
-    g.edge(
-        "n4_db_insert", "n5_email",
-        label="parallel branch\n(fire-and-forget)",
-        style="dashed", color=EMAIL_BORDER, fontcolor=EMAIL_BORDER,
-        constraint="false",
-    )
-    # Email service hands off to user mailbox -> click
-    g.edge(
-        "n5_email", "n7_click",
-        label="user opens link",
-        style="dashed", color=EMAIL_BORDER, fontcolor=EMAIL_BORDER,
-        constraint="false",
+    ax.text(
+        13.0, Y_MAIN + 0.78, "verified",
+        ha="center", va="center", fontsize=9,
+        fontweight="bold", color="white",
     )
 
-    # =====================================================================
-    # GUEST cluster (right side, dashed)
-    # =====================================================================
-    with g.subgraph(name="cluster_guest") as gc:
-        gc.attr(
-            label="Guest token branch (read-only)",
-            style="dashed,rounded", color=GUEST_BORDER,
-            fillcolor="#FBF5FE", fontsize="12", penwidth="1.4",
-        )
+    # 6. Continued authenticated platform use (terminal hint)
+    card(15.5, Y_MAIN, 1.5, 0.85,
+         "Books rides,\nposts, chats",
+         PLATFORM_COLOR)
+    arrow(14.35, Y_MAIN, 14.7, Y_MAIN, PLATFORM_COLOR)
 
-        gc.node(
-            "g1_client",
-            ("CLIENT  open read-only view\n"
-             "(no .edu account)"),
-            shape="box", style="rounded,filled",
-            fillcolor=CLIENT_FILL, color=CLIENT_BORDER, penwidth="1.4",
-        )
-        gc.node(
-            "g2_jwt",
-            ("SERVER  jwt.sign(\n"
-             "  { userId: 'guest',\n"
-             "    type: 'guest' },\n"
-             "  JWT_SECRET, HS256 )\n"
-             "limited scope"),
-            shape="box", style="rounded,filled",
-            fillcolor=GUEST_FILL, color=GUEST_BORDER, penwidth="1.4",
-        )
-        gc.node(
-            "g3_socket",
-            ("Socket.IO middleware\n"
-             "(config/socket.js:44)\n"
-             "accepts BOTH user + guest tokens;\n"
-             "guests restricted to read-only events"),
-            shape="note", style="filled",
-            fillcolor=NOTE_FILL, color=GUEST_BORDER,
-            fontcolor=GUEST_BORDER, fontsize="9",
-        )
+    # ------------------------------------------------------------------
+    # Collapsed second tier (manual review never wired up)
+    # ------------------------------------------------------------------
+    card(7.6, Y_TIER, 5.0, 0.7,
+         "Designed second tier: manual review queue  —  not wired in production",
+         GHOST, fc="#F4F6F7", ls="--", fs=9.5)
+    # Dotted descender from the .edu check to the ghost tier
+    arrow(5.0, Y_MAIN - 0.45, 5.6, Y_TIER + 0.32,
+          GHOST, ls=":", lw=1.0, ms=10)
+    # Dotted reconnector showing it would have flowed back into authenticated use
+    arrow(9.9, Y_TIER + 0.32, 12.0, Y_MAIN - 0.5,
+          GHOST, ls=":", lw=1.0, ms=10)
 
-        gc.edge(
-            "g1_client", "g2_jwt",
-            label="GET /api/v1/auth/guest",
-            color=GUEST_BORDER, fontcolor=GUEST_BORDER,
-        )
-        gc.edge(
-            "g2_jwt", "g3_socket",
-            label="handshake.auth.token",
-            style="dashed",
-            color=GUEST_BORDER, fontcolor=GUEST_BORDER,
-        )
+    # ------------------------------------------------------------------
+    # Parallel guest branch (above the main strip)
+    # ------------------------------------------------------------------
+    card(2.6, Y_GUEST, 2.4, 0.7,
+         "Visitor opens app\n(no Cornell email)",
+         NEUTRAL, fc="#F8F9F9", ls="--", fs=9.5)
+    card(7.6, Y_GUEST, 3.0, 0.7,
+         "Guest read-only access\n(browse, no booking)",
+         NEUTRAL, fc="#F8F9F9", ls="--", fs=9.5)
+    card(13.0, Y_GUEST, 2.6, 0.7,
+         "Read-only browsing\ncontinues",
+         NEUTRAL, fc="#F8F9F9", ls="--", fs=9.5)
+    arrow(3.85, Y_GUEST, 6.05, Y_GUEST, NEUTRAL, ls="--", lw=1.0)
+    arrow(9.15, Y_GUEST, 11.65, Y_GUEST, NEUTRAL, ls="--", lw=1.0)
 
-    # Cross-link: both flows feed Socket.IO middleware
-    g.edge(
-        "n12_authn", "g3_socket",
-        label="user JWT also accepted",
-        style="dotted", color="#566573", fontcolor="#566573",
-        constraint="false",
+    # Small label for the guest lane (tucked into left margin)
+    ax.text(
+        0.15, Y_GUEST, "Guest\nbranch",
+        ha="left", va="center", fontsize=9.5,
+        style="italic", color=NEUTRAL,
+    )
+    ax.text(
+        0.15, Y_MAIN, "Verified\njourney",
+        ha="left", va="center", fontsize=9.5,
+        style="italic", color=PLATFORM_COLOR, fontweight="bold",
     )
 
-    # =====================================================================
-    # Snapshot footer (legend node)
-    # =====================================================================
-    g.node(
-        "snapshot",
-        ("Production snapshot (2026-04):\n"
-         "184 users registered  |  100% @cornell.edu  |  170 verified (92.4%)\n"
-         "2-tier verification model collapses to 1-tier in practice:\n"
-         "no manual-review queue is wired up."),
-        shape="note", style="filled",
-        fillcolor="#FEF9E7", color="#7D6608", fontcolor="#7D6608",
-        fontsize="10",
+    # ------------------------------------------------------------------
+    # Snapshot footnote box (numbers are findings, kept in figure)
+    # ------------------------------------------------------------------
+    fn_y = -0.25
+    ax.add_patch(
+        FancyBboxPatch(
+            (0.4, fn_y - 0.45), X_MAX - 0.8, 0.85,
+            boxstyle="round,pad=0.02",
+            facecolor="#FEF9E7", edgecolor="#7D6608",
+            linewidth=0.9,
+        )
     )
-    g.edge(
-        "n12_authn", "snapshot",
-        style="invis", constraint="true",
+    ax.text(
+        (X_MAX) / 2, fn_y,
+        "Production snapshot (April 2026):  184 registered users   "
+        "100% Cornell email   170 verified (92.4%).   "
+        "The designed two-tier model collapses to one automatic tier "
+        "in practice — no manual review queue is wired up.",
+        ha="center", va="center", fontsize=9.5, color="#7D6608",
     )
 
-    pdf, png = render_dot(g, "mbe_c2_identity_verification_flow")
+    # ------------------------------------------------------------------
+    # Title + subtitle
+    # ------------------------------------------------------------------
+    ax.set_title(
+        "Identity verification as a three-phase user journey",
+        fontsize=14, fontweight="bold", pad=14,
+    )
+    ax.text(
+        (X_MAX) / 2, 6.15,
+        "Cornell email is the only identity primitive; "
+        "guests retain a parallel read-only branch.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
+    )
+
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(-0.95, 6.4)
+    ax.set_aspect("auto")
+    ax.axis("off")
+
+    pdf, png = save_mpl("mbe_c2_identity_verification_flow", dpi=300)
     register("mbe_c2_identity_verification_flow", "ok", png_path=png)
-    return pdf, png
+    print(f"  pdf -> {pdf}")
+    print(f"  png -> {png}")
+
+
+if __name__ == "__main__":
+    render()

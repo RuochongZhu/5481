@@ -205,6 +205,8 @@ Within the Driver/Both subset, ``unfair rating'' tolerance (29.1) is 12.3 to 23.
 
 \section{\campusride{} Platform Design}\label{sec:design}
 
+Throughout this section we adopt standardized Model-Based Systems Engineering notation~\citep{INCOSE2015, OMG_UML_2017, Friedenthal2014} as the documentation surface for the deployed v4.4 system: BDD/IBD for system context (Figures~\ref{fig:mbse-bdd},~\ref{fig:mbse-ibd}), FFBD for the platform-wide functional flow (Figure~\ref{fig:mbse-ffbd}), UML use-case / activity / sequence / state-machine views for behaviour (Figures~\ref{fig:mbse-usecase},~\ref{fig:mbse-swimlane},~\ref{fig:mbse-seq},~\ref{fig:mbse-ride-lifecycle}), and a SysML parametric diagram for the rating-window guard (\S\ref{sec:dd-rating}). The risk and verification surfaces are introduced separately in \S\ref{sec:risk-vv}.
+
 \subsection{Platform Overview and Shared Design Primitives}\label{sec:design-overview}
 
 \campusride{} is built on a Vue~3 + Express + Supabase + Socket.IO stack. Six modules---carpool, marketplace, activities, groups, messaging, and points---share four design primitives distilled in \S\ref{sec:rw-primitives}: institutional identity verification, safety infrastructure, rating fairness, and gamification rewards. Table~\ref{tab:primitives} shows how each module engages these primitives.
@@ -239,6 +241,12 @@ The \edudot{} identity layer serves as the shared admission gate for all modules
   \includegraphics[width=\textwidth]{pic/mbse_class_diagram_db.pdf}
   \caption{UML Class Diagram for the production database schema (snapshot 2026-04-23). Fifteen core classes are grouped into six domain clusters (Identity, Carpool, Activities, Marketplace, Messaging, Cross-module). Associations carry UML multiplicity labels (\texttt{1}, \texttt{0..1}, \texttt{1..*}, \texttt{0..*}); aggregation ends are marked with open diamonds on the owning side. The polymorphic \texttt{wxgroup\_notice\_record (source\_type, source\_id)} relation to \texttt{Ride}\,/\,\texttt{MarketplaceItem}\,/\,\texttt{Activity} is rendered as an annotated note rather than three near-identical edges to keep the layout legible.}
   \label{fig:mbse-class-db}
+\end{figure*}
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=\textwidth]{pic/mbse_component_diagram.pdf}
+  \caption{UML Component Diagram for the \campusride{} v4.4 backend. Nine \texttt{«package»} containers group the 18 active components (Auth: \texttt{AuthController}, \texttt{EmailService}, \texttt{authMiddleware}; Carpool: \texttt{CarpoolingController}; Marketplace: \texttt{MarketplaceController}; Activity: \texttt{ActivityController}, \texttt{ActivityCheckinService}; Group: \texttt{GroupController}, \texttt{rideCarpoolGroupService}; Message: \texttt{MessageController}, \texttt{messageService}; Notification: \texttt{NotificationService}, \texttt{SocketIO Hub}; Points: \texttt{PointsController}, \texttt{pointsService}; Rating: \texttt{RatingController}, \texttt{ratingService}; plus the external \texttt{wechatLinkService} sidecar). Provided interfaces are rendered as lollipops (\texttt{IIdentityVerify}, \texttt{IJWTAuth}, \texttt{INotification}, \texttt{ISocketEmit}, \texttt{IRideCRUD}, \texttt{IRideCarpoolGroup}, \texttt{IGeoCheckin}, \texttt{IMessageSend}, \texttt{IPointsAward}, \texttt{IRatingUpsert}, \texttt{IEmailDeliver}, \texttt{IWeChatLink}); required interfaces as socket arcs; dashed \texttt{«use»} arrows connect required to provided ends. The Points components are rendered with dashed borders to flag that they are designed-but-inert in production (\texttt{point\_rules}\,$=$\,0 rows). The implicit \texttt{IJWTAuth} dependency from every controller to \texttt{authMiddleware} is rendered with light dotted edges to avoid spaghetti.}
+  \label{fig:mbse-component}
 \end{figure*}
 
 \begin{figure*}[t]\centering
@@ -510,6 +518,12 @@ The five preceding deep-dive design decisions (\S\ref{sec:deep-dive}) and the so
   \label{fig:mbse-req-spec}
 \end{figure*}
 
+\begin{figure*}[t]\centering
+  \includegraphics[width=\textwidth]{pic/mbse_requirement_diagram.pdf}
+  \caption{SysML Requirement Diagram for \campusride{} v4.4 -- the graphical alternative to the requirements specification of Figure~\ref{fig:mbse-req-spec}. Twelve \texttt{«requirement»} rectangles R.1--R.12 are arranged in a 4$\times$3 grid in the centre. Six F-finding boxes (F1: WTP for .edu; F2: Driver supply; F3: Safety WTP; F4: Identity-verified motivation; F5: Driver tolerance; F6: Long-distance supply) appear on the left, connected to the requirements they justify via \texttt{«derive»} arrows (dashed, open triangle). Seven \texttt{«block»} subsystems (Auth, Substrate, Carpool, Rating, Messaging, Outreach, Points) appear on the right, connected via \texttt{«satisfy»} arrows (solid, filled triangle). Twelve test procedures TP.1--TP.12 appear at the bottom, connected via \texttt{«verify»} arrows (dashed, open triangle). Four \texttt{«refine»} arrows (dotted purple) record intra-requirement elaborations: R.5\,$\to$\,R.4, R.6\,$\to$\,R.5, R.7\,$\to$\,R.5, R.11\,$\to$\,R.8.}
+  \label{fig:mbse-req-diagram}
+\end{figure*}
+
 \begin{figure}[t]\centering
   \includegraphics[width=\linewidth]{pic/mbse_ahp_objectives.pdf}
   \caption{Analytical Hierarchy Process for the v4.4 design objectives. Three top-level criteria (User Experience \& Trust 0.50, Operational Efficiency \& Reach 0.33, Cost-Sharing \& Sustainability 0.17) decompose into 10 sub-criteria; the bottom row shows the composite priority weights (top $\times$ sub) that sum to 1.000. The stacked bar at the bottom ranks the 10 composite priorities for direct comparison.}
@@ -543,6 +557,12 @@ The HoQ flags engineering-characteristic priorities; a complementary risk view i
 \end{figure*}
 
 \subsection{Continuous Optimization Loop}\label{sec:cont-opt}
+
+\begin{figure*}[t]\centering
+  \includegraphics[width=\textwidth]{pic/mbse_continuous_opt_loop.pdf}
+  \caption{Continuous Optimization Loop for \campusride{} v4.4 rendered as a control-system block diagram. Four telemetry channels (Registration cadence: 3\,/\,70\,/\,111\,$=$\,184; Notification fan-out residue: 54 rows; WeChat outreach counter: 82 rows; User feedback inbox: 10 \texttt{system\_messages}) feed a summing junction $\Sigma$ that drives the Monthly snapshot review block (human-in-the-loop). The review feeds the HoQ refresh (Figure~\ref{fig:hoq}\,/\,\ref{fig:mbse-req-spec}), which feeds Release-track decisions. Three release tracks branch off: (1)~Provision points subsystem (EC10), (2)~Add dispute-window mechanism (EC5\,/\,EC7), (3)~Institution-domain whitelist (EC12). All three converge on Codebase deploy (Railway push). The closing dashed feedback path returns from Codebase deploy to the four telemetry channels at a monthly cadence (clock icon).}
+  \label{fig:mbse-cont-opt}
+\end{figure*}
 
 The deployment snapshot reported in \S\ref{sec:deployment-feedback} is one tick of an intended sustained loop, not a one-shot evaluation. We treat the soft launch as the start of a continuous-optimization process whose three coupled feedback channels are already instrumented in the deployed schema and whose review cadence is anchored on the HoQ artifact in \S\ref{sec:hoq}.
 

@@ -1,15 +1,10 @@
-"""mbse_act_swimlane_book_ride — Three-lane swimlane for the booking happy path.
+"""mbse_act_swimlane_book_ride — SysML activity view of the booking happy path.
 
-Uses graphviz `cluster_*` subgraphs to render visual lanes.  Three columns:
-    Rider | System | Driver
-Source-of-truth:
-  campusride-backend/src/controllers/carpooling.controller.js:511-709
-  campusride-backend/src/services/rideCarpoolGroup.service.js:28-73
-  campusride-backend/src/services/notification.service.js (fan-out)
-
-Honesty correction:
-  wxgroup_notice_record is INSERTed inside `createRide`, NOT inside `bookRide`.
-  We annotate this explicitly to match draft §5.2.
+Peer figure to c1: same booking activity, told in the SysML activity-diagram
+dialect with explicit decisions, a parallel fork-join, and final nodes.
+Three swim-lanes (Passenger, Platform, Driver) with a temporal axis at the
+bottom. Implementation references are intentionally suppressed; cards read
+as English sentences for HCI readers.
 """
 
 from __future__ import annotations
@@ -19,309 +14,258 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _mbe_helpers import make_digraph, render_dot, register, renderer  # noqa: E402
+from _mbe_helpers import (  # noqa: E402
+    setup_mpl, save_mpl, register, renderer, DRIVER_COLOR, RIDER_COLOR,
+)
 
 
-# Per-lane palette
-RIDER_FILL = "#D6EAF8"
-RIDER_BORDER = "#1F618D"
-SYS_FILL = "#FCF3CF"
-SYS_BORDER = "#9A7D0A"
-DRIVER_FILL = "#FADBD8"
-DRIVER_BORDER = "#922B21"
-
-ACTION_BORDER = "#34495E"
-DECISION_FILL = "#FDEBD0"
-DECISION_BORDER = "#CA6F1E"
-DB_FILL = "#D5F5E3"
-DB_BORDER = "#1E8449"
-NOTIF_FILL = "#E8DAEF"
-NOTIF_BORDER = "#76448A"
-FORK_COLOR = "#1B2631"
+PLATFORM_COLOR = "#1A5276"
+ACCENT_COLOR = "#F39C12"
+NEUTRAL = "#566573"
 
 
 @renderer("mbse_act_swimlane_book_ride")
 def render():
-    g = make_digraph("mbse_swimlane_book_ride", rankdir="TB")
-    g.attr(
-        ranksep="0.55", nodesep="0.35", splines="spline",
-        label=(
-            "Activity diagram — bookRide() happy path  "
-            "(carpooling.controller.js:511-709)"
-        ),
-        labelloc="t", fontsize="14", compound="true",
+    setup_mpl()
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle
+
+    fig, ax = plt.subplots(figsize=(14, 6.8))
+
+    # ------------------------------------------------------------------
+    # Swim-lane y-coordinates
+    # ------------------------------------------------------------------
+    LANES = {
+        "Passenger": (RIDER_COLOR, 4.0),
+        "Platform":  (PLATFORM_COLOR, 2.5),
+        "Driver":    (DRIVER_COLOR, 1.0),
+    }
+    LANE_HEIGHT = 1.15
+
+    X_MIN, X_MAX = 0.0, 16.5
+
+    # Lane bands
+    for name, (color, y) in LANES.items():
+        ax.add_patch(
+            FancyBboxPatch(
+                (X_MIN, y - LANE_HEIGHT / 2),
+                X_MAX - X_MIN, LANE_HEIGHT,
+                boxstyle="round,pad=0.02",
+                facecolor=color, alpha=0.07,
+                edgecolor=color, linewidth=0.8,
+            )
+        )
+        ax.text(
+            X_MIN + 0.1, y, name,
+            ha="left", va="center",
+            fontsize=12, fontweight="bold",
+            color=color,
+        )
+
+    # ------------------------------------------------------------------
+    # Temporal markers along the bottom
+    # ------------------------------------------------------------------
+    TIMES = [
+        (1.6,  "Start"),
+        (4.6,  "Booking moment"),
+        (8.7,  "Notification fan-out"),
+        (11.6, "Trip-bound chat ready"),
+        (14.6, "Activity ends"),
+    ]
+    y_axis = 0.10
+    ax.plot([X_MIN + 0.4, X_MAX - 0.3], [y_axis, y_axis],
+            color=NEUTRAL, linewidth=1.0)
+    for x, lbl in TIMES:
+        ax.plot([x, x], [y_axis - 0.05, y_axis + 0.05],
+                color=NEUTRAL, linewidth=1.0)
+        ax.text(x, y_axis - 0.18, lbl,
+                ha="center", va="top", fontsize=9, color=NEUTRAL,
+                style="italic")
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def card(x, y, w, h, text, color, *, fc="white", fs=9.5,
+             alpha=1.0, bold=False):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2), w, h,
+                boxstyle="round,pad=0.04",
+                facecolor=fc, edgecolor=color, linewidth=1.4, alpha=alpha,
+            )
+        )
+        ax.text(
+            x, y, text,
+            ha="center", va="center",
+            fontsize=fs, color="#1B2631",
+            fontweight="bold" if bold else "normal",
+            wrap=True,
+        )
+
+    def diamond(x, y, w, h, text, color, *, fc="#FEF5E7", fs=9):
+        # Decision diamond drawn as a rotated polygon
+        from matplotlib.patches import Polygon
+        pts = [(x, y + h / 2), (x + w / 2, y),
+               (x, y - h / 2), (x - w / 2, y)]
+        ax.add_patch(Polygon(pts, closed=True,
+                             facecolor=fc, edgecolor=color, linewidth=1.4))
+        ax.text(x, y, text, ha="center", va="center",
+                fontsize=fs, color="#1B2631", wrap=True)
+
+    def fork_bar(x, y, w, color):
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - 0.04), w, 0.08,
+                boxstyle="round,pad=0.005",
+                facecolor=color, edgecolor=color, linewidth=1.0,
+            )
+        )
+
+    def arrow(x0, y0, x1, y1, color, *, lw=1.4, ls="-"):
+        ax.add_patch(
+            FancyArrowPatch(
+                (x0, y0), (x1, y1),
+                arrowstyle="-|>", color=color,
+                linewidth=lw, linestyle=ls,
+                mutation_scale=12,
+            )
+        )
+
+    py = LANES["Passenger"][1]
+    sy = LANES["Platform"][1]
+    dy = LANES["Driver"][1]
+
+    # ------------------------------------------------------------------
+    # Initial nodes (filled disc) on Passenger lane
+    # ------------------------------------------------------------------
+    ax.add_patch(Circle((1.6, py), 0.13, facecolor=NEUTRAL,
+                        edgecolor=NEUTRAL, zorder=3))
+
+    # 1. Passenger requests booking
+    card(3.2, py, 1.9, 0.55, "Request to join trip",
+         RIDER_COLOR, bold=True)
+    arrow(1.75, py, 2.25, py, NEUTRAL)
+
+    # 2. Platform: check seats decision (diamond)
+    diamond(4.6, sy, 1.7, 0.95,
+            "Trip active &\nseats remaining?",
+            PLATFORM_COLOR)
+    arrow(3.5, py - 0.25, 4.25, sy + 0.45, RIDER_COLOR)
+
+    # 3. Reserve seat
+    card(6.7, sy, 2.0, 0.55,
+         "Reserve seat for rider",
+         PLATFORM_COLOR, bold=True)
+    arrow(5.45, sy, 5.7, sy, PLATFORM_COLOR)
+    ax.text(5.55, sy + 0.18, "yes", fontsize=8.5,
+            color=PLATFORM_COLOR, ha="center")
+
+    # 4. Last-seat decision
+    diamond(8.6, sy, 1.4, 0.85,
+            "Last seat\ntaken?", PLATFORM_COLOR, fs=8.5)
+    arrow(7.7, sy, 7.95, sy, PLATFORM_COLOR)
+
+    # 4a. Mark trip full (above lane, accent path)
+    card(8.6, sy + 0.85, 2.1, 0.45,
+         "Mark trip as full", PLATFORM_COLOR, fs=9)
+    arrow(8.6, sy + 0.45, 8.6, sy + 0.6, PLATFORM_COLOR)
+    ax.text(8.85, sy + 0.55, "yes", fontsize=8.5,
+            color=PLATFORM_COLOR, ha="left")
+
+    # ------------------------------------------------------------------
+    # Parallel fork: confirmation to passenger + driver notification
+    # ------------------------------------------------------------------
+    fork_x = 9.7
+    fork_bar(fork_x, sy, 1.0, "#1B2631")
+    arrow(9.3, sy, fork_x - 0.5, sy, PLATFORM_COLOR)
+    ax.text(9.45, sy - 0.18, "no", fontsize=8.5,
+            color=PLATFORM_COLOR, ha="center")
+
+    # Confirmation card on Passenger lane
+    card(11.0, py, 2.1, 0.55,
+         "Booking confirmation received", RIDER_COLOR)
+    arrow(fork_x + 0.1, sy + 0.04, 10.4, py - 0.25, PLATFORM_COLOR)
+
+    # Driver notification card on Driver lane
+    card(11.0, dy, 2.3, 0.55,
+         "New rider notified in real-time", DRIVER_COLOR)
+    arrow(fork_x + 0.1, sy - 0.04, 10.4, dy + 0.25, PLATFORM_COLOR)
+
+    # ------------------------------------------------------------------
+    # Trip-bound chat (accent — non-obvious design choice)
+    # ------------------------------------------------------------------
+    card(12.5, sy, 2.4, 0.7,
+         "Open trip-bound chat\n(expires shortly after trip)",
+         ACCENT_COLOR, fc="#FEF5E7", bold=True)
+    arrow(11.65, sy, 11.4, sy, PLATFORM_COLOR)
+    # Dashed taps to both lanes — chat is reachable from both sides
+    arrow(12.5, sy + 0.35, 12.5, py - 0.25, ACCENT_COLOR, ls="--")
+    arrow(12.5, sy - 0.35, 12.5, dy + 0.25, ACCENT_COLOR, ls="--")
+
+    # ------------------------------------------------------------------
+    # Join + activity-final nodes
+    # ------------------------------------------------------------------
+    join_x = 13.9
+    fork_bar(join_x, sy, 0.9, "#1B2631")
+    arrow(13.7, sy, join_x - 0.45, sy, PLATFORM_COLOR)
+
+    # Final activity node on Platform lane (bullseye)
+    final_x = 15.4
+    ax.add_patch(Circle((final_x, sy), 0.18, facecolor="white",
+                        edgecolor=NEUTRAL, linewidth=1.4, zorder=3))
+    ax.add_patch(Circle((final_x, sy), 0.10, facecolor=NEUTRAL,
+                        edgecolor=NEUTRAL, zorder=4))
+    arrow(join_x + 0.45, sy, final_x - 0.22, sy, PLATFORM_COLOR)
+
+    # Final nodes on rider + driver lanes
+    ax.add_patch(Circle((final_x, py), 0.18, facecolor="white",
+                        edgecolor=NEUTRAL, linewidth=1.4, zorder=3))
+    ax.add_patch(Circle((final_x, py), 0.10, facecolor=NEUTRAL,
+                        edgecolor=NEUTRAL, zorder=4))
+    arrow(12.1, py, final_x - 0.22, py, RIDER_COLOR)
+
+    ax.add_patch(Circle((final_x, dy), 0.18, facecolor="white",
+                        edgecolor=NEUTRAL, linewidth=1.4, zorder=3))
+    ax.add_patch(Circle((final_x, dy), 0.10, facecolor=NEUTRAL,
+                        edgecolor=NEUTRAL, zorder=4))
+    arrow(12.2, dy, final_x - 0.22, dy, DRIVER_COLOR)
+
+    # ------------------------------------------------------------------
+    # Snapshot annotation (findings — allowed)
+    # ------------------------------------------------------------------
+    ax.text(
+        8.25, 5.05,
+        "Activity diagram of the booking happy path: a fork issues "
+        "rider confirmation and driver alert in parallel, then a single join "
+        "closes the activity.",
+        ha="center", va="center", fontsize=10, style="italic",
+        color=NEUTRAL,
     )
-    g.attr("node", fontsize="10", fontname="Helvetica")
-    g.attr("edge", fontsize="9")
+
+    ax.text(
+        15.4, 0.10,
+        "Snapshot: 184 verified riders, 16 ride pushes, driver subset N=19",
+        ha="right", va="bottom", fontsize=8.5, color=NEUTRAL,
+    )
 
     # ------------------------------------------------------------------
-    # RIDER LANE
+    # Title
     # ------------------------------------------------------------------
-    with g.subgraph(name="cluster_rider") as c:
-        c.attr(
-            label="Rider",
-            style="rounded,filled", color=RIDER_BORDER,
-            fillcolor=RIDER_FILL, fontsize="13", penwidth="1.6",
-            fontcolor=RIDER_BORDER, labelloc="t", labeljust="l",
-        )
-        # initial node
-        c.node("r_start", "", shape="circle", style="filled",
-               fillcolor="#1B2631", color="#1B2631",
-               width="0.25", height="0.25", fixedsize="true")
-        c.node(
-            "r_post",
-            "POST /api/v1/carpooling/\nrides/:id/book",
-            shape="box", style="rounded,filled",
-            fillcolor="white", color=ACTION_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "r_recv",
-            "Receives 200 +\nbooking row JSON",
-            shape="box", style="rounded,filled",
-            fillcolor="white", color=ACTION_BORDER, penwidth="1.4",
-        )
-        c.edge("r_start", "r_post", color=ACTION_BORDER)
-        c.edge("r_post", "r_recv", style="invis")  # spacing
+    ax.set_title(
+        "Booking activity across passenger, platform, and driver lanes",
+        fontsize=14, fontweight="bold", pad=14,
+    )
 
-    # ------------------------------------------------------------------
-    # SYSTEM LANE  (the big middle column)
-    # ------------------------------------------------------------------
-    with g.subgraph(name="cluster_system") as c:
-        c.attr(
-            label="System (Express + Supabase + Socket.IO)",
-            style="rounded,filled", color=SYS_BORDER,
-            fillcolor=SYS_FILL, fontsize="13", penwidth="1.6",
-            fontcolor=SYS_BORDER, labelloc="t", labeljust="l",
-        )
-        # SELECT ride
-        c.node(
-            "s_select",
-            "SELECT * FROM rides\nWHERE id = :id",
-            shape="box", style="rounded,filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-        # decision
-        c.node(
-            "s_dec_seats",
-            "status='active'\nAND seats > 0?",
-            shape="diamond", style="filled",
-            fillcolor=DECISION_FILL, color=DECISION_BORDER,
-            penwidth="1.4", fontsize="9",
-            width="2.0", height="1.2", fixedsize="true",
-        )
-        # INSERT booking
-        c.node(
-            "s_insert_booking",
-            "INSERT ride_bookings\n(status='confirmed',\n payment_status='paid')",
-            shape="box", style="rounded,filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-        # recompute seats
-        c.node(
-            "s_recompute",
-            "Recompute seatsBooked",
-            shape="box", style="rounded,filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-        # last seat decision
-        c.node(
-            "s_dec_full",
-            "Last seat?",
-            shape="diamond", style="filled",
-            fillcolor=DECISION_FILL, color=DECISION_BORDER,
-            penwidth="1.4", fontsize="9",
-            width="1.6", height="1.0", fixedsize="true",
-        )
-        c.node(
-            "s_set_full",
-            "UPDATE rides\nSET status='full'",
-            shape="box", style="rounded,filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-        # FORK bar (parallel notification fan-out)
-        c.node(
-            "s_fork",
-            "",
-            shape="box", style="filled",
-            fillcolor=FORK_COLOR, color=FORK_COLOR,
-            width="3.4", height="0.10", fixedsize="true",
-        )
-        # Six notification rows
-        c.node(
-            "s_notif_loop",
-            "x6 notificationService.sendNotification\n"
-            "{ride_new_booking(driver, high),\n"
-            " ride_booking_confirmed(rider, med),\n"
-            " ride_payment_confirmed(rider, med),\n"
-            " ride_payment_received(driver, med),\n"
-            " ride_rating_reminder(rider, high, +2h),\n"
-            " ride_rating_reminder(driver, high, +2h)}",
-            shape="box", style="rounded,filled",
-            fillcolor=NOTIF_FILL, color=NOTIF_BORDER, penwidth="1.4",
-            fontsize="9",
-        )
-        c.node(
-            "s_socket_loop",
-            "x6 socket.emit\non user:{recipientId}\n(real-time push)",
-            shape="box", style="rounded,filled",
-            fillcolor=NOTIF_FILL, color=NOTIF_BORDER, penwidth="1.4",
-            fontsize="9",
-        )
-        # JOIN bar
-        c.node(
-            "s_join",
-            "",
-            shape="box", style="filled",
-            fillcolor=FORK_COLOR, color=FORK_COLOR,
-            width="3.4", height="0.10", fixedsize="true",
-        )
-        # Group ensure
-        c.node(
-            "s_ensure",
-            "ensureRideCarpoolGroup\nOnBooking(rideId, riderId)",
-            shape="box", style="rounded,filled",
-            fillcolor="white", color=ACTION_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "s_grp_dec",
-            "group exists\nfor ride_id?",
-            shape="diamond", style="filled",
-            fillcolor=DECISION_FILL, color=DECISION_BORDER,
-            penwidth="1.4", fontsize="9",
-            width="1.8", height="1.1", fixedsize="true",
-        )
-        c.node(
-            "s_grp_insert",
-            "INSERT groups\n(group_kind='ride_carpool',\n chat_expires=dep+1h)",
-            shape="box", style="rounded,filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "s_mem_insert",
-            "INSERT group_members\n(driver=creator, rider=member;\n idempotent on 23505)",
-            shape="box", style="rounded,filled",
-            fillcolor=DB_FILL, color=DB_BORDER, penwidth="1.4",
-        )
-        # Honesty annotation
-        c.node(
-            "s_wx_note",
-            "wxgroup_notice_record row\nis INSERTed at createRide,\nNOT here in bookRide.\n(§5.2 honesty correction)",
-            shape="note", style="filled",
-            fillcolor="#FAE5D3", color="#CA6F1E", penwidth="1.2",
-            fontsize="8.5", fontcolor="#7E5109",
-        )
-        c.node(
-            "s_resp",
-            "res.status(201).json\n({booking})",
-            shape="box", style="rounded,filled",
-            fillcolor="white", color=ACTION_BORDER, penwidth="1.4",
-        )
+    # Cosmetic
+    ax.set_xlim(X_MIN - 0.2, X_MAX + 0.2)
+    ax.set_ylim(-0.6, 5.4)
+    ax.set_aspect("auto")
+    ax.axis("off")
 
-        # System-internal edges
-        c.edge("s_select", "s_dec_seats", color=ACTION_BORDER)
-        c.edge("s_dec_seats", "s_insert_booking",
-               label="Yes", color=DB_BORDER, fontcolor=DB_BORDER)
-        c.edge("s_insert_booking", "s_recompute", color=DB_BORDER)
-        c.edge("s_recompute", "s_dec_full", color=DB_BORDER)
-        c.edge("s_dec_full", "s_set_full",
-               label="Yes", color=DB_BORDER, fontcolor=DB_BORDER)
-        c.edge("s_dec_full", "s_fork",
-               label="No", color=ACTION_BORDER, fontcolor=ACTION_BORDER)
-        c.edge("s_set_full", "s_fork", color=ACTION_BORDER)
-        c.edge("s_fork", "s_notif_loop", color=NOTIF_BORDER)
-        c.edge("s_fork", "s_socket_loop", color=NOTIF_BORDER)
-        c.edge("s_notif_loop", "s_join", color=NOTIF_BORDER)
-        c.edge("s_socket_loop", "s_join", color=NOTIF_BORDER)
-        c.edge("s_join", "s_ensure", color=ACTION_BORDER)
-        c.edge("s_ensure", "s_grp_dec", color=ACTION_BORDER)
-        c.edge("s_grp_dec", "s_grp_insert",
-               label="No", color=DB_BORDER, fontcolor=DB_BORDER)
-        c.edge("s_grp_dec", "s_mem_insert",
-               label="Yes", color=ACTION_BORDER, fontcolor=ACTION_BORDER)
-        c.edge("s_grp_insert", "s_mem_insert", color=DB_BORDER)
-        c.edge("s_mem_insert", "s_resp", color=ACTION_BORDER)
-        c.edge("s_mem_insert", "s_wx_note",
-               style="dashed", color="#CA6F1E", arrowhead="none",
-               constraint="false")
-
-    # ------------------------------------------------------------------
-    # DRIVER LANE
-    # ------------------------------------------------------------------
-    with g.subgraph(name="cluster_driver") as c:
-        c.attr(
-            label="Driver",
-            style="rounded,filled", color=DRIVER_BORDER,
-            fillcolor=DRIVER_FILL, fontsize="13", penwidth="1.6",
-            fontcolor=DRIVER_BORDER, labelloc="t", labeljust="l",
-        )
-        # Invisible spacer nodes push the Driver lane content downward so it
-        # rank-aligns with the late stages of the system flow.
-        for i in range(7):
-            c.node(f"d_pad_{i}", "", shape="point",
-                   style="invis", width="0.01", height="0.01")
-        c.node(
-            "d_recv",
-            "Receives\n'ride_new_booking'\nnotification (push + socket)",
-            shape="box", style="rounded,filled",
-            fillcolor="white", color=ACTION_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "d_open",
-            "Opens ride_carpool\ngroup chat (Messages tab)",
-            shape="box", style="rounded,filled",
-            fillcolor="white", color=ACTION_BORDER, penwidth="1.4",
-        )
-        c.node(
-            "d_end",
-            "",
-            shape="doublecircle", style="filled",
-            fillcolor="#1B2631", color="#1B2631",
-            width="0.25", height="0.25", fixedsize="true",
-        )
-        # Padding chain forces driver nodes to lower ranks
-        c.edge("d_pad_0", "d_pad_1", style="invis")
-        c.edge("d_pad_1", "d_pad_2", style="invis")
-        c.edge("d_pad_2", "d_pad_3", style="invis")
-        c.edge("d_pad_3", "d_pad_4", style="invis")
-        c.edge("d_pad_4", "d_pad_5", style="invis")
-        c.edge("d_pad_5", "d_pad_6", style="invis")
-        c.edge("d_pad_6", "d_recv", style="invis")
-        c.edge("d_recv", "d_open", color=ACTION_BORDER)
-        c.edge("d_open", "d_end", color=ACTION_BORDER)
-
-    # ------------------------------------------------------------------
-    # Cross-lane edges (constraint="false" to keep lane layout)
-    # ------------------------------------------------------------------
-    # Rider POST -> System SELECT
-    g.edge("r_post", "s_select",
-           color=RIDER_BORDER, penwidth="1.4",
-           label="HTTP",
-           ltail="cluster_rider", lhead="cluster_system",
-           constraint="false")
-    # System response -> rider receives
-    g.edge("s_resp", "r_recv",
-           color=ACTION_BORDER, penwidth="1.4",
-           label="201 OK",
-           ltail="cluster_system", lhead="cluster_rider",
-           constraint="false")
-    # Rider end node
-    g.node("r_end", "", shape="doublecircle", style="filled",
-           fillcolor="#1B2631", color="#1B2631",
-           width="0.25", height="0.25", fixedsize="true")
-    g.edge("r_recv", "r_end", color=ACTION_BORDER)
-    # Notification fan-out -> driver (cross-lane)
-    g.edge("s_notif_loop", "d_recv",
-           color=NOTIF_BORDER, penwidth="1.4",
-           label="push",
-           constraint="false", style="dashed")
-    # Group ready -> driver opens chat
-    g.edge("s_mem_insert", "d_open",
-           color=DRIVER_BORDER, penwidth="1.2",
-           style="dashed", label="group ready",
-           constraint="false")
-
-    pdf, png = render_dot(g, "mbse_act_swimlane_book_ride")
+    pdf, png = save_mpl("mbse_act_swimlane_book_ride", dpi=300)
     register("mbse_act_swimlane_book_ride", "ok", png_path=png)
+    print(f"  pdf -> {pdf}")
+    print(f"  png -> {png}")
     return pdf, png
 
 
